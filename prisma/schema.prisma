@@ -1,0 +1,111 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model exit_tactics {
+  /// ⚠️ This model contains static, read-only values inserted during initial seed
+  id          Int     @id @default(autoincrement())
+  tactic_id   Int     @unique
+  name        String  @unique
+  description String?
+}
+
+model tags {
+  /// ⚠️ This model contains static, read-only values inserted during initial seed
+  id     Int    @id @default(autoincrement())
+  tag_id Int    @unique
+  name   String @unique
+}
+
+model trade_fills {
+  id            Int      @id @default(autoincrement())
+  trade_id      Int?
+  type          String
+  fill_date     DateTime
+  order_price   Float?
+  filled_price  Float?
+  slippage      Float?
+  shares        Int?
+  total_cost    Float?
+  day_high      Float?
+  day_low       Float?
+  grade_percent Float?
+  trades        trades?  @relation(fields: [tradesId], references: [id])
+  tradesId      Int?
+}
+
+model trade_images {
+  id          Int       @id @default(autoincrement())
+  trade_id    Int?
+  image_type  String
+  file_path   String
+  uploaded_at DateTime? @default(now())
+  trades      trades?   @relation(fields: [tradesId], references: [id])
+  tradesId    Int?
+}
+
+model trades {
+  id                  Int            @id @default(autoincrement())
+  user_id             Int?
+  ticker              String
+  direction           String
+  setup               String?
+  entry_price         Float?
+  exit_price          Float?
+  stop_loss           Float?
+  quantity            Int?
+  r_multiple          Float?
+  result              String?
+  entry_date          DateTime?
+  exit_date           DateTime?
+  reason_for_entry    String?
+  reason_for_exit     String?
+  post_trade_analysis String?
+  confidence_rating   Int?
+  exit_tactic_id      Int?
+  trade_setup_id      Int?
+  created_at          DateTime?      @default(now())
+  is_paper_trade      Decimal?
+  trade_fills         trade_fills[]
+  trade_images        trade_images[]
+  tag_id              Int?
+}
+
+model users {
+  id            Int       @id @default(autoincrement())
+  username      String    @unique(map: "sqlite_autoindex_users_1")
+  password_hash String
+  created_at    DateTime? @default(now())
+}
+
+model trade_setups {
+  id             Int     @id @default(autoincrement())
+  trade_setup_id Int     @unique
+  name           String  @unique
+  description    String?
+}
+
+model chart_readings {
+  id               Int      @id @default(autoincrement())
+  date             DateTime
+  stock            String
+  trend            String?
+  candle_type      String?
+  near_support     Boolean?
+  near_resistance  Boolean?
+  support_level    Float?
+  resistance_level Float?
+  ema_touch        Boolean?
+  volume_spike     Boolean?
+  rsi_value        Float?
+  entry_considered Boolean?
+  action_plan      String?
+  notes            String?
+  screenshot_url   String?
+  created_at       DateTime @default(now())
+}

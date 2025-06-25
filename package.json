@@ -1,0 +1,31 @@
+{
+  "name": "ishastra_backend",
+  "version": "1.0.0",
+  "description": "A trade journal application backend",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jhapankajkumar/ishastra_backend.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/jhapankajkumar/ishastra_backend/issues"
+  },
+  "homepage": "https://github.com/jhapankajkumar/ishastra_backend#readme",
+  "dependencies": {
+    "@prisma/client": "^6.10.1",
+    "bcrypt": "^6.0.0",
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "express-jwt": "^8.5.1",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^2.0.1",
+    "prisma": "^6.10.1",
+    "sqlite3": "^5.1.7"
+  }
+}
