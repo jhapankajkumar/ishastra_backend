@@ -1,7 +1,7 @@
 // src/routes/chartReading.routes.js
 const express = require('express');
 const router = express.Router();
-const chartReadingController = require('../controllers/chartReading.controller');
+const chartReadingController = require('../controllers/chart.controller');
 const multer = require('multer');
 const path = require('path');
 

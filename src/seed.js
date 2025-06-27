@@ -1,6 +1,8 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
+const sampleTrades = require('./sample_trades_seed.json');
+
 async function main() {
   // Seed Exit Tactics
   const tactics = [
@@ -35,8 +37,21 @@ async function main() {
 
   // Optionally seed tags
   const tags = [
-    { name: 'Breakout' , tag_id: 1001},
-    { name: 'Reversal', tag_id: 1002}
+    { tag_id: 1001, name: 'Breakout' , description: 'Price moves above resistance or below support with momentum' },
+    { tag_id: 1002, name: 'Reversal', description: 'Trade entered expecting a change in trend direction' },
+    { tag_id: 1003, name: 'Pullback', description: 'Entered after a temporary retracement in an ongoing trend' },
+    { tag_id: 1004, name: 'Trend Continuation', description: 'Entered in the direction of the prevailing trend' },
+    { tag_id: 1005, name: 'Fade', description: 'Counter-trend trade expecting price to snap back' },
+    { tag_id: 1006, name: 'Support Bounce', description: 'Trade entered near a known support zone' },
+    { tag_id: 1007, name: 'Resistance Rejection', description: 'Trade taken after price fails to break resistance' },
+    { tag_id: 1008, name: 'EMA Touch', description: 'Trade initiated when price touches an important moving average' },
+    { tag_id: 1009, name: 'Volume Spike', description: 'Triggered by unusual volume activity indicating momentum' },
+    { tag_id: 1010, name: 'Divergence', description: 'Based on RSI/MACD showing divergence from price movement' },
+    { tag_id: 1011, name: 'Inside Bar', description: 'Trade setup formed after a narrow range day or bar' },
+    { tag_id: 1012, name: 'Gap Fill', description: 'Trade entered expecting price to fill a previous gap' },
+    { tag_id: 1013, name: 'Pattern Break', description: 'Triggered by breakout from a known chart pattern (flag, triangle, etc.)' },
+    { tag_id: 1014, name: 'High Conviction', description: 'Subjective tag denoting extra confidence in the setup' },
+    { tag_id: 1015, name: 'Low Risk Entry', description: 'Trade characterized by small stop size relative to potential reward' }
   ];
 
   for (const tag of tags) {
@@ -69,8 +84,23 @@ async function main() {
     }
 
     console.log('✅ Trade setups seeded.');
+
+    // Seed sample trades
+    for (const trade of sampleTrades) {
+      const { tag_ids, ...tradeData } = trade;
+
+      // Convert ISO strings to actual Date objects
+      tradeData.entry_date = new Date(tradeData.entry_date);
+      tradeData.exit_date = new Date(tradeData.exit_date);
+
+      const createdTrade = await prisma.trades.create({
+        data: tradeData
+      });
+    }
+
+    console.log('✅ Sample trades seeded.');
   } catch (error) {
-    console.error('❌ Failed to seed trade setups:', error.message);
+    console.error('❌ Failed ', error.message);
   }
 
   await prisma.$disconnect();

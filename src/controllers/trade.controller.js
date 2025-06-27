@@ -3,7 +3,7 @@ const prisma = require('../db');
 exports.getAllTrades = async (req, res) => {
   try {
     const trades = await prisma.trades.findMany({
-      orderBy: { entry_date: 'desc' }
+      
     });
 
     const tradeIds = trades.map(t => t.id);
@@ -15,6 +15,13 @@ exports.getAllTrades = async (req, res) => {
     const tradeFills = await prisma.trade_fills.findMany({
       where: { trade_id: { in: tradeIds } }
     });
+
+    console.log(`Fetched ${trades.length} trades with related data`);
+    console.log(`Fetched ${exitTactics.length} exit tactics`);
+    console.log(`Fetched ${tradeImages.length} trade images`);
+    console.log(`Fetched ${tradeSetups.length} trade setups`);
+    console.log(`Fetched ${tradeFills.length} trade fills`);
+    
 
     const tradesWithRelations = trades.map(trade => ({
       ...trade,
@@ -44,7 +51,6 @@ exports.createTrade = async (req, res) => {
       exit_price,
       stop_loss,
       quantity,
-      r_multiple,
       result,
       entry_date,
       exit_date,
@@ -54,7 +60,40 @@ exports.createTrade = async (req, res) => {
       confidence_rating,
       exit_tactic_id,
       trade_setup_id,
+      tags,
+      is_paper_trade
     } = req.body;
+
+    const entryPriceNum = parseFloat(entry_price);
+    const exitPriceNum = parseFloat(exit_price);
+    const stopLossNum = parseFloat(stop_loss);
+
+    const risk = Math.abs(entryPriceNum - stopLossNum);
+    const reward = direction === 'long' ? exitPriceNum - entryPriceNum : entryPriceNum - exitPriceNum;
+    const r_multiple = parseFloat((reward / risk).toFixed(2));
+
+    console.log('Creating trade with data:', {
+      user_id,
+      ticker,
+      direction,
+      setup,
+      entry_price: entryPriceNum,
+      exit_price: exitPriceNum,
+      stop_loss: stopLossNum,
+      quantity,
+      result,
+      entry_date: new Date(entry_date),
+      exit_date: new Date(exit_date),
+      reason_for_entry,
+      reason_for_exit,
+      post_trade_analysis,
+      confidence_rating: parseInt(confidence_rating),
+      exit_tactic_id: exit_tactic_id ? Number(exit_tactic_id) : null,
+      trade_setup_id: trade_setup_id ? Number(trade_setup_id) : null,
+      tags: Array.isArray(tags) ? tags : (tags ? JSON.parse(tags) : []),
+      is_paper_trade: is_paper_trade ? Boolean(is_paper_trade) : false
+    });
+    
 
     const trade = await prisma.trades.create({
       data: {
@@ -62,11 +101,11 @@ exports.createTrade = async (req, res) => {
         ticker,
         direction,
         setup,
-        entry_price: parseFloat(entry_price),
-        exit_price: parseFloat(exit_price),
-        stop_loss: parseFloat(stop_loss),
+        entry_price: entryPriceNum,
+        exit_price: exitPriceNum,
+        stop_loss: stopLossNum,
         quantity: parseInt(quantity),
-        r_multiple: parseFloat(r_multiple),
+        r_multiple,
         result,
         entry_date: new Date(entry_date),
         exit_date: new Date(exit_date),
@@ -76,6 +115,8 @@ exports.createTrade = async (req, res) => {
         confidence_rating: parseInt(confidence_rating),
         exit_tactic_id: exit_tactic_id ? Number(exit_tactic_id) : null,
         trade_setup_id: trade_setup_id ? Number(trade_setup_id) : null,
+        tags: Array.isArray(tags) ? tags : (tags ? JSON.parse(tags) : []),
+        is_paper_trade: is_paper_trade ? Boolean(is_paper_trade) : false
       }
     });
 
@@ -161,7 +202,6 @@ exports.updateTrade = async (req, res) => {
       exit_price,
       stop_loss,
       quantity,
-      r_multiple,
       result,
       entry_date,
       exit_date,
@@ -180,7 +220,6 @@ exports.updateTrade = async (req, res) => {
     if (exit_price != null) data.exit_price = parseFloat(exit_price);
     if (stop_loss != null) data.stop_loss = parseFloat(stop_loss);
     if (quantity != null) data.quantity = parseInt(quantity);
-    if (r_multiple != null) data.r_multiple = parseFloat(r_multiple);
     if (result != null) data.result = result;
     if (entry_date != null) data.entry_date = new Date(entry_date);
     if (exit_date != null) data.exit_date = new Date(exit_date);
@@ -190,6 +229,18 @@ exports.updateTrade = async (req, res) => {
     if (confidence_rating != null) data.confidence_rating = parseInt(confidence_rating);
     if (exit_tactic_id != null) data.exit_tactic_id = Number(exit_tactic_id);
     if (trade_setup_id != null) data.trade_setup_id = Number(trade_setup_id);
+
+    // Calculate r_multiple if all required fields are present
+    if (
+      data.entry_price != null &&
+      data.exit_price != null &&
+      data.stop_loss != null &&
+      data.direction != null
+    ) {
+      const risk = Math.abs(data.entry_price - data.stop_loss);
+      const reward = data.direction === 'long' ? data.exit_price - data.entry_price : data.entry_price - data.exit_price;
+      data.r_multiple = parseFloat((reward / risk).toFixed(2));
+    }
 
     const updatedTrade = await prisma.trades.update({
       where: { id: Number(id) },
@@ -222,5 +273,50 @@ exports.updateTrade = async (req, res) => {
   } catch (error) {
     console.error('Error updating trade:', error);
     res.status(500).json({ error: 'Failed to update trade' });
+  }
+};
+
+exports.getDashboardSummary = async (req, res) => {
+  try {
+    const trades = await prisma.trades.findMany();
+
+    const totalTrades = trades.length;
+    const wins = trades.filter(t => t.r_multiple > 0).length;
+    const winRate = totalTrades ? Math.round((wins / totalTrades) * 100) : 0;
+    const avgR = totalTrades
+      ? (trades.reduce((sum, t) => sum + (t.r_multiple || 0), 0) / totalTrades).toFixed(2)
+      : 0;
+
+    const grossProfit = trades.filter(t => t.r_multiple > 0).reduce((sum, t) => sum + t.r_multiple, 0);
+    const grossLoss = trades.filter(t => t.r_multiple < 0).reduce((sum, t) => sum + t.r_multiple, 0);
+    const profitFactor = grossLoss !== 0 ? Math.abs(grossProfit / grossLoss).toFixed(2) : "∞";
+
+    const expectancy = totalTrades
+      ? (
+          trades.reduce((sum, t) => sum + (t.r_multiple || 0), 0) / totalTrades
+        ).toFixed(2)
+      : 0;
+
+    // Average hold time in days
+    const avgHoldTimeMs =
+      trades.reduce((sum, t) => {
+        if (t.entry_date && t.exit_date) {
+          return sum + (new Date(t.exit_date) - new Date(t.entry_date));
+        }
+        return sum;
+      }, 0) / (totalTrades || 1);
+    const avgHoldTimeDays = avgHoldTimeMs ? Math.round(avgHoldTimeMs / (1000 * 60 * 60 * 24)) : 0;
+
+    res.json({
+      totalTrades,
+      winRate,
+      avgR,
+      profitFactor,
+      expectancy,
+      avgHoldTime: `${avgHoldTimeDays}d`
+    });
+  } catch (error) {
+    console.error('Error generating dashboard summary:', error);
+    res.status(500).json({ error: 'Failed to generate dashboard summary' });
   }
 };

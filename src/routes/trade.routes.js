@@ -17,6 +17,7 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 router.get('/', tradeController.getAllTrades);
+router.get('/dashboard/summary', tradeController.getDashboardSummary);
 
 router.post(
   '/',

@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const multer = require('multer');
 const app = express();
-const port = 3000;
+const port = 8000;
 
 // Middleware
 app.use(cors());
@@ -17,7 +17,7 @@ app.use('/api/trades', require('./routes/trade.routes'));
 app.use('/api/tags', require('./routes/tag.routes'));
 app.use('/api/exit-tactics', require('./routes/tactic.routes'));
 app.use('/api/journals', require('./routes/journal.routes'));
-
+app.use('/api/chart-readings', require('./routes/chart.routes'));
 // Authentication routes
 app.use('/api/auth', require('./routes/auth.routes'));
 

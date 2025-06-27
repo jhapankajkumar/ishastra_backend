@@ -20,6 +20,7 @@ model tags {
   id     Int    @id @default(autoincrement())
   tag_id Int    @unique
   name   String @unique
+  description String?
 }
 
 model trade_fills {
@@ -70,10 +71,10 @@ model trades {
   exit_tactic_id      Int?
   trade_setup_id      Int?
   created_at          DateTime?      @default(now())
-  is_paper_trade      Decimal?
+  is_paper_trade      Boolean?
   trade_fills         trade_fills[]
   trade_images        trade_images[]
-  tag_id              Int?
+  tags                Json?
 }
 
 model users {
