@@ -2,19 +2,7 @@ const express = require('express');
 const router = express.Router();
 const tradeController = require('../controllers/trade.controller');
 const multer = require('multer');
-const path = require('path');
-
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, path.join(__dirname, '..', '..', 'uploads', 'trades'));
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    cb(null, uniqueSuffix + '-' + file.originalname);
-  }
-});
-
-const upload = multer({ storage });
+const upload = multer({ dest: 'uploads/' });
 
 router.get('/', tradeController.getAllTrades);
 router.get('/dashboard/summary', tradeController.getDashboardSummary);
@@ -22,20 +10,26 @@ router.get('/dashboard/summary', tradeController.getDashboardSummary);
 router.post(
   '/',
   upload.fields([
-    { name: 'entry_chart', maxCount: 1 },
-    { name: 'exit_chart', maxCount: 1 },
-    { name: 'post_chart', maxCount: 1 }
+    { name: 'entryCharts', maxCount: 5 },
+    { name: 'exitCharts', maxCount: 5 },
+    { name: 'postTradeFiles', maxCount: 5 }
   ]),
   tradeController.createTrade
 );
-
-router.patch(
-  '/:id',
+router.put(
+  '/:id/exit',
   upload.fields([
-    { name: 'exit_chart', maxCount: 1 },
-    { name: 'post_chart', maxCount: 1 }
+    { name: 'exitCharts', maxCount: 5 }
   ]),
-  tradeController.updateTrade
+  tradeController.updateTradeExit
 );
+router.put(
+  '/:id/post-analysis',
+  upload.fields([
+    { name: 'postTradeFiles', maxCount: 5 }
+  ]),
+  tradeController.addPostAnalysis
+);
+router.get('/:id', tradeController.getTradeById);
 
 module.exports = router;

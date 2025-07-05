@@ -18,6 +18,7 @@ app.use('/api/tags', require('./routes/tag.routes'));
 app.use('/api/exit-tactics', require('./routes/tactic.routes'));
 app.use('/api/journals', require('./routes/journal.routes'));
 app.use('/api/chart-readings', require('./routes/chart.routes'));
+app.use('/api/setups', require('./routes/setup.routes'));
 // Authentication routes
 app.use('/api/auth', require('./routes/auth.routes'));
 

@@ -5,6 +5,11 @@ exports.getAllTactics = async (req, res) => {
   res.json(tactics);
 };
 
+exports.getAllSetups = async (req, res) => {
+  const setups = await prisma.trade_setups.findMany();
+  res.json(setups);
+};
+
 exports.createTactic = async (req, res) => {
   try {
     const { name, description } = req.body;
