@@ -24,5 +24,7 @@ router.post(
 );
 
 router.get('/', chartReadingController.getAllChartReadings);
+router.get('/:id', chartReadingController.getChartReadingById);
+router.delete('/:id', chartReadingController.deleteChartReading);
 
 module.exports = router;

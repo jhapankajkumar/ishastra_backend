@@ -57,3 +57,64 @@ exports.getAllChartReadings = async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch readings' });
   }
 };
+
+// Get a single chart reading by ID
+exports.getChartReadingById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const reading = await prisma.chart_readings.findUnique({
+      where: { id: Number(id) }
+    });
+
+    if (!reading) {
+      return res.status(404).json({ error: 'Chart reading not found' });
+    }
+
+    res.json(reading);
+  } catch (error) {
+    console.error('Error fetching chart reading:', error);
+    res.status(500).json({ error: 'Failed to fetch chart reading', details: error.message });
+  }
+};
+
+// Delete chart reading
+exports.deleteChartReading = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const readingId = Number(id);
+
+    // Validate chart reading ID
+    if (!readingId || isNaN(readingId)) {
+      return res.status(400).json({ error: 'Invalid chart reading ID' });
+    }
+
+    // Check if chart reading exists
+    const reading = await prisma.chart_readings.findUnique({
+      where: { id: readingId }
+    });
+
+    if (!reading) {
+      return res.status(404).json({ error: 'Chart reading not found' });
+    }
+
+    // Delete the chart reading
+    await prisma.chart_readings.delete({
+      where: { id: readingId }
+    });
+
+    console.log(`Chart reading with ID ${readingId} deleted successfully`);
+    res.status(204).send(); // No content response for successful deletion
+  } catch (error) {
+    console.error('Error deleting chart reading:', error);
+    
+    // Handle specific Prisma errors
+    if (error.code === 'P2025') {
+      return res.status(404).json({ error: 'Chart reading not found' });
+    }
+    
+    res.status(500).json({ 
+      error: 'Failed to delete chart reading', 
+      details: error.message 
+    });
+  }
+};
