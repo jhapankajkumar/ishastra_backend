@@ -244,3 +244,56 @@ exports.getTradeById = async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch trade', details: error.message });
   }
 };
+
+// Delete trade and all related data
+exports.deleteTrade = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const tradeId = Number(id);
+
+    // Validate trade ID
+    if (!tradeId || isNaN(tradeId)) {
+      return res.status(400).json({ error: 'Invalid trade ID' });
+    }
+
+    // Check if trade exists
+    const trade = await prisma.trades.findUnique({
+      where: { id: tradeId }
+    });
+
+    if (!trade) {
+      return res.status(404).json({ error: 'Trade not found' });
+    }
+
+    // Delete related data first (due to foreign key constraints)
+    // Delete trade images
+    await prisma.trade_images.deleteMany({
+      where: { trade_id: tradeId }
+    });
+
+    // Delete trade fills
+    await prisma.trade_fills.deleteMany({
+      where: { trade_id: tradeId }
+    });
+
+    // Delete the main trade record
+    await prisma.trades.delete({
+      where: { id: tradeId }
+    });
+
+    console.log(`Trade with ID ${tradeId} and all related data deleted successfully`);
+    res.status(204).send(); // No content response for successful deletion
+  } catch (error) {
+    console.error('Error deleting trade:', error);
+    
+    // Handle specific Prisma errors
+    if (error.code === 'P2025') {
+      return res.status(404).json({ error: 'Trade not found' });
+    }
+    
+    res.status(500).json({ 
+      error: 'Failed to delete trade', 
+      details: error.message 
+    });
+  }
+};

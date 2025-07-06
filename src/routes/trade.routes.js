@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const tradeController = require('../controllers/trade.controller');
+const tradeController = require('../controllerS/trade.controller');
 const multer = require('multer');
 const upload = multer({ dest: 'uploads/' });
 
@@ -31,5 +31,6 @@ router.put(
   tradeController.addPostAnalysis
 );
 router.get('/:id', tradeController.getTradeById);
+router.delete('/:id', tradeController.deleteTrade);
 
 module.exports = router;
