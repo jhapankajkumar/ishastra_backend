@@ -36,7 +36,7 @@ exports.createJournal = async (req, res) => {
         entry_considered: entry_considered === 'true',
         action_plan,
         notes,
-        screenshot_url: req.file?.path || null
+        screenshot_url: req.file ? req.file.path : null
       }
     });
 
@@ -114,6 +114,62 @@ exports.deleteJournal = async (req, res) => {
     
     res.status(500).json({ 
       error: 'Failed to delete journal', 
+      details: error.message 
+    });
+  }
+};
+
+// Update journal
+exports.updateJournal = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const journalId = Number(id);
+
+    // Validate journal ID
+    if (!journalId || isNaN(journalId)) {
+      return res.status(400).json({ error: 'Invalid journal ID' });
+    }
+
+    // Check if journal exists
+    const existingJournal = await prisma.chart_readings.findUnique({
+      where: { id: journalId }
+    });
+
+    if (!existingJournal) {
+      return res.status(404).json({ error: 'Journal not found' });
+    }
+
+    const {
+      notes
+    } = req.body;
+
+    // Prepare update data - only allow updating notes and review screenshot
+    const updateData = {
+      notes: notes !== undefined ? notes : existingJournal.notes
+    };
+
+    // Handle review screenshot update (for edit mode)
+    if (req.file) {
+      updateData.review_screenshot_url = req.file.path;
+    }
+
+    const updatedJournal = await prisma.chart_readings.update({
+      where: { id: journalId },
+      data: updateData
+    });
+
+    console.log(`Journal with ID ${journalId} updated successfully`);
+    res.json({ journal: updatedJournal });
+  } catch (error) {
+    console.error('Error updating journal:', error);
+    
+    // Handle specific Prisma errors
+    if (error.code === 'P2025') {
+      return res.status(404).json({ error: 'Journal not found' });
+    }
+    
+    res.status(500).json({ 
+      error: 'Failed to update journal', 
       details: error.message 
     });
   }

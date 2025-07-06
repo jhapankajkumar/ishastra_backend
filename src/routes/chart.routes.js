@@ -3,19 +3,8 @@ const express = require('express');
 const router = express.Router();
 const journalController = require('../controllers/chart.controller');
 const multer = require('multer');
-const path = require('path');
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, path.join(__dirname, '..', '..', 'uploads', 'charts'));
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    cb(null, uniqueSuffix + '-' + file.originalname);
-  }
-});
-
-const upload = multer({ storage });
+const upload = multer({ dest: 'uploads/' });
 
 router.post(
   '/',
@@ -25,6 +14,11 @@ router.post(
 
 router.get('/', journalController.getAllJournals);
 router.get('/:id', journalController.getJournalById);
+router.put(
+  '/:id',
+  upload.single('reviewScreenshot'),
+  journalController.updateJournal
+);
 router.delete('/:id', journalController.deleteJournal);
 
 module.exports = router;
