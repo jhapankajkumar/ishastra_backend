@@ -74,7 +74,7 @@ model trades {
   is_paper_trade      Boolean?
   trade_fills         trade_fills[]
   trade_images        trade_images[]
-  tags                Json?
+  tags                String?
 }
 
 model users {

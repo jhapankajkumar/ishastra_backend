@@ -19,8 +19,8 @@ exports.getAllTrades = async (req, res) => {
       ...trade,
       exit_tactics: exitTactics.find(e => e.id === trade.exit_tactic_id) || null,
       trade_images: tradeImages.filter(img => img.trade_id === trade.id),
-      trade_setups: trade.trade_setup_id
-        ? tradeSetups.find(setup => setup.id === trade.trade_setup_id)
+      trade_setup: trade.trade_setup_id
+        ? tradeSetups.find(setup => setup.trade_setup_id === trade.trade_setup_id)
         : null,
       trade_fills: tradeFills.filter(fill => fill.trade_id === trade.id),
     }));
@@ -43,6 +43,8 @@ exports.createTrade = async (req, res) => {
         entry_price: Number(req.body.entryOrderPrice),
         quantity: Number(req.body.entryFilledShares),
         direction: "Empty",
+        trade_setup_id: req.body.tradeSetup ? Number(req.body.tradeSetup) : null,
+        setup: req.body.setup || null,
       }
     });
 
@@ -76,9 +78,11 @@ exports.createTrade = async (req, res) => {
     }
 
     if (tradeImages.length > 0) {
-      await prisma.trade_images.createMany({
-        data: tradeImages
-      });
+      await Promise.all(
+        tradeImages.map(imageData => 
+          prisma.trade_images.create({ data: imageData })
+        )
+      );
     }
 
     res.status(201).json({ message: "Trade created successfully", trade });
@@ -116,7 +120,11 @@ exports.updateTradeExit = async (req, res) => {
         image_type: "exit",
         file_path: file.path,
       }));
-      await prisma.trade_images.createMany({ data: exitImages });
+      await Promise.all(
+        exitImages.map(imageData => 
+          prisma.trade_images.create({ data: imageData })
+        )
+      );
     }
 
     res.json(trade);
@@ -145,7 +153,11 @@ exports.addPostAnalysis = async (req, res) => {
         image_type: "post",
         file_path: file.path,
       }));
-      await prisma.trade_images.createMany({ data: postImages });
+      await Promise.all(
+        postImages.map(imageData => 
+          prisma.trade_images.create({ data: imageData })
+        )
+      );
     }
 
     res.json(trade);
@@ -216,7 +228,7 @@ exports.getTradeById = async (req, res) => {
       : null;
     const trade_images = await prisma.trade_images.findMany({ where: { trade_id: trade.id } });
     const trade_setup = trade.trade_setup_id
-      ? await prisma.trade_setups.findUnique({ where: { id: trade.trade_setup_id } })
+      ? await prisma.trade_setups.findFirst({ where: { trade_setup_id: trade.trade_setup_id } })
       : null;
     const trade_fills = await prisma.trade_fills.findMany({ where: { trade_id: trade.id } });
 
@@ -224,7 +236,7 @@ exports.getTradeById = async (req, res) => {
       ...trade,
       exit_tactics: exit_tactic,
       trade_images,
-      trade_setups: trade_setup,
+      trade_setup: trade_setup,
       trade_fills
     });
   } catch (error) {
