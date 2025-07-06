@@ -86,17 +86,17 @@ async function main() {
     console.log('✅ Trade setups seeded.');
 
     // Seed sample trades
-    for (const trade of sampleTrades) {
-      const { tag_ids, ...tradeData } = trade;
+    // for (const trade of sampleTrades) {
+    //   const { tag_ids, ...tradeData } = trade;
 
-      // Convert ISO strings to actual Date objects
-      tradeData.entry_date = new Date(tradeData.entry_date);
-      tradeData.exit_date = new Date(tradeData.exit_date);
+    //   // Convert ISO strings to actual Date objects
+    //   tradeData.entry_date = new Date(tradeData.entry_date);
+    //   tradeData.exit_date = new Date(tradeData.exit_date);
 
-      const createdTrade = await prisma.trades.create({
-        data: tradeData
-      });
-    }
+    //   const createdTrade = await prisma.trades.create({
+    //     data: tradeData
+    //   });
+    // }
 
     console.log('✅ Sample trades seeded.');
   } catch (error) {

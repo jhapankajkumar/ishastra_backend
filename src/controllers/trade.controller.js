@@ -42,7 +42,7 @@ exports.createTrade = async (req, res) => {
         entry_date: new Date(req.body.entryDate),
         entry_price: Number(req.body.entryOrderPrice),
         quantity: Number(req.body.entryFilledShares),
-        direction: "Empty",
+        direction: req.body.direction || "Long",
         trade_setup_id: req.body.tradeSetup ? Number(req.body.tradeSetup) : null,
         setup: req.body.setup || null,
       }
