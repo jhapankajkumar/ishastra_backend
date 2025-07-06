@@ -1,7 +1,7 @@
-// src/routes/chartReading.routes.js
+// src/routes/journal.routes.js
 const express = require('express');
 const router = express.Router();
-const chartReadingController = require('../controllers/chart.controller');
+const journalController = require('../controllers/chart.controller');
 const multer = require('multer');
 const path = require('path');
 
@@ -20,11 +20,11 @@ const upload = multer({ storage });
 router.post(
   '/',
   upload.single('screenshot'),
-  chartReadingController.createChartReading
+  journalController.createJournal
 );
 
-router.get('/', chartReadingController.getAllChartReadings);
-router.get('/:id', chartReadingController.getChartReadingById);
-router.delete('/:id', chartReadingController.deleteChartReading);
+router.get('/', journalController.getAllJournals);
+router.get('/:id', journalController.getJournalById);
+router.delete('/:id', journalController.deleteJournal);
 
 module.exports = router;

@@ -1,7 +1,7 @@
-// src/controllers/chartReading.controller.js
+// src/controllers/journal.controller.js
 const prisma = require('../db');
 
-exports.createChartReading = async (req, res) => {
+exports.createJournal = async (req, res) => {
   try {
     const {
       date,
@@ -20,7 +20,7 @@ exports.createChartReading = async (req, res) => {
       notes
     } = req.body;
 
-    const reading = await prisma.chart_readings.create({
+    const journal = await prisma.chart_readings.create({
       data: {
         date: new Date(date),
         stock,
@@ -40,80 +40,80 @@ exports.createChartReading = async (req, res) => {
       }
     });
 
-    res.status(201).json({ reading });
+    res.status(201).json({ journal });
   } catch (error) {
-    console.error('Error saving chart reading:', error);
-    res.status(500).json({ error: 'Failed to save chart reading' });
+    console.error('Error saving journal:', error);
+    res.status(500).json({ error: 'Failed to save journal' });
   }
 };
 
-exports.getAllChartReadings = async (req, res) => {
+exports.getAllJournals = async (req, res) => {
   try {
-    const readings = await prisma.chart_readings.findMany({
+    const journals = await prisma.chart_readings.findMany({
       orderBy: { date: 'desc' }
     });
-    res.json(readings);
+    res.json(journals);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch readings' });
+    res.status(500).json({ error: 'Failed to fetch journals' });
   }
 };
 
-// Get a single chart reading by ID
-exports.getChartReadingById = async (req, res) => {
+// Get a single journal by ID
+exports.getJournalById = async (req, res) => {
   try {
     const { id } = req.params;
-    const reading = await prisma.chart_readings.findUnique({
+    const journal = await prisma.chart_readings.findUnique({
       where: { id: Number(id) }
     });
 
-    if (!reading) {
-      return res.status(404).json({ error: 'Chart reading not found' });
+    if (!journal) {
+      return res.status(404).json({ error: 'Journal not found' });
     }
 
-    res.json(reading);
+    res.json(journal);
   } catch (error) {
-    console.error('Error fetching chart reading:', error);
-    res.status(500).json({ error: 'Failed to fetch chart reading', details: error.message });
+    console.error('Error fetching journal:', error);
+    res.status(500).json({ error: 'Failed to fetch journal', details: error.message });
   }
 };
 
-// Delete chart reading
-exports.deleteChartReading = async (req, res) => {
+// Delete journal
+exports.deleteJournal = async (req, res) => {
   try {
     const { id } = req.params;
-    const readingId = Number(id);
+    const journalId = Number(id);
 
-    // Validate chart reading ID
-    if (!readingId || isNaN(readingId)) {
-      return res.status(400).json({ error: 'Invalid chart reading ID' });
+    // Validate journal ID
+    if (!journalId || isNaN(journalId)) {
+      return res.status(400).json({ error: 'Invalid journal ID' });
     }
 
-    // Check if chart reading exists
-    const reading = await prisma.chart_readings.findUnique({
-      where: { id: readingId }
+    // Check if journal exists
+    const journal = await prisma.chart_readings.findUnique({
+      where: { id: journalId }
     });
 
-    if (!reading) {
-      return res.status(404).json({ error: 'Chart reading not found' });
+    if (!journal) {
+      return res.status(404).json({ error: 'Journal not found' });
     }
 
-    // Delete the chart reading
+    // Delete the journal
     await prisma.chart_readings.delete({
-      where: { id: readingId }
+      where: { id: journalId }
     });
 
-    console.log(`Chart reading with ID ${readingId} deleted successfully`);
+    console.log(`Journal with ID ${journalId} deleted successfully`);
     res.status(204).send(); // No content response for successful deletion
   } catch (error) {
-    console.error('Error deleting chart reading:', error);
+    console.error('Error deleting journal:', error);
     
     // Handle specific Prisma errors
     if (error.code === 'P2025') {
-      return res.status(404).json({ error: 'Chart reading not found' });
+      return res.status(404).json({ error: 'Journal not found' });
     }
     
     res.status(500).json({ 
-      error: 'Failed to delete chart reading', 
+      error: 'Failed to delete journal', 
       details: error.message 
     });
   }
