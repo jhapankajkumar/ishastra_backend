@@ -50,7 +50,8 @@ app.get('/api/yahoo/price', async (req, res) => {
 });
 
 // ATR calculation helper
-function calculateATR(data, period = 14) {
+// ATR = RMA (Wilder's smoothing) of TRs
+function calculateATR(data, period = 14, returnSeries = false) {
   if (!data || data.length < period + 1) return null;
   let trs = [];
   for (let i = 1; i < data.length; i++) {
@@ -63,18 +64,23 @@ function calculateATR(data, period = 14) {
       Math.abs(low - prevClose)
     ));
   }
-  // ATR = SMA of TRs
-  const atrs = [];
-  for (let i = 0; i <= trs.length - period; i++) {
-    const slice = trs.slice(i, i + period);
-    atrs.push(slice.reduce((a, b) => a + b, 0) / period);
+  if (trs.length < period) return null;
+  // First ATR is SMA of first 'period' TRs
+  let atr = trs.slice(0, period).reduce((a, b) => a + b, 0) / period;
+  let atrs = [atr];
+  // Wilder's smoothing for the rest
+  for (let i = period; i < trs.length; i++) {
+    atr = (atr * (period - 1) + trs[i]) / period;
+    atrs.push(atr);
   }
-  return atrs.length > 0 ? atrs[atrs.length - 1] : null;
+  return returnSeries ? atrs : atr;
 }
 
 app.get('/api/yahoo/atr', async (req, res) => {
   try {
-    const { symbol, period1, period2 } = req.query;
+    const period1 = Math.floor((Date.now() - 60 * 24 * 60 * 60 * 1000) / 1000); // 60 days ago
+    const period2 = Math.floor(Date.now() / 1000); // now
+    const { symbol } = req.query;
     if (!symbol) return res.status(400).json({ error: 'Missing symbol' });
     let hist;
     if (period1 && period2) {
@@ -82,10 +88,14 @@ app.get('/api/yahoo/atr', async (req, res) => {
     } else {
       hist = await yahoo.getHistorical(symbol, '2mo');
     }
+    // Debug: log last date in historical data
+    if (hist && hist.length > 0) {
+      console.log(`ATR data for ${symbol}: last date =`, hist[hist.length - 1].date);
+    }
     // Always use 14-day ATR
     let atr = calculateATR(hist, 14);
     if (atr !== null && atr !== undefined) {
-      atr = Math.round(atr); // Remove decimals
+      atr = Number(atr.toFixed(2)); // 2 decimals
     }
     res.json({ symbol, atr });
   } catch (err) {
