@@ -1,10 +1,16 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
+const TradeIdGenerator = require('../utils/tradeIdGenerator');
 
 // Get all trades with related data
 exports.getAllTrades = async (req, res) => {
   try {
-    const trades = await prisma.trades.findMany({});
+    const trades = await prisma.trades.findMany({
+      include: {
+        trade_fills: true,
+        trade_images: true
+      }
+    });
     const tradeIds = trades.map(t => t.id);
     const exitTactics = await prisma.exit_tactics.findMany();
     const tradeImages = await prisma.trade_images.findMany({
@@ -35,16 +41,51 @@ exports.getAllTrades = async (req, res) => {
 // Add Trade (Entry only)
 exports.createTrade = async (req, res) => {
   try {
+    console.log('🔍 Create Trade Request Body:', req.body);
+    console.log('📁 Create Trade Files:', req.files);
+    console.log('📅 Entry Date Value:', req.body.entryDate, typeof req.body.entryDate);
+    
+    const quantity = Number(req.body.entryFilledShares);
+    
+    // Generate professional trade ID
+    const professionalTradeId = await TradeIdGenerator.generateTradeId();
+    
+    // Validate and parse entry date (required field)
+    if (!req.body.entryDate || req.body.entryDate === 'undefined' || req.body.entryDate.trim() === '') {
+      console.log('❌ Invalid entry date detected:', req.body.entryDate);
+      return res.status(400).json({ error: 'Entry date is required. Please provide a valid date in YYYY-MM-DD format.' });
+    }
+    
+    const entryDate = new Date(req.body.entryDate);
+    if (isNaN(entryDate.getTime())) {
+      console.log('❌ Date parsing failed for:', req.body.entryDate);
+      return res.status(400).json({ error: 'Invalid entry date format. Please use YYYY-MM-DD format (e.g., 2025-07-26).' });
+    }
+    
     const trade = await prisma.trades.create({
       data: {
+        trade_id: professionalTradeId, // Set professional trade ID
         ticker: req.body.ticker,
         reason_for_entry: req.body.reasonForEntry,
-        entry_date: new Date(req.body.entryDate),
+        entry_date: entryDate,
         entry_price: Number(req.body.entryOrderPrice),
-        quantity: Number(req.body.entryFilledShares),
+        quantity: quantity,
+        remaining_quantity: quantity, // Initialize remaining quantity
         direction: req.body.direction || "Long",
+        instrument_type: req.body.instrumentType || "Stocks",
         trade_setup_id: req.body.tradeSetup ? Number(req.body.tradeSetup) : null,
         setup: req.body.setup || null,
+        status: "Open", // Initialize status
+        confidence_rating: req.body.setupConfidence ? Number(req.body.setupConfidence) : null,
+        entry_commission: req.body.entryCommission ? Number(req.body.entryCommission) : null,
+        stop_loss: req.body.stopLoss ? Number(req.body.stopLoss) : null,
+        target_1: req.body.target1 ? Number(req.body.target1) : null,
+        target_2: req.body.target2 ? Number(req.body.target2) : null,
+        target_3: req.body.target3 ? Number(req.body.target3) : null,
+        timeframe_used: req.body.timeframeUsed || null,
+        notes: req.body.notes || null,
+        atr_value: req.body.atrValue ? Number(req.body.atrValue) : null,
+        risk_per_trade: req.body.riskPerTrade ? Number(req.body.riskPerTrade) : null,
       }
     });
 
@@ -92,28 +133,82 @@ exports.createTrade = async (req, res) => {
   }
 };
 
-// Update Trade (Exit only)
+// Update Trade (Exit only) - Now supports partial exits
 exports.updateTradeExit = async (req, res) => {
   try {
     const { id } = req.params;
     const {
-      exitDate, exitOrderPrice, reasonForExit, exitTactic
+      exitDate, exitOrderPrice, exitQuantity, reasonForExit, exitTactic
     } = req.body;
 
     if (!exitDate) {
       return res.status(400).json({ error: "Missing exit date" });
     }
 
-    const trade = await prisma.trades.update({
-      where: { id: Number(id) },
+    const tradeId = Number(id);
+    
+    // Get current trade to validate
+    const currentTrade = await prisma.trades.findUnique({
+      where: { id: tradeId }
+    });
+
+    if (!currentTrade) {
+      return res.status(404).json({ error: "Trade not found" });
+    }
+
+    const exitQty = Number(exitQuantity) || currentTrade.remaining_quantity || currentTrade.quantity;
+    const remainingAfterExit = (currentTrade.remaining_quantity || currentTrade.quantity) - exitQty;
+
+    // Validate exit quantity
+    if (exitQty <= 0) {
+      return res.status(400).json({ error: "Exit quantity must be greater than 0" });
+    }
+    
+    if (exitQty > (currentTrade.remaining_quantity || currentTrade.quantity)) {
+      return res.status(400).json({ error: "Cannot exit more shares than remaining" });
+    }
+
+    // Create transaction record
+    await prisma.trade_transactions.create({
       data: {
-        exit_date: new Date(exitDate),
-        exit_price: Number(exitOrderPrice),
+        trade_id: tradeId,
+        transaction_type: "Exit",
+        quantity: exitQty,
+        price: Number(exitOrderPrice),
+        transaction_date: new Date(exitDate),
         reason_for_exit: reasonForExit,
         exit_tactic_id: exitTactic ? Number(exitTactic) : null,
       }
     });
 
+    // Determine new status
+    let newStatus = "Open";
+    if (remainingAfterExit === 0) {
+      newStatus = "Closed";
+    } else if (remainingAfterExit > 0) {
+      newStatus = "Partial Closed";
+    }
+
+    // Update the main trade record
+    const updateData = {
+      remaining_quantity: remainingAfterExit,
+      status: newStatus,
+      reason_for_exit: reasonForExit,
+      exit_tactic_id: exitTactic ? Number(exitTactic) : null,
+    };
+
+    // If this is a complete exit, set exit fields
+    if (remainingAfterExit === 0) {
+      updateData.exit_date = new Date(exitDate);
+      updateData.exit_price = Number(exitOrderPrice);
+    }
+
+    const trade = await prisma.trades.update({
+      where: { id: tradeId },
+      data: updateData
+    });
+
+    // Handle file uploads
     if (req.files?.exitCharts) {
       const exitImages = req.files.exitCharts.map(file => ({
         trade_id: trade.id,
@@ -127,10 +222,115 @@ exports.updateTradeExit = async (req, res) => {
       );
     }
 
-    res.json(trade);
+    res.json({
+      ...trade,
+      message: remainingAfterExit === 0 ? "Trade completely exited" : "Partial exit recorded"
+    });
   } catch (err) {
     console.error('Error updating trade exit:', err);
     res.status(500).json({ error: 'Failed to update trade exit', details: err.message });
+  }
+};
+
+// New method specifically for partial exits
+exports.partialExitTrade = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      exitDate, exitOrderPrice, exitQuantity, reasonForExit, exitTactic
+    } = req.body;
+
+    if (!exitDate || !exitOrderPrice || !exitQuantity) {
+      return res.status(400).json({ error: "Missing required fields: exitDate, exitOrderPrice, exitQuantity" });
+    }
+
+    const tradeId = Number(id);
+    const exitQty = Number(exitQuantity);
+    
+    // Get current trade to validate
+    const currentTrade = await prisma.trades.findUnique({
+      where: { id: tradeId },
+      // No trade_transactions include (invalid)
+    });
+
+    if (!currentTrade) {
+      return res.status(404).json({ error: "Trade not found" });
+    }
+
+    const currentRemaining = currentTrade.remaining_quantity ?? currentTrade.quantity;
+    const remainingAfterExit = currentRemaining - exitQty;
+
+    // Validate exit quantity
+    if (exitQty <= 0) {
+      return res.status(400).json({ error: "Exit quantity must be greater than 0" });
+    }
+    
+    if (exitQty > currentRemaining) {
+      return res.status(400).json({ error: "Cannot exit more shares than remaining" });
+    }
+
+    // Create transaction record
+    await prisma.trade_transactions.create({
+      data: {
+        trade_id: tradeId,
+        transaction_type: "Exit",
+        quantity: exitQty,
+        price: Number(exitOrderPrice),
+        transaction_date: new Date(exitDate),
+        reason_for_exit: reasonForExit,
+        exit_tactic_id: exitTactic ? Number(exitTactic) : null,
+      }
+    });
+
+    // Determine new status
+    let newStatus = "Open";
+    if (remainingAfterExit === 0) {
+      newStatus = "Closed";
+    } else if (remainingAfterExit > 0) {
+      newStatus = "Partial Closed";
+    }
+
+    // Update the main trade record
+    const updateData = {
+      remaining_quantity: remainingAfterExit,
+      status: newStatus,
+    };
+
+    // If this is a complete exit, set exit fields
+    if (remainingAfterExit === 0) {
+      updateData.exit_date = new Date(exitDate);
+      updateData.exit_price = Number(exitOrderPrice);
+      updateData.reason_for_exit = reasonForExit;
+      updateData.exit_tactic_id = exitTactic ? Number(exitTactic) : null;
+    }
+
+    const trade = await prisma.trades.update({
+      where: { id: tradeId },
+      data: updateData,
+      // No trade_transactions include (invalid)
+    });
+
+    // Handle file uploads
+    if (req.files?.exitCharts) {
+      const exitImages = req.files.exitCharts.map(file => ({
+        trade_id: trade.id,
+        image_type: "exit",
+        file_path: file.path,
+      }));
+      await Promise.all(
+        exitImages.map(imageData => 
+          prisma.trade_images.create({ data: imageData })
+        )
+      );
+    }
+
+    res.json({
+      ...trade,
+      message: remainingAfterExit === 0 ? "Trade completely exited" : "Partial exit recorded successfully"
+    });
+  } catch (err) {
+    console.error('Error processing partial exit:', err);
+    res.status(500).json({ error: 'Failed to process partial exit', details: err.message });
   }
 };
 
@@ -216,7 +416,11 @@ exports.getTradeById = async (req, res) => {
   try {
     const { id } = req.params;
     const trade = await prisma.trades.findUnique({
-      where: { id: Number(id) }
+      where: { id: Number(id) },
+      include: {
+        trade_fills: true,
+        trade_images: true
+      }
     });
 
     if (!trade) {
@@ -266,6 +470,11 @@ exports.deleteTrade = async (req, res) => {
     }
 
     // Delete related data first (due to foreign key constraints)
+    // Delete trade transactions
+    await prisma.trade_transactions.deleteMany({
+      where: { trade_id: tradeId }
+    });
+
     // Delete trade images
     await prisma.trade_images.deleteMany({
       where: { trade_id: tradeId }
@@ -293,6 +502,31 @@ exports.deleteTrade = async (req, res) => {
     
     res.status(500).json({ 
       error: 'Failed to delete trade', 
+      details: error.message 
+    });
+  }
+};
+
+// Get trade transactions for a specific trade
+exports.getTradeTransactions = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const tradeId = Number(id);
+
+    if (!tradeId || isNaN(tradeId)) {
+      return res.status(400).json({ error: 'Invalid trade ID' });
+    }
+
+    const transactions = await prisma.trade_transactions.findMany({
+      where: { trade_id: tradeId },
+      orderBy: { created_at: 'desc' }
+    });
+
+    res.json(transactions);
+  } catch (error) {
+    console.error('Error fetching trade transactions:', error);
+    res.status(500).json({ 
+      error: 'Failed to fetch trade transactions', 
       details: error.message 
     });
   }

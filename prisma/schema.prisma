@@ -25,7 +25,7 @@ model tags {
 
 model trade_fills {
   id            Int      @id @default(autoincrement())
-  trade_id      Int?
+  trade_id      Int?     // Keep as Int for now during migration
   type          String
   fill_date     DateTime
   order_price   Float?
@@ -36,30 +36,36 @@ model trade_fills {
   day_high      Float?
   day_low       Float?
   grade_percent Float?
-  trades        trades?  @relation(fields: [tradesId], references: [id])
-  tradesId      Int?
+  trades        trades?  @relation(fields: [trade_id], references: [id])
 }
 
 model trade_images {
   id          Int       @id @default(autoincrement())
-  trade_id    Int?
+  trade_id    Int?      // Keep as Int for now during migration
   image_type  String
   file_path   String
   uploaded_at DateTime? @default(now())
-  trades      trades?   @relation(fields: [tradesId], references: [id])
-  tradesId    Int?
+  trades      trades?   @relation(fields: [trade_id], references: [id])
 }
 
 model trades {
-  id                  Int            @id @default(autoincrement())
+  id                  Int                 @id @default(autoincrement())
+  trade_id            String              @unique // Professional trade ID (ISH-2025-000001)
   user_id             Int?
   ticker              String
   direction           String
+  instrument_type     String?             // Stocks, Options, Futures, etc.
   setup               String?
   entry_price         Float?
   exit_price          Float?
   stop_loss           Float?
+  target_1            Float?              // First profit target
+  target_2            Float?              // Second profit target  
+  target_3            Float?              // Third profit target
   quantity            Int?
+  remaining_quantity  Int?                // New field for partial exits
+  entry_commission    Float?              // Commission paid on entry
+  exit_commission     Float?              // Commission paid on exit
   r_multiple          Float?
   result              String?
   entry_date          DateTime?
@@ -67,14 +73,35 @@ model trades {
   reason_for_entry    String?
   reason_for_exit     String?
   post_trade_analysis String?
-  confidence_rating   Int?
+  confidence_rating   Int?                // 1-10 setup confidence
   exit_tactic_id      Int?
   trade_setup_id      Int?
-  created_at          DateTime?      @default(now())
+  timeframe_used      String?             // 1m, 5m, 15m, 1h, 4h, 1d, etc.
+  notes               String?             // General trading notes
+  atr_value           Float?              // ATR at time of entry
+  risk_per_trade      Float?              // Risk amount or percentage
+  created_at          DateTime?           @default(now())
   is_paper_trade      Boolean?
+  status              String?             @default("Open") // Open, Partial Closed, Closed
   trade_fills         trade_fills[]
   trade_images        trade_images[]
+  // Temporarily remove the problematic relation
+  // trade_transactions  trade_transactions[] // New relation for partial exits
   tags                String?
+}
+
+model trade_transactions {
+  id              Int      @id @default(autoincrement())
+  trade_id        Int      // Keep as Int for now during migration
+  transaction_type String  // "Exit", "Entry" (for future position adds)
+  quantity        Int
+  price           Float
+  transaction_date DateTime
+  reason_for_exit String?
+  exit_tactic_id  Int?
+  created_at      DateTime @default(now())
+  // Temporarily remove the foreign key constraint
+  // trade           trades   @relation(fields: [trade_id], references: [id], onDelete: Cascade)
 }
 
 model users {

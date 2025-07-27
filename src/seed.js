@@ -69,10 +69,9 @@ async function main() {
       { trade_setup_id: 2001, name: "Triple Screen", description: "Multi-timeframe trend + momentum system" },
       { trade_setup_id: 2002, name: "Impulse System", description: "Color-coded trend/momentum alignment" },
       { trade_setup_id: 2003, name: "MACD Histogram Divergence", description: "Reversal using MACD histogram signals" },
-      { trade_setup_id: 2004, name: "Safe Zone Stop", description: "Volatility-based stop-loss technique" },
       { trade_setup_id: 2005, name: "Force Index Pullback", description: "Momentum-based pullback entry" },
-      { trade_setup_id: 2006, name: "Envelope Reversion", description: "Fade overextensions from moving avg envelopes" },
-      { trade_setup_id: 2007, name: "Elder-Ray", description: "Bull/Bear Power divergence system" }
+      { trade_setup_id: 2006, name: "Bollinger Band Squeeze", description: "Volatility contraction breakout" },
+      { trade_setup_id: 2007, name: "RSI Overbought/Oversold", description: "Reversal using RSI extremes" }
     ];
 
     for (const setup of setups) {

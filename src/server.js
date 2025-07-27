@@ -25,6 +25,8 @@ app.use('/api/setups', require('./routes/setup.routes'));
 // Authentication routes
 app.use('/api/auth', require('./routes/auth.routes'));
 
+// Technical indicators routes
+app.use('/api/yahoo', require('./routes/indicators.routes'));
 
 // Yahoo Finance API endpoints
 app.get('/api/yahoo/search', async (req, res) => {
@@ -76,9 +78,11 @@ function calculateATR(data, period = 14, returnSeries = false) {
   return returnSeries ? atrs : atr;
 }
 
-app.get('/api/yahoo/atr', async (req, res) => {
+app.get('/api/yahoo/indicator', async (req, res) => {
   try {
-    const period1 = Math.floor((Date.now() - 60 * 24 * 60 * 60 * 1000) / 1000); // 60 days ago
+    const { getLatestEMAValues } = require('./utils/technicalIndicators');
+    const { getRSISignal, getEMAAlignment } = require('./routes/indicators.routes');
+    const period1 = Math.floor((Date.now() - 90 * 24 * 60 * 60 * 1000) / 1000); // 90 days ago for EMA50
     const period2 = Math.floor(Date.now() / 1000); // now
     const { symbol } = req.query;
     if (!symbol) return res.status(400).json({ error: 'Missing symbol' });
@@ -86,18 +90,70 @@ app.get('/api/yahoo/atr', async (req, res) => {
     if (period1 && period2) {
       hist = await yahoo.getHistorical(symbol, period1, period2);
     } else {
-      hist = await yahoo.getHistorical(symbol, '2mo');
+      hist = await yahoo.getHistorical(symbol, '3mo'); // Increased from 2mo to 3mo
     }
     // Debug: log last date in historical data
     if (hist && hist.length > 0) {
-      console.log(`ATR data for ${symbol}: last date =`, hist[hist.length - 1].date);
+      console.log(`Indicator data for ${symbol}: last date =`, hist[hist.length - 1].date);
     }
-    // Always use 14-day ATR
+    
+    // Calculate ATR (14-day default) - keeping for internal use but not exposing
     let atr = calculateATR(hist, 14);
     if (atr !== null && atr !== undefined) {
       atr = Number(atr.toFixed(2)); // 2 decimals
     }
-    res.json({ symbol, atr });
+    
+    // Calculate EMA values and other indicators
+    const quotes = hist.map(quote => ({
+      date: quote.date,
+      close: quote.close || 0
+    }));
+    
+    const emaValues = getLatestEMAValues(quotes);
+    
+    // Helper function for RSI signal (inline since we can't import from routes)
+    function getRSISignalLocal(rsi) {
+      if (!rsi || rsi === undefined) return 'insufficient_data';
+      if (rsi >= 70) return 'overbought';
+      if (rsi <= 30) return 'oversold';
+      if (rsi >= 50) return 'bullish_momentum';
+      return 'bearish_momentum';
+    }
+    
+    // Helper function for EMA alignment (inline since we can't import from routes)
+    function getEMAAlignmentLocal(values) {
+      const { ema13, ema20, ema26, ema50 } = values;
+      if (!ema13 || !ema20 || !ema26 || !ema50) return 'insufficient_data';
+      const bullishAlignment = ema13 > ema20 && ema20 > ema26 && ema26 > ema50;
+      const bearishAlignment = ema13 < ema20 && ema20 < ema26 && ema26 < ema50;
+      if (bullishAlignment) return 'bullish_aligned';
+      if (bearishAlignment) return 'bearish_aligned';
+      return 'mixed_signals';
+    }
+    
+    res.json({
+      symbol: symbol.toUpperCase(),
+      date: emaValues.date,
+      currentPrice: emaValues.price,
+      ema13: emaValues.ema13,
+      ema20: emaValues.ema20,
+      ema26: emaValues.ema26,
+      ema50: emaValues.ema50,
+      sma13: emaValues.sma13,
+      sma20: emaValues.sma20,
+      sma26: emaValues.sma26,
+      sma50: emaValues.sma50,
+      rsi14: emaValues.rsi14,
+      atr14: atr,
+      trend: {
+        overall: emaValues.ema20 && emaValues.ema50 ? 
+          (emaValues.ema20 > emaValues.ema50 ? 'bullish' : 'bearish') : 'insufficient_data',
+        shortTerm: emaValues.price && emaValues.ema20 ?
+          (emaValues.price > emaValues.ema20 ? 'above_ema20' : 'below_ema20') : 'insufficient_data',
+        emaAlignment: getEMAAlignmentLocal(emaValues),
+        rsiSignal: getRSISignalLocal(emaValues.rsi14)
+      }
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
