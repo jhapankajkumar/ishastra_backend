@@ -22,6 +22,11 @@ app.use('/api/journal', require('./routes/chart.routes'));
 // Authentication routes
 app.use('/api/auth', require('./routes/auth.routes'));
 
+// Investment & Recommendation routes
+app.use('/api/recommendations', require('./routes/recommendation.routes'));
+app.use('/api/investments', require('./routes/investment.routes'));
+app.use('/api/investments', require('./routes/investment-transactions.routes'));
+
 // Technical indicators routes
 app.use('/api/yahoo', require('./routes/indicators.routes'));
 
@@ -75,10 +80,30 @@ function calculateATR(data, period = 14, returnSeries = false) {
   return returnSeries ? atrs : atr;
 }
 
+function getSupportResistance(quotes, lookback = 20) {
+  const recent = quotes.slice(-lookback);
+
+  const lows = recent.map(q => q.low).filter(v => v != null);
+  const highs = recent.map(q => q.high).filter(v => v != null);
+
+  if (!lows.length || !highs.length) return { support: null, resistance: null };
+
+  const sortedLows = [...lows].sort((a, b) => a - b);
+  const sortedHighs = [...highs].sort((a, b) => b - a);
+
+  const support = sortedLows[Math.floor(sortedLows.length * 0.2)];
+  const resistance = sortedHighs[Math.floor(sortedHighs.length * 0.2)];
+
+  return {
+    support: parseFloat(support.toFixed(2)),
+    resistance: parseFloat(resistance.toFixed(2))
+  };
+}
+
 app.get('/api/yahoo/indicator', async (req, res) => {
   try {
     const { getLatestEMAValues } = require('./utils/technicalIndicators');
-    const { getRSISignal, getEMAAlignment } = require('./routes/indicators.routes');
+
     const period1 = Math.floor((Date.now() - 90 * 24 * 60 * 60 * 1000) / 1000); // 90 days ago for EMA50
     const period2 = Math.floor(Date.now() / 1000); // now
     const { symbol } = req.query;
@@ -108,6 +133,9 @@ app.get('/api/yahoo/indicator', async (req, res) => {
     
     const emaValues = getLatestEMAValues(quotes);
     
+    // Calculate support and resistance (last 20 periods)
+    ({support, resistance} = getSupportResistance(hist));
+
     // Helper function for RSI signal (inline since we can't import from routes)
     function getRSISignalLocal(rsi) {
       if (!rsi || rsi === undefined) return 'insufficient_data';
@@ -141,6 +169,8 @@ app.get('/api/yahoo/indicator', async (req, res) => {
       sma26: emaValues.sma26,
       sma50: emaValues.sma50,
       rsi14: emaValues.rsi14,
+      support: support,
+      resistance: resistance,
       atr14: atr,
       trend: {
         overall: emaValues.ema20 && emaValues.ema50 ? 

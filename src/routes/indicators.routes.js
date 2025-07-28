@@ -45,12 +45,31 @@ router.get('/indicators/:symbol', async (req, res) => {
     const technicalData = addTechnicalIndicators(quotes);
     const latestValues = getLatestEMAValues(quotes);
 
+    // Calculate support and resistance (last 20 periods)
+    const lookback = 20;
+    const recentQuotes = technicalData.quotes.slice(-lookback);
+    let support = null;
+    let resistance = null;
+  
+    const highs = recent.map(q => q.high).filter(v => v != null);
+    if (!lows.length || !highs.length) return { support: null, resistance: null };
+
+    const sortedLows = [...lows].sort((a, b) => a - b);
+    const sortedHighs = [...highs].sort((a, b) => b - a);
+    if (recentQuotes.length > 0) {
+      support = sortedLows[Math.floor(sortedLows.length * 0.2)],      // bottom 20th percentile
+      resistance = sortedHighs[Math.floor(sortedHighs.length * 0.2)];  // top 20th percentile
+    }
+  
+
     res.json({
       symbol: symbol.toUpperCase(),
       period: period,
       interval: interval,
       totalDataPoints: quotes.length,
       latestValues: latestValues,
+      support,
+      resistance,
       historicalData: technicalData.quotes.slice(-100), // Return last 100 days
       indicators: {
         ema13Available: technicalData.quotes.filter(q => q.ema13).length,
