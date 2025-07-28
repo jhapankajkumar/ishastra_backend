@@ -17,11 +17,8 @@ const { expressjwt: jwt } = require('express-jwt');
 const auth = jwt({ secret: process.env.JWT_SECRET || 'dev_secret', algorithms: ['HS256'] });
 
 app.use('/api/trades', require('./routes/trade.routes'));
-app.use('/api/tags', require('./routes/tag.routes'));
-app.use('/api/exit-tactics', require('./routes/tactic.routes'));
 app.use('/api/journals', require('./routes/journal.routes'));
 app.use('/api/journal', require('./routes/chart.routes'));
-app.use('/api/setups', require('./routes/setup.routes'));
 // Authentication routes
 app.use('/api/auth', require('./routes/auth.routes'));
 
