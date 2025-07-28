@@ -1,175 +1,220 @@
 // src/controllers/journal.controller.js
 const prisma = require('../db');
 
-exports.createJournal = async (req, res) => {
+exports.createChartAnalysis = async (req, res) => {
   try {
     const {
-      date,
-      stock,
+      entryDate,
+      ticker,
       trend,
-      candle_type,
-      near_support,
-      near_resistance,
-      support_level,
-      resistance_level,
-      ema_touch,
-      volume_spike,
-      rsi_value,
-      entry_considered,
-      action_plan,
-      notes
+      candleType,
+      nearSupport,
+      nearResistance,
+      supportLevel,
+      resistanceLevel,
+      emaTouch,
+      volumeSpike,
+      rsiValue,
+      entryConsidered,
+      actionPlan,
+      entryNotes,
+      reviewNotes
     } = req.body;
 
-    const journal = await prisma.chart_readings.create({
+    const analysis = await prisma.chartAnalysis.create({
       data: {
-        date: new Date(date),
-        stock,
+        entryDate: new Date(entryDate),
+        ticker,
         trend,
-        candle_type,
-        near_support: near_support === 'true',
-        near_resistance: near_resistance === 'true',
-        support_level: support_level ? parseFloat(support_level) : null,
-        resistance_level: resistance_level ? parseFloat(resistance_level) : null,
-        ema_touch: ema_touch === 'true',
-        volume_spike: volume_spike === 'true',
-        rsi_value: rsi_value ? parseFloat(rsi_value) : null,
-        entry_considered: entry_considered === 'true',
-        action_plan,
-        notes,
-        screenshot_url: req.file ? req.file.path : null
+        candleType,
+        nearSupport: nearSupport === 'true',
+        nearResistance: nearResistance === 'true',
+        supportLevel: supportLevel ? parseFloat(supportLevel) : null,
+        resistanceLevel: resistanceLevel ? parseFloat(resistanceLevel) : null,
+        emaTouch: emaTouch === 'true',
+        volumeSpike: volumeSpike === 'true',
+        rsiValue: rsiValue ? parseFloat(rsiValue) : null,
+        entryConsidered: entryConsidered === 'true',
+        actionPlan,
+        entryNotes,
+        reviewNotes: reviewNotes || null,
       }
     });
 
-    res.status(201).json({ journal });
+    const chartImages = [];
+    if (req.files?.entryCharts) {
+      req.files.entryCharts.forEach(file => {
+        chartImages.push({
+          chartId: analysis.id,
+          imageType: "entry",
+          filePath: file.path,
+        });
+      });
+    }
+    if (req.files?.reviewCharts) {
+      req.files.reviewCharts.forEach(file => {
+        chartImages.push({
+          chartId: analysis.id,
+          imageType: "review",
+          filePath: file.path,
+        });
+      });
+    }
+
+    res.status(201).json({ analysis });
   } catch (error) {
-    console.error('Error saving journal:', error);
-    res.status(500).json({ error: 'Failed to save journal' });
+    console.error('Error saving analysis:', error);
+    res.status(500).json({ error: 'Failed to save analysis' });
   }
 };
 
-exports.getAllJournals = async (req, res) => {
+exports.getAllChartAnalyses = async (req, res) => {
   try {
-    const journals = await prisma.chart_readings.findMany({
-      orderBy: { date: 'desc' }
+    const analyses = await prisma.chartAnalysis.findMany({
+      orderBy: { entryDate: 'desc' }
     });
-    res.json(journals);
+
+    const chartIds = analyses.map(j => j.id);
+    const chartImages = await prisma.chartImage.findMany({
+      where: { chartId: { in: chartIds } }
+    });
+
+    res.json({ analyses, chartImages });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch journals' });
+    res.status(500).json({ error: 'Failed to fetch analyses' });
   }
 };
 
-// Get a single journal by ID
-exports.getJournalById = async (req, res) => {
+// Get a single analysis by ID
+exports.getChartAnalysisById = async (req, res) => {
   try {
     const { id } = req.params;
-    const journal = await prisma.chart_readings.findUnique({
-      where: { id: Number(id) }
+    const analysis = await prisma.chartAnalysis.findUnique({
+      where: { id: Number(id) },
+      include: {
+        chartImages: true
+      }
     });
 
-    if (!journal) {
-      return res.status(404).json({ error: 'Journal not found' });
+    if (!analysis) {
+      return res.status(404).json({ error: 'Analysis not found' });
     }
 
-    res.json(journal);
+    const chartImages = await prisma.chartImage.findMany({ where: { chartId: analysis.id } });
+
+    res.json({ analysis, chartImages });
   } catch (error) {
-    console.error('Error fetching journal:', error);
-    res.status(500).json({ error: 'Failed to fetch journal', details: error.message });
+    console.error('Error fetching analysis:', error);
+    res.status(500).json({ error: 'Failed to fetch analysis', details: error.message });
   }
 };
 
-// Delete journal
-exports.deleteJournal = async (req, res) => {
+// Delete analysis
+exports.deleteChartAnalysis = async (req, res) => {
   try {
     const { id } = req.params;
-    const journalId = Number(id);
+    const analysisId = Number(id);
 
-    // Validate journal ID
-    if (!journalId || isNaN(journalId)) {
-      return res.status(400).json({ error: 'Invalid journal ID' });
+    // Validate analysis ID
+    if (!analysisId || isNaN(analysisId)) {
+      return res.status(400).json({ error: 'Invalid analysis ID' });
     }
 
-    // Check if journal exists
-    const journal = await prisma.chart_readings.findUnique({
-      where: { id: journalId }
+    // Check if analysis exists
+    const analysis = await prisma.chartAnalysis.findUnique({
+      where: { id: analysisId }
     });
 
-    if (!journal) {
-      return res.status(404).json({ error: 'Journal not found' });
+    if (!analysis) {
+      return res.status(404).json({ error: 'Analysis not found' });
     }
 
-    // Delete the journal
-    await prisma.chart_readings.delete({
-      where: { id: journalId }
+    // Delete chart images
+    await prisma.chartImage.deleteMany({
+      where: { chartId: analysis.id }
     });
 
-    console.log(`Journal with ID ${journalId} deleted successfully`);
+    // Delete the analysis
+    await prisma.chartAnalysis.delete({
+      where: { id: analysisId }
+    });
+
+    console.log(`Analysis with ID ${analysisId} deleted successfully`);
     res.status(204).send(); // No content response for successful deletion
   } catch (error) {
-    console.error('Error deleting journal:', error);
+    console.error('Error deleting analysis:', error);
     
     // Handle specific Prisma errors
     if (error.code === 'P2025') {
-      return res.status(404).json({ error: 'Journal not found' });
+      return res.status(404).json({ error: 'Analysis not found' });
     }
     
     res.status(500).json({ 
-      error: 'Failed to delete journal', 
+      error: 'Failed to delete analysis', 
       details: error.message 
     });
   }
 };
 
-// Update journal
-exports.updateJournal = async (req, res) => {
+// Update analysis
+exports.updateChartAnalysis = async (req, res) => {
   try {
     const { id } = req.params;
-    const journalId = Number(id);
+    const analysisId = Number(id);
 
-    // Validate journal ID
-    if (!journalId || isNaN(journalId)) {
-      return res.status(400).json({ error: 'Invalid journal ID' });
+    // Validate analysis ID
+    if (!analysisId || isNaN(analysisId)) {
+      return res.status(400).json({ error: 'Invalid analysis ID' });
     }
 
-    // Check if journal exists
-    const existingJournal = await prisma.chart_readings.findUnique({
-      where: { id: journalId }
+    // Check if analysis exists
+    const existingAnalysis = await prisma.chartAnalysis.findUnique({
+      where: { id: analysisId }
     });
 
-    if (!existingJournal) {
-      return res.status(404).json({ error: 'Journal not found' });
+    if (!existingAnalysis) {
+      return res.status(404).json({ error: 'Analysis not found' });
     }
 
     const {
-      notes
+      reviewNotes
     } = req.body;
 
-    // Prepare update data - only allow updating notes and review screenshot
+    // Prepare update data - only allow updating entryNotes and reviewNotes
     const updateData = {
-      notes: notes !== undefined ? notes : existingJournal.notes
+      reviewNotes: reviewNotes !== undefined ? reviewNotes : existingAnalysis.reviewNotes
     };
 
-    // Handle review screenshot update (for edit mode)
-    if (req.file) {
-      updateData.review_screenshot_url = req.file.path;
+    if (req.files?.reviewCharts) {
+      const chartImages = req.files.reviewCharts.map(file => ({
+        chartId: analysisId,
+        imageType: "review",
+        filePath: file.path,
+      }));
+      await Promise.all(
+        chartImages.map(imageData => 
+          prisma.chartImage.create({ data: imageData })
+        )
+      );
     }
 
-    const updatedJournal = await prisma.chart_readings.update({
-      where: { id: journalId },
+    const updatedAnalysis = await prisma.chartAnalysis.update({
+      where: { id: analysisId },
       data: updateData
     });
 
-    console.log(`Journal with ID ${journalId} updated successfully`);
-    res.json({ journal: updatedJournal });
+    console.log(`Analysis with ID ${analysisId} updated successfully`);
+    res.json({ analysis: updatedAnalysis });
   } catch (error) {
-    console.error('Error updating journal:', error);
+    console.error('Error updating analysis:', error);
     
     // Handle specific Prisma errors
     if (error.code === 'P2025') {
-      return res.status(404).json({ error: 'Journal not found' });
+      return res.status(404).json({ error: 'Analysis not found' });
     }
     
     res.status(500).json({ 
-      error: 'Failed to update journal', 
+      error: 'Failed to update analysis', 
       details: error.message 
     });
   }

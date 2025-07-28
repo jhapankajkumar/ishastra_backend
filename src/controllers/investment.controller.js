@@ -5,9 +5,7 @@ const prisma = new PrismaClient();
 // Helper function to fetch current price
 const fetchCurrentPrice = async (ticker) => {
   try {
-    console.log(`Fetching price for ${ticker}...`);
     const price = await yahoo.getCurrentPrice(ticker);
-    console.log(`Price for ${ticker}: ${price}`);
     return price;
   } catch (error) {
     console.warn(`Failed to fetch price for ${ticker}:`, error.message);
@@ -16,25 +14,25 @@ const fetchCurrentPrice = async (ticker) => {
 };
 
 // Helper function to calculate price difference and percentage for investments
-const calculateInvestmentDifference = (buyAverage, currentPrice) => {
-  if (!buyAverage || !currentPrice) {
+const calculateInvestmentDifference = (avgBuyPrice, currentPrice) => {
+  if (!avgBuyPrice || !currentPrice) {
     return { 
       difference: null, 
-      difference_percentage: null,
-      profit_loss: null,
-      profit_loss_percentage: null
+      differencePercentage: null,
+      profitLoss: null,
+      profitLossPercentage: null
     };
   }
 
   // Calculate profit/loss (positive if current price is above buy average)
-  const profitLoss = currentPrice - buyAverage;
-  const profitLossPercentage = ((profitLoss / buyAverage) * 100);
+  const profitLoss = currentPrice - avgBuyPrice;
+  const profitLossPercentage = ((profitLoss / avgBuyPrice) * 100);
 
   return {
     difference: parseFloat(profitLoss.toFixed(2)), // For investments, this represents profit/loss
-    difference_percentage: parseFloat(profitLossPercentage.toFixed(2)),
-    profit_loss: parseFloat(profitLoss.toFixed(2)),
-    profit_loss_percentage: parseFloat(profitLossPercentage.toFixed(2))
+    differencePercentage: parseFloat(profitLossPercentage.toFixed(2)),
+    profitLoss: parseFloat(profitLoss.toFixed(2)),
+    profitLossPercentage: parseFloat(profitLossPercentage.toFixed(2))
   };
 };
 
@@ -47,11 +45,11 @@ const getAllInvestments = async (req, res) => {
     if (status) where.status = status;
     if (ticker) where.ticker = ticker.toUpperCase();
 
-    const investments = await prisma.investments.findMany({
+    const investments = await prisma.investment.findMany({
       where,
-      orderBy: { investment_date: 'desc' },
+      orderBy: { entryDate: 'desc' },
       include: {
-        investment_transactions: {
+        transactions: {
           orderBy: { transaction_date: 'desc' }
         }
       }
@@ -64,27 +62,27 @@ const getAllInvestments = async (req, res) => {
         
         // Update the current price in database if we got a valid price
         if (currentPrice !== null) {
-          await prisma.investments.update({
+          await prisma.investment.update({
             where: { id: inv.id },
-            data: { current_price: currentPrice }
+            data: { currentPrice: currentPrice }
           });
         }
 
-        const finalCurrentPrice = currentPrice !== null ? currentPrice : inv.current_price;
-        const investmentDiff = calculateInvestmentDifference(inv.buy_average, finalCurrentPrice);
+        const finalCurrentPrice = currentPrice !== null ? currentPrice : inv.currentPrice;
+        const investmentDiff = calculateInvestmentDifference(inv.avgBuyPrice, finalCurrentPrice);
 
         // Calculate total profit/loss for the position
-        const remainingQty = inv.remaining_qty || inv.qty;
-        const totalProfitLoss = investmentDiff.profit_loss ? (investmentDiff.profit_loss * remainingQty) : null;
+        const remainingQty = inv.remainingQty || inv.qty;
+        const totalProfitLoss = investmentDiff.profitLoss ? (investmentDiff.profitLoss * remainingQty) : null;
 
         return {
           ...inv,
-          current_price: finalCurrentPrice,
+          currentPrice: finalCurrentPrice,
           difference: investmentDiff.difference,
-          difference_percentage: investmentDiff.difference_percentage,
-          profit_loss: investmentDiff.profit_loss,
-          profit_loss_percentage: investmentDiff.profit_loss_percentage,
-          total_profit_loss: totalProfitLoss ? parseFloat(totalProfitLoss.toFixed(2)) : null
+          differencePercentage: investmentDiff.differencePercentage,
+          profitLoss: investmentDiff.profitLoss,
+          profitLossPercentage: investmentDiff.profitLossPercentage,
+          totalProfitLoss: totalProfitLoss ? parseFloat(totalProfitLoss.toFixed(2)) : null
         };
       })
     );
@@ -108,10 +106,10 @@ const getInvestmentById = async (req, res) => {
   try {
     const { id } = req.params;
     
-    const investment = await prisma.investments.findUnique({
+    const investment = await prisma.investment.findUnique({
       where: { id: parseInt(id) },
       include: {
-        investment_transactions: {
+        transactions: {
           orderBy: { transaction_date: 'desc' }
         }
       }
@@ -129,27 +127,27 @@ const getInvestmentById = async (req, res) => {
     
     // Update the current price in database if we got a valid price
     if (currentPrice !== null) {
-      await prisma.investments.update({
+      await prisma.investment.update({
         where: { id: parseInt(id) },
-        data: { current_price: currentPrice }
+        data: { currentPrice: currentPrice }
       });
     }
 
-    const finalCurrentPrice = currentPrice !== null ? currentPrice : investment.current_price;
-    const investmentDiff = calculateInvestmentDifference(investment.buy_average, finalCurrentPrice);
+    const finalCurrentPrice = currentPrice !== null ? currentPrice : investment.currentPrice;
+    const investmentDiff = calculateInvestmentDifference(investment.avgBuyPrice, finalCurrentPrice);
 
     // Calculate total profit/loss for the position
-    const remainingQty = investment.remaining_qty || investment.qty;
-    const totalProfitLoss = investmentDiff.profit_loss ? (investmentDiff.profit_loss * remainingQty) : null;
+    const remainingQty = investment.remainingQty || investment.qty;
+    const totalProfitLoss = investmentDiff.profitLoss ? (investmentDiff.profitLoss * remainingQty) : null;
 
     const updatedInvestment = {
       ...investment,
-      current_price: finalCurrentPrice,
+      currentPrice: finalCurrentPrice,
       difference: investmentDiff.difference,
-      difference_percentage: investmentDiff.difference_percentage,
-      profit_loss: investmentDiff.profit_loss,
-      profit_loss_percentage: investmentDiff.profit_loss_percentage,
-      total_profit_loss: totalProfitLoss ? parseFloat(totalProfitLoss.toFixed(2)) : null
+      differencePercentage: investmentDiff.differencePercentage,
+      profitLoss: investmentDiff.profitLoss,
+      profitLossPercentage: investmentDiff.profitLossPercentage,
+      totalProfitLoss: totalProfitLoss ? parseFloat(totalProfitLoss.toFixed(2)) : null
     };
 
     res.json({
@@ -171,43 +169,43 @@ const createInvestment = async (req, res) => {
   try {
     const {
       ticker,
-      buy_below,
-      current_price,
+      buyBelow,
+      currentPrice,
       qty,
-      buy_average,
-      remark,
-      investment_date,
-      investment_source
+      avgBuyPrice,
+      notes,
+      entryDate,
+      source
     } = req.body;
 
     // Validation
-    if (!ticker || !qty || !investment_date) {
+    if (!ticker || !qty || !entryDate) {
       return res.status(400).json({
         success: false,
-        message: 'Ticker, quantity and investment date are required'
+        message: 'Ticker, quantity and entry date are required'
       });
     }
 
     // Fetch current price from API if not provided
-    let finalCurrentPrice = current_price ? parseFloat(current_price) : null;
+    let finalCurrentPrice = currentPrice ? parseFloat(currentPrice) : null;
     if (!finalCurrentPrice) {
       finalCurrentPrice = await fetchCurrentPrice(ticker.toUpperCase());
     }
 
     const investmentData = {
       ticker: ticker.toUpperCase(),
-      buy_below: buy_below ? parseFloat(buy_below) : null,
-      current_price: finalCurrentPrice,
+      buyBelow: buyBelow ? parseFloat(buyBelow) : null,
+      currentPrice: finalCurrentPrice,
       qty: parseInt(qty),
-      buy_average: buy_average ? parseFloat(buy_average) : null,
-      remark: remark || null,
-      investment_date: new Date(investment_date),
-      remaining_qty: parseInt(qty), // Initially, remaining qty = total qty
-      investment_source: investment_source || null,
+      avgBuyPrice: avgBuyPrice ? parseFloat(avgBuyPrice) : null,
+      notes: notes || null,
+      entryDate: new Date(entryDate),
+      remainingQty: parseInt(qty), // Initially, remaining qty = total qty
+      source: source || null,
       status: 'open'
     };
 
-    const investment = await prisma.investments.create({
+    const investment = await prisma.investment.create({
       data: investmentData
     });
 
@@ -232,20 +230,20 @@ const updateInvestment = async (req, res) => {
     const { id } = req.params;
     const {
       ticker,
-      buy_below,
-      current_price,
+      buyBelow,
+      currentPrice,
       qty,
-      buy_average,
-      remark,
-      investment_date,
-      exit_date,
-      remaining_qty,
-      investment_source,
+      avgBuyPrice,
+      notes,
+      entryDate,
+      exitDate,
+      remainingQty,
+      source,
       status
     } = req.body;
 
     // Check if investment exists
-    const existingInvestment = await prisma.investments.findUnique({
+    const existingInvestment = await prisma.investment.findUnique({
       where: { id: parseInt(id) }
     });
 
@@ -258,18 +256,18 @@ const updateInvestment = async (req, res) => {
 
     const updateData = {};
     if (ticker !== undefined) updateData.ticker = ticker.toUpperCase();
-    if (buy_below !== undefined) updateData.buy_below = buy_below ? parseFloat(buy_below) : null;
-    if (current_price !== undefined) updateData.current_price = current_price ? parseFloat(current_price) : null;
+    if (buyBelow !== undefined) updateData.buyBelow = buyBelow ? parseFloat(buyBelow) : null;
+    if (currentPrice !== undefined) updateData.currentPrice = currentPrice ? parseFloat(currentPrice) : null;
     if (qty !== undefined) updateData.qty = parseInt(qty);
-    if (buy_average !== undefined) updateData.buy_average = buy_average ? parseFloat(buy_average) : null;
-    if (remark !== undefined) updateData.remark = remark;
-    if (investment_date !== undefined) updateData.investment_date = new Date(investment_date);
-    if (exit_date !== undefined) updateData.exit_date = exit_date ? new Date(exit_date) : null;
-    if (remaining_qty !== undefined) updateData.remaining_qty = remaining_qty ? parseInt(remaining_qty) : null;
-    if (investment_source !== undefined) updateData.investment_source = investment_source;
+    if (avgBuyPrice !== undefined) updateData.avgBuyPrice = avgBuyPrice ? parseFloat(avgBuyPrice) : null;
+    if (notes !== undefined) updateData.notes = notes;
+    if (entryDate !== undefined) updateData.entryDate = new Date(entryDate);
+    if (exitDate !== undefined) updateData.exitDate = exitDate ? new Date(exitDate) : null;
+    if (remainingQty !== undefined) updateData.remainingQty = remainingQty ? parseInt(remainingQty) : null;
+    if (source !== undefined) updateData.source = source;
     if (status !== undefined) updateData.status = status;
 
-    const investment = await prisma.investments.update({
+    const investment = await prisma.investment.update({
       where: { id: parseInt(id) },
       data: updateData
     });
@@ -295,7 +293,7 @@ const deleteInvestment = async (req, res) => {
     const { id } = req.params;
 
     // Check if investment exists
-    const existingInvestment = await prisma.investments.findUnique({
+    const existingInvestment = await prisma.investment.findUnique({
       where: { id: parseInt(id) }
     });
 
@@ -311,7 +309,7 @@ const deleteInvestment = async (req, res) => {
       where: { investment_id: parseInt(id) }
     });
 
-    await prisma.investments.delete({
+    await prisma.investment.delete({
       where: { id: parseInt(id) }
     });
 
@@ -344,7 +342,7 @@ const closeInvestment = async (req, res) => {
     }
 
     // Check if investment exists
-    const investment = await prisma.investments.findUnique({
+    const investment = await prisma.investment.findUnique({
       where: { id: parseInt(id) }
     });
 
@@ -356,7 +354,7 @@ const closeInvestment = async (req, res) => {
     }
 
     const sellQuantity = parseInt(quantity);
-    const remainingQty = investment.remaining_qty || investment.qty;
+    const remainingQty = investment.remainingQty || investment.qty;
 
     if (sellQuantity > remainingQty) {
       return res.status(400).json({
@@ -380,20 +378,20 @@ const closeInvestment = async (req, res) => {
     // Update investment
     const newRemainingQty = remainingQty - sellQuantity;
     const updateData = {
-      remaining_qty: newRemainingQty
+      remainingQty: newRemainingQty
     };
 
     // If fully sold, close the investment
     if (newRemainingQty === 0) {
       updateData.status = 'closed';
-      updateData.exit_date = transaction_date ? new Date(transaction_date) : new Date();
+      updateData.exitDate = transaction_date ? new Date(transaction_date) : new Date();
     }
 
-    const updatedInvestment = await prisma.investments.update({
+    const updatedInvestment = await prisma.investment.update({
       where: { id: parseInt(id) },
       data: updateData,
       include: {
-        investment_transactions: {
+        transactions: {
           orderBy: { transaction_date: 'desc' }
         }
       }
@@ -417,18 +415,18 @@ const closeInvestment = async (req, res) => {
 // Get investment summary
 const getInvestmentSummary = async (req, res) => {
   try {
-    const totalInvestments = await prisma.investments.count();
-    const openInvestments = await prisma.investments.count({
+    const totalInvestments = await prisma.investment.count();
+    const openInvestments = await prisma.investment.count({
       where: { status: 'open' }
     });
-    const closedInvestments = await prisma.investments.count({
+    const closedInvestments = await prisma.investment.count({
       where: { status: 'closed' }
     });
 
-    // Get total invested amount (this would need buy_average * qty calculation)
-    const investments = await prisma.investments.findMany({
+    // Get total invested amount (this would need avgBuyPrice * qty calculation)
+    const investments = await prisma.investment.findMany({
       select: {
-        buy_average: true,
+        avgBuyPrice: true,
         qty: true,
         status: true
       }
@@ -438,8 +436,8 @@ const getInvestmentSummary = async (req, res) => {
     let openInvestedAmount = 0;
 
     investments.forEach(inv => {
-      if (inv.buy_average && inv.qty) {
-        const amount = inv.buy_average * inv.qty;
+      if (inv.avgBuyPrice && inv.qty) {
+        const amount = inv.avgBuyPrice * inv.qty;
         totalInvestedAmount += amount;
         if (inv.status === 'open') {
           openInvestedAmount += amount;
@@ -450,11 +448,11 @@ const getInvestmentSummary = async (req, res) => {
     res.json({
       success: true,
       data: {
-        total_investments: totalInvestments,
-        open_investments: openInvestments,
-        closed_investments: closedInvestments,
-        total_invested_amount: totalInvestedAmount,
-        open_invested_amount: openInvestedAmount
+        totalInvestments: totalInvestments,
+        openInvestments: openInvestments,
+        closedInvestments: closedInvestments,
+        totalInvestedAmount: totalInvestedAmount,
+        openInvestedAmount: openInvestedAmount
       }
     });
   } catch (error) {

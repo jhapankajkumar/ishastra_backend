@@ -7,134 +7,162 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model exit_tactics {
-  /// ⚠️ This model contains static, read-only values inserted during initial seed
-  id          Int     @id @default(autoincrement())
-  tactic_id   Int     @unique
-  name        String  @unique
-  description String?
-}
-
-model tags {
-  /// ⚠️ This model contains static, read-only values inserted during initial seed
-  id     Int    @id @default(autoincrement())
-  tag_id Int    @unique
-  name   String @unique
-  description String?
-}
-
-model trade_fills {
-  id            Int      @id @default(autoincrement())
-  trade_id      Int?     // Keep as Int for now during migration
-  type          String
-  fill_date     DateTime
-  order_price   Float?
-  filled_price  Float?
-  slippage      Float?
-  shares        Int?
-  total_cost    Float?
-  day_high      Float?
-  day_low       Float?
-  grade_percent Float?
-  trades        trades?  @relation(fields: [trade_id], references: [id])
-}
-
-model trade_images {
-  id          Int       @id @default(autoincrement())
-  trade_id    Int?      // Keep as Int for now during migration
-  image_type  String
-  file_path   String
-  uploaded_at DateTime? @default(now())
-  trades      trades?   @relation(fields: [trade_id], references: [id])
-}
-
-model trades {
-  id                  Int                 @id @default(autoincrement())
-  trade_id            String              @unique // Professional trade ID (ISH-2025-000001)
-  user_id             Int?
-  ticker              String
-  direction           String
-  instrument_type     String?             // Stocks, Options, Futures, etc.
-  setup               String?
-  entry_price         Float?
-  exit_price          Float?
-  stop_loss           Float?
-  target_1            Float?              // First profit target
-  target_2            Float?              // Second profit target  
-  target_3            Float?              // Third profit target
-  quantity            Int?
-  remaining_quantity  Int?                // New field for partial exits
-  entry_commission    Float?              // Commission paid on entry
-  exit_commission     Float?              // Commission paid on exit
-  r_multiple          Float?
-  result              String?
-  entry_date          DateTime?
-  exit_date           DateTime?
-  reason_for_entry    String?
-  reason_for_exit     String?
-  post_trade_analysis String?
-  confidence_rating   Int?                // 1-10 setup confidence
-  exit_tactic_id      Int?
-  trade_setup_id      Int?
-  timeframe_used      String?             // 1m, 5m, 15m, 1h, 4h, 1d, etc.
-  notes               String?             // General trading notes
-  atr_value           Float?              // ATR at time of entry
-  risk_per_trade      Float?              // Risk amount or percentage
-  created_at          DateTime?           @default(now())
-  is_paper_trade      Boolean?
-  status              String?             @default("Open") // Open, Partial Closed, Closed
-  trade_fills         trade_fills[]
-  trade_images        trade_images[]
-  // Temporarily remove the problematic relation
-  // trade_transactions  trade_transactions[] // New relation for partial exits
-  tags                String?
-}
-
-model trade_transactions {
-  id              Int      @id @default(autoincrement())
-  trade_id        Int      // Keep as Int for now during migration
-  transaction_type String  // "Exit", "Entry" (for future position adds)
-  quantity        Int
-  price           Float
-  transaction_date DateTime
-  reason_for_exit String?
-  exit_tactic_id  Int?
-  created_at      DateTime @default(now())
-  // Temporarily remove the foreign key constraint
-  // trade           trades   @relation(fields: [trade_id], references: [id], onDelete: Cascade)
-}
-
-model users {
+model TradeFill {
   id            Int       @id @default(autoincrement())
-  username      String    @unique(map: "sqlite_autoindex_users_1")
-  password_hash String
-  created_at    DateTime? @default(now())
+  tradeId       Int?
+  type          String    // Suggested: Convert to enum (e.g. "Entry", "Exit", "Adjustment")
+  fillDate      DateTime
+  orderPrice    Float?
+  filledPrice   Float?
+  slippage      Float?
+  quantity      Int?
+  totalCost     Float?
+  dayHigh       Float?
+  dayLow        Float?
+  gradePercent  Float?
+
+  trade         Trade?    @relation(fields: [tradeId], references: [id])
 }
 
-model trade_setups {
-  id             Int     @id @default(autoincrement())
-  trade_setup_id Int     @unique
-  name           String  @unique
-  description    String?
+model TradeImage {
+  id         Int      @id @default(autoincrement())
+  tradeId    Int?
+  imageType  String
+  filePath   String
+  uploadedAt DateTime @default(now())
+  trade      Trade?   @relation(fields: [tradeId], references: [id])
 }
 
-model chart_readings {
+model Trade {
+  id                 Int       @id @default(autoincrement())
+  
+  //entry
+  tradeId            String    @unique        // e.g., ISH-2025-000001
+  ticker             String
+  direction          String    // Consider enum: LONG, SHORT
+  instrumentType     String?   // Stocks, Options, Futures
+  entryPrice         Float?
+  stopLoss           Float?
+  target1            Float?
+  target2            Float?
+  target3            Float?
+  quantity           Int?
+  
+  entryCommission    Float?
+  entryDate          DateTime?
+  reasonForEntry     String?
+  confidenceRating   Int?
+  tradeSetupId       Int?
+  timeframeUsed      String?
+  notes              String?
+  atrValue           Float?
+  riskPerTrade       String?
+  riskPerTradeValue  Float?
+  createdAt          DateTime  @default(now())
+
+//Exit
+  exitDate           DateTime?
+  exitPrice          Float?
+  exitCommission     Float?
+  remainingQuantity  Int?
+  reasonForExit      String?
+  exitTacticId       Int?
+
+  rMultiple          Float?
+  postTradeAnalysis  String?
+  isPaperTrade       Boolean?
+  status             String?   @default("Open") // Open, Partial Closed, Closed
+  tags               String?   // Consider making tags a separate join table
+  tradeFills         TradeFill[]
+  tradeImages        TradeImage[]
+  tradeTransactions  TradeTransaction[]
+}
+
+model TradeTransaction {
   id               Int      @id @default(autoincrement())
-  date             DateTime
-  stock            String
-  trend            String?
-  candle_type      String?
-  near_support     Boolean?
-  near_resistance  Boolean?
-  support_level    Float?
-  resistance_level Float?
-  ema_touch        Boolean?
-  volume_spike     Boolean?
-  rsi_value        Float?
-  entry_considered Boolean?
-  action_plan      String?
-  notes            String?
-  screenshot_url   String?
-  review_screenshot_url String?
-  created_at       DateTime @default(now())
+  tradeId          Int
+  transactionType  String   // ENUM: "Entry", "Exit"
+  quantity         Int
+  price            Float
+  transactionDate  DateTime
+  reasonForExit    String?
+  exitTacticId     Int?
+  createdAt        DateTime @default(now())
+
+  trade            Trade    @relation(fields: [tradeId], references: [id], onDelete: Cascade)
+}
+
+model ChartAnalysis {
+  id                  Int      @id @default(autoincrement())
+  entryDate           DateTime
+  ticker              String
+  trend               String?
+  candleType          String?
+  nearSupport         Boolean?
+  nearResistance      Boolean?
+  supportLevel        Float?
+  resistanceLevel     Float?
+  emaTouch            Boolean?
+  volumeSpike         Boolean?
+  rsiValue            Float?
+  entryConsidered     Boolean?
+  actionPlan          String?
+  entryNotes          String?
+  reviewNotes         String?
+  createdAt           DateTime @default(now())
+  chartImages         ChartImage[]
+}
+
+model ChartImage {
+  id         Int      @id @default(autoincrement())
+  chartId    Int?
+  imageType  String
+  filePath   String
+  uploadedAt DateTime @default(now())
+  chartAnalysis      ChartAnalysis?   @relation(fields: [chartId], references: [id])
+}
+
+model Recommendation {
+  id            Int       @id @default(autoincrement())
+  ticker        String
+  buyBelow      Float?
+  currentPrice  Float?
+  sector        String?   // Optional, useful for filtering
+  source        String?   // e.g., blog, analyst, group name
+  status        String    @default("active") // "active", "archived", etc.
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Investment {
+  id               Int       @id @default(autoincrement())
+  ticker           String    // Stock symbol
+  quantity         Int       // Total quantity bought
+  avgBuyPrice      Float?    // Average buy price per share
+  totalInvestment  Float?    // Optional calculated field (qty * avgBuyPrice)
+  buyBelow         Float?    // Suggested entry level
+  currentPrice     Float?    // Latest fetched price
+  status           String    @default("open") // "open", "closed"
+  entryDate        DateTime  // When investment was made
+  exitDate         DateTime? // When investment was closed (if any)
+  remainingQty     Int?      // Quantity still held (after partial sells)
+  source           String?   // Source of recommendation (e.g. "Motilal")
+  notes            String?   // Optional remark or rationale
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  // Relations
+  transactions     InvestmentTransaction[] // Partial exits or averaging
+}
+
+model InvestmentTransaction {
+  id                Int         @id @default(autoincrement())
+  investmentId      Int
+  type              String      // "Buy" or "Sell"
+  quantity          Int
+  price             Float
+  transactionDate   DateTime
+  exitReason        String?     // Only for sell transactions
+  createdAt         DateTime    @default(now())
+  investment        Investment  @relation(fields: [investmentId], references: [id], onDelete: Cascade)
 }

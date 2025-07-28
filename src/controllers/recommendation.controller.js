@@ -5,9 +5,7 @@ const prisma = new PrismaClient();
 // Helper function to fetch current price
 const fetchCurrentPrice = async (ticker) => {
   try {
-    console.log(`Fetching price for ${ticker}...`);
     const price = await yahoo.getCurrentPrice(ticker);
-    console.log(`Price for ${ticker}: ${price}`);
     return price;
   } catch (error) {
     console.warn(`Failed to fetch price for ${ticker}:`, error.message);
@@ -18,7 +16,7 @@ const fetchCurrentPrice = async (ticker) => {
 // Helper function to calculate price difference and percentage
 const calculatePriceDifference = (buyBelow, currentPrice) => {
   if (!buyBelow || !currentPrice) {
-    return { difference: null, difference_percentage: null };
+    return { priceDifference: null, differencePercentage: null };
   }
 
   // Calculate difference (positive if current price is below buy below price)
@@ -26,8 +24,8 @@ const calculatePriceDifference = (buyBelow, currentPrice) => {
   const differencePercentage = ((difference / buyBelow) * 100);
 
   return {
-    difference: parseFloat(difference.toFixed(2)),
-    difference_percentage: parseFloat(differencePercentage.toFixed(2))
+    priceDifference: parseFloat(difference.toFixed(2)),
+    differencePercentage: parseFloat(differencePercentage.toFixed(2))
   };
 };
 
@@ -40,40 +38,40 @@ const getAllRecommendations = async (req, res) => {
     if (status) where.status = status;
     if (sector) where.sector = sector;
 
-    const recommendations = await prisma.recommendations.findMany({
+    const recommendationList = await prisma.Recommendation.findMany({
       where,
-      orderBy: { created_date: 'desc' }
+      orderBy: { createdAt: 'desc' }
     });
 
     // Fetch current prices for all recommendations
     const recommendationsWithPrices = await Promise.all(
-      recommendations.map(async (rec) => {
+      recommendationList.map(async (rec) => {
         const currentPrice = await fetchCurrentPrice(rec.ticker);
         
         // Update the current price in database if we got a valid price
         if (currentPrice !== null) {
-          await prisma.recommendations.update({
+          await prisma.Recommendation.update({
             where: { id: rec.id },
-            data: { current_price: currentPrice }
+            data: { currentPrice: currentPrice }
           });
         }
 
-        const finalCurrentPrice = currentPrice !== null ? currentPrice : rec.current_price;
-        const priceDiff = calculatePriceDifference(rec.buy_below, finalCurrentPrice);
+        const finalCurrentPrice = currentPrice !== null ? currentPrice : rec.currentPrice;
+        const priceDiff = calculatePriceDifference(rec.buyBelow, finalCurrentPrice);
 
         return {
           ...rec,
-          current_price: finalCurrentPrice,
-          added_on: rec.created_date, // Alias for better readability
-          difference: priceDiff.difference,
-          difference_percentage: priceDiff.difference_percentage
+          currentPrice: finalCurrentPrice,
+          createdAt: rec.createdAt, // Alias for better readability
+          priceDifference: priceDiff.priceDifference,
+          differencePercentage: priceDiff.differencePercentage
         };
       })
     );
 
     res.json({
       success: true,
-      data: recommendationsWithPrices
+      recommendationList: recommendationsWithPrices
     });
   } catch (error) {
     console.error('Error fetching recommendations:', error);
@@ -90,7 +88,7 @@ const getRecommendationById = async (req, res) => {
   try {
     const { id } = req.params;
     
-    const recommendation = await prisma.recommendations.findUnique({
+    const recommendation = await prisma.Recommendation.findUnique({
       where: { id: parseInt(id) }
     });
 
@@ -106,21 +104,21 @@ const getRecommendationById = async (req, res) => {
     
     // Update the current price in database if we got a valid price
     if (currentPrice !== null) {
-      await prisma.recommendations.update({
+      await prisma.Recommendation.update({
         where: { id: parseInt(id) },
-        data: { current_price: currentPrice }
+        data: { currentPrice: currentPrice }
       });
     }
 
-    const finalCurrentPrice = currentPrice !== null ? currentPrice : recommendation.current_price;
-    const priceDiff = calculatePriceDifference(recommendation.buy_below, finalCurrentPrice);
+    const finalCurrentPrice = currentPrice !== null ? currentPrice : recommendation.currentPrice;
+    const priceDiff = calculatePriceDifference(recommendation.buyBelow, finalCurrentPrice);
 
     const updatedRecommendation = {
       ...recommendation,
-      current_price: finalCurrentPrice,
-      added_on: recommendation.created_date, // Alias for better readability
-      difference: priceDiff.difference,
-      difference_percentage: priceDiff.difference_percentage
+      currentPrice: finalCurrentPrice,
+      createdAt: recommendation.createdAt, // Alias for better readability
+      priceDifference: priceDiff.priceDifference,
+      differencePercentage: priceDiff.differencePercentage
     };
 
     res.json({
@@ -142,8 +140,8 @@ const createRecommendation = async (req, res) => {
   try {
     const {
       ticker,
-      buy_below,
-      current_price,
+      buyBelow,
+      currentPrice,
       sector,
       source
     } = req.body;
@@ -157,27 +155,27 @@ const createRecommendation = async (req, res) => {
     }
 
     // Fetch current price from API if not provided
-    let finalCurrentPrice = current_price ? parseFloat(current_price) : null;
+    let finalCurrentPrice = currentPrice ? parseFloat(currentPrice) : null;
     if (!finalCurrentPrice) {
       finalCurrentPrice = await fetchCurrentPrice(ticker.toUpperCase());
     }
 
     const recommendationData = {
       ticker: ticker.toUpperCase(),
-      buy_below: buy_below ? parseFloat(buy_below) : null,
-      current_price: finalCurrentPrice,
+      buyBelow: buyBelow ? parseFloat(buyBelow) : null,
+      currentPrice: finalCurrentPrice,
       sector: sector || null,
       source: source || null,
       status: 'active'
     };
 
-    const recommendation = await prisma.recommendations.create({
+    const recommendation = await prisma.Recommendation.create({
       data: recommendationData
     });
 
     const responseData = {
       ...recommendation,
-      added_on: recommendation.created_date // Alias for better readability
+      createdAt: recommendation.createdAt // Alias for better readability
     };
 
     res.status(201).json({
@@ -201,15 +199,15 @@ const updateRecommendation = async (req, res) => {
     const { id } = req.params;
     const {
       ticker,
-      buy_below,
-      current_price,
+      buyBelow,
+      currentPrice,
       sector,
       source,
       status
     } = req.body;
 
     // Check if recommendation exists
-    const existingRecommendation = await prisma.recommendations.findUnique({
+    const existingRecommendation = await prisma.Recommendation.findUnique({
       where: { id: parseInt(id) }
     });
 
@@ -222,13 +220,13 @@ const updateRecommendation = async (req, res) => {
 
     const updateData = {};
     if (ticker !== undefined) updateData.ticker = ticker.toUpperCase();
-    if (buy_below !== undefined) updateData.buy_below = buy_below ? parseFloat(buy_below) : null;
-    if (current_price !== undefined) updateData.current_price = current_price ? parseFloat(current_price) : null;
+    if (buyBelow !== undefined) updateData.buyBelow = buyBelow ? parseFloat(buyBelow) : null;
+    if (currentPrice !== undefined) updateData.currentPrice = currentPrice ? parseFloat(currentPrice) : null;
     if (sector !== undefined) updateData.sector = sector;
     if (source !== undefined) updateData.source = source;
     if (status !== undefined) updateData.status = status;
 
-    const recommendation = await prisma.recommendations.update({
+    const recommendation = await prisma.Recommendation.update({
       where: { id: parseInt(id) },
       data: updateData
     });
@@ -254,7 +252,7 @@ const deleteRecommendation = async (req, res) => {
     const { id } = req.params;
 
     // Check if recommendation exists
-    const existingRecommendation = await prisma.recommendations.findUnique({
+    const existingRecommendation = await prisma.Recommendation.findUnique({
       where: { id: parseInt(id) }
     });
 
@@ -265,7 +263,7 @@ const deleteRecommendation = async (req, res) => {
       });
     }
 
-    await prisma.recommendations.delete({
+    await prisma.Recommendation.delete({
       where: { id: parseInt(id) }
     });
 
@@ -290,7 +288,7 @@ const archiveRecommendation = async (req, res) => {
     const { archive } = req.body; // true to archive, false to unarchive
 
     // Check if recommendation exists
-    const existingRecommendation = await prisma.recommendations.findUnique({
+    const existingRecommendation = await prisma.Recommendation.findUnique({
       where: { id: parseInt(id) }
     });
 
@@ -301,7 +299,7 @@ const archiveRecommendation = async (req, res) => {
       });
     }
 
-    const recommendation = await prisma.recommendations.update({
+    const recommendation = await prisma.Recommendation.update({
       where: { id: parseInt(id) },
       data: { status: archive ? 'archived' : 'active' }
     });

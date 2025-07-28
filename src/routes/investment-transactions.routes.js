@@ -8,9 +8,9 @@ router.get('/:investmentId/transactions', async (req, res) => {
   try {
     const { investmentId } = req.params;
     
-    const transactions = await prisma.investment_transactions.findMany({
-      where: { investment_id: parseInt(investmentId) },
-      orderBy: { transaction_date: 'desc' }
+    const transactions = await prisma.investmentTransaction.findMany({
+      where: { investmentId: parseInt(investmentId) },
+      orderBy: { transactionDate: 'desc' }
     });
 
     res.json({
@@ -42,7 +42,7 @@ router.post('/:investmentId/transactions', async (req, res) => {
     }
 
     // Check if investment exists
-    const investment = await prisma.investments.findUnique({
+    const investment = await prisma.investment.findUnique({
       where: { id: parseInt(investmentId) }
     });
 
@@ -53,32 +53,32 @@ router.post('/:investmentId/transactions', async (req, res) => {
       });
     }
 
-    const transaction = await prisma.investment_transactions.create({
+    const transaction = await prisma.investmentTransaction.create({
       data: {
-        investment_id: parseInt(investmentId),
-        transaction_type,
+        investmentId: parseInt(investmentId),
+        transactionType,
         quantity: parseInt(quantity),
         price: parseFloat(price),
-        transaction_date: transaction_date ? new Date(transaction_date) : new Date(),
-        reason_for_exit: reason_for_exit || null
+        transactionDate: transaction_date ? new Date(transaction_date) : new Date(),
+        reasonForExit: reason_for_exit || null
       }
     });
 
     // If it's a sell transaction, update the remaining quantity
     if (transaction_type === 'Sell') {
-      const remainingQty = (investment.remaining_qty || investment.qty) - parseInt(quantity);
+      const remainingQty = (investment.remainingQty || investment.quantity) - parseInt(quantity);
       
       const updateData = {
-        remaining_qty: remainingQty
+        remainingQty
       };
 
       // If fully sold, close the investment
       if (remainingQty <= 0) {
         updateData.status = 'closed';
-        updateData.exit_date = transaction_date ? new Date(transaction_date) : new Date();
+        updateData.exitDate = transaction_date ? new Date(transaction_date) : new Date();
       }
 
-      await prisma.investments.update({
+      await prisma.investment.update({
         where: { id: parseInt(investmentId) },
         data: updateData
       });

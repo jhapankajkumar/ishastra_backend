@@ -12,22 +12,16 @@ exports.getAllTrades = async (req, res) => {
       }
     });
     const tradeIds = trades.map(t => t.id);
-    const exitTactics = await prisma.exit_tactics.findMany();
     const tradeImages = await prisma.trade_images.findMany({
-      where: { trade_id: { in: tradeIds } }
+      where: { tradeid: { in: tradeIds } }
     });
-    const tradeSetups = await prisma.trade_setups.findMany();
     const tradeFills = await prisma.trade_fills.findMany({
-      where: { trade_id: { in: tradeIds } }
+      where: { tradeid: { in: tradeIds } }
     });
 
     const tradesWithRelations = trades.map(trade => ({
       ...trade,
-      exit_tactics: exitTactics.find(e => e.id === trade.exit_tactic_id) || null,
       trade_images: tradeImages.filter(img => img.trade_id === trade.id),
-      trade_setup: trade.trade_setup_id
-        ? tradeSetups.find(setup => setup.trade_setup_id === trade.trade_setup_id)
-        : null,
       trade_fills: tradeFills.filter(fill => fill.trade_id === trade.id),
     }));
 
@@ -44,48 +38,48 @@ exports.createTrade = async (req, res) => {
     console.log('🔍 Create Trade Request Body:', req.body);
     console.log('📁 Create Trade Files:', req.files);
     console.log('📅 Entry Date Value:', req.body.entryDate, typeof req.body.entryDate);
-    
+
     const quantity = Number(req.body.entryFilledShares);
-    
+
     // Generate professional trade ID
     const professionalTradeId = await TradeIdGenerator.generateTradeId();
-    
+
     // Validate and parse entry date (required field)
     if (!req.body.entryDate || req.body.entryDate === 'undefined' || req.body.entryDate.trim() === '') {
       console.log('❌ Invalid entry date detected:', req.body.entryDate);
       return res.status(400).json({ error: 'Entry date is required. Please provide a valid date in YYYY-MM-DD format.' });
     }
-    
+
     const entryDate = new Date(req.body.entryDate);
     if (isNaN(entryDate.getTime())) {
       console.log('❌ Date parsing failed for:', req.body.entryDate);
       return res.status(400).json({ error: 'Invalid entry date format. Please use YYYY-MM-DD format (e.g., 2025-07-26).' });
     }
-    
-    const trade = await prisma.trades.create({
+
+    const trade = await prisma.trade.create({
       data: {
-        trade_id: professionalTradeId, // Set professional trade ID
+        tradeId: professionalTradeId,
         ticker: req.body.ticker,
-        reason_for_entry: req.body.reasonForEntry,
-        entry_date: entryDate,
-        entry_price: Number(req.body.entryOrderPrice),
+        reasonForEntry: req.body.reasonForEntry,
+        entryDate: entryDate,
+        entryPrice: Number(req.body.entryOrderPrice),
         quantity: quantity,
-        remaining_quantity: quantity, // Initialize remaining quantity
+        remainingQuantity: quantity,
         direction: req.body.direction || "Long",
-        instrument_type: req.body.instrumentType || "Stocks",
-        trade_setup_id: req.body.tradeSetup ? Number(req.body.tradeSetup) : null,
+        instrumentType: req.body.instrumentType || "Stocks",
+        tradeSetupId: req.body.tradeSetup ? Number(req.body.tradeSetup) : null,
         setup: req.body.setup || null,
-        status: "Open", // Initialize status
-        confidence_rating: req.body.setupConfidence ? Number(req.body.setupConfidence) : null,
-        entry_commission: req.body.entryCommission ? Number(req.body.entryCommission) : null,
-        stop_loss: req.body.stopLoss ? Number(req.body.stopLoss) : null,
-        target_1: req.body.target1 ? Number(req.body.target1) : null,
-        target_2: req.body.target2 ? Number(req.body.target2) : null,
-        target_3: req.body.target3 ? Number(req.body.target3) : null,
-        timeframe_used: req.body.timeframeUsed || null,
+        status: "Open",
+        confidenceRating: req.body.setupConfidence ? Number(req.body.setupConfidence) : null,
+        entryCommission: req.body.entryCommission ? Number(req.body.entryCommission) : null,
+        stopLoss: req.body.stopLoss ? Number(req.body.stopLoss) : null,
+        target1: req.body.target1 ? Number(req.body.target1) : null,
+        target2: req.body.target2 ? Number(req.body.target2) : null,
+        target3: req.body.target3 ? Number(req.body.target3) : null,
+        timeframeUsed: req.body.timeframeUsed || null,
         notes: req.body.notes || null,
-        atr_value: req.body.atrValue ? Number(req.body.atrValue) : null,
-        risk_per_trade: req.body.riskPerTrade ? Number(req.body.riskPerTrade) : null,
+        atrValue: req.body.atrValue ? Number(req.body.atrValue) : null,
+        riskPerTrade: req.body.riskPerTrade ? Number(req.body.riskPerTrade) : null,
       }
     });
 
@@ -93,42 +87,43 @@ exports.createTrade = async (req, res) => {
     if (req.files?.entryCharts) {
       req.files.entryCharts.forEach(file => {
         tradeImages.push({
-          trade_id: trade.id,
-          image_type: "entry",
-          file_path: file.path,
+          tradeId: trade.id,
+          imageType: "entry",
+          filePath: file.path,
         });
       });
     }
     if (req.files?.exitCharts) {
       req.files.exitCharts.forEach(file => {
         tradeImages.push({
-          trade_id: trade.id,
-          image_type: "exit",
-          file_path: file.path,
+          tradeId: trade.id,
+          imageType: "exit",
+          filePath: file.path,
         });
       });
     }
     if (req.files?.postTradeFiles) {
       req.files.postTradeFiles.forEach(file => {
         tradeImages.push({
-          trade_id: trade.id,
-          image_type: "post",
-          file_path: file.path,
+          tradeId: trade.id,
+          imageType: "post",
+          filePath: file.path,
         });
       });
     }
 
     if (tradeImages.length > 0) {
       await Promise.all(
-        tradeImages.map(imageData => 
-          prisma.trade_images.create({ data: imageData })
+        tradeImages.map(imageData =>
+          prisma.tradeImage.create({ data: imageData })
         )
       );
     }
 
     res.status(201).json({ message: "Trade created successfully", trade });
+
   } catch (error) {
-    console.error('Error creating trade:', error);
+    console.error('❌ Error creating trade:', error);
     res.status(500).json({ error: 'Failed to create trade', details: error.message });
   }
 };

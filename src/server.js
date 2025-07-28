@@ -17,7 +17,6 @@ const { expressjwt: jwt } = require('express-jwt');
 const auth = jwt({ secret: process.env.JWT_SECRET || 'dev_secret', algorithms: ['HS256'] });
 
 app.use('/api/trades', require('./routes/trade.routes'));
-app.use('/api/journals', require('./routes/journal.routes'));
 app.use('/api/journal', require('./routes/chart.routes'));
 // Authentication routes
 app.use('/api/auth', require('./routes/auth.routes'));
@@ -26,9 +25,6 @@ app.use('/api/auth', require('./routes/auth.routes'));
 app.use('/api/recommendations', require('./routes/recommendation.routes'));
 app.use('/api/investments', require('./routes/investment.routes'));
 app.use('/api/investments', require('./routes/investment-transactions.routes'));
-
-// Technical indicators routes
-app.use('/api/yahoo', require('./routes/indicators.routes'));
 
 // Yahoo Finance API endpoints
 app.get('/api/yahoo/search', async (req, res) => {

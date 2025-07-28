@@ -1,24 +1,28 @@
-// src/routes/journal.routes.js
+// src/routes/chart.routes.js
 const express = require('express');
 const router = express.Router();
-const journalController = require('../controllers/chart.controller');
+const chartController = require('../controllers/chart.controller');
 const multer = require('multer');
 
 const upload = multer({ dest: 'uploads/' });
 
 router.post(
   '/',
-  upload.single('screenshot'),
-  journalController.createJournal
+  upload.fields([
+    { name: 'entryCharts', maxCount: 5 },
+  ]),
+  chartController.createChartAnalysis
 );
 
-router.get('/', journalController.getAllJournals);
-router.get('/:id', journalController.getJournalById);
+router.get('/', chartController.getAllChartAnalyses);
+router.get('/:id', chartController.getChartAnalysisById);
 router.put(
   '/:id',
-  upload.single('reviewScreenshot'),
-  journalController.updateJournal
+  upload.fields([
+    { name: 'reviewCharts', maxCount: 5 },
+  ]),
+  chartController.updateChartAnalysis
 );
-router.delete('/:id', journalController.deleteJournal);
+router.delete('/:id', chartController.deleteChartAnalysis);
 
 module.exports = router;
