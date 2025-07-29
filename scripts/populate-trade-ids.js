@@ -7,7 +7,7 @@ async function populateTradeIds() {
   
   try {
     // Get all trades that don't have a trade_id set
-    const tradesWithoutIds = await prisma.trades.findMany({
+    const tradesWithoutIds = await prisma.trade.findMany({
       where: { 
         OR: [
           { trade_id: null },
@@ -32,7 +32,7 @@ async function populateTradeIds() {
         // Generate professional ID based on the trade's creation date
         const professionalId = await TradeIdGenerator.generateTradeId();
         
-        await prisma.trades.update({
+        await prisma.trade.update({
           where: { id: trade.id },
           data: { trade_id: professionalId }
         });

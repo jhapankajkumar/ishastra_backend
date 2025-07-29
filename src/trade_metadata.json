@@ -135,6 +135,40 @@
                 "name": "Manual Exit",
                 "description": "Exited manually due to changing market conditions"
             }
+        ],
+        "marketCap": [
+            {
+                "cap_id": 4001,
+                "name": "Large Cap",
+                "description": "Companies with market cap over ₹20,000 crores"
+            },
+            {
+                "cap_id": 4002,
+                "name": "Mid Cap",
+                "description": "Companies with market cap between ₹5,000 and ₹20,000 crores"
+            },
+            {
+                "cap_id": 4003,
+                "name": "Small Cap",
+                "description": "Companies with market cap below ₹5,000 crores"
+            }
+        ],
+        "confidenceRating": [
+            {
+                "rating_id": 5001,
+                "name": "High",
+                "description": "Very high conviction in setup, strong alignment with multiple indicators"
+            },
+            {
+                "rating_id": 5002,
+                "name": "Medium",
+                "description": "Moderate conviction in setup, some alignment with indicators"
+            },
+            {
+                "rating_id": 5003,
+                "name": "Small",
+                "description": "Low conviction in setup, minimal alignment with indicators"
+            }
         ]
     }
 }

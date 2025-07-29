@@ -1,28 +1,30 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
+console.log('✅ Prisma instance created:', !!prisma);
 const TradeIdGenerator = require('../utils/tradeIdGenerator');
 
 // Get all trades with related data
 exports.getAllTrades = async (req, res) => {
   try {
-    const trades = await prisma.trades.findMany({
+    console.log('🔍 Checking prisma.trade:', typeof prisma?.trade);
+    const trades = await prisma.trade.findMany({
       include: {
-        trade_fills: true,
-        trade_images: true
+        tradeFills: true,
+        tradeImages: true
       }
     });
     const tradeIds = trades.map(t => t.id);
-    const tradeImages = await prisma.trade_images.findMany({
-      where: { tradeid: { in: tradeIds } }
+    const tradeImages = await prisma.tradeImage.findMany({
+      where: { tradeId: { in: tradeIds } }
     });
-    const tradeFills = await prisma.trade_fills.findMany({
-      where: { tradeid: { in: tradeIds } }
+    const tradeFills = await prisma.tradeFill.findMany({
+      where: { tradeId: { in: tradeIds } }
     });
 
     const tradesWithRelations = trades.map(trade => ({
       ...trade,
-      trade_images: tradeImages.filter(img => img.trade_id === trade.id),
-      trade_fills: tradeFills.filter(fill => fill.trade_id === trade.id),
+      tradeImages: tradeImages.filter(img => img.tradeId === trade.id),
+      tradeFills: tradeFills.filter(fill => fill.tradeId === trade.id),
     }));
 
     res.json(tradesWithRelations);
@@ -68,7 +70,6 @@ exports.createTrade = async (req, res) => {
         direction: req.body.direction || "Long",
         instrumentType: req.body.instrumentType || "Stocks",
         tradeSetupId: req.body.tradeSetup ? Number(req.body.tradeSetup) : null,
-        setup: req.body.setup || null,
         status: "Open",
         confidenceRating: req.body.setupConfidence ? Number(req.body.setupConfidence) : null,
         entryCommission: req.body.entryCommission ? Number(req.body.entryCommission) : null,
@@ -143,7 +144,7 @@ exports.updateTradeExit = async (req, res) => {
     const tradeId = Number(id);
     
     // Get current trade to validate
-    const currentTrade = await prisma.trades.findUnique({
+    const currentTrade = await prisma.trade.findUnique({
       where: { id: tradeId }
     });
 
@@ -151,28 +152,28 @@ exports.updateTradeExit = async (req, res) => {
       return res.status(404).json({ error: "Trade not found" });
     }
 
-    const exitQty = Number(exitQuantity) || currentTrade.remaining_quantity || currentTrade.quantity;
-    const remainingAfterExit = (currentTrade.remaining_quantity || currentTrade.quantity) - exitQty;
+    const exitQty = Number(exitQuantity) || currentTrade.remainingQuantity || currentTrade.quantity;
+    const remainingAfterExit = (currentTrade.remainingQuantity || currentTrade.quantity) - exitQty;
 
     // Validate exit quantity
     if (exitQty <= 0) {
       return res.status(400).json({ error: "Exit quantity must be greater than 0" });
     }
     
-    if (exitQty > (currentTrade.remaining_quantity || currentTrade.quantity)) {
+    if (exitQty > (currentTrade.remainingQuantity || currentTrade.quantity)) {
       return res.status(400).json({ error: "Cannot exit more shares than remaining" });
     }
 
     // Create transaction record
-    await prisma.trade_transactions.create({
+    await prisma.tradeTransaction.create({
       data: {
-        trade_id: tradeId,
-        transaction_type: "Exit",
+        tradeId: tradeId,
+        transactionType: "Exit",
         quantity: exitQty,
         price: Number(exitOrderPrice),
-        transaction_date: new Date(exitDate),
-        reason_for_exit: reasonForExit,
-        exit_tactic_id: exitTactic ? Number(exitTactic) : null,
+        transactionDate: new Date(exitDate),
+        reasonForExit: reasonForExit,
+        exitTacticId: exitTactic ? Number(exitTactic) : null,
       }
     });
 
@@ -186,19 +187,19 @@ exports.updateTradeExit = async (req, res) => {
 
     // Update the main trade record
     const updateData = {
-      remaining_quantity: remainingAfterExit,
+      remainingQuantity: remainingAfterExit,
       status: newStatus,
-      reason_for_exit: reasonForExit,
-      exit_tactic_id: exitTactic ? Number(exitTactic) : null,
+      reasonForExit: reasonForExit,
+      exitTacticId: exitTactic ? Number(exitTactic) : null,
     };
 
     // If this is a complete exit, set exit fields
     if (remainingAfterExit === 0) {
-      updateData.exit_date = new Date(exitDate);
-      updateData.exit_price = Number(exitOrderPrice);
+      updateData.exitDate = new Date(exitDate);
+      updateData.exitPrice = Number(exitOrderPrice);
     }
 
-    const trade = await prisma.trades.update({
+    const trade = await prisma.trade.update({
       where: { id: tradeId },
       data: updateData
     });
@@ -206,13 +207,13 @@ exports.updateTradeExit = async (req, res) => {
     // Handle file uploads
     if (req.files?.exitCharts) {
       const exitImages = req.files.exitCharts.map(file => ({
-        trade_id: trade.id,
-        image_type: "exit",
-        file_path: file.path,
+        tradeId: trade.id,
+        imageType: "exit",
+        filePath: file.path,
       }));
       await Promise.all(
         exitImages.map(imageData => 
-          prisma.trade_images.create({ data: imageData })
+          prisma.tradeImage.create({ data: imageData })
         )
       );
     }
@@ -243,16 +244,15 @@ exports.partialExitTrade = async (req, res) => {
     const exitQty = Number(exitQuantity);
     
     // Get current trade to validate
-    const currentTrade = await prisma.trades.findUnique({
+    const currentTrade = await prisma.trade.findUnique({
       where: { id: tradeId },
-      // No trade_transactions include (invalid)
     });
 
     if (!currentTrade) {
       return res.status(404).json({ error: "Trade not found" });
     }
 
-    const currentRemaining = currentTrade.remaining_quantity ?? currentTrade.quantity;
+    const currentRemaining = currentTrade.remainingQuantity ?? currentTrade.quantity;
     const remainingAfterExit = currentRemaining - exitQty;
 
     // Validate exit quantity
@@ -265,15 +265,15 @@ exports.partialExitTrade = async (req, res) => {
     }
 
     // Create transaction record
-    await prisma.trade_transactions.create({
+    await prisma.tradeTransaction.create({
       data: {
-        trade_id: tradeId,
-        transaction_type: "Exit",
+        tradeId: tradeId,
+        transactionType: "Exit",
         quantity: exitQty,
         price: Number(exitOrderPrice),
-        transaction_date: new Date(exitDate),
-        reason_for_exit: reasonForExit,
-        exit_tactic_id: exitTactic ? Number(exitTactic) : null,
+        transactionDate: new Date(exitDate),
+        reasonForExit: reasonForExit,
+        exitTacticId: exitTactic ? Number(exitTactic) : null,
       }
     });
 
@@ -287,34 +287,33 @@ exports.partialExitTrade = async (req, res) => {
 
     // Update the main trade record
     const updateData = {
-      remaining_quantity: remainingAfterExit,
+      remainingQuantity: remainingAfterExit,
       status: newStatus,
     };
 
     // If this is a complete exit, set exit fields
     if (remainingAfterExit === 0) {
-      updateData.exit_date = new Date(exitDate);
-      updateData.exit_price = Number(exitOrderPrice);
-      updateData.reason_for_exit = reasonForExit;
-      updateData.exit_tactic_id = exitTactic ? Number(exitTactic) : null;
+      updateData.exitDate = new Date(exitDate);
+      updateData.exitPrice = Number(exitOrderPrice);
+      updateData.reasonForExit = reasonForExit;
+      updateData.exitTacticId = exitTactic ? Number(exitTactic) : null;
     }
 
-    const trade = await prisma.trades.update({
+    const trade = await prisma.trade.update({
       where: { id: tradeId },
       data: updateData,
-      // No trade_transactions include (invalid)
     });
 
     // Handle file uploads
     if (req.files?.exitCharts) {
       const exitImages = req.files.exitCharts.map(file => ({
-        trade_id: trade.id,
-        image_type: "exit",
-        file_path: file.path,
+        tradeId: trade.id,
+        imageType: "exit",
+        filePath: file.path,
       }));
       await Promise.all(
         exitImages.map(imageData => 
-          prisma.trade_images.create({ data: imageData })
+          prisma.tradeImage.create({ data: imageData })
         )
       );
     }
@@ -335,22 +334,22 @@ exports.addPostAnalysis = async (req, res) => {
     const { id } = req.params;
     const { postTradeAnalysis } = req.body;
 
-    const trade = await prisma.trades.update({
+    const trade = await prisma.trade.update({
       where: { id: Number(id) },
       data: {
-        post_trade_analysis: postTradeAnalysis,
+        postTradeAnalysis: postTradeAnalysis,
       }
     });
 
     if (req.files?.postTradeFiles) {
       const postImages = req.files.postTradeFiles.map(file => ({
-        trade_id: trade.id,
-        image_type: "post",
-        file_path: file.path,
+        tradeId: trade.id,
+        imageType: "post",
+        filePath: file.path,
       }));
       await Promise.all(
         postImages.map(imageData => 
-          prisma.trade_images.create({ data: imageData })
+          prisma.tradeImage.create({ data: imageData })
         )
       );
     }
@@ -364,29 +363,30 @@ exports.addPostAnalysis = async (req, res) => {
 
 exports.getDashboardSummary = async (req, res) => {
   try {
-    const trades = await prisma.trades.findMany();
+    console.log('🔍 Checking prisma.trade:', typeof prisma?.trade);
+    const trades = await prisma.trade.findMany();
 
     const totalTrades = trades.length;
-    const wins = trades.filter(t => t.r_multiple > 0).length;
+    const wins = trades.filter(t => t.rMultiple > 0).length;
     const winRate = totalTrades ? Math.round((wins / totalTrades) * 100) : 0;
     const avgR = totalTrades
-      ? (trades.reduce((sum, t) => sum + (t.r_multiple || 0), 0) / totalTrades).toFixed(2)
+      ? (trades.reduce((sum, t) => sum + (t.rMultiple || 0), 0) / totalTrades).toFixed(2)
       : 0;
 
-    const grossProfit = trades.filter(t => t.r_multiple > 0).reduce((sum, t) => sum + t.r_multiple, 0);
-    const grossLoss = trades.filter(t => t.r_multiple < 0).reduce((sum, t) => sum + t.r_multiple, 0);
+    const grossProfit = trades.filter(t => t.rMultiple > 0).reduce((sum, t) => sum + t.rMultiple, 0);
+    const grossLoss = trades.filter(t => t.rMultiple < 0).reduce((sum, t) => sum + t.rMultiple, 0);
     const profitFactor = grossLoss !== 0 ? Math.abs(grossProfit / grossLoss).toFixed(2) : "∞";
 
     const expectancy = totalTrades
       ? (
-          trades.reduce((sum, t) => sum + (t.r_multiple || 0), 0) / totalTrades
+          trades.reduce((sum, t) => sum + (t.rMultiple || 0), 0) / totalTrades
         ).toFixed(2)
       : 0;
 
     const avgHoldTimeMs =
       trades.reduce((sum, t) => {
-        if (t.entry_date && t.exit_date) {
-          return sum + (new Date(t.exit_date) - new Date(t.entry_date));
+        if (t.entryDate && t.exitDate) {
+          return sum + (new Date(t.exitDate) - new Date(t.entryDate));
         }
         return sum;
       }, 0) / (totalTrades || 1);
@@ -410,11 +410,11 @@ exports.getDashboardSummary = async (req, res) => {
 exports.getTradeById = async (req, res) => {
   try {
     const { id } = req.params;
-    const trade = await prisma.trades.findUnique({
+    const trade = await prisma.trade.findUnique({
       where: { id: Number(id) },
       include: {
-        trade_fills: true,
-        trade_images: true
+        tradeFills: true,
+        tradeImages: true
       }
     });
 
@@ -422,21 +422,21 @@ exports.getTradeById = async (req, res) => {
       return res.status(404).json({ error: "Trade not found" });
     }
 
-    const exit_tactic = trade.exit_tactic_id
-      ? await prisma.exit_tactics.findUnique({ where: { id: trade.exit_tactic_id } })
+    const exitTactic = trade.exitTacticId
+      ? await prisma.exitTactic.findUnique({ where: { id: trade.exitTacticId } })
       : null;
-    const trade_images = await prisma.trade_images.findMany({ where: { trade_id: trade.id } });
-    const trade_setup = trade.trade_setup_id
-      ? await prisma.trade_setups.findFirst({ where: { trade_setup_id: trade.trade_setup_id } })
+    const tradeImages = await prisma.tradeImage.findMany({ where: { tradeId: trade.id } });
+    const tradeSetup = trade.tradeSetupId
+      ? await prisma.tradeSetup.findFirst({ where: { tradeSetupId: trade.tradeSetupId } })
       : null;
-    const trade_fills = await prisma.trade_fills.findMany({ where: { trade_id: trade.id } });
+    const tradeFills = await prisma.tradeFill.findMany({ where: { tradeId: trade.id } });
 
     res.json({
       ...trade,
-      exit_tactics: exit_tactic,
-      trade_images,
-      trade_setup: trade_setup,
-      trade_fills
+      exitTactic: exitTactic,
+      tradeImages,
+      tradeSetup: tradeSetup,
+      tradeFills
     });
   } catch (error) {
     console.error('Error fetching trade by id:', error);
@@ -456,7 +456,7 @@ exports.deleteTrade = async (req, res) => {
     }
 
     // Check if trade exists
-    const trade = await prisma.trades.findUnique({
+    const trade = await prisma.trade.findUnique({
       where: { id: tradeId }
     });
 
@@ -466,22 +466,22 @@ exports.deleteTrade = async (req, res) => {
 
     // Delete related data first (due to foreign key constraints)
     // Delete trade transactions
-    await prisma.trade_transactions.deleteMany({
-      where: { trade_id: tradeId }
+    await prisma.tradeTransaction.deleteMany({
+      where: { tradeId: tradeId }
     });
 
     // Delete trade images
-    await prisma.trade_images.deleteMany({
-      where: { trade_id: tradeId }
+    await prisma.tradeImage.deleteMany({
+      where: { tradeId: tradeId }
     });
 
     // Delete trade fills
-    await prisma.trade_fills.deleteMany({
-      where: { trade_id: tradeId }
+    await prisma.tradeFill.deleteMany({
+      where: { tradeId: tradeId }
     });
 
     // Delete the main trade record
-    await prisma.trades.delete({
+    await prisma.trade.delete({
       where: { id: tradeId }
     });
 
@@ -512,9 +512,9 @@ exports.getTradeTransactions = async (req, res) => {
       return res.status(400).json({ error: 'Invalid trade ID' });
     }
 
-    const transactions = await prisma.trade_transactions.findMany({
-      where: { trade_id: tradeId },
-      orderBy: { created_at: 'desc' }
+    const transactions = await prisma.tradeTransaction.findMany({
+      where: { tradeId: tradeId },
+      orderBy: { createdAt: 'desc' }
     });
 
     res.json(transactions);

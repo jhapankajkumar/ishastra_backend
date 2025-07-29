@@ -17,7 +17,7 @@ class TradeIdGenerator {
       const startOfYear = new Date(year, 0, 1);
       const endOfYear = new Date(year + 1, 0, 1);
       
-      const yearlyTradeCount = await prisma.trades.count({
+      const yearlyTradeCount = await prisma.trade.count({
         where: {
           created_at: {
             gte: startOfYear,
@@ -57,7 +57,7 @@ class TradeIdGenerator {
     const year = String(new Date().getFullYear()).slice(-2); // Last 2 digits of year
     
     try {
-      const totalTrades = await prisma.trades.count();
+      const totalTrades = await prisma.trade.count();
       const sequentialNumber = String(totalTrades + 1).padStart(6, '0');
       
       return `T${year}-${sequentialNumber}`;

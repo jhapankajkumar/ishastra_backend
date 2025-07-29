@@ -6,7 +6,7 @@ async function populatePartialExitFields() {
     console.log('Starting to populate partial exit fields for existing trades...');
     
     // Get all trades that don't have remaining_quantity set
-    const trades = await prisma.trades.findMany({
+    const trades = await prisma.trade.findMany({
       where: {
         remaining_quantity: null
       }
@@ -24,7 +24,7 @@ async function populatePartialExitFields() {
         remaining_quantity = 0;
       }
 
-      await prisma.trades.update({
+      await prisma.trade.update({
         where: { id: trade.id },
         data: {
           remaining_quantity,

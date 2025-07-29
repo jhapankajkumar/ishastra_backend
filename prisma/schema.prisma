@@ -129,7 +129,6 @@ model Recommendation {
   currentPrice  Float?
   sector        String?   // Optional, useful for filtering
   source        String?   // e.g., blog, analyst, group name
-  status        String    @default("active") // "active", "archived", etc.
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 }
@@ -146,11 +145,12 @@ model Investment {
   entryDate        DateTime  // When investment was made
   exitDate         DateTime? // When investment was closed (if any)
   remainingQty     Int?      // Quantity still held (after partial sells)
-  source           String?   // Source of recommendation (e.g. "Motilal")
+  isRecommended    Boolean?  // If the investment is recommendation
   notes            String?   // Optional remark or rationale
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
-
+  marketCap        String?
+  sector           String?
   // Relations
   transactions     InvestmentTransaction[] // Partial exits or averaging
 }

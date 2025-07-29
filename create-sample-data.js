@@ -8,14 +8,14 @@ async function createSampleTradingData() {
     // Clean up existing data
     console.log('1️⃣ Cleaning existing data...');
     await prisma.trade_transactions.deleteMany({});
-    await prisma.trades.deleteMany({});
+    await prisma.trade.deleteMany({});
     console.log('✅ Cleanup complete\n');
 
     // Create realistic trading scenarios
     console.log('2️⃣ Creating realistic trading scenarios...\n');
 
     // Scenario 1: Open position (for testing partial exits)
-    const openTrade = await prisma.trades.create({
+    const openTrade = await prisma.trade.create({
       data: {
         ticker: 'AAPL',
         direction: 'Long',
@@ -42,7 +42,7 @@ async function createSampleTradingData() {
     console.log(`✅ Created open position: ${openTrade.ticker} - ${openTrade.quantity} shares @ $${openTrade.entry_price}`);
 
     // Scenario 2: Partially closed position
-    const partialTrade = await prisma.trades.create({
+    const partialTrade = await prisma.trade.create({
       data: {
         ticker: 'MSFT',
         direction: 'Long',
@@ -81,7 +81,7 @@ async function createSampleTradingData() {
     console.log(`✅ Created partial position: ${partialTrade.ticker} - ${partialTrade.remaining_quantity}/${partialTrade.quantity} shares remaining`);
 
     // Scenario 3: Completed profitable trade with multiple exits
-    const completedWinTrade = await prisma.trades.create({
+    const completedWinTrade = await prisma.trade.create({
       data: {
         ticker: 'NVDA',
         direction: 'Long',
@@ -123,7 +123,7 @@ async function createSampleTradingData() {
     console.log(`✅ Created completed winner: ${completedWinTrade.ticker} - Full position closed with ${exitTransactions.length} exits`);
 
     // Scenario 4: Completed loss trade
-    const completedLossTrade = await prisma.trades.create({
+    const completedLossTrade = await prisma.trade.create({
       data: {
         ticker: 'TSLA',
         direction: 'Long',
@@ -156,7 +156,7 @@ async function createSampleTradingData() {
     console.log(`✅ Created completed loss: ${completedLossTrade.ticker} - Stop loss executed`);
 
     // Scenario 5: Another open position for testing
-    const openTrade2 = await prisma.trades.create({
+    const openTrade2 = await prisma.trade.create({
       data: {
         ticker: 'AMZN',
         direction: 'Long',
@@ -183,7 +183,7 @@ async function createSampleTradingData() {
     console.log(`✅ Created second open position: ${openTrade2.ticker} - ${openTrade2.quantity} shares @ $${openTrade2.entry_price}`);
 
     // Scenario 6: Short position (different direction testing)
-    const shortTrade = await prisma.trades.create({
+    const shortTrade = await prisma.trade.create({
       data: {
         ticker: 'SPY',
         direction: 'Short',
@@ -212,7 +212,7 @@ async function createSampleTradingData() {
     console.log('\n3️⃣ Sample data summary:');
     console.log('========================');
     
-    const allTrades = await prisma.trades.findMany({
+    const allTrades = await prisma.trade.findMany({
       include: {
         trade_transactions: true
       },
