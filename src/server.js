@@ -1,3 +1,5 @@
+// Start price refresh cron job (runs at midnight and on startup)
+require('./refresh-prices-cron');
 const express = require('express');
 const cors = require('cors');
 const multer = require('multer');

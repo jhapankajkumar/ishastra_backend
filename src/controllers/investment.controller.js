@@ -34,7 +34,7 @@ const getAllInvestments = async (req, res) => {
     // Fetch current prices for all investments
     const investmentsWithPrices = await Promise.all(
       investments.map(async (inv) => {
-        const currentPrice = await fetchCurrentPrice(inv.ticker);
+        const currentPrice = inv.currentPrice
         
         const finalCurrentPrice = currentPrice !== null ? currentPrice : inv.currentPrice;
         const investmentDiff = calculateInvestmentDifference(inv.buyBelow, finalCurrentPrice);
@@ -436,6 +436,35 @@ const getInvestmentSummary = async (req, res) => {
   }
 };
 
+// Refresh all investment prices (manual endpoint)
+const refreshAllInvestmentPrices = async (req, res) => {
+  try {
+    const investments = await prisma.investment.findMany();
+    let updatedCount = 0;
+    for (const inv of investments) {
+      const price = await fetchCurrentPrice(inv.ticker);
+      if (price !== null && price !== undefined) {
+        await prisma.investment.update({
+          where: { id: inv.id },
+          data: { currentPrice: price }
+        });
+        updatedCount++;
+      }
+    }
+    res.json({
+      success: true,
+      message: `Prices refreshed for ${updatedCount} investments.`
+    });
+  } catch (error) {
+    console.error('Error refreshing investment prices:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to refresh investment prices',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   getAllInvestments,
   getInvestmentById,
@@ -443,5 +472,6 @@ module.exports = {
   updateInvestment,
   deleteInvestment,
   closeInvestment,
-  getInvestmentSummary
+  getInvestmentSummary,
+  refreshAllInvestmentPrices
 };

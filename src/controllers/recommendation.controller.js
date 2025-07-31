@@ -333,11 +333,40 @@ const archiveRecommendation = async (req, res) => {
     }
 };
 
+const refreshAllRecommendationPrices = async (req, res) => {
+  try {
+    const recommendations = await prisma.recommendation.findMany();
+    let updatedCount = 0;
+    for (const rec of recommendations) {
+      const price = await fetchCurrentPrice(rec.ticker);
+      if (price !== null && price !== undefined) {
+        await prisma.recommendation.update({
+          where: { id: rec.id },
+          data: { currentPrice: price }
+        });
+        updatedCount++;
+      }
+    }
+    res.json({
+      success: true,
+      message: `Prices refreshed for ${updatedCount} recommendations.`
+    });
+  } catch (error) {
+    console.error('Error refreshing recommendations prices:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to refresh recommendations prices',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
     getAllRecommendations,
     getRecommendationById,
     createRecommendation,
     updateRecommendation,
     deleteRecommendation,
-    archiveRecommendation
+    archiveRecommendation,
+    refreshAllRecommendationPrices
 };

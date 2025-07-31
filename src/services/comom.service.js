@@ -4,6 +4,7 @@ const yahoo = require('../yahoo');
 const fetchCurrentPrice = async (ticker) => {
   try {
     const price = await yahoo.getCurrentPrice(ticker);
+    console.log(`Current price for ${ticker}: ${price}`);
     return price;
   } catch (error) {
     console.warn(`Failed to fetch price for ${ticker}:`, error.message);

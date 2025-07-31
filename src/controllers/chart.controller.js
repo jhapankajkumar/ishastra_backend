@@ -54,15 +54,6 @@ exports.createChartAnalysis = async (req, res) => {
         });
       });
     }
-    if (req.files?.reviewCharts) {
-      req.files.reviewCharts.forEach(file => {
-        chartImages.push({
-          chartId: analysis.id,
-          imageType: "review",
-          filePath: file.path,
-        });
-      });
-    }
 
     console.log(`Chart Images: ${chartImages}`);
     if (chartImages.length > 0) {
@@ -213,6 +204,7 @@ exports.updateChartAnalysis = async (req, res) => {
         )
       );
     }
+
 
     const updatedAnalysis = await prisma.chartAnalysis.update({
       where: { id: analysisId },
