@@ -3,7 +3,6 @@ const express = require('express');
 const router = express.Router();
 const chartController = require('../controllers/chart.controller');
 const multer = require('multer');
-
 const upload = multer({ dest: 'uploads/' });
 
 router.post(

@@ -2,17 +2,7 @@ const { PrismaClient } = require('@prisma/client');
 const yahoo = require('../yahoo');
 const prisma = new PrismaClient();
 const { fetchAllInvestments } = require('../services/investment.service');
-
-// Helper function to fetch current price
-const fetchCurrentPrice = async (ticker) => {
-  try {
-    const price = await yahoo.getCurrentPrice(ticker);
-    return price;
-  } catch (error) {
-    console.warn(`Failed to fetch price for ${ticker}:`, error.message);
-    return null;
-  }
-};
+const { fetchCurrentPrice } = require('../services/comom.service');
 
 // Helper function to calculate price difference and percentage for investments
 const calculateInvestmentDifference = (buyBelowPrice, currentPrice) => {
@@ -152,7 +142,9 @@ const createInvestment = async (req, res) => {
       avgBuyPrice,
       notes,
       isRecommended,
-      buyBelow
+      buyBelow,
+      marketCap,
+      sector
     } = req.body;
 
     // Validation
@@ -169,6 +161,7 @@ const createInvestment = async (req, res) => {
       finalCurrentPrice = await fetchCurrentPrice(ticker.toUpperCase());
     }
 
+    console.log(`Creating investment for ${marketCap} with current price: ${sector}`);
     const investmentData = {
       ticker: ticker.toUpperCase(),
       entryDate: new Date(entryDate),
@@ -181,6 +174,8 @@ const createInvestment = async (req, res) => {
       status: 'open',
       isRecommended: isRecommended === 'true',
       buyBelow: buyBelow ? parseFloat(buyBelow) : null,
+      sector: sector ? sector.toUpperCase() : null,
+      marketCap: marketCap ? marketCap.toUpperCase() : null
     };
 
     const investment = await prisma.investment.create({
@@ -403,7 +398,7 @@ const getInvestmentSummary = async (req, res) => {
     const investments = await prisma.investment.findMany({
       select: {
         avgBuyPrice: true,
-        qty: true,
+        quantity: true,
         status: true
       }
     });
@@ -412,8 +407,8 @@ const getInvestmentSummary = async (req, res) => {
     let openInvestedAmount = 0;
 
     investments.forEach(inv => {
-      if (inv.avgBuyPrice && inv.qty) {
-        const amount = inv.avgBuyPrice * inv.qty;
+      if (inv.avgBuyPrice && inv.quantity) {
+        const amount = inv.avgBuyPrice * inv.quantity;
         totalInvestedAmount += amount;
         if (inv.status === 'open') {
           openInvestedAmount += amount;

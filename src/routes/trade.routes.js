@@ -33,7 +33,7 @@ router.put(
 router.put(
   '/:id/post-analysis',
   upload.fields([
-    { name: 'postTradeFiles', maxCount: 5 }
+    { name: 'reviewCharts', maxCount: 5 }
   ]),
   tradeController.addPostAnalysis
 );

@@ -2,17 +2,7 @@ const { PrismaClient } = require('@prisma/client');
 const yahoo = require('../yahoo');
 const prisma = new PrismaClient();
 const {fetchAllInvestments} = require('../services/investment.service.js');
-
-// Helper function to fetch current price
-const fetchCurrentPrice = async (ticker) => {
-    try {
-        const price = await yahoo.getCurrentPrice(ticker);
-        return price;
-    } catch (error) {
-        console.warn(`Failed to fetch price for ${ticker}:`, error.message);
-        return null;
-    }
-};
+const {fetchCurrentPrice} = require('../services/comom.service.js');
 
 // Helper function to calculate price difference and percentage
 const calculatePriceDifference = (buyBelow, currentPrice) => {
@@ -42,13 +32,23 @@ const getAllRecommendations = async (req, res) => {
             recommendationList.map(async (rec) => {
                 const investment = await fetchAllInvestments({ ticker: rec.ticker });
                 const values = mergePositions(investment);
-                console.log('Merged Positions:', values);
                 const finalCurrentPrice = rec.currentPrice;
+                var qty = 0;
+                var averageBuyPrice = 0;
+                var totalInvested = 0;
+                if (values.length > 0) {
+                    qty = values[0].quantity;
+                    averageBuyPrice = values[0].avgBuy;
+                    totalInvested = values[0].invested;
+                }
                 const priceDiff = calculatePriceDifference(rec.buyBelow, finalCurrentPrice);
                 return {
                     ...rec,
                     priceDifference: priceDiff.priceDifference,
-                    differencePercentage: priceDiff.differencePercentage
+                    differencePercentage: priceDiff.differencePercentage,
+                    quantity: qty,
+                    avgBuyPrice: averageBuyPrice,
+                    totalInvested: totalInvested,
                 };
             })
         );
@@ -83,7 +83,7 @@ function mergePositions(records) {
     }
 
     grouped[symbol].totalQty += trade.quantity;
-    grouped[symbol].totalCost += trade.quantity * trade.buyPrice;
+    grouped[symbol].totalCost += trade.quantity * trade.avgBuyPrice;
     grouped[symbol].records.push(trade);
   }
 
@@ -160,7 +160,8 @@ const createRecommendation = async (req, res) => {
             buyBelow,
             currentPrice,
             sector,
-            source
+            source,
+            marketCap,
         } = req.body;
 
         // Validation
@@ -182,10 +183,11 @@ const createRecommendation = async (req, res) => {
             buyBelow: buyBelow ? parseFloat(buyBelow) : null,
             currentPrice: finalCurrentPrice,
             sector: sector || null,
-            source: source || null
+            source: source || null,
+            marketCap: marketCap ? marketCap.toUpperCase() : null
         };
 
-        const recommendation = await prisma.Recommendation.create({
+        const recommendation = await prisma.recommendation.create({
             data: recommendationData
         });
 

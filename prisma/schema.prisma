@@ -68,8 +68,12 @@ model Trade {
   reasonForExit      String?
   exitTacticId       Int?
 
-  rMultiple          Float?
+//Review
   postTradeAnalysis  String?
+  lessonLearned      String?
+  emotionalState       String?
+
+  rMultiple          Float?
   isPaperTrade       Boolean?
   status             String?   @default("Open") // Open, Partial Closed, Closed
   tags               String?   // Consider making tags a separate join table
@@ -109,6 +113,8 @@ model ChartAnalysis {
   actionPlan          String?
   entryNotes          String?
   reviewNotes         String?
+  setupConfidence     String
+  setupType           Int?
   createdAt           DateTime @default(now())
   chartImages         ChartImage[]
 }
@@ -129,6 +135,7 @@ model Recommendation {
   currentPrice  Float?
   sector        String?   // Optional, useful for filtering
   source        String?   // e.g., blog, analyst, group name
+  marketCap        String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 }

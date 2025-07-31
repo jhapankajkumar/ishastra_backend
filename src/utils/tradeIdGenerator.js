@@ -19,7 +19,7 @@ class TradeIdGenerator {
       
       const yearlyTradeCount = await prisma.trade.count({
         where: {
-          created_at: {
+          entryDate: {
             gte: startOfYear,
             lt: endOfYear
           }

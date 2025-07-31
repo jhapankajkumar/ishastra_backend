@@ -18,9 +18,10 @@ exports.createChartAnalysis = async (req, res) => {
       entryConsidered,
       actionPlan,
       entryNotes,
-      reviewNotes
+      reviewNotes,
+      setupConfidence,
+      setupType
     } = req.body;
-
     const analysis = await prisma.chartAnalysis.create({
       data: {
         entryDate: new Date(entryDate),
@@ -38,6 +39,8 @@ exports.createChartAnalysis = async (req, res) => {
         actionPlan,
         entryNotes,
         reviewNotes: reviewNotes || null,
+        setupConfidence: setupConfidence || 'Low',
+        setupType: parseInt(setupType) || null
       }
     });
 
@@ -61,6 +64,15 @@ exports.createChartAnalysis = async (req, res) => {
       });
     }
 
+    console.log(`Chart Images: ${chartImages}`);
+    if (chartImages.length > 0) {
+      await Promise.all(
+        chartImages.map(imageData =>
+          prisma.chartImage.create({ data: imageData })
+        )
+      );
+    }
+
     res.status(201).json({ analysis });
   } catch (error) {
     console.error('Error saving analysis:', error);
@@ -79,7 +91,7 @@ exports.getAllChartAnalyses = async (req, res) => {
       where: { chartId: { in: chartIds } }
     });
 
-    res.json({ analyses, chartImages });
+    res.json({ data: analyses, chartImages });
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch analyses' });
   }
@@ -180,10 +192,14 @@ exports.updateChartAnalysis = async (req, res) => {
       reviewNotes
     } = req.body;
 
+    console.log(`reviewNotes ${reviewNotes}`);
+  
     // Prepare update data - only allow updating entryNotes and reviewNotes
     const updateData = {
       reviewNotes: reviewNotes !== undefined ? reviewNotes : existingAnalysis.reviewNotes
     };
+
+    console.log(`Files: ${req.files?.reviewCharts}`);
 
     if (req.files?.reviewCharts) {
       const chartImages = req.files.reviewCharts.map(file => ({

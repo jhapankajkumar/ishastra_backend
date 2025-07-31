@@ -80,7 +80,8 @@ exports.createTrade = async (req, res) => {
         timeframeUsed: req.body.timeframeUsed || null,
         notes: req.body.notes || null,
         atrValue: req.body.atrValue ? Number(req.body.atrValue) : null,
-        riskPerTrade: req.body.riskPerTrade ? Number(req.body.riskPerTrade) : null,
+        riskPerTrade: req.body.riskPerTrade,
+        riskPerTradeValue: req.body.riskPerTradeValue ? Number(req.body.riskPerTradeValue) : 0,
       }
     });
 
@@ -332,17 +333,19 @@ exports.partialExitTrade = async (req, res) => {
 exports.addPostAnalysis = async (req, res) => {
   try {
     const { id } = req.params;
-    const { postTradeAnalysis } = req.body;
+    const { postTradeAnalysis, lessonLearned, emotionalState } = req.body;
 
     const trade = await prisma.trade.update({
       where: { id: Number(id) },
       data: {
         postTradeAnalysis: postTradeAnalysis,
+        lessonLearned: lessonLearned,
+        emotionalState: emotionalState
       }
     });
 
-    if (req.files?.postTradeFiles) {
-      const postImages = req.files.postTradeFiles.map(file => ({
+    if (req.files?.reviewCharts) {
+      const postImages = req.files.reviewCharts.map(file => ({
         tradeId: trade.id,
         imageType: "post",
         filePath: file.path,
@@ -423,12 +426,9 @@ exports.getTradeById = async (req, res) => {
     }
 
     const exitTactic = trade.exitTacticId
-      ? await prisma.exitTactic.findUnique({ where: { id: trade.exitTacticId } })
-      : null;
+
     const tradeImages = await prisma.tradeImage.findMany({ where: { tradeId: trade.id } });
     const tradeSetup = trade.tradeSetupId
-      ? await prisma.tradeSetup.findFirst({ where: { tradeSetupId: trade.tradeSetupId } })
-      : null;
     const tradeFills = await prisma.tradeFill.findMany({ where: { tradeId: trade.id } });
 
     res.json({
@@ -436,7 +436,7 @@ exports.getTradeById = async (req, res) => {
       exitTactic: exitTactic,
       tradeImages,
       tradeSetup: tradeSetup,
-      tradeFills
+      tradeFills: tradeFills
     });
   } catch (error) {
     console.error('Error fetching trade by id:', error);
