@@ -62,6 +62,7 @@ exports.createTrade = async (req, res) => {
       data: {
         tradeId: professionalTradeId,
         ticker: req.body.ticker,
+        tickerName: req.body.tickerName,
         reasonForEntry: req.body.reasonForEntry,
         entryDate: entryDate,
         entryPrice: Number(req.body.entryOrderPrice),
@@ -77,7 +78,7 @@ exports.createTrade = async (req, res) => {
         target1: req.body.target1 ? Number(req.body.target1) : null,
         target2: req.body.target2 ? Number(req.body.target2) : null,
         target3: req.body.target3 ? Number(req.body.target3) : null,
-        timeframeUsed: req.body.timeframeUsed || null,
+        timeframeUsed: req.body.timeframesUsed || null,
         notes: req.body.notes || null,
         atrValue: req.body.atrValue ? Number(req.body.atrValue) : null,
         riskPerTrade: req.body.riskPerTrade,

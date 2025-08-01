@@ -39,6 +39,7 @@ model Trade {
   //entry
   tradeId            String    @unique        // e.g., ISH-2025-000001
   ticker             String
+  tickerName         String?
   direction          String    // Consider enum: LONG, SHORT
   instrumentType     String?   // Stocks, Options, Futures
   entryPrice         Float?
@@ -100,6 +101,7 @@ model ChartAnalysis {
   id                  Int      @id @default(autoincrement())
   entryDate           DateTime
   ticker              String
+  tickerName          String?
   trend               String?
   candleType          String?
   nearSupport         Boolean?

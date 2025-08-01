@@ -6,6 +6,7 @@ exports.createChartAnalysis = async (req, res) => {
     const {
       entryDate,
       ticker,
+      tickerName,
       trend,
       candleType,
       nearSupport,
@@ -26,6 +27,7 @@ exports.createChartAnalysis = async (req, res) => {
       data: {
         entryDate: new Date(entryDate),
         ticker,
+        tickerName: tickerName || "null",
         trend,
         candleType,
         nearSupport: nearSupport === 'true',
