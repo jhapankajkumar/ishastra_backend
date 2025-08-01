@@ -6,7 +6,6 @@ const TradeIdGenerator = require('../utils/tradeIdGenerator');
 // Get all trades with related data
 exports.getAllTrades = async (req, res) => {
   try {
-    console.log('🔍 Checking prisma.trade:', typeof prisma?.trade);
     const trades = await prisma.trade.findMany({
       include: {
         tradeFills: true,
@@ -367,7 +366,6 @@ exports.addPostAnalysis = async (req, res) => {
 
 exports.getDashboardSummary = async (req, res) => {
   try {
-    console.log('🔍 Checking prisma.trade:', typeof prisma?.trade);
     const trades = await prisma.trade.findMany();
 
     const totalTrades = trades.length;
