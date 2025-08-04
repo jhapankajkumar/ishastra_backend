@@ -4,6 +4,7 @@ const prisma = new PrismaClient();
 const sampleTrades = require('./sample_trades_seed.json');
 
 async function main() {
+  
 await prisma.investment.create({
   data: {
     ticker: "JSWSTEEL",

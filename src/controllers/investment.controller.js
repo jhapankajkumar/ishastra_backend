@@ -7,8 +7,8 @@ const { fetchCurrentPrice } = require('../services/comom.service');
 // Helper function to calculate price difference and percentage for investments
 const calculateInvestmentDifference = (buyBelowPrice, currentPrice) => {
   if (!buyBelowPrice || !currentPrice) {
-    return { 
-      difference: null, 
+    return {
+      difference: null,
       differencePercentage: null,
       profitLoss: null,
       profitLossPercentage: null
@@ -31,11 +31,13 @@ const calculateInvestmentDifference = (buyBelowPrice, currentPrice) => {
 const getAllInvestments = async (req, res) => {
   try {
     const investments = await fetchAllInvestments(req.query);
+    const { isGroupByTicker } = req.query;
+    console.log('isGroupByTicker:', isGroupByTicker); 
     // Fetch current prices for all investments
     const investmentsWithPrices = await Promise.all(
       investments.map(async (inv) => {
         const currentPrice = inv.currentPrice
-        
+
         const finalCurrentPrice = currentPrice !== null ? currentPrice : inv.currentPrice;
         const investmentDiff = calculateInvestmentDifference(inv.buyBelow, finalCurrentPrice);
 
@@ -54,10 +56,46 @@ const getAllInvestments = async (req, res) => {
       })
     );
 
-    res.json({
-      success: true,
-      data: investmentsWithPrices
-    });
+    if (isGroupByTicker) {
+      // Group by ticker if requested
+      const groupedInvestments = investmentsWithPrices.reduce((acc, inv) => {
+        const ticker = inv.ticker.toUpperCase();
+        if (!acc[ticker]) {
+          acc[ticker] = {
+            ...inv,
+            quantity: 0,
+            totalInvestment: 0,
+            remainingQty: 0,
+            currentPrice: 0,
+            profitLoss: 0,
+            totalProfitLoss: 0,
+            transactions: []
+          };
+        }
+        // Ensure accumulation is robust to undefined values
+        acc[ticker].quantity += inv.quantity || 0;
+        acc[ticker].totalInvestment += ((inv.avgBuyPrice || 0) * (inv.quantity || 0));
+        acc[ticker].remainingQty += inv.remainingQty || 0;
+        acc[ticker].currentPrice = inv.currentPrice; // Assuming current price is same for all transactions of the same ticker
+        acc[ticker].profitLoss += inv.profitLoss || 0;
+        acc[ticker].totalProfitLoss += inv.totalProfitLoss || 0;
+        acc[ticker].transactions.push(...inv.transactions);
+        acc[ticker].avgBuyPrice = acc[ticker].quantity
+          ? acc[ticker].totalInvestment / acc[ticker].quantity
+          : 0;
+        return acc;
+      }, {});
+      res.json({
+        success: true,
+        data: Object.values(groupedInvestments)
+      });
+    } else {
+      res.json({
+        success: true,
+        data: investmentsWithPrices
+      });
+    }
+
   } catch (error) {
     console.error('Error fetching investments:', error);
     res.status(500).json({
@@ -72,7 +110,7 @@ const getAllInvestments = async (req, res) => {
 const getInvestmentById = async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     const investment = await prisma.investment.findUnique({
       where: { id: parseInt(id) },
       include: {
@@ -91,7 +129,7 @@ const getInvestmentById = async (req, res) => {
 
     // Fetch current price
     const currentPrice = await fetchCurrentPrice(investment.ticker);
-    
+
     // Update the current price in database if we got a valid price
     if (currentPrice !== null) {
       await prisma.investment.update({
@@ -211,7 +249,7 @@ const updateInvestment = async (req, res) => {
       entryDate,
       exitDate,
       remainingQty,
-      status
+      status, sector, marketCap
     } = req.body;
 
     // Check if investment exists
@@ -237,6 +275,8 @@ const updateInvestment = async (req, res) => {
     if (exitDate !== undefined) updateData.exitDate = exitDate ? new Date(exitDate) : null;
     if (remainingQty !== undefined) updateData.remainingQty = remainingQty ? parseInt(remainingQty) : null;
     if (status !== undefined) updateData.status = status;
+    if (sector !== undefined) updateData.sector = sector ? sector.toUpperCase() : null;
+    if (marketCap !== undefined) updateData.marketCap = marketCap ? marketCap.toUpperCase() : null;
 
     const investment = await prisma.investment.update({
       where: { id: parseInt(id) },

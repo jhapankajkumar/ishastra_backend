@@ -105,7 +105,7 @@ const getRecommendationById = async (req, res) => {
     try {
         const { id } = req.params;
 
-        const recommendation = await prisma.Recommendation.findUnique({
+        const recommendation = await prisma.recommendation.findUnique({
             where: { id: parseInt(id) }
         });
 
