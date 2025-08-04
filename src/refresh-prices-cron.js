@@ -3,14 +3,16 @@ const cron = require('node-cron');
 const { refreshAllInvestmentPrices } = require('./controllers/investment.controller');
 const { refreshAllRecommendationPrices } = require('./controllers/recommendation.controller');
 
-
-// Run at midnight every day
-cron.schedule('0 0 * * *', () => {
-  // Call with dummy req/res
-  refreshAllInvestmentPrices({}, { json: (msg) => console.log('[CRON] Price refresh:', msg) });
-  refreshAllRecommendationPrices({}, { json: (msg) => console.log('[CRON] Price refresh:', msg) });
+//Fetch all investments and recommendations prices every 15 minutes
+cron.schedule('*/15 * * * *', () => {
+  refreshAllInvestmentPrices({}, {
+      json: (msg) => console.log(`[CRON ${now.toLocaleTimeString()}] Price refresh (investments):`, msg)
+    });
+    refreshAllRecommendationPrices({}, {
+      json: (msg) => console.log(`[CRON ${now.toLocaleTimeString()}] Price refresh (recommendations):`, msg)
+    });
 });
 
 // Optionally, run once on startup as well
-refreshAllInvestmentPrices({}, { json: (msg) => console.log('[STARTUP] Price refresh:', msg) });
-refreshAllRecommendationPrices({}, { json: (msg) => console.log('[STARTUP] Price refresh:', msg) });
+refreshAllInvestmentPrices({}, { json: (msg) => console.log(`[STARTUP] Price refresh (investments):`, msg) });
+refreshAllRecommendationPrices({}, { json: (msg) => console.log(`[STARTUP] Price refresh (recommendations):`, msg) });
