@@ -28,6 +28,9 @@ app.use('/api/recommendations', require('./routes/recommendation.routes'));
 app.use('/api/investments', require('./routes/investment.routes'));
 app.use('/api/investments', require('./routes/investment-transactions.routes'));
 
+// Market data routes
+app.use('/api/market', require('./routes/market.routes'));
+
 // Yahoo Finance API endpoints
 app.get('/api/yahoo/search', async (req, res) => {
   try {

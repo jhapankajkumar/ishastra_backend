@@ -1,8 +1,8 @@
 const { PrismaClient } = require('@prisma/client');
 const yahoo = require('../yahoo');
 const prisma = new PrismaClient();
-const {fetchAllInvestments} = require('../services/investment.service.js');
-const {fetchCurrentPrice} = require('../services/comom.service.js');
+const { fetchAllInvestments } = require('../services/investment.service.js');
+const { fetchCurrentPrice } = require('../services/comom.service.js');
 
 // Helper function to calculate price difference and percentage
 const calculatePriceDifference = (buyBelow, currentPrice) => {
@@ -68,36 +68,36 @@ const getAllRecommendations = async (req, res) => {
 };
 
 function mergePositions(records) {
-  const grouped = {};
+    const grouped = {};
 
-  for (const trade of records) {
-    const symbol = trade.ticker;
-    if (!grouped[symbol]) {
-      grouped[symbol] = {
-        ticker: symbol,
-        totalQty: 0,
-        totalCost: 0,
-        cmp: trade.currentPrice,
-        records: [],
-      };
+    for (const trade of records) {
+        const symbol = trade.ticker;
+        if (!grouped[symbol]) {
+            grouped[symbol] = {
+                ticker: symbol,
+                totalQty: 0,
+                totalCost: 0,
+                cmp: trade.currentPrice,
+                records: [],
+            };
+        }
+
+        grouped[symbol].totalQty += trade.quantity;
+        grouped[symbol].totalCost += trade.quantity * trade.avgBuyPrice;
+        grouped[symbol].records.push(trade);
     }
 
-    grouped[symbol].totalQty += trade.quantity;
-    grouped[symbol].totalCost += trade.quantity * trade.avgBuyPrice;
-    grouped[symbol].records.push(trade);
-  }
+    const mergedList = Object.values(grouped).map(entry => {
+        const avgBuy = entry.totalCost / entry.totalQty;
+        const invested = entry.totalQty * avgBuy;
+        return {
+            quantity: entry.totalQty,
+            avgBuy: parseFloat(avgBuy.toFixed(2)),
+            invested: parseFloat(invested.toFixed(2)),
+        };
+    });
 
-  const mergedList = Object.values(grouped).map(entry => {
-    const avgBuy = entry.totalCost / entry.totalQty;
-    const invested = entry.totalQty * avgBuy;
-    return {
-      quantity: entry.totalQty,
-      avgBuy: parseFloat(avgBuy.toFixed(2)),
-      invested: parseFloat(invested.toFixed(2)),
-    };
-  });
-
-  return mergedList;
+    return mergedList;
 }
 
 // Get single recommendation
@@ -334,31 +334,43 @@ const archiveRecommendation = async (req, res) => {
 };
 
 const refreshAllRecommendationPrices = async (req, res) => {
-  try {
-    const recommendations = await prisma.recommendation.findMany();
-    let updatedCount = 0;
-    for (const rec of recommendations) {
-      const price = await fetchCurrentPrice(rec.ticker);
-      if (price !== null && price !== undefined) {
-        await prisma.recommendation.update({
-          where: { id: rec.id },
-          data: { currentPrice: price }
+    try {
+        const recommendations = await prisma.recommendation.findMany();
+
+        const updates = recommendations.map(rec => {
+            return fetchCurrentPrice(rec.ticker).then(price => {
+                if (price !== null && price !== undefined) {
+                    return prisma.recommendation.update({
+                        where: { id: rec.id },
+                        data: {
+                            currentPrice: price,
+                            updatedAt: new Date(),
+                        },
+                    });
+                }
+            }).catch(err => {
+                console.error(`Error updating ${rec.ticker}:`, err.message);
+            });
         });
-        updatedCount++;
-      }
+
+        await Promise.allSettled(updates);
+        res.json({
+            success: true,
+            message: `Prices refreshed for recommendations.`
+        });
+    } catch (error) {
+        console.error('Error refreshing recommendations prices:', error);
+        if (res?.status) {
+            res.status(500).json({
+                success: false,
+                message: 'Failed to refresh recommendations prices',
+                error: error.message
+            });
+        } else {
+            console.error('Failed to update recommendations');
+        }
+
     }
-    res.json({
-      success: true,
-      message: `Prices refreshed for ${updatedCount} recommendations.`
-    });
-  } catch (error) {
-    console.error('Error refreshing recommendations prices:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to refresh recommendations prices',
-      error: error.message
-    });
-  }
 };
 
 module.exports = {

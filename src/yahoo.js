@@ -15,6 +15,11 @@ async function getCurrentPrice(symbol) {
   return quote.regularMarketPrice;
 }
 
+async function getQuote(symbol) {
+  const quote = await yahooFinance.quote(symbol);
+  return quote
+}
+
 
 // Get historical data for ATR calculation
 // Always use interval: '1d'.
@@ -32,5 +37,6 @@ async function getHistorical(symbol, period1 = '1d', period2) {
 module.exports = {
   searchSymbol,
   getCurrentPrice,
-  getHistorical
+  getHistorical,
+  getQuote
 };

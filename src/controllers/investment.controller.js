@@ -1,8 +1,9 @@
 const { PrismaClient } = require('@prisma/client');
-const yahoo = require('../yahoo');
 const prisma = new PrismaClient();
 const { fetchAllInvestments } = require('../services/investment.service');
 const { fetchCurrentPrice } = require('../services/comom.service');
+const { getQuote } = require('../yahoo');
+
 
 // Helper function to calculate price difference and percentage for investments
 const calculateInvestmentDifference = (buyBelowPrice, currentPrice) => {
@@ -32,7 +33,6 @@ const getAllInvestments = async (req, res) => {
   try {
     const investments = await fetchAllInvestments(req.query);
     const { isGroupByTicker } = req.query;
-    console.log('isGroupByTicker:', isGroupByTicker); 
     // Fetch current prices for all investments
     const investmentsWithPrices = await Promise.all(
       investments.map(async (inv) => {
@@ -481,27 +481,47 @@ const refreshAllInvestmentPrices = async (req, res) => {
   try {
     const investments = await prisma.investment.findMany();
     let updatedCount = 0;
-    for (const inv of investments) {
-      const price = await fetchCurrentPrice(inv.ticker);
-      if (price !== null && price !== undefined) {
-        await prisma.investment.update({
-          where: { id: inv.id },
-          data: { currentPrice: price }
-        });
-        updatedCount++;
+
+    const updates = investments.map(async (inv) => {
+      try {
+        const quote = await getQuote(inv.ticker);
+        const data = {};
+        if (quote?.regularMarketPrice != null) {
+          data.currentPrice = quote.regularMarketPrice;
+        }
+        if (quote?.regularMarketPreviousClose != null) {
+          data.lastDayPrice = quote.regularMarketPreviousClose;
+        }
+        if (data.currentPrice != null || data.lastDayPrice != null) {
+          await prisma.investment.update({
+            where: { id: inv.id },
+            data,
+          });
+          updatedCount++;
+        }
+      } catch (err) {
+        console.error(`[ERROR] Updating ${inv.ticker}:`, err.message);
       }
-    }
+    });
+
+    await Promise.allSettled(updates);
+    console.log(`[CRON] Updated ${updatedCount} investments`);
+
+
     res.json({
       success: true,
       message: `Prices refreshed for ${updatedCount} investments.`
     });
   } catch (error) {
     console.error('Error refreshing investment prices:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to refresh investment prices',
-      error: error.message
-    });
+    if (res?.status) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to refresh investment prices',
+        error: error.message
+      });
+      return;
+    }
   }
 };
 

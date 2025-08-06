@@ -160,6 +160,7 @@ model Investment {
   updatedAt        DateTime  @updatedAt
   marketCap        String?
   sector           String?
+  lastDayPrice     Float?
   // Relations
   transactions     InvestmentTransaction[] // Partial exits or averaging
 }

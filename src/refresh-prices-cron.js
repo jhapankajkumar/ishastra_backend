@@ -6,10 +6,10 @@ const { refreshAllRecommendationPrices } = require('./controllers/recommendation
 //Fetch all investments and recommendations prices every 15 minutes
 cron.schedule('*/15 * * * *', () => {
   refreshAllInvestmentPrices({}, {
-      json: (msg) => console.log(`[CRON ${now.toLocaleTimeString()}] Price refresh (investments):`, msg)
+      json: (msg) => console.log(`[CRON] Price refresh (investments):`, msg)
     });
     refreshAllRecommendationPrices({}, {
-      json: (msg) => console.log(`[CRON ${now.toLocaleTimeString()}] Price refresh (recommendations):`, msg)
+      json: (msg) => console.log(`[CRON] Price refresh (recommendations):`, msg)
     });
 });
 
