@@ -57,7 +57,7 @@ class FreeNewsSentimentService {
       const uniqueArticles = this.removeDuplicateArticles(allArticles);
       const limitedArticles = uniqueArticles.slice(0, options.maxArticles || 20);
       
-      console.log(`   📊 Total unique articles: ${limitedArticles.length}`);
+      // console.log(`   📊 Total unique articles: ${limitedArticles.length}`);
       
       return limitedArticles;
       
@@ -299,7 +299,7 @@ class FreeNewsSentimentService {
       };
     }
 
-    console.log(`📊 Analyzing sentiment for ${articles.length} articles about ${symbol}`);
+    // console.log(`📊 Analyzing sentiment for ${articles.length} articles about ${symbol}`);
 
     let totalScore = 0;
     const allKeywords = [];
@@ -350,18 +350,27 @@ class FreeNewsSentimentService {
   calculateConfidence(articles, averageScore) {
     if (articles.length === 0) return 0;
     
-    // Base confidence from article count (more articles = higher confidence)
-    let confidence = Math.min(articles.length / 10, 1.0); // Max at 10 articles
+    // More generous base confidence from article count
+    let confidence = 0.5; // Start with medium confidence
     
-    // Reduce confidence for neutral scores
+    // Boost confidence based on article count
+    if (articles.length >= 1) confidence += 0.1;
+    if (articles.length >= 3) confidence += 0.2;
+    if (articles.length >= 5) confidence += 0.1;
+    if (articles.length >= 8) confidence += 0.1;
+    
+    // Adjust based on sentiment strength (less penalty for neutral)
     const absScore = Math.abs(averageScore);
-    if (absScore < 0.1) {
-      confidence *= 0.3; // Low confidence for very neutral sentiment
-    } else if (absScore < 0.3) {
-      confidence *= 0.7; // Medium confidence for weak sentiment
+    if (absScore > 0.5) {
+      confidence += 0.2; // Boost for strong sentiment
+    } else if (absScore > 0.2) {
+      confidence += 0.1; // Small boost for moderate sentiment
+    } else if (absScore < 0.05) {
+      confidence -= 0.1; // Small penalty only for very neutral sentiment
     }
     
-    return Math.max(0.1, Math.min(1.0, confidence)); // Keep between 0.1 and 1.0
+    // Ensure reasonable confidence range (30% to 95%)
+    return Math.max(0.3, Math.min(0.95, confidence));
   }
 
   /**
@@ -505,7 +514,7 @@ class FreeNewsSentimentService {
    */
   async getNewsSentiment(symbol) {
     try {
-      console.log(`\n🔍 Getting news sentiment for ${symbol}`);
+      // console.log(`\n🔍 Getting news sentiment for ${symbol}`);
       
       const articles = await this.fetchRealNews(symbol, { maxArticles: 15 });
       const sentiment = await this.analyzeRealNewsArticles(articles, symbol);

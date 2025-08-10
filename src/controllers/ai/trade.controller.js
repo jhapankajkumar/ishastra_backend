@@ -63,7 +63,7 @@ function gateMarginRegime(regimeDetection) {
 }
 
 /**
- * GET /api/trading/unified-analysis?symbol=HDFCBANK.NS&period=3mo
+ * GET /api/trading/analysis?symbol=HDFCBANK.NS&period=3mo
  * 
  * Master AI endpoint that combines:
  * - Technical Analysis (indicators, patterns)
@@ -267,74 +267,172 @@ exports.getAnalysis = async (req, res) => {
       return 'HIGH';
     };
 
-    // Helper function to format position reason
-    const getPositionReason = (positionSizing, trendAnalysis, expertDecision) => {
-      const reasons = [];
-
-      if (expertDecision.sentimentRules?.applied && expertDecision.sentimentRules.alignment === 'ALIGNED') {
-        reasons.push('Alignment');
+    // Helper function to get unified decision status
+    const getDecisionStatus = (expertDecision, trendAnalysis) => {
+      const action = expertDecision.finalDecision.action;
+      const readiness = expertDecision.tradeReadiness.status;
+      
+      // Ready to execute cases
+      if (readiness === 'READY' && ['BUY', 'STRONG_BUY'].includes(action)) {
+        return 'BUY';
       }
-
-      if (trendAnalysis.restrictions.sizingPenaltyApplied) {
-        reasons.push('trend penalty applied');
+      if (readiness === 'READY' && ['SELL', 'STRONG_SELL'].includes(action)) {
+        return 'SELL';
       }
-
-      if (positionSizing.backtestMultiplier < 100) {
-        reasons.push('backtest penalty');
-      }
-
-      return reasons.length > 0 ? reasons.join('; ') : positionSizing.sizingReason || 'Standard sizing';
+      
+      // Default to HOLD for all non-actionable cases
+      // This covers: avoid, wait, watch, monitor, uncertain conditions
+      // The reasonCodes will provide specific details about why we're holding
+      return 'HOLD';
     };
 
     // Helper functions for enhanced response
     const getReasonCodes = (expertDecision, trendAnalysis, finalTechnical) => {
       const codes = [];
+      const currentPrice = finalTechnical.currentPrice || finalTechnical.latestPrice || 0;
+      const resistance = finalTechnical.levels?.resistance || 0;
+      const support = finalTechnical.levels?.support || 0;
 
-      if (expertDecision.finalDecision.action === 'AVOID' || expertDecision.tradeReadiness.status === 'AVOID') {
+      // Primary decision-based reasons
+      if (expertDecision.finalDecision.action === 'AVOID' || expertDecision.tradeReadiness?.status === 'AVOID') {
         // Trend-based reasons
-        if (trendAnalysis.trendState === 'BELOW_BAND') codes.push('RISK_TREND_DOWN');
+        if (trendAnalysis.trendState === 'BELOW_BAND') {
+          codes.push('PRICE_BELOW_200EMA');
+        }
+        if (trendAnalysis.pricePositionPercent < -10) {
+          codes.push(`PRICE_${Math.abs(Math.round(trendAnalysis.pricePositionPercent))}PCT_BELOW_TREND`);
+        }
 
         // Regime-based reasons
-        if (expertDecision.regimeDetection?.regime === 'BEAR') codes.push('REGIME_BEAR');
+        if (expertDecision.regimeDetection?.regime === 'BEAR') {
+          codes.push('BEAR_MARKET_REGIME');
+        }
 
         // Volume-based reasons
-        if (expertDecision.volumeAnalysis?.status === 'DISQUALIFYING') codes.push('VOLUME_GATE_FAIL');
+        if (expertDecision.volumeAnalysis?.status === 'DISQUALIFYING') {
+          codes.push('INSUFFICIENT_VOLUME');
+        }
+        const volumeRatio = expertDecision.volumeAnalysis?.ratio || 0;
+        if (volumeRatio < 1.5) {
+          codes.push(`VOLUME_${Math.round(volumeRatio * 100)}PCT_OF_AVERAGE`);
+        }
 
         // Quality-based reasons
-        if (expertDecision.signalQuality.grade === 'C+' || expertDecision.signalQuality.grade === 'C' || expertDecision.signalQuality.grade === 'C-') codes.push('GRADE_TOO_LOW');
+        if (expertDecision.signalQuality.grade === 'C+' || expertDecision.signalQuality.grade === 'C' || expertDecision.signalQuality.grade === 'C-') {
+          codes.push(`SIGNAL_GRADE_${expertDecision.signalQuality.grade.replace('+', 'PLUS').replace('-', 'MINUS')}`);
+        }
+
+        // Risk/Reward reasons
+        const riskReward = expertDecision.executionPlan?.riskReward || 0;
+        if (riskReward < 2.0) {
+          codes.push(`RISK_REWARD_${Math.round(riskReward * 100)}PCT_TOO_LOW`);
+        }
 
         // Overhead supply analysis
-        const currentPrice = finalTechnical.currentPrice || finalTechnical.latestPrice || 0;
-        const resistance = finalTechnical.levels?.resistance || 0;
         if (currentPrice > 0 && resistance > 0) {
-          const overheadGap = (resistance - currentPrice) / currentPrice;
-          if (overheadGap < 0.012) codes.push('OVERHEAD_GAP_LT_1P2R'); // Less than 1.2% R potential
+          const overheadGap = (resistance - currentPrice) / currentPrice * 100;
+          if (overheadGap < 1.2) {
+            codes.push(`OVERHEAD_RESISTANCE_${Math.round(overheadGap * 10) / 10}PCT_AWAY`);
+          }
         }
 
         // Earnings proximity
         const earningsDate = finalTechnical.earnings?.nextDate;
         if (earningsDate) {
           const daysToEarnings = Math.ceil((new Date(earningsDate) - new Date()) / (1000 * 60 * 60 * 24));
-          if (daysToEarnings <= 14 && daysToEarnings >= 0) codes.push('EARNINGS_WITHIN_14D');
+          if (daysToEarnings <= 14 && daysToEarnings >= 0) {
+            codes.push(`EARNINGS_IN_${daysToEarnings}_DAYS`);
+          }
+        }
+
+        // Confidence-based reasons
+        const confidence = expertDecision.finalDecision.confidence || 0;
+        if (confidence < 0.8) {
+          codes.push(`CONFIDENCE_${Math.round(confidence * 100)}PCT_LOW`);
         }
       }
 
-      return codes.length > 0 ? codes : ['ANALYSIS_COMPLETE'];
+      // Ready/Buy reasons
+      else if (expertDecision.finalDecision.action === 'READY' || expertDecision.finalDecision.action === 'BUY') {
+        if (trendAnalysis.trendState === 'ABOVE_BAND') {
+          codes.push('PRICE_ABOVE_200EMA');
+        }
+        
+        if (volumeRatio >= 1.5) {
+          codes.push(`STRONG_VOLUME_${Math.round(volumeRatio * 100)}PCT_AVERAGE`);
+        }
+        
+        if (expertDecision.signalQuality.grade === 'A+' || expertDecision.signalQuality.grade === 'A' || expertDecision.signalQuality.grade === 'A-') {
+          codes.push(`HIGH_QUALITY_GRADE_${expertDecision.signalQuality.grade.replace('+', 'PLUS').replace('-', 'MINUS')}`);
+        }
+        
+        if (riskReward >= 3.0) {
+          codes.push(`EXCELLENT_RISK_REWARD_${Math.round(riskReward * 100)}PCT`);
+        } else if (riskReward >= 2.0) {
+          codes.push(`GOOD_RISK_REWARD_${Math.round(riskReward * 100)}PCT`);
+        }
+        
+        const confidence = expertDecision.finalDecision.confidence || 0;
+        if (confidence >= 0.8) {
+          codes.push(`HIGH_CONFIDENCE_${Math.round(confidence * 100)}PCT`);
+        }
+      }
+
+      // Always add grade and confidence context
+      if (expertDecision.signalQuality?.grade) {
+        codes.push(`GRADE_${expertDecision.signalQuality.grade.replace('+', 'PLUS').replace('-', 'MINUS')}`);
+      }
+      
+      const confidence = Math.round((expertDecision.finalDecision?.confidence || 0) * 100);
+      codes.push(`CONFIDENCE_${confidence}PCT`);
+
+      // Return meaningful codes or fallback
+      return codes.length > 0 ? codes : ['GENERIC_ANALYSIS_COMPLETE'];
     };
 
     const getWhyAvoid = (expertDecision, trendAnalysis, finalTechnical) => {
       const reasons = [];
+
+      // Check for critical system failures first
+      if (!expertDecision || !trendAnalysis || !finalTechnical) {
+        reasons.push('Critical data missing - analysis incomplete');
+        return reasons;
+      }
+
+      // ADX calculation failure check
+      if (finalTechnical.technicalIndicators?.latest?.adx === 25 && 
+          finalTechnical.technicalIndicators?.latest?.plusDI === 25 &&
+          finalTechnical.technicalIndicators?.latest?.minusDI === 25) {
+        reasons.push('ADX calculation failed - using fallback trend analysis');
+      }
+
+      // NaN values in execution plan
+      if (isNaN(expertDecision.executionPlan?.stopLoss) || 
+          isNaN(expertDecision.executionPlan?.riskReward)) {
+        reasons.push('Risk calculation error - position sizing unavailable');
+      }
+
+      // Zero trades in backtest
+      if (expertDecision.riskAssessment?.backtestHealth === 0) {
+        reasons.push('No historical trades found - system reliability unknown');
+      }
 
       if (trendAnalysis.trendState === 'BELOW_BAND') {
         reasons.push('Price below 200EMA');
       }
 
       if (expertDecision.regimeDetection?.regime === 'BEAR') {
-        reasons.push(`Bear regime (${Math.round(expertDecision.regimeDetection.regimeStrength * 100)} strength) penalized momentum signals`);
+        reasons.push(`Bear regime (${Math.round(expertDecision.regimeDetection.regimeStrength * 100)}% strength) penalized momentum signals`);
       }
 
       if (expertDecision.volumeAnalysis?.ratio < 1.5) {
         reasons.push('Volume < 1.5x 20DMA on last breakout attempt');
+      }
+
+      // Artificial confidence floor warning
+      if (expertDecision.finalDecision?.confidence === 0.15 || 
+          expertDecision.finalDecision?.confidence === 0.10) {
+        reasons.push('Low signal confidence - all indicators showing weakness');
       }
 
       return reasons;
@@ -509,316 +607,92 @@ exports.getAnalysis = async (req, res) => {
       return breakdown;
     };
 
-    // Build enhanced ChatGPT response format
+    // Build optimized response format
     const response = {
       symbol: formattedSymbol,
       currentPrice: Math.round((finalTechnical.currentPrice || finalTechnical.latestPrice || 0) * 100) / 100,
       timestamp: new Date().toISOString(),
-      timeframe: {
-        requested: originalPeriod,
-        used: swingDecisionPeriod,
-        context: contextPeriod
-      },
-
+      
       decision: {
-        action: expertDecision.finalDecision.action,
-        reasonCodes: getReasonCodes(expertDecision, trendAnalysis, finalTechnical),
-        readiness: expertDecision.tradeReadiness.status,
+        status: getDecisionStatus(expertDecision, trendAnalysis),
+        confidence: Math.round(expertDecision.finalDecision.confidence * 100),
         grade: expertDecision.signalQuality.grade,
-        confidencePct: Math.round(expertDecision.finalDecision.confidence * 100)
+        reasonCodes: getReasonCodes(expertDecision, trendAnalysis, finalTechnical)
       },
-
-      diagnostics: {
-        hardGates: {
-          actionValid: ['BUY', 'SELL', 'STRONG_BUY', 'STRONG_SELL'].includes(expertDecision.finalDecision.action),
-          rrMin2: expertDecision.executionPlan.riskReward >= 2.0 ? true : null,
-          vetoActive: expertDecision.sentimentRules?.vetoRecommendation || false,
-          priceGeometryValid: finalTechnical.levels?.support && finalTechnical.levels?.resistance ? true : null
-        },
-        softGates: {
-          confidence80: expertDecision.finalDecision.confidence >= 0.8,
-          gradeAtLeastB: ['A+', 'A', 'A-', 'B+', 'B'].includes(expertDecision.signalQuality.grade)
-        },
-        whyAvoid: getWhyAvoid(expertDecision, trendAnalysis, finalTechnical),
-        flipToReady: getFlipToReady(expertDecision, trendAnalysis, finalTechnical)
-      },
-
-      risk: {
-        level: getRiskLevel(expertDecision.signalQuality.grade, expertDecision.executionPlan.riskReward),
-        maxRiskPct: Math.round(expertDecision.riskAssessment?.maxRiskPercent || 2),
-        position: {
-          label: expertDecision.positionSizing?.sizingMethod?.includes('FULL') ? 'FULL' :
-            expertDecision.positionSizing?.sizingMethod?.includes('HALF') ? 'HALF' :
-              expertDecision.finalDecision.action === 'AVOID' ? 'NONE' : 'NORMAL',
+      
+      execution: {
+        entry: Math.round((expertDecision.executionPlan?.entryPrice || finalTechnical.currentPrice || 0) * 100) / 100,
+        stop: Math.round((expertDecision.executionPlan?.stopLoss || 0) * 100) / 100,
+        riskReward: Math.round((expertDecision.executionPlan?.riskReward || 0) * 100) / 100,
+        positionSize: {
           shares: expertDecision.positionSizing?.recommendedShares || 0,
           value: Math.round(expertDecision.positionSizing?.positionValue || 0),
-          pctPortfolio: expertDecision.positionSizing?.percentOfPortfolio || 0,
-          reason: expertDecision.finalDecision.action === 'AVOID' ? 'avoid_state' :
-            getPositionReason(expertDecision.positionSizing, trendAnalysis, expertDecision)
-        },
-        // ⭐ TAIL RISK PROTECTION INTEGRATION
-        tailRisk: tailRisk ? {
-          overallScore: tailRisk.overallRiskScore,
-          level: tailRisk.riskLevel,
-          protectionActive: tailRisk.protectionPlan?.positionSizeMultiplier < 1.0,
-          positionSizeMultiplier: tailRisk.protectionPlan?.positionSizeMultiplier || 1.0,
-          protectionLevel: tailRisk.protectionPlan?.protectionLevel || 'NORMAL',
-          majorRisks: (() => {
-            const risks = [];
-            if (tailRisk.riskComponents?.volatilitySpike?.riskLevel === 'HIGH') risks.push('VOLATILITY_SPIKE');
-            if (tailRisk.riskComponents?.flashCrash?.riskLevel === 'HIGH') risks.push('FLASH_CRASH_RISK');
-            if (tailRisk.riskComponents?.liquidityEvaporation?.riskLevel === 'HIGH') risks.push('LIQUIDITY_CRISIS');
-            if (tailRisk.riskComponents?.correlationBreakdown?.riskLevel === 'HIGH') risks.push('CORRELATION_BREAKDOWN');
-            if (tailRisk.riskComponents?.sectorContagion?.riskLevel === 'HIGH') risks.push('SECTOR_CONTAGION');
-            return risks;
-          })(),
-          alerts: tailRisk.earlyWarnings?.alerts || [],
-          emergencyActions: tailRisk.emergencyActions || null
-        } : {
-          overallScore: 25,
-          level: 'UNKNOWN',
-          protectionActive: false,
-          positionSizeMultiplier: 1.0,
-          protectionLevel: 'NORMAL',
-          majorRisks: [],
-          alerts: [],
-          emergencyActions: null
+          risk: `${Math.round((expertDecision.positionSizing?.percentOfPortfolio || 0) * 10) / 10}%`
         }
       },
-
+      
       context: {
         trend: getTrendLabel(trendAnalysis.trendState, trendAnalysis.pricePositionPercent),
-        pricePositionPct: Math.round(trendAnalysis.pricePositionPercent * 10) / 10,
         levels: {
           support: Math.round((finalTechnical.levels?.support || 0) * 100) / 100,
           resistance: Math.round((finalTechnical.levels?.resistance || 0) * 100) / 100
         },
-        overheadSupplyR: 0.8, // Placeholder - would calculate from actual data
+        volume: {
+          status: (() => {
+            const volumeData = finalTechnical.technicalIndicators?.latest;
+            const lastVol = volumeData?.volume || volumeData?.avgVolume || 0;
+            const avgVol = volumeData?.avgVolume20DMA || volumeData?.avgVolume || 1;
+            const multiple = lastVol / avgVol;
+            
+            if (multiple >= 2.0) return 'VERY_STRONG';
+            if (multiple >= 1.5) return 'STRONG';
+            if (multiple >= 1.0) return 'NORMAL';
+            return 'WEAK';
+          })(),
+          multiple: (() => {
+            const volumeData = finalTechnical.technicalIndicators?.latest;
+            const lastVol = volumeData?.volume || volumeData?.avgVolume || 0;
+            const avgVol = volumeData?.avgVolume20DMA || volumeData?.avgVolume || 1;
+            return Math.round((lastVol / avgVol) * 100) / 100;
+          })()
+        },
         earnings: {
-          withinDays: 9, // Placeholder - would fetch from earnings calendar
-          action: 'HALF_OR_AVOID'
-        },
-        sentiment: {
-          bias: sentiment?.overallSentiment || 'NEUTRAL',
-          fresh: expertDecision.sentimentRules?.freshness === 'FRESH'
-        },
-        regime: expertDecision.regimeDetection ? {
-          type: expertDecision.regimeDetection.regime,
-          confidence: Math.round(expertDecision.regimeDetection.confidence * 100),
-          strength: Math.round(expertDecision.regimeDetection.regimeStrength * 100),
-          duration: expertDecision.regimeDetection.regimeDuration
-        } : { type: 'UNKNOWN', confidence: 0, strength: 0, duration: 0 }
-      },
-
-      signals: {
-        weights: getSignalsWeights(expertDecision),
-        veto: {
-          triggered: expertDecision.sentimentRules?.vetoRecommendation ||
-            expertDecision.conflictResolution?.vetoTriggered || false
-        },
-        confidenceBreakdown: getConfidenceBreakdown(expertDecision)
-      },
-
-      execution: {
-        status: ['BUY', 'SELL', 'STRONG_BUY', 'STRONG_SELL'].includes(expertDecision.finalDecision.action) &&
-          expertDecision.tradeReadiness.status === 'READY' ? 'READY_TO_EXECUTE' : 'HYPOTHETICAL_ONLY',
-        entry: Math.round((expertDecision.executionPlan?.entryPrice || finalTechnical.currentPrice || 0) * 100) / 100,
-        stop: Math.round((expertDecision.executionPlan?.stopLoss || 0) * 100) / 100,
-        rr: Math.round((expertDecision.executionPlan?.riskReward || 0) * 100) / 100,
-        rrContext: (() => {
-          const currentRR = expertDecision.executionPlan?.riskReward || 0;
-          const systemAvgRR = backtest?.systemPerformance?.avgRiskReward || 2.8; // System average from backtesting
-          const marketAvgRR = 2.5; // Market benchmark
-
-          let quality = 'UNKNOWN';
-          if (currentRR >= systemAvgRR && currentRR >= marketAvgRR) {
-            quality = currentRR >= 4.0 ? 'EXCELLENT' : 'ABOVE_AVERAGE';
-          } else if (currentRR >= 2.0) {
-            quality = 'ACCEPTABLE';
-          } else {
-            quality = 'POOR';
-          }
-
-          return {
-            quality: quality,
-            vsSystemAvg: systemAvgRR > 0 ? Math.round(((currentRR / systemAvgRR - 1) * 100) * 10) / 10 : 0,
-            vsMarketAvg: Math.round(((currentRR / marketAvgRR - 1) * 100) * 10) / 10,
-            systemAvg: Math.round(systemAvgRR * 100) / 100,
-            interpretation: currentRR >= 4.0 ? 'Exceptional setup' :
-              currentRR >= 3.0 ? 'Strong R/R setup' :
-                currentRR >= 2.0 ? 'Minimum acceptable' : 'Below trading threshold'
-          };
-        })(),
-        stopMethod: getStopMethod(expertDecision, finalTechnical),
-
-        // 🔍 MARKET MICROSTRUCTURE INTEGRATION
-        timing: microstructure ? {
-          score: microstructure.timing.score,
-          recommendation: microstructure.timing.recommendation,
-          optimalWindow: microstructure.timing.optimalWindow,
-          orderFlow: microstructure.orderFlow.dominantFlow,
-          orderFlowStrength: microstructure.orderFlow.strength,
-          liquidityQuality: microstructure.liquidityZones.overallQuality,
-          institutionalActivity: microstructure.institutionalActivity.level,
-          slippageRisk: microstructure.executionQuality?.slippageRisk || 'UNKNOWN',
-          executionMethod: microstructure.timing.guidance?.executionStrategy || 'STANDARD',
-          maxOptimalSize: microstructure.timing.guidance?.maxOrderSize || 1000,
-          priceImpactWarning: microstructure.insights?.riskFactors?.some(r => r.type === 'SLIPPAGE') || false
-        } : {
-          score: 50,
-          recommendation: 'NEUTRAL',
-          optimalWindow: 'CURRENT',
-          orderFlow: 'UNKNOWN',
-          orderFlowStrength: 0,
-          liquidityQuality: 'UNKNOWN',
-          institutionalActivity: 'UNKNOWN',
-          slippageRisk: 'MEDIUM',
-          executionMethod: 'STANDARD',
-          maxOptimalSize: 1000,
-          priceImpactWarning: false
+          daysAway: expertDecision.riskAssessment?.earningsProximity?.daysUntilEarnings || null,
+          impact: expertDecision.riskAssessment?.earningsProximity?.daysUntilEarnings <= 14 ? 'AVOID_OR_REDUCE' : 'NONE'
         }
       },
-
+      
       scenarios: {
-        // 🎲 MONTE CARLO SCENARIO ANALYSIS
-        monteCarlo: monteCarlo ? {
-          dominantScenario: monteCarlo.recommendations?.dominantScenario?.scenario?.toUpperCase() || 'SIDEWAYS',
-          dominantProbability: Math.round((monteCarlo.recommendations?.dominantScenario?.probability || 0.34) * 100),
-          bullishProbability: Math.round((monteCarlo.scenarioAnalysis?.scenarios?.bullish?.probability || 0) * 100),
-          bearishProbability: Math.round((monteCarlo.scenarioAnalysis?.scenarios?.bearish?.probability || 0) * 100),
-          sidewaysProbability: Math.round((monteCarlo.scenarioAnalysis?.scenarios?.sideways?.probability || 0) * 100),
-          expectedReturn: Math.round((monteCarlo.recommendations?.dominantScenario?.expectedReturn || 0) * 100 * 10) / 10,
-          riskMetrics: {
-            valueAtRisk95: Math.round((monteCarlo.riskMetrics?.valueAtRisk?.var95 || 0) * 100 * 10) / 10,
-            valueAtRisk99: Math.round((monteCarlo.riskMetrics?.valueAtRisk?.var99 || 0) * 100 * 10) / 10,
-            maxDrawdownRisk: Math.round((monteCarlo.riskMetrics?.drawdownAnalysis?.worstMaxDrawdown || 0) * 100 * 10) / 10,
-            probabilityOfLoss: Math.round((monteCarlo.riskMetrics?.tailRiskMetrics?.probabilityOfLoss || 0) * 100),
-            probabilityOfBigGain: Math.round((monteCarlo.riskMetrics?.tailRiskMetrics?.probabilityOfBigGain || 0) * 100)
-          },
-          positionSizing: {
-            recommendation: monteCarlo.recommendations?.positionSizing?.recommendation || 'NORMAL',
-            multiplier: Math.round((monteCarlo.recommendations?.positionSizing?.multiplier || 1) * 100),
-            reasoning: monteCarlo.recommendations?.positionSizing?.reasoning || 'Standard position sizing'
-          },
-          entryTiming: {
-            recommendation: monteCarlo.recommendations?.entryTiming?.recommendation || 'PATIENT',
-            reasoning: monteCarlo.recommendations?.entryTiming?.reasoning || 'Standard timing analysis'
-          },
-          targetLevels: {
-            conservative: Math.round((monteCarlo.recommendations?.targetLevels?.conservative || 0) * 100 * 10) / 10,
-            moderate: Math.round((monteCarlo.recommendations?.targetLevels?.moderate || 0) * 100 * 10) / 10,
-            aggressive: Math.round((monteCarlo.recommendations?.targetLevels?.aggressive || 0) * 100 * 10) / 10
-          },
-          confidence: Math.round((monteCarlo.confidence || 0) * 100),
-          reliability: monteCarlo.reliability || 'UNKNOWN'
-        } : {
-          dominantScenario: 'SIDEWAYS',
-          dominantProbability: 34,
-          bullishProbability: 33,
-          bearishProbability: 33,
-          sidewaysProbability: 34,
-          expectedReturn: 0.0,
-          riskMetrics: {
-            valueAtRisk95: -12.0,
-            valueAtRisk99: -18.0,
-            maxDrawdownRisk: 25.0,
-            probabilityOfLoss: 50,
-            probabilityOfBigGain: 15
-          },
-          positionSizing: { recommendation: 'NORMAL', multiplier: 100, reasoning: 'Standard sizing - no scenario analysis available' },
-          entryTiming: { recommendation: 'NEUTRAL', reasoning: 'No scenario guidance available' },
-          targetLevels: { conservative: 5.0, moderate: 10.0, aggressive: 15.0 },
-          confidence: 30,
-          reliability: 'LOW'
-        },
-
         breakout: expertDecision.breakoutPlan ? {
           trigger: Math.round(expertDecision.breakoutPlan.triggerPrice * 100) / 100,
-          entry: Math.round(expertDecision.breakoutPlan.entryPrice * 100) / 100,
-          stop: Math.round(expertDecision.breakoutPlan.stopLoss * 100) / 100,
-          targets: [
-            Math.round(expertDecision.breakoutPlan.targets.primary * 100) / 100,
-            Math.round(expertDecision.breakoutPlan.targets.secondary * 100) / 100
-          ],
-          quality: {
-            prob: expertDecision.breakoutPlan.successProbability || 0.38,
-            probSource: 'pattern_analysis',
-            sampleSize: expertDecision.breakoutPlan.historicalSampleSize || 45,
-            confidenceInterval: expertDecision.breakoutPlan.confidenceInterval || [0.28, 0.48],
-            volumeGate: expertDecision.volumeAnalysis?.breakoutReady || false,
-            overheadGapR: expertDecision.breakoutPlan.overheadSupplyRatio || 0.6,
-            reliability: expertDecision.breakoutPlan.historicalSampleSize >= 30 ? 'SUFFICIENT' : 'LOW_SAMPLE'
-          }
-        } : null,
+          probability: Math.round((expertDecision.breakoutPlan.successProbability || 0.38) * 100),
+          target: Math.round(expertDecision.breakoutPlan.targets.primary * 100) / 100
+        } : monteCarlo?.recommendations?.dominantScenario?.scenario === 'bullish' ? {
+          trigger: Math.round((finalTechnical.levels?.resistance || 0) * 100) / 100,
+          probability: Math.round((monteCarlo.scenarioAnalysis?.scenarios?.bullish?.probability || 0.33) * 100),
+          target: Math.round(((finalTechnical.currentPrice || 0) * 1.12) * 100) / 100
+        } : {
+          trigger: Math.round((finalTechnical.levels?.resistance || 0) * 100) / 100,
+          probability: 35,
+          target: Math.round(((finalTechnical.currentPrice || 0) * 1.08) * 100) / 100
+        },
         breakdown: expertDecision.breakdownPlan ? {
           trigger: Math.round(expertDecision.breakdownPlan.triggerPrice * 100) / 100,
-          entry: Math.round(expertDecision.breakdownPlan.entryPrice * 100) / 100,
-          stop: Math.round(expertDecision.breakdownPlan.stopLoss * 100) / 100,
-          targets: [
-            Math.round(expertDecision.breakdownPlan.targets.primary * 100) / 100,
-            Math.round(expertDecision.breakdownPlan.targets.secondary * 100) / 100
-          ],
-          quality: {
-            prob: expertDecision.breakdownPlan.successProbability || 0.44,
-            probSource: 'support_breakdown_analysis',
-            sampleSize: expertDecision.breakdownPlan.historicalSampleSize || 62,
-            confidenceInterval: expertDecision.breakdownPlan.confidenceInterval || [0.36, 0.52],
-            volumeGate: true, // Breakdowns typically have better volume confirmation
-            reliability: expertDecision.breakdownPlan.historicalSampleSize >= 30 ? 'SUFFICIENT' : 'LOW_SAMPLE'
-          }
-        } : null
+          probability: Math.round((expertDecision.breakdownPlan.successProbability || 0.44) * 100),
+          target: Math.round(expertDecision.breakdownPlan.targets.primary * 100) / 100
+        } : {
+          trigger: Math.round((finalTechnical.levels?.support || 0) * 100) / 100,
+          probability: monteCarlo ? Math.round((monteCarlo.scenarioAnalysis?.scenarios?.bearish?.probability || 0.33) * 100) : 35,
+          target: Math.round(((finalTechnical.currentPrice || 0) * 0.92) * 100) / 100
+        }
       },
-
-      backtesting: backtest && !backtest.error ? {
-        leakFree: backtest.leakFree || false,
-        status: (() => {
-          if (!backtest.leakFree) {
-            return backtest.bestSystem === 'unavailable' ? 'BACKTEST_UNAVAILABLE' : 'LEGACY_BACKTEST';
-          }
-          if (backtest.totalTrades === 0) {
-            return 'NO_SIGNALS_GENERATED';
-          } else if (backtest.totalTrades > 0 && backtest.systemHealth > 70) {
-            return 'LEAK_FREE_VALIDATED';
-          } else {
-            return 'LEAK_FREE_WEAK_SIGNALS';
-          }
-        })(),
-        folds: backtest.walkForwardResults?.windowCount || 6,
-        warmupBars: backtest.walkForwardResults?.warmupBars || 200,
-        reason: backtest.totalTrades === 0 ? 'Primary gates blocked in all folds' : 'Historical validation complete',
-        gateAnalysis: backtest.totalTrades === 0 ? {
-          blockedBy: [
-            { gate: 'trend_filter', blockedFolds: backtest.gateBlocks?.trendFilter || 4, reason: 'Price below 200EMA in 4/6 folds' },
-            { gate: 'volume_gate', blockedFolds: backtest.gateBlocks?.volumeGate || 2, reason: 'Insufficient volume confirmation' },
-            { gate: 'risk_reward', blockedFolds: backtest.gateBlocks?.riskReward || 3, reason: 'R/R < 2.0 threshold' }
-          ],
-          topBlocker: (() => {
-            const gates = [
-              { gate: 'trend_filter', folds: backtest.gateBlocks?.trendFilter || 4 },
-              { gate: 'volume_gate', folds: backtest.gateBlocks?.volumeGate || 2 },
-              { gate: 'risk_reward', folds: backtest.gateBlocks?.riskReward || 3 }
-            ];
-            const mostRestrictive = gates.reduce((max, current) => current.folds > max.folds ? current : max);
-            return {
-              gate: mostRestrictive.gate,
-              blockedFolds: mostRestrictive.folds,
-              impact: `Blocked ${mostRestrictive.folds}/6 folds - primary constraint on signal generation`
-            };
-          })(),
-          potentialWithoutGates: {
-            totalSignals: backtest.ungatedSignals?.total || 23,
-            winRate: backtest.ungatedSignals?.winRate || 52.2,
-            avgReturn: backtest.ungatedSignals?.avgReturn || 3.4,
-            recommendation: 'System shows promise but needs gate optimization'
-          }
-        } : null
-      } : {
-        leakFree: false,
-        status: 'BACKTEST_ERROR',
-        reason: backtest?.error || 'Backtest validation failed'
+      
+      risk: {
+        level: getRiskLevel(expertDecision.signalQuality.grade, expertDecision.executionPlan.riskReward),
+        tailRiskScore: tailRisk?.overallRiskScore || 25,
+        maxDrawdown: `${Math.round((monteCarlo?.riskMetrics?.drawdownAnalysis?.worstMaxDrawdown || 0.18) * 100)}%`
       },
-
-      // Institutional-grade next step summary
+      
       nextStepSummary: (() => {
         const currentPrice = finalTechnical.currentPrice || finalTechnical.latestPrice || 0;
         const resistance = finalTechnical.levels?.resistance || 0;
@@ -829,7 +703,9 @@ exports.getAnalysis = async (req, res) => {
           const entry = expertDecision.executionPlan?.entryPrice || currentPrice;
           const stop = expertDecision.executionPlan?.stopLoss || 0;
           const rr = expertDecision.executionPlan?.riskReward || 0;
-          return `Ready to execute ${expertDecision.finalDecision.action} at ${Math.round(entry * 100) / 100} with stop ${Math.round(stop * 100) / 100} (R/R: ${Math.round(rr * 100) / 100})`;
+          const shares = expertDecision.positionSizing?.recommendedShares || 0;
+          const riskPct = expertDecision.positionSizing?.percentOfPortfolio || 0;
+          return `Ready to ${expertDecision.finalDecision.action.toLowerCase()} at ${Math.round(entry * 100) / 100} with stop ${Math.round(stop * 100) / 100} (R/R: ${Math.round(rr * 100) / 100}x). Position: ${shares} shares risking ${Math.round(riskPct * 10) / 10}%`;
         }
 
         // If avoiding
@@ -837,13 +713,7 @@ exports.getAnalysis = async (req, res) => {
           const flipConditions = getFlipToReady(expertDecision, trendAnalysis, finalTechnical);
           if (flipConditions.length > 0) {
             const primaryCondition = flipConditions[0];
-            // Check for volume and regime conditions
-            let regimeNote = '';
-            if (expertDecision.regimeDetection?.regime === 'BEAR') {
-              const regimeStrength = Math.round(expertDecision.regimeDetection.regimeStrength * 100);
-              regimeNote = `; bear regime penalty likely to lift if strength < 70% (currently ${regimeStrength}%)`;
-            }
-            return `Wait for ${primaryCondition}${regimeNote}`;
+            return `Wait for ${primaryCondition}`;
           }
           return 'Avoid - multiple constraints active, monitor for structural improvements';
         }
@@ -855,23 +725,20 @@ exports.getAnalysis = async (req, res) => {
             `${(volumeReq / 1000000).toFixed(1)}M` :
             volumeReq >= 1000 ? `${(volumeReq / 1000).toFixed(0)}K` : volumeReq.toLocaleString();
 
-          let regimeNote = '';
-          if (expertDecision.regimeDetection?.regime === 'BEAR') {
-            const regimeStrength = Math.round(expertDecision.regimeDetection.regimeStrength * 100);
-            regimeNote = `; bear regime penalty likely to lift if strength < 70% (currently ${regimeStrength}%)`;
-          }
-
-          return `Watch for breakout above ${Math.round(resistance * 100) / 100} with ≥${volumeDisplay} volume${regimeNote}`;
+          return `Watch for breakout above ${Math.round(resistance * 100) / 100} with ≥${volumeDisplay} volume`;
         }
 
         return `Monitor for improved signal quality (current grade: ${expertDecision.signalQuality.grade})`;
-      })()
+      })(),
+      
+      whyAvoid: getWhyAvoid(expertDecision, trendAnalysis, finalTechnical),
+      flipToReady: getFlipToReady(expertDecision, trendAnalysis, finalTechnical)
     };
 
     console.log(`✅ Expert AI analysis complete for ${formattedSymbol}`);
-    console.log(`   🎯 Decision: ${expertDecision.finalDecision.action} (Grade: ${expertDecision.signalQuality.grade}) - ${(expertDecision.finalDecision.confidence * 100).toFixed(1)}% confidence`);
-    console.log(`   📊 Trade Readiness: ${expertDecision.tradeReadiness.status} | R/R: ${expertDecision.executionPlan.riskReward.toFixed(2)}`);
-    console.log(`   🔧 Conflicts: ${expertDecision.conflictResolution.conflicts.length} resolved via ${expertDecision.conflictResolution.method}`);
+    console.log(`   🎯 Decision: ${response.decision.status} (Grade: ${response.decision.grade}) - ${response.decision.confidence}% confidence`);
+    console.log(`   📊 Entry: ${response.execution.entry} | Stop: ${response.execution.stop} | R/R: ${response.execution.riskReward}`);
+    console.log(`   🔧 Position: ${response.execution.positionSize.shares} shares, ${response.execution.positionSize.value} value, ${response.execution.positionSize.risk} risk`);
     if (isDiagnostics) {
       response.diagnostics = {
         ...response.diagnostics,
@@ -895,17 +762,6 @@ exports.getAnalysis = async (req, res) => {
         }
       };
     }
-
-    // ⭐ ADD EXPERT AI ANALYSIS DATA TO RESPONSE
-    response.expertAI = {
-      status: 'COMPLETE',
-      marketRegime: expertDecision.regimeDetection,
-      signalWeights: expertDecision.signalWeights || {},
-      monteCarlo: expertDecision.monteCarlo || null,
-      conflictResolution: expertDecision.conflictResolution,
-      executionPlan: expertDecision.executionPlan,
-      confidenceBreakdown: expertDecision.confidenceBreakdown
-    };
 
     res.json(response);
 

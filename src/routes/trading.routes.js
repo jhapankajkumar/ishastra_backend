@@ -9,7 +9,7 @@ const tradeController = require('../controllers/ai/trade.controller');
 
 // ✅ MAIN AI TRADING ANALYSIS ENDPOINT
 // GET /api/trading/unified-analysis?symbol=HDFCBANK.NS&period=3mo
-router.get('/unified-analysis', tradeController.getAnalysis);
+router.get('/analysis', tradeController.getAnalysis);
 
 // 🛡️ LEAK-FREE BACKTESTING ENDPOINT
 // GET /api/trading/leak-free-backtest?symbol=HDFCBANK.NS&period=2y&systems=sepa,tripleScreen

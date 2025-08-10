@@ -132,9 +132,27 @@ class AdvancedTechnicalAnalysis {
       return vol / avgVol;
     });
 
-    // Directional Movement Indicators (ADX, +DI, -DI)
+    // Directional Movement Indicators (ADX, +DI, -DI) - ENHANCED ERROR HANDLING
     let adxData = null, plusDI = null, minusDI = null;
     try {
+      // Ensure we have sufficient data for ADX calculation (minimum 28 periods recommended)
+      if (closes.length < 28) {
+        console.log(`⚠️ Insufficient data for ADX calculation: ${closes.length} periods, need 28+`);
+        throw new Error('Insufficient data for ADX');
+      }
+
+      // ✅ CRITICAL FIX: Validate ADX and ADXDI imports before use
+      if (!ADX || typeof ADX.calculate !== 'function') {
+        console.error('❌ ADX import failed or invalid - using proxy calculation');
+        throw new Error('ADX library function not available');
+      }
+      
+      if (!ADXDI || typeof ADXDI.calculate !== 'function') {
+        console.error('❌ ADXDI import failed or invalid - using proxy calculation');
+        throw new Error('ADXDI library function not available');
+      }
+
+      // Calculate ADX using the technicalindicators library
       adxData = ADX.calculate({
         high: highs,
         low: lows,
@@ -142,6 +160,7 @@ class AdvancedTechnicalAnalysis {
         period: 14
       });
       
+      // Calculate Directional Indicators separately  
       const adxdiData = ADXDI.calculate({
         high: highs,
         low: lows,
@@ -149,15 +168,78 @@ class AdvancedTechnicalAnalysis {
         period: 14
       });
       
+      // Validate the results before using them
+      if (adxData && adxData.length > 0 && !isNaN(adxData[adxData.length - 1])) {
+        console.log(`✅ ADX calculation successful: Latest ADX = ${adxData[adxData.length - 1].toFixed(2)}`);
+      } else {
+        throw new Error('ADX calculation returned invalid results');
+      }
+      
       if (adxdiData && adxdiData.length > 0) {
         plusDI = adxdiData.map(d => d.pdi);
         minusDI = adxdiData.map(d => d.mdi);
+        
+        // Validate DI results
+        const latestPlusDI = plusDI[plusDI.length - 1];
+        const latestMinusDI = minusDI[minusDI.length - 1];
+        
+        if (!isNaN(latestPlusDI) && !isNaN(latestMinusDI)) {
+          console.log(`✅ Directional Indicators successful: +DI = ${latestPlusDI.toFixed(2)}, -DI = ${latestMinusDI.toFixed(2)}`);
+        } else {
+          throw new Error('DI calculation returned invalid results');
+        }
+      } else {
+        throw new Error('ADXDI calculation failed');
       }
+      
     } catch (error) {
-      console.log('ADX calculation failed, using fallback values');
-      adxData = Array(closes.length).fill(25);
-      plusDI = Array(closes.length).fill(25);
-      minusDI = Array(closes.length).fill(25);
+      console.error(`❌ ADX calculation failed: ${error.message}`);
+      console.log('📊 Using calculated ATR-based trend strength as ADX proxy...');
+      
+      // Calculate a proper proxy ADX based on ATR and price momentum
+      const atrValues = ATR.calculate({
+        high: highs,
+        low: lows,
+        close: closes,
+        period: 14
+      });
+      
+      if (atrValues && atrValues.length > 0) {
+        // Create trend strength proxy based on ATR relative to price
+        adxData = atrValues.map((atr, idx) => {
+          const price = closes[idx + 13] || closes[closes.length - 1]; // Adjust for ATR offset
+          const atrPercent = (atr / price) * 100;
+          // Convert ATR% to ADX-like scale (0-100)
+          return Math.min(100, Math.max(10, atrPercent * 5));
+        });
+        
+        // Create directional movement proxies based on recent price action
+        plusDI = [];
+        minusDI = [];
+        
+        for (let i = 14; i < closes.length; i++) {
+          const recentCloses = closes.slice(i - 14, i);
+          const upDays = recentCloses.filter((close, idx) => idx > 0 && close > recentCloses[idx - 1]).length;
+          const downDays = recentCloses.filter((close, idx) => idx > 0 && close < recentCloses[idx - 1]).length;
+          
+          plusDI.push((upDays / 13) * 100); // 13 comparison periods
+          minusDI.push((downDays / 13) * 100);
+        }
+        
+        console.log(`✅ ADX proxy calculation complete: Latest proxy ADX = ${adxData[adxData.length - 1].toFixed(2)}`);
+        console.log(`✅ DI proxy calculation complete: +DI = ${plusDI[plusDI.length - 1].toFixed(2)}, -DI = ${minusDI[minusDI.length - 1].toFixed(2)}`);
+      } else {
+        // Final fallback - use dynamic values based on volatility
+        const currentPrice = closes[closes.length - 1];
+        const priceChange = Math.abs(closes[closes.length - 1] - closes[closes.length - 21]) / closes[closes.length - 21];
+        const dynamicADX = Math.min(80, Math.max(15, priceChange * 200)); // Scale to reasonable ADX range
+        
+        adxData = Array(closes.length).fill(dynamicADX);
+        plusDI = Array(closes.length).fill(dynamicADX * 0.6);
+        minusDI = Array(closes.length).fill(dynamicADX * 0.4);
+        
+        console.log(`⚠️ Using dynamic fallback: ADX = ${dynamicADX.toFixed(2)}, +DI = ${(dynamicADX * 0.6).toFixed(2)}, -DI = ${(dynamicADX * 0.4).toFixed(2)}`);
+      }
     }
 
     return {

@@ -1,0 +1,1659 @@
+✅ Prisma instance created: true
+🛡️ Structure-Aware Stop Engine initialized - Professional market structure analysis
+🧠 Enhanced Bayesian Tracker: Bear-only trades, explicit confidence, rolling window
+🧠 Initializing Bayesian Reliability Tracker with seed data...
+✅ Bayesian tracker initialized with historical performance data
+🚀 Server running at http://localhost:8000
+✅ Database connected successfully
+Please consider completing the survey at https://bit.ly/yahoo-finance-api-feedback if you haven't already; for more info see https://github.com/gadicc/node-yahoo-finance2/issues/764#issuecomment-2056623851.  This will only be shown once, but you can suppress this message in future with `yahooFinance.suppressNotices(['yahooSurvey'])`.
+Fetching crumb and cookies from https://finance.yahoo.com/quote/AAPL...
+We expected a redirect to guce.yahoo.com, but got https://finance.yahoo.com/quote/AAPL/
+We'll try to continue anyway - you can safely ignore this if the request succeeds
+Success. Cookie expires on Tue Aug 11 2026 08:13:29 GMT+0800 (Singapore Standard Time)
+fetch https://query1.finance.yahoo.com/v1/test/getcrumb
+New crumb: xwquYFBUyuf
+[CRON] Updated 66 investments
+[STARTUP] Price refresh (investments): { success: true, message: 'Prices refreshed for 66 investments.' }
+[STARTUP] Price refresh (recommendations): { success: true, message: 'Prices refreshed for recommendations.' }
+[CRON] Price refresh (recommendations): { success: true, message: 'Prices refreshed for recommendations.' }
+[CRON] Updated 66 investments
+[CRON] Price refresh (investments): { success: true, message: 'Prices refreshed for 66 investments.' }
+🎯 Starting unified AI analysis for MSFT...
+   ✅ Period 3mo within swing range (3-6mo)
+📊 RULE 1 Timeframe Policy:
+   📅 Requested: 3mo
+   🎯 Swing Decision: 3mo (clamped 3-6mo)
+   📈 Context Data: 24mo (always 24mo)
+📊 Phase 1: Collecting data for MSFT...
+📈 Fetching historical data for MSFT...
+   📊 Long-term analysis: 24 months (reliable backtesting)
+   ⚡ Short-term filter: 3 months (momentum/timing)
+[Deprecated] historical() relies on an API that Yahoo have removed.  We'll map this request to chart() for convenience, but, please consider using chart() directly instead; for more info see https://github.com/gadicc/node-yahoo-finance2/issues/795.  This will only be shown once, but you can suppress this message in future with `yahooFinance.suppressNotices(['ripHistorical'])`.
+🔬 Starting leak-free backtest validation for MSFT...
+   📊 Initializing LeakFreeBacktestingEngine...
+🛡️ Leak-Free Backtesting Engine initialized - Zero look-ahead bias guaranteed
+   🎯 Running leak-free backtest: MSFT, 24mo...
+🎯 Starting Leak-Free Backtest for MSFT...
+📰 Free News Sentiment Service initialized
+   Google News RSS: Enabled
+   Yahoo Finance: Enabled
+
+🔍 Getting news sentiment for MSFT
+📰 Fetching real news for MSFT (MSFT)
+   📡 Fetching from Google News RSS...
+📰 Free News Sentiment Service initialized
+   Google News RSS: Enabled
+   Yahoo Finance: Enabled
+🆓 Real news sentiment service enabled (Google News + Yahoo Finance)
+🧠 Sentiment analysis lexicons initialized
+   Positive keywords: 28
+   Negative keywords: 26
+   Impact multipliers: 10
+📰 Sentiment Analysis Service initialized
+   News monitoring: Enabled
+   Real news APIs: Enabled (FREE)
+   Social monitoring: Enabled
+   Sentiment threshold: 0.6
+🔗 Enhanced Alert Service with Sentiment Analysis initialized
+   Sentiment filtering: Enabled
+   Sentiment boost threshold: 0.3
+   Sentiment caution threshold: -0.3
+🔔 Generating sentiment-enhanced alert for MSFT...
+📰 Analyzing sentiment for MSFT...
+  🆓 Fetching REAL news sentiment for MSFT...
+
+🔍 Getting news sentiment for MSFT
+📰 Fetching real news for MSFT (MSFT)
+   📡 Fetching from Google News RSS...
+🛡️ Getting tail risk assessment for MSFT...
+📈 Fetching historical data for MSFT...
+   📊 Long-term analysis: 24 months (reliable backtesting)
+   ⚡ Short-term filter: 3 months (momentum/timing)
+🔍 Getting market microstructure analysis for MSFT...
+📈 Fetching historical data for MSFT...
+   📊 Long-term analysis: 24 months (reliable backtesting)
+   ⚡ Short-term filter: 3 months (momentum/timing)
+🎲 Getting Monte Carlo scenario analysis for MSFT...
+📈 Fetching historical data for MSFT...
+   📊 Long-term analysis: 24 months (reliable backtesting)
+   ⚡ Short-term filter: 3 months (momentum/timing)
+📊 Yahoo Finance returned 501 data points for MSFT (24mo base + 3mo filter)
+📊 Running dual-timeframe technical analysis for MSFT:
+   📈 Long-term (501 data points): Foundation analysis
+   ⚡ Short-term (62 data points): Momentum filter
+📅 Fetching earnings data for MSFT...
+📊 Historical data: 500 bars (Fri Aug 11 2023 21:30:00 GMT+0800 (Singapore Standard Time) to Fri Aug 08 2025 21:30:00 GMT+0800 (Singapore Standard Time))
+🚶 Starting Walk-Forward Analysis...
+📊 Processing 46 walk-forward windows...
+✅ Walk-Forward Analysis complete: 0 windows processed
+🎲 Running Monte Carlo Analysis (10 simulations)...
+⚠️ Insufficient trades for Monte Carlo analysis
+   ✅ Leak-free backtest completed for MSFT
+   📊 Results: 0 trades, Health: 0/100
+📊 Yahoo Finance returned 501 data points for MSFT (24mo base + 3mo filter)
+📊 Running dual-timeframe technical analysis for MSFT:
+   📈 Long-term (501 data points): Foundation analysis
+   ⚡ Short-term (62 data points): Momentum filter
+📅 Fetching earnings data for MSFT...
+📊 Yahoo Finance returned 501 data points for MSFT (24mo base + 3mo filter)
+📊 Running dual-timeframe technical analysis for MSFT:
+   📈 Long-term (501 data points): Foundation analysis
+   ⚡ Short-term (62 data points): Momentum filter
+📅 Fetching earnings data for MSFT...
+📊 Yahoo Finance returned 501 data points for MSFT (24mo base + 3mo filter)
+📊 Running dual-timeframe technical analysis for MSFT:
+   📈 Long-term (501 data points): Foundation analysis
+   ⚡ Short-term (62 data points): Momentum filter
+📅 Fetching earnings data for MSFT...
+   ✅ Earnings data fetched successfully for MSFT
+ADX calculation failed, using fallback values
+🔥 ALWAYS_BUY called with price: 522.0399780273438
+ADX calculation failed, using fallback values
+🔥 ALWAYS_BUY called with price: 522.0399780273438
+🔍 Running pattern detection on both timeframes...
+📈 Running multi-timeframe confluence analysis...
+📊 Analyzing MSFT on 1d timeframe...
+   ✅ Earnings data fetched successfully for MSFT
+ADX calculation failed, using fallback values
+🔥 ALWAYS_BUY called with price: 522.0399780273438
+ADX calculation failed, using fallback values
+🔥 ALWAYS_BUY called with price: 522.0399780273438
+🔍 Running pattern detection on both timeframes...
+📈 Running multi-timeframe confluence analysis...
+📊 Analyzing MSFT on 1d timeframe...
+   ✅ Earnings data fetched successfully for MSFT
+ADX calculation failed, using fallback values
+🔥 ALWAYS_BUY called with price: 522.0399780273438
+ADX calculation failed, using fallback values
+🔥 ALWAYS_BUY called with price: 522.0399780273438
+🔍 Running pattern detection on both timeframes...
+📈 Running multi-timeframe confluence analysis...
+📊 Analyzing MSFT on 1d timeframe...
+ADX calculation failed, using fallback values
+🔥 ALWAYS_BUY called with price: 522.0399780273438
+📊 Analyzing MSFT on 1wk timeframe...
+   ✅ Earnings data fetched successfully for MSFT
+ADX calculation failed, using fallback values
+🔥 ALWAYS_BUY called with price: 522.0399780273438
+ADX calculation failed, using fallback values
+🔥 ALWAYS_BUY called with price: 522.0399780273438
+🔍 Running pattern detection on both timeframes...
+📈 Running multi-timeframe confluence analysis...
+📊 Analyzing MSFT on 1d timeframe...
+ADX calculation failed, using fallback values
+🔥 ALWAYS_BUY called with price: 522.0399780273438
+📊 Analyzing MSFT on 1wk timeframe...
+ADX calculation failed, using fallback values
+🔥 ALWAYS_BUY called with price: 522.0399780273438
+📊 Analyzing MSFT on 1wk timeframe...
+ADX calculation failed, using fallback values
+🔥 ALWAYS_BUY called with price: 522.0399780273438
+📊 Analyzing MSFT on 1wk timeframe...
+ADX calculation failed, using fallback values
+🔥 ALWAYS_BUY called with price: 522.0399780273438
+🔄 Synthesizing dual timeframe analysis (2y foundation + 3mo filter)...
+   ⚠️ Timeframe conflict: STRONG_BUY vs BUY → WATCH (quarter position)
+   🎯 Unified Result: WATCH (30.0% confidence)
+   📊 Resolution: TIMEFRAME_CONFLICT - QUARTER position size
+✅ Unified technical analysis complete for MSFT: {
+  longTermDataPoints: 501,
+  shortTermDataPoints: 62,
+  foundationSignal: 'STRONG_BUY',
+  momentumFilter: 'BUY',
+  unifiedSignal: 'WATCH',
+  longTermPatterns: 1,
+  shortTermPatterns: 1,
+  multiTimeframeScore: 85,
+  earningsDataAvailable: true,
+  hasTechnicalIndicators: true,
+  hasLatestIndicators: true,
+  technicalIndicatorsKeys: [
+    'ema',
+    'sma',
+    'rsi',
+    'macd',
+    'bollinger',
+    'atr',
+    'stochastic',
+    'adx',
+    'directionalMovement',
+    'volume',
+    'latest'
+  ],
+  latestIndicatorsKeys: [
+    'price',      'ema12',
+    'ema13',      'ema20',
+    'ema26',      'ema50',
+    'ema200',     'rsi',
+    'macd',       'macdSignal',
+    'bollinger',  'atr',
+    'stochastic', 'adx',
+    'plusDI',     'minusDI',
+    'volume',     'volumeRatio',
+    'avgVolume',  'avgVolume20DMA',
+    'vol20dma',   'resistance',
+    'support'
+  ]
+}
+🛡️ Tail Risk Protection: Analyzing market conditions...
+🛡️ Tail Risk Score: 0/100 (LOW)
+   📊 Protection Level: NORMAL
+   📉 Position Size Multiplier: 1x
+✅ Tail risk assessment complete for MSFT
+ADX calculation failed, using fallback values
+🔥 ALWAYS_BUY called with price: 522.0399780273438
+🔄 Synthesizing dual timeframe analysis (2y foundation + 3mo filter)...
+   ⚠️ Timeframe conflict: STRONG_BUY vs BUY → WATCH (quarter position)
+   🎯 Unified Result: WATCH (30.0% confidence)
+   📊 Resolution: TIMEFRAME_CONFLICT - QUARTER position size
+✅ Unified technical analysis complete for MSFT: {
+  longTermDataPoints: 501,
+  shortTermDataPoints: 62,
+  foundationSignal: 'STRONG_BUY',
+  momentumFilter: 'BUY',
+  unifiedSignal: 'WATCH',
+  longTermPatterns: 1,
+  shortTermPatterns: 1,
+  multiTimeframeScore: 85,
+  earningsDataAvailable: true,
+  hasTechnicalIndicators: true,
+  hasLatestIndicators: true,
+  technicalIndicatorsKeys: [
+    'ema',
+    'sma',
+    'rsi',
+    'macd',
+    'bollinger',
+    'atr',
+    'stochastic',
+    'adx',
+    'directionalMovement',
+    'volume',
+    'latest'
+  ],
+  latestIndicatorsKeys: [
+    'price',      'ema12',
+    'ema13',      'ema20',
+    'ema26',      'ema50',
+    'ema200',     'rsi',
+    'macd',       'macdSignal',
+    'bollinger',  'atr',
+    'stochastic', 'adx',
+    'plusDI',     'minusDI',
+    'volume',     'volumeRatio',
+    'avgVolume',  'avgVolume20DMA',
+    'vol20dma',   'resistance',
+    'support'
+  ]
+}
+ADX calculation failed, using fallback values
+🔥 ALWAYS_BUY called with price: 522.0399780273438
+🔄 Synthesizing dual timeframe analysis (2y foundation + 3mo filter)...
+   ⚠️ Timeframe conflict: STRONG_BUY vs BUY → WATCH (quarter position)
+   🎯 Unified Result: WATCH (30.0% confidence)
+   📊 Resolution: TIMEFRAME_CONFLICT - QUARTER position size
+✅ Unified technical analysis complete for MSFT: {
+  longTermDataPoints: 501,
+  shortTermDataPoints: 62,
+  foundationSignal: 'STRONG_BUY',
+  momentumFilter: 'BUY',
+  unifiedSignal: 'WATCH',
+  longTermPatterns: 1,
+  shortTermPatterns: 1,
+  multiTimeframeScore: 85,
+  earningsDataAvailable: true,
+  hasTechnicalIndicators: true,
+  hasLatestIndicators: true,
+  technicalIndicatorsKeys: [
+    'ema',
+    'sma',
+    'rsi',
+    'macd',
+    'bollinger',
+    'atr',
+    'stochastic',
+    'adx',
+    'directionalMovement',
+    'volume',
+    'latest'
+  ],
+  latestIndicatorsKeys: [
+    'price',      'ema12',
+    'ema13',      'ema20',
+    'ema26',      'ema50',
+    'ema200',     'rsi',
+    'macd',       'macdSignal',
+    'bollinger',  'atr',
+    'stochastic', 'adx',
+    'plusDI',     'minusDI',
+    'volume',     'volumeRatio',
+    'avgVolume',  'avgVolume20DMA',
+    'vol20dma',   'resistance',
+    'support'
+  ]
+}
+🎲 Monte Carlo: Starting probabilistic scenario analysis...
+🎲 Monte Carlo: 1000 simulations complete
+   📊 Bullish Probability: 74.1%
+   📉 Bearish Probability: 0.7%
+   ↔️ Sideways Probability: 25.2%
+✅ Monte Carlo analysis complete for MSFT
+ADX calculation failed, using fallback values
+🔥 ALWAYS_BUY called with price: 522.0399780273438
+🔄 Synthesizing dual timeframe analysis (2y foundation + 3mo filter)...
+   ⚠️ Timeframe conflict: STRONG_BUY vs BUY → WATCH (quarter position)
+   🎯 Unified Result: WATCH (30.0% confidence)
+   📊 Resolution: TIMEFRAME_CONFLICT - QUARTER position size
+✅ Unified technical analysis complete for MSFT: {
+  longTermDataPoints: 501,
+  shortTermDataPoints: 62,
+  foundationSignal: 'STRONG_BUY',
+  momentumFilter: 'BUY',
+  unifiedSignal: 'WATCH',
+  longTermPatterns: 1,
+  shortTermPatterns: 1,
+  multiTimeframeScore: 85,
+  earningsDataAvailable: true,
+  hasTechnicalIndicators: true,
+  hasLatestIndicators: true,
+  technicalIndicatorsKeys: [
+    'ema',
+    'sma',
+    'rsi',
+    'macd',
+    'bollinger',
+    'atr',
+    'stochastic',
+    'adx',
+    'directionalMovement',
+    'volume',
+    'latest'
+  ],
+  latestIndicatorsKeys: [
+    'price',      'ema12',
+    'ema13',      'ema20',
+    'ema26',      'ema50',
+    'ema200',     'rsi',
+    'macd',       'macdSignal',
+    'bollinger',  'atr',
+    'stochastic', 'adx',
+    'plusDI',     'minusDI',
+    'volume',     'volumeRatio',
+    'avgVolume',  'avgVolume20DMA',
+    'vol20dma',   'resistance',
+    'support'
+  ]
+}
+🔍 Market Microstructure: Analyzing order flow and liquidity patterns...
+🔍 Microstructure Analysis Complete:
+   📊 Order Flow: STRONG_SELLING (59/100)
+   💧 Liquidity Quality: HIGH (4 zones)
+   🏛️ Institutional Activity: LOW (0% confidence)
+   ⏰ Optimal Timing: AVOID_ENTRY
+✅ Market microstructure analysis complete for MSFT
+   ✅ Google News: 40 articles
+   📡 Fetching from Yahoo Finance...
+   ✅ Google News: 40 articles
+   📡 Fetching from Yahoo Finance...
+   ✅ Yahoo Finance: 10 articles
+   📊 Total unique articles: 15
+📊 Analyzing sentiment for 15 articles about MSFT
+   📄 "Microsoft Stock (MSFT) Opinions on Latest Earnings Report - ..." - Score: 2.598 (Google News)
+   📄 "Microsoft's Impressive Free Cash Flow - MSFT Stock Could Be ..." - Score: 0.000 (Google News)
+   📄 "Microsoft Stock Heads for the Clouds After Q4 Earnings. Is I..." - Score: 3.674 (Google News)
+   📄 "Microsoft (NASDAQ: MSFT) Stock Price Prediction for 2025: Wh..." - Score: 0.000 (Google News)
+   📄 "Microsoft (MSFT Stock) Tops Q2 2025 Record-Breaking Surge in..." - Score: 3.464 (Google News)
+   📄 "After Earnings, Is Microsoft Stock a Buy, a Sell, or Fairly ..." - Score: 1.500 (Google News)
+   📄 "Microsoft's Impressive Free Cash Flow - MSFT Stock Could Be ..." - Score: 0.000 (Google News)
+   📄 "Microsoft Stock (NASDAQ:MSFT) Slips With Tiny Layoff Additio..." - Score: 0.000 (Google News)
+   📄 "Understanding Momentum Shifts in (MSFT) - news.stocktradersd..." - Score: 0.000 (Google News)
+   📄 "Microsoft Stock Gets Price-Target Hike On Cloud, AI Business..." - Score: 1.732 (Google News)
+   📄 "What analysts say about MSFT stock - Exceptional financial o..." - Score: 0.000 (Google News)
+   📄 "Microsoft announces quarterly earnings release date - Source..." - Score: 2.598 (Google News)
+   📄 "What is MSFT company’s growth strategy - High-octane financi..." - Score: 4.000 (Google News)
+   📄 "Microsoft Stock: Capital Structure Analysis (MSFT) - Investo..." - Score: 0.000 (Google News)
+   📄 "First Look: Microsoft (MSFT) Surges on AI Strength - GuruFoc..." - Score: 0.000 (Google News)
+   📈 Final Sentiment: VERY_POSITIVE (1.304) - Confidence: 100.0%
+  ✅ Real news: VERY_POSITIVE (1.304) from 15 articles
+  💬 Social sentiment: -0.055 (680 mentions)
+✅ Sentiment analysis complete for MSFT: 0.897 (ENHANCED_BUY)
+✅ Generated LOW priority alert for MSFT with NaN% confidence
+   ✅ Yahoo Finance: 10 articles
+   📊 Total unique articles: 15
+📊 Analyzing sentiment for 15 articles about MSFT
+   📄 "Microsoft Stock (MSFT) Opinions on Latest Earnings Report - ..." - Score: 2.598 (Google News)
+   📄 "Microsoft's Impressive Free Cash Flow - MSFT Stock Could Be ..." - Score: 0.000 (Google News)
+   📄 "Microsoft Stock Heads for the Clouds After Q4 Earnings. Is I..." - Score: 3.674 (Google News)
+   📄 "Microsoft (NASDAQ: MSFT) Stock Price Prediction for 2025: Wh..." - Score: 0.000 (Google News)
+   📄 "Microsoft (MSFT Stock) Tops Q2 2025 Record-Breaking Surge in..." - Score: 3.464 (Google News)
+   📄 "After Earnings, Is Microsoft Stock a Buy, a Sell, or Fairly ..." - Score: 1.500 (Google News)
+   📄 "Microsoft's Impressive Free Cash Flow - MSFT Stock Could Be ..." - Score: 0.000 (Google News)
+   📄 "Microsoft Stock (NASDAQ:MSFT) Slips With Tiny Layoff Additio..." - Score: 0.000 (Google News)
+   📄 "Understanding Momentum Shifts in (MSFT) - news.stocktradersd..." - Score: 0.000 (Google News)
+   📄 "Microsoft Stock Gets Price-Target Hike On Cloud, AI Business..." - Score: 1.732 (Google News)
+   📄 "What analysts say about MSFT stock - Exceptional financial o..." - Score: 0.000 (Google News)
+   📄 "Microsoft announces quarterly earnings release date - Source..." - Score: 2.598 (Google News)
+   📄 "What is MSFT company’s growth strategy - High-octane financi..." - Score: 4.000 (Google News)
+   📄 "Microsoft Stock: Capital Structure Analysis (MSFT) - Investo..." - Score: 0.000 (Google News)
+   📄 "First Look: Microsoft (MSFT) Surges on AI Strength - GuruFoc..." - Score: 0.000 (Google News)
+   📈 Final Sentiment: VERY_POSITIVE (1.304) - Confidence: 100.0%
+🔎 Sentiment raw result for MSFT: {
+  "symbol": "MSFT",
+  "sentiment": "VERY_POSITIVE",
+  "score": 1.3044359639725351,
+  "confidence": 1,
+  "articles": 15,
+  "keywords": [
+    "microsoft",
+    "stock",
+    "earnings",
+    "impressive",
+    "could"
+  ],
+  "sources": [
+    "Google News"
+  ],
+  "timestamp": "2025-08-10T18:15:29.787Z"
+}
+🧠 Phase 2: Integrating AI insights...
+⚡ Phase 3: Running Expert AI Decision Engine...
+🧠 Calling Expert AI Decision Engine...
+🧠 Starting Expert AI Decision Engine...
+   📊 Context: MSFT, Price: $522.0399780273438, Capital: $undefined
+   🔧 Technical: YES, Backtest: YES, Sentiment: YES
+   🎲 Monte Carlo: YES, Microstructure: YES
+   📈 OHLC Data Length: 501 points
+   📈 Sample OHLC: {
+  first: { date: 2023-08-10T13:30:00.000Z, close: 322.92999267578125 },
+  last: { date: 2025-08-08T13:30:00.000Z, close: 522.0399780273438 }
+}
+🧠 Expert AI: Analyzing MSFT with regime-aware multi-signal reconciliation...
+🛡️ Tail Risk Multiplier: 1x (LOW risk level)
+🔍 Microstructure Timing: Score 35/100, Adjustment: -20.0%, Multiplier: 0.7x
+🎲 Monte Carlo Integration: Scenario bullish (74.1%), Size Multiplier: 1.25x
+   🎯 Dual Timeframe Primary: WATCH (TIMEFRAME_CONFLICT)
+🔄 Divergence Detection: Analyzing 501 data points...
+📊 Divergences Found: 0 (NEUTRAL - 0.0%)
+📋 RULE 0: Collecting signals with deterministic ordering...
+🎨 RULE 10: Advanced Pattern Validation Engine - Analyzing pattern quality...
+   📊 Validating Pattern 1: RISING_WEDGE
+   ❌ Pattern REJECTED: RISING_WEDGE (Grade: D+, Below B+ threshold)
+🎯 RULE 10 Summary: 0/1 patterns passed validation
+🎨 RULE 10: Pattern Validation - 1 raw → 0 validated patterns
+📊 RULE 0 Signal Processing Summary:
+   📝 Total Signals Registered: 6
+   🎯 Primary Signals: 2
+   ✅ Confirmer Signals: 1
+   🛡️ Veto Signals: 1
+   📏 Position Sizing Signals: 0
+   📋 Processing Order: multi_timeframe → dual_timeframe → sepa_method → triple_screen → technical_analysis → sentiment_analysis
+🔍 Debug: OHLC data length: 501, has technical: true
+📊 Volatility Regime Detection: Analyzing 501 data points...
+   🔍 Volatility Debug: ATR=2.05% (daily) → 32.58% (annualized), Realized=19.27% (annualized), Avg=25.93%
+📈 Volatility Regime: NORMAL_HIGH (70.0% confidence)
+   ATR: 2.05% | Realized Vol: 19.27%
+✅ Regime detection successful: NORMAL_HIGH
+⚖️ Enhanced Bayesian Weighting: Processing 6 signals for NORMAL_HIGH regime (ChatGPT formula)...
+   🧠 multi_timeframe: R=67.0% C=0.0% (0t) ⚠️
+      Formula: 0.90 * 0.91 * 0.670 * 0.000 = 0.000 → floor(0.15) = 0.150
+   🧠 dual_timeframe: R=67.0% C=0.0% (0t) ⚠️
+      Formula: 0.30 * 0.91 * 0.670 * 0.000 = 0.000 → floor(0.15) = 0.150
+   🧠 sepa_method: R=67.0% C=0.0% (0t) ⚠️
+      Formula: 0.75 * 0.91 * 0.670 * 0.000 = 0.000 → floor(0.15) = 0.150
+   🧠 triple_screen: R=67.0% C=0.0% (0t) ⚠️
+      Formula: 0.40 * 0.91 * 0.670 * 0.000 = 0.000 → floor(0.15) = 0.150
+   🧠 multi_timeframe: R=67.0% C=0.0% (0t) ⚠️
+      Formula: 0.90 * 0.91 * 0.670 * 0.000 = 0.000 → floor(0.15) = 0.150
+   🧠 dual_timeframe: R=67.0% C=0.0% (0t) ⚠️
+      Formula: 0.30 * 0.91 * 0.670 * 0.000 = 0.000 → floor(0.15) = 0.150
+   🧠 sepa_method: R=67.0% C=0.0% (0t) ⚠️
+      Formula: 0.75 * 0.91 * 0.670 * 0.000 = 0.000 → floor(0.15) = 0.150
+   🧠 triple_screen: R=67.0% C=0.0% (0t) ⚠️
+      Formula: 0.40 * 0.91 * 0.670 * 0.000 = 0.000 → floor(0.15) = 0.150
+   🧠 technical_analysis: R=67.0% C=0.0% (0t) ⚠️
+      Formula: 0.40 * 0.91 * 0.670 * 0.000 = 0.000 → floor(0.15) = 0.150
+   🧠 sentiment_analysis: R=67.0% C=0.0% (0t) ⚠️
+      Formula: 0.78 * 0.91 * 0.670 * 0.000 = 0.000 → floor(0.15) = 0.150
+🧠 Bayesian Impact: 6 signals adjusted for NORMAL_HIGH market conditions
+🎯 RULE 0: Applying Deterministic Signal Conflict Resolution...
+📋 RULE 0: Processing 6 signals in deterministic order...
+   1. [PRIMARY] multi_timeframe (P:1.1) → STRONG_BUY (15.0%)
+   2. [PRIMARY] dual_timeframe (P:1.2) → WATCH (15.0%)
+   3. [CONFIRMER] sepa_method (P:2.2) → BUY (15.0%)
+   4. [VETO] triple_screen (P:3.1) → WATCH (15.0%)
+   5. [SUPPLEMENTARY] technical_analysis (P:5.8) → WATCH (15.0%)
+   6. [SUPPLEMENTARY] sentiment_analysis (P:5.9) → HOLD (15.0%)
+   🎯 Primary Decision: STRONG_BUY from multi_timeframe (15.0% confidence)
+   ✅ Primary Decision allows proceeding: STRONG_BUY
+   📊 Confirmers adjustment: -1.2%
+     • SEPA Method: -1.2% (weak)
+   ✅ No veto filters triggered
+📊 RULE 2 Auto-normalization: Raw total 108.0% → Normalized to 100.0%
+📊 RULE 2 Weight Breakdown (auto-normalized to 100%):
+   🎯 Primary Decision: 50.9%
+   ✅ Confirmers: 35.2%
+   🛡️ Vetoes: 0.0%
+   📈 Backtest: 13.9%
+   🎯 Final Decision: STRONG_BUY (13.8% confidence)
+   📊 Confidence adjustment: -1.2%
+   📏 Position sizing: NORMAL
+   🔧 Resolution method: deterministic_hierarchy
+🛡️ Calculating Structure-Aware Stops (Direction: NEUTRAL) with Adaptive ATR...
+🚨 RULE 4: Hierarchical Stop Loss Engine - Analyzing priority levels...
+📊 RULE 4: Volatility Stop ACTIVATED: {
+  stopPrice: 545.6129891531808,
+  atrMultiplier: 2.2,
+  volatilityRegime: 'NORMAL_VOL'
+}
+   🛡️ Neutral Stop: 536.12 (1.5x ATR above current price)
+   🎯 Neutral Targets: 459.86 (defensive), 450.76 (fallback)
+📊 Risk-Reward Analysis:
+   R/R Ratio: 4.74 ✅
+   Risk Level: LOW
+   Max Risk: 3%
+🎯 RULE 7: Determining Trade Readiness...
+📊 RULE 3 Enhanced Trend Analysis:
+   🎯 Trend State: ABOVE_BAND (17.0% vs ±7.2% band)
+   📏 Dynamic Band: 5% base + 2.2% ATR = 7.2%
+   ✅ Active Exceptions: RECLAIM_VOLUME
+   🛡️ Restrictions: Grade(None) Sizing(100%)
+� RULE 5: Enhanced Volume Validation for HOLD...
+   📊 Volume Analysis: Current=15,516,600, Avg=19,829,265, Ratio=0.78x
+   🎯 Volume Classification: BELOW_AVERAGE (Below average volume)
+   📋 Breakout Ready: ❌, Institutional: ❌
+📊 RULE 7 Readiness Analysis:
+   🎯 Final Status: AVOID
+   📈 Grade: B- (❌)
+   💰 Risk/Reward: 4.74 (✅)
+   📉 200EMA Position: 17.0% from EMA200 (✅)
+   📊 Trend State: ABOVE_BAND (✅)
+   🛡️ Veto Status: ✅ No veto
+   📰 Sentiment: ✅ Fresh/Neutral
+📋 RULE 11: Generating Scenario Plans with Directional Consistency...
+   🎯 Primary Action: AVOID
+   📊 Base Confidence: 20.0%
+   🎯 HOLD Signal: Both scenarios equal (12.0% each)
+📊 RULE 9: Applying Sentiment Rules...
+   ⚠️ No sentiment data available - ignored without penalty
+🔍 Microstructure Timing: -10.0% confidence adjustment (Timing Score: 35)
+🎲 Monte Carlo Scenarios: +5.0% confidence adjustment (Scenario Clarity: 74.1%)
+🔍 Microstructure Execution: 0.7x multiplier applied
+   📊 Poor execution timing - reduced position (35/100)
+🎲 Monte Carlo Position Sizing: 1.3125x multiplier applied
+   🎯 BULLISH scenario (74.1% probability)
+   📊 Strong bullish probability (74.1%) with manageable downside risk + high scenario confidence boost
+📊 RULE 3 Enhanced Trend Analysis:
+   🎯 Trend State: ABOVE_BAND (17.0% vs ±7.2% band)
+   📏 Dynamic Band: 5% base + 2.2% ATR = 7.2%
+   ✅ Active Exceptions: RECLAIM_VOLUME
+   🛡️ Restrictions: Grade(None) Sizing(100%)
+🎯 Expert Decision: AVOID (Grade: B-) | R/R: 4.74 | Regime: NORMAL_HIGH
+✅ Expert AI Decision Engine completed successfully
+🔥 RULE 8: Portfolio Heat Monitoring - Calculating risk-scaled position...
+   🌡️ Portfolio Heat: 91°C (CRITICAL)
+   🔗 Correlation Risk: LOW (0% exposure)
+   📊 Market Regime: NEUTRAL
+   🚨 RULE 8: Portfolio overheating - position reduced to 0.6%
+   💰 RULE 8 Final Position: 0.6% (1 shares @ $522.0399780273438)
+   🛡️ Stop Loss: $NaN (NaN% risk)
+   🎯 Target: $NaN (R:R = 0.00)
+📊 RULE 3 Enhanced Trend Analysis:
+   🎯 Trend State: ABOVE_BAND (17.0% vs ±7.2% band)
+   📏 Dynamic Band: 5% base + 2.2% ATR = 7.2%
+   ✅ Active Exceptions: RECLAIM_VOLUME
+   🛡️ Restrictions: Grade(None) Sizing(100%)
+🔍 Volume Analysis: Last Volume = 15516600, 20DMA Volume = 19782120
+✅ Expert AI analysis complete for MSFT
+   🎯 Decision: HOLD (Grade: B-) - 15% confidence
+   📊 Entry: 522.04 | Stop: 536.12 | R/R: 4.74
+   🔧 Position: 0 shares, 0 value, 0% risk
+🎯 Starting unified AI analysis for TCS.NS...
+   ✅ Period 3mo within swing range (3-6mo)
+📊 RULE 1 Timeframe Policy:
+   📅 Requested: 3mo
+   🎯 Swing Decision: 3mo (clamped 3-6mo)
+   📈 Context Data: 24mo (always 24mo)
+📊 Phase 1: Collecting data for TCS.NS...
+📈 Fetching historical data for TCS.NS...
+   📊 Long-term analysis: 24 months (reliable backtesting)
+   ⚡ Short-term filter: 3 months (momentum/timing)
+🔬 Starting leak-free backtest validation for TCS.NS...
+   📊 Initializing LeakFreeBacktestingEngine...
+🛡️ Leak-Free Backtesting Engine initialized - Zero look-ahead bias guaranteed
+   🎯 Running leak-free backtest: TCS.NS, 24mo...
+🎯 Starting Leak-Free Backtest for TCS.NS...
+📰 Free News Sentiment Service initialized
+   Google News RSS: Enabled
+   Yahoo Finance: Enabled
+
+🔍 Getting news sentiment for TCS.NS
+📰 Fetching real news for TCS.NS (Tata Consultancy Services)
+   📡 Fetching from Google News RSS...
+📰 Free News Sentiment Service initialized
+   Google News RSS: Enabled
+   Yahoo Finance: Enabled
+🆓 Real news sentiment service enabled (Google News + Yahoo Finance)
+🧠 Sentiment analysis lexicons initialized
+   Positive keywords: 28
+   Negative keywords: 26
+   Impact multipliers: 10
+📰 Sentiment Analysis Service initialized
+   News monitoring: Enabled
+   Real news APIs: Enabled (FREE)
+   Social monitoring: Enabled
+   Sentiment threshold: 0.6
+🔗 Enhanced Alert Service with Sentiment Analysis initialized
+   Sentiment filtering: Enabled
+   Sentiment boost threshold: 0.3
+   Sentiment caution threshold: -0.3
+🔔 Generating sentiment-enhanced alert for TCS.NS...
+📰 Analyzing sentiment for TCS.NS...
+  🆓 Fetching REAL news sentiment for TCS.NS...
+
+🔍 Getting news sentiment for TCS.NS
+📰 Fetching real news for TCS.NS (Tata Consultancy Services)
+   📡 Fetching from Google News RSS...
+🛡️ Getting tail risk assessment for TCS.NS...
+📈 Fetching historical data for TCS.NS...
+   📊 Long-term analysis: 24 months (reliable backtesting)
+   ⚡ Short-term filter: 3 months (momentum/timing)
+🔍 Getting market microstructure analysis for TCS.NS...
+📈 Fetching historical data for TCS.NS...
+   📊 Long-term analysis: 24 months (reliable backtesting)
+   ⚡ Short-term filter: 3 months (momentum/timing)
+🎲 Getting Monte Carlo scenario analysis for TCS.NS...
+📈 Fetching historical data for TCS.NS...
+   📊 Long-term analysis: 24 months (reliable backtesting)
+   ⚡ Short-term filter: 3 months (momentum/timing)
+📊 Historical data: 492 bars (Fri Aug 11 2023 11:45:00 GMT+0800 (Singapore Standard Time) to Fri Aug 08 2025 11:45:00 GMT+0800 (Singapore Standard Time))
+🚶 Starting Walk-Forward Analysis...
+📊 Processing 45 walk-forward windows...
+✅ Walk-Forward Analysis complete: 0 windows processed
+🎲 Running Monte Carlo Analysis (10 simulations)...
+⚠️ Insufficient trades for Monte Carlo analysis
+   ✅ Leak-free backtest completed for TCS.NS
+   📊 Results: 0 trades, Health: 0/100
+📊 Yahoo Finance returned 493 data points for TCS.NS (24mo base + 3mo filter)
+📊 Running dual-timeframe technical analysis for TCS.NS:
+   📈 Long-term (493 data points): Foundation analysis
+   ⚡ Short-term (65 data points): Momentum filter
+📅 Fetching earnings data for TCS.NS...
+📊 Yahoo Finance returned 493 data points for TCS.NS (24mo base + 3mo filter)
+📊 Running dual-timeframe technical analysis for TCS.NS:
+   📈 Long-term (493 data points): Foundation analysis
+   ⚡ Short-term (65 data points): Momentum filter
+📅 Fetching earnings data for TCS.NS...
+📊 Yahoo Finance returned 493 data points for TCS.NS (24mo base + 3mo filter)
+📊 Running dual-timeframe technical analysis for TCS.NS:
+   📈 Long-term (493 data points): Foundation analysis
+   ⚡ Short-term (65 data points): Momentum filter
+📅 Fetching earnings data for TCS.NS...
+📊 Yahoo Finance returned 493 data points for TCS.NS (24mo base + 3mo filter)
+📊 Running dual-timeframe technical analysis for TCS.NS:
+   📈 Long-term (493 data points): Foundation analysis
+   ⚡ Short-term (65 data points): Momentum filter
+📅 Fetching earnings data for TCS.NS...
+   ✅ Earnings data fetched successfully for TCS.NS
+ADX calculation failed, using fallback values
+🔥 ALWAYS_BUY called with price: 3036.39990234375
+ADX calculation failed, using fallback values
+🔥 ALWAYS_BUY called with price: 3036.39990234375
+🔍 Running pattern detection on both timeframes...
+📈 Running multi-timeframe confluence analysis...
+📊 Analyzing TCS.NS on 1d timeframe...
+   ✅ Earnings data fetched successfully for TCS.NS
+ADX calculation failed, using fallback values
+🔥 ALWAYS_BUY called with price: 3036.39990234375
+ADX calculation failed, using fallback values
+🔥 ALWAYS_BUY called with price: 3036.39990234375
+🔍 Running pattern detection on both timeframes...
+📈 Running multi-timeframe confluence analysis...
+📊 Analyzing TCS.NS on 1d timeframe...
+   ✅ Earnings data fetched successfully for TCS.NS
+ADX calculation failed, using fallback values
+🔥 ALWAYS_BUY called with price: 3036.39990234375
+ADX calculation failed, using fallback values
+🔥 ALWAYS_BUY called with price: 3036.39990234375
+🔍 Running pattern detection on both timeframes...
+📈 Running multi-timeframe confluence analysis...
+📊 Analyzing TCS.NS on 1d timeframe...
+ADX calculation failed, using fallback values
+🔥 ALWAYS_BUY called with price: 3036.39990234375
+📊 Analyzing TCS.NS on 1wk timeframe...
+   ✅ Earnings data fetched successfully for TCS.NS
+ADX calculation failed, using fallback values
+🔥 ALWAYS_BUY called with price: 3036.39990234375
+ADX calculation failed, using fallback values
+🔥 ALWAYS_BUY called with price: 3036.39990234375
+🔍 Running pattern detection on both timeframes...
+📈 Running multi-timeframe confluence analysis...
+📊 Analyzing TCS.NS on 1d timeframe...
+ADX calculation failed, using fallback values
+🔥 ALWAYS_BUY called with price: 3036.39990234375
+📊 Analyzing TCS.NS on 1wk timeframe...
+ADX calculation failed, using fallback values
+🔥 ALWAYS_BUY called with price: 3036.39990234375
+📊 Analyzing TCS.NS on 1wk timeframe...
+ADX calculation failed, using fallback values
+🔥 ALWAYS_BUY called with price: 3036.39990234375
+📊 Analyzing TCS.NS on 1wk timeframe...
+ADX calculation failed, using fallback values
+🔥 ALWAYS_BUY called with price: 3031.89990234375
+🔄 Synthesizing dual timeframe analysis (2y foundation + 3mo filter)...
+   ✅ Timeframes aligned: NEUTRAL (confidence boosted)
+   🎯 Unified Result: NEUTRAL (90.0% confidence)
+   📊 Resolution: ALIGNMENT - NORMAL position size
+✅ Unified technical analysis complete for TCS.NS: {
+  longTermDataPoints: 493,
+  shortTermDataPoints: 65,
+  foundationSignal: 'NEUTRAL',
+  momentumFilter: 'NEUTRAL',
+  unifiedSignal: 'NEUTRAL',
+  longTermPatterns: 2,
+  shortTermPatterns: 2,
+  multiTimeframeScore: 77,
+  earningsDataAvailable: true,
+  hasTechnicalIndicators: true,
+  hasLatestIndicators: true,
+  technicalIndicatorsKeys: [
+    'ema',
+    'sma',
+    'rsi',
+    'macd',
+    'bollinger',
+    'atr',
+    'stochastic',
+    'adx',
+    'directionalMovement',
+    'volume',
+    'latest'
+  ],
+  latestIndicatorsKeys: [
+    'price',      'ema12',
+    'ema13',      'ema20',
+    'ema26',      'ema50',
+    'ema200',     'rsi',
+    'macd',       'macdSignal',
+    'bollinger',  'atr',
+    'stochastic', 'adx',
+    'plusDI',     'minusDI',
+    'volume',     'volumeRatio',
+    'avgVolume',  'avgVolume20DMA',
+    'vol20dma',   'resistance',
+    'support'
+  ]
+}
+🔍 Market Microstructure: Analyzing order flow and liquidity patterns...
+🔍 Microstructure Analysis Complete:
+   📊 Order Flow: STRONG_SELLING (35/100)
+   💧 Liquidity Quality: MEDIUM (5 zones)
+   🏛️ Institutional Activity: LOW (0% confidence)
+   ⏰ Optimal Timing: AVOID_ENTRY
+✅ Market microstructure analysis complete for TCS.NS
+ADX calculation failed, using fallback values
+🔥 ALWAYS_BUY called with price: 3031.89990234375
+🔄 Synthesizing dual timeframe analysis (2y foundation + 3mo filter)...
+   ✅ Timeframes aligned: NEUTRAL (confidence boosted)
+   🎯 Unified Result: NEUTRAL (90.0% confidence)
+   📊 Resolution: ALIGNMENT - NORMAL position size
+✅ Unified technical analysis complete for TCS.NS: {
+  longTermDataPoints: 493,
+  shortTermDataPoints: 65,
+  foundationSignal: 'NEUTRAL',
+  momentumFilter: 'NEUTRAL',
+  unifiedSignal: 'NEUTRAL',
+  longTermPatterns: 2,
+  shortTermPatterns: 2,
+  multiTimeframeScore: 77,
+  earningsDataAvailable: true,
+  hasTechnicalIndicators: true,
+  hasLatestIndicators: true,
+  technicalIndicatorsKeys: [
+    'ema',
+    'sma',
+    'rsi',
+    'macd',
+    'bollinger',
+    'atr',
+    'stochastic',
+    'adx',
+    'directionalMovement',
+    'volume',
+    'latest'
+  ],
+  latestIndicatorsKeys: [
+    'price',      'ema12',
+    'ema13',      'ema20',
+    'ema26',      'ema50',
+    'ema200',     'rsi',
+    'macd',       'macdSignal',
+    'bollinger',  'atr',
+    'stochastic', 'adx',
+    'plusDI',     'minusDI',
+    'volume',     'volumeRatio',
+    'avgVolume',  'avgVolume20DMA',
+    'vol20dma',   'resistance',
+    'support'
+  ]
+}
+🛡️ Tail Risk Protection: Analyzing market conditions...
+🛡️ Tail Risk Score: 0/100 (LOW)
+   📊 Protection Level: NORMAL
+   📉 Position Size Multiplier: 1x
+✅ Tail risk assessment complete for TCS.NS
+ADX calculation failed, using fallback values
+🔥 ALWAYS_BUY called with price: 3031.89990234375
+🔄 Synthesizing dual timeframe analysis (2y foundation + 3mo filter)...
+   ✅ Timeframes aligned: NEUTRAL (confidence boosted)
+   🎯 Unified Result: NEUTRAL (90.0% confidence)
+   📊 Resolution: ALIGNMENT - NORMAL position size
+✅ Unified technical analysis complete for TCS.NS: {
+  longTermDataPoints: 493,
+  shortTermDataPoints: 65,
+  foundationSignal: 'NEUTRAL',
+  momentumFilter: 'NEUTRAL',
+  unifiedSignal: 'NEUTRAL',
+  longTermPatterns: 2,
+  shortTermPatterns: 2,
+  multiTimeframeScore: 77,
+  earningsDataAvailable: true,
+  hasTechnicalIndicators: true,
+  hasLatestIndicators: true,
+  technicalIndicatorsKeys: [
+    'ema',
+    'sma',
+    'rsi',
+    'macd',
+    'bollinger',
+    'atr',
+    'stochastic',
+    'adx',
+    'directionalMovement',
+    'volume',
+    'latest'
+  ],
+  latestIndicatorsKeys: [
+    'price',      'ema12',
+    'ema13',      'ema20',
+    'ema26',      'ema50',
+    'ema200',     'rsi',
+    'macd',       'macdSignal',
+    'bollinger',  'atr',
+    'stochastic', 'adx',
+    'plusDI',     'minusDI',
+    'volume',     'volumeRatio',
+    'avgVolume',  'avgVolume20DMA',
+    'vol20dma',   'resistance',
+    'support'
+  ]
+}
+ADX calculation failed, using fallback values
+🔥 ALWAYS_BUY called with price: 3031.89990234375
+🔄 Synthesizing dual timeframe analysis (2y foundation + 3mo filter)...
+   ✅ Timeframes aligned: NEUTRAL (confidence boosted)
+   🎯 Unified Result: NEUTRAL (90.0% confidence)
+   📊 Resolution: ALIGNMENT - NORMAL position size
+✅ Unified technical analysis complete for TCS.NS: {
+  longTermDataPoints: 493,
+  shortTermDataPoints: 65,
+  foundationSignal: 'NEUTRAL',
+  momentumFilter: 'NEUTRAL',
+  unifiedSignal: 'NEUTRAL',
+  longTermPatterns: 2,
+  shortTermPatterns: 2,
+  multiTimeframeScore: 77,
+  earningsDataAvailable: true,
+  hasTechnicalIndicators: true,
+  hasLatestIndicators: true,
+  technicalIndicatorsKeys: [
+    'ema',
+    'sma',
+    'rsi',
+    'macd',
+    'bollinger',
+    'atr',
+    'stochastic',
+    'adx',
+    'directionalMovement',
+    'volume',
+    'latest'
+  ],
+  latestIndicatorsKeys: [
+    'price',      'ema12',
+    'ema13',      'ema20',
+    'ema26',      'ema50',
+    'ema200',     'rsi',
+    'macd',       'macdSignal',
+    'bollinger',  'atr',
+    'stochastic', 'adx',
+    'plusDI',     'minusDI',
+    'volume',     'volumeRatio',
+    'avgVolume',  'avgVolume20DMA',
+    'vol20dma',   'resistance',
+    'support'
+  ]
+}
+🎲 Monte Carlo: Starting probabilistic scenario analysis...
+🎲 Monte Carlo: 1000 simulations complete
+   📊 Bullish Probability: 0.0%
+   📉 Bearish Probability: 98.2%
+   ↔️ Sideways Probability: 1.8%
+✅ Monte Carlo analysis complete for TCS.NS
+   ✅ Google News: 40 articles
+   📡 Fetching from Yahoo Finance...
+   ✅ Google News: 40 articles
+   📡 Fetching from Yahoo Finance...
+   ✅ Yahoo Finance: 0 articles
+   📊 Total unique articles: 15
+📊 Analyzing sentiment for 15 articles about TCS.NS
+   📄 "Tata Consultancy Services share price trades flat; hits intr..." - Score: 0.000 (Google News)
+   📄 "TCS share price today: Tata Consultancy Services stock drops..." - Score: 0.000 (Google News)
+   📄 "Tata Consultancy Services shares fall marginally in today's ..." - Score: -2.598 (Google News)
+   📄 "TCS stock hits 33-month low; Jefferies, YES Securities' take..." - Score: 0.000 (Google News)
+   📄 "Tata Consultancy Services Limited (532540) Expands into New ..." - Score: 3.464 (Google News)
+   📄 "Tata Consultancy Services shares fall marginally in today's ..." - Score: -2.598 (Google News)
+   📄 "Tata Consultancy Services shares see moderate fall in Thursd..." - Score: -2.598 (Google News)
+   📄 "Tata Consultancy Services shares decline marginally after ch..." - Score: -2.598 (Google News)
+   📄 "Tata Consultancy Services shares fall 1.11% in today's sessi..." - Score: -2.598 (Google News)
+   📄 "Tata Consultancy Services shares trade flat in today's sessi..." - Score: 0.000 (Google News)
+   📄 "TCS Crosses $30 Billion Revenue Milestone, Strong Order Book..." - Score: 3.674 (Google News)
+   📄 "Technical Analysis: Tata Consultancy Services Limited (53254..." - Score: 2.000 (Google News)
+   📄 "TCS layoffs: Amidst mass sackings, Tata Consultancy Services..." - Score: 0.000 (Google News)
+   📄 "Tata Consultancy Services shares fall marginally; over 11.7 ..." - Score: -2.598 (Google News)
+   📄 "TCS BaNCS Dialogues: Transforming Finance with APIs - Tata C..." - Score: 0.000 (Google News)
+   📈 Final Sentiment: NEGATIVE (-0.430) - Confidence: 100.0%
+  ✅ Real news: NEGATIVE (-0.430) from 15 articles
+  💬 Social sentiment: -0.031 (313 mentions)
+✅ Sentiment analysis complete for TCS.NS: -0.310 (NEGATIVE_BIAS)
+✅ Generated LOW priority alert for TCS.NS with NaN% confidence
+   ✅ Yahoo Finance: 0 articles
+   📊 Total unique articles: 15
+📊 Analyzing sentiment for 15 articles about TCS.NS
+   📄 "Tata Consultancy Services share price trades flat; hits intr..." - Score: 0.000 (Google News)
+   📄 "TCS share price today: Tata Consultancy Services stock drops..." - Score: 0.000 (Google News)
+   📄 "Tata Consultancy Services shares fall marginally in today's ..." - Score: -2.598 (Google News)
+   📄 "TCS stock hits 33-month low; Jefferies, YES Securities' take..." - Score: 0.000 (Google News)
+   📄 "Tata Consultancy Services Limited (532540) Expands into New ..." - Score: 3.464 (Google News)
+   📄 "Tata Consultancy Services shares fall marginally in today's ..." - Score: -2.598 (Google News)
+   📄 "Tata Consultancy Services shares see moderate fall in Thursd..." - Score: -2.598 (Google News)
+   📄 "Tata Consultancy Services shares decline marginally after ch..." - Score: -2.598 (Google News)
+   📄 "Tata Consultancy Services shares fall 1.11% in today's sessi..." - Score: -2.598 (Google News)
+   📄 "Tata Consultancy Services shares trade flat in today's sessi..." - Score: 0.000 (Google News)
+   📄 "TCS Crosses $30 Billion Revenue Milestone, Strong Order Book..." - Score: 3.674 (Google News)
+   📄 "Technical Analysis: Tata Consultancy Services Limited (53254..." - Score: 2.000 (Google News)
+   📄 "TCS layoffs: Amidst mass sackings, Tata Consultancy Services..." - Score: 0.000 (Google News)
+   📄 "Tata Consultancy Services shares fall marginally; over 11.7 ..." - Score: -2.598 (Google News)
+   📄 "TCS BaNCS Dialogues: Transforming Finance with APIs - Tata C..." - Score: 0.000 (Google News)
+   📈 Final Sentiment: NEGATIVE (-0.430) - Confidence: 100.0%
+🔎 Sentiment raw result for TCS.NS: {
+  "symbol": "TCS.NS",
+  "sentiment": "NEGATIVE",
+  "score": -0.4300080692538249,
+  "confidence": 1,
+  "articles": 15,
+  "keywords": [
+    "consultancy",
+    "services",
+    "shares",
+    "today",
+    "marginally"
+  ],
+  "sources": [
+    "Google News"
+  ],
+  "timestamp": "2025-08-10T18:15:45.949Z"
+}
+🧠 Phase 2: Integrating AI insights...
+⚡ Phase 3: Running Expert AI Decision Engine...
+🧠 Calling Expert AI Decision Engine...
+🧠 Starting Expert AI Decision Engine...
+   📊 Context: TCS.NS, Price: $3036.39990234375, Capital: $undefined
+   🔧 Technical: YES, Backtest: YES, Sentiment: YES
+   🎲 Monte Carlo: YES, Microstructure: YES
+   📈 OHLC Data Length: 493 points
+   📈 Sample OHLC: {
+  first: { date: 2023-08-10T03:45:00.000Z, close: 3442.10009765625 },
+  last: { date: 2025-08-08T03:45:00.000Z, close: 3036.39990234375 }
+}
+🧠 Expert AI: Analyzing TCS.NS with regime-aware multi-signal reconciliation...
+🛡️ Tail Risk Multiplier: 1x (LOW risk level)
+🔍 Microstructure Timing: Score 20/100, Adjustment: -20.0%, Multiplier: 0.7x
+🎲 Monte Carlo Integration: Scenario bearish (98.2%), Size Multiplier: 0.75x
+   🎯 Dual Timeframe Primary: NEUTRAL (ALIGNMENT)
+🔄 Divergence Detection: Analyzing 493 data points...
+📊 Divergences Found: 0 (NEUTRAL - 0.0%)
+📋 RULE 0: Collecting signals with deterministic ordering...
+🎨 RULE 10: Advanced Pattern Validation Engine - Analyzing pattern quality...
+   📊 Validating Pattern 1: DESCENDING_TRIANGLE
+   ❌ Pattern REJECTED: DESCENDING_TRIANGLE (Grade: C-, Below B+ threshold)
+   📊 Validating Pattern 2: FALLING_WEDGE
+   ❌ Pattern REJECTED: FALLING_WEDGE (Grade: D+, Below B+ threshold)
+🎯 RULE 10 Summary: 0/2 patterns passed validation
+🎨 RULE 10: Pattern Validation - 2 raw → 0 validated patterns
+📊 RULE 0 Signal Processing Summary:
+   📝 Total Signals Registered: 7
+   🎯 Primary Signals: 2
+   ✅ Confirmer Signals: 1
+   🛡️ Veto Signals: 1
+   📏 Position Sizing Signals: 0
+   📋 Processing Order: multi_timeframe → dual_timeframe → sepa_method → triple_screen → core_systems → technical_analysis → sentiment_analysis
+🔍 Debug: OHLC data length: 493, has technical: true
+📊 Volatility Regime Detection: Analyzing 493 data points...
+   🔍 Volatility Debug: ATR=1.33% (daily) → 21.18% (annualized), Realized=14.30% (annualized), Avg=17.74%
+📈 Volatility Regime: NORMAL_LOW (70.0% confidence)
+   ATR: 1.33% | Realized Vol: 14.30%
+✅ Regime detection successful: NORMAL_LOW
+⚖️ Enhanced Bayesian Weighting: Processing 7 signals for NORMAL_LOW regime (ChatGPT formula)...
+   🧠 multi_timeframe: R=67.0% C=0.0% (0t) ⚠️
+      Formula: 0.74 * 0.91 * 0.670 * 0.000 = 0.000 → floor(0.15) = 0.150
+   🧠 dual_timeframe: R=67.0% C=0.0% (0t) ⚠️
+      Formula: 0.90 * 0.91 * 0.670 * 0.000 = 0.000 → floor(0.15) = 0.150
+   🧠 sepa_method: R=67.0% C=0.0% (0t) ⚠️
+      Formula: 0.95 * 0.91 * 0.670 * 0.000 = 0.000 → floor(0.15) = 0.150
+   🧠 triple_screen: R=67.0% C=0.0% (0t) ⚠️
+      Formula: 0.40 * 0.91 * 0.670 * 0.000 = 0.000 → floor(0.15) = 0.150
+   🧠 multi_timeframe: R=67.0% C=0.0% (0t) ⚠️
+      Formula: 0.74 * 0.91 * 0.670 * 0.000 = 0.000 → floor(0.15) = 0.150
+   🧠 dual_timeframe: R=67.0% C=0.0% (0t) ⚠️
+      Formula: 0.90 * 0.91 * 0.670 * 0.000 = 0.000 → floor(0.15) = 0.150
+   🧠 sepa_method: R=67.0% C=0.0% (0t) ⚠️
+      Formula: 0.95 * 0.91 * 0.670 * 0.000 = 0.000 → floor(0.15) = 0.150
+   🧠 triple_screen: R=67.0% C=0.0% (0t) ⚠️
+      Formula: 0.40 * 0.91 * 0.670 * 0.000 = 0.000 → floor(0.15) = 0.150
+   🧠 core_systems: R=67.0% C=0.0% (0t) ⚠️
+      Formula: 0.60 * 0.91 * 0.670 * 0.000 = 0.000 → floor(0.15) = 0.150
+   🧠 technical_analysis: R=67.0% C=0.0% (0t) ⚠️
+      Formula: 0.40 * 0.91 * 0.670 * 0.000 = 0.000 → floor(0.15) = 0.150
+   🧠 sentiment_analysis: R=67.0% C=0.0% (0t) ⚠️
+      Formula: 0.26 * 0.91 * 0.670 * 0.000 = 0.000 → floor(0.15) = 0.150
+🧠 Bayesian Impact: 7 signals adjusted for NORMAL_LOW market conditions
+🎯 RULE 0: Applying Deterministic Signal Conflict Resolution...
+📋 RULE 0: Processing 7 signals in deterministic order...
+   1. [PRIMARY] multi_timeframe (P:1.1) → STRONG_BUY (15.0%)
+   2. [PRIMARY] dual_timeframe (P:1.2) → NEUTRAL (15.0%)
+   3. [CONFIRMER] sepa_method (P:2.2) → STRONG_SELL (15.0%)
+   4. [VETO] triple_screen (P:3.1) → WATCH (15.0%)
+   5. [SUPPLEMENTARY] core_systems (P:5.14) → WATCH (15.0%)
+   6. [SUPPLEMENTARY] technical_analysis (P:5.8) → NEUTRAL (15.0%)
+   7. [SUPPLEMENTARY] sentiment_analysis (P:5.9) → HOLD (15.0%)
+   🎯 Primary Decision: STRONG_BUY from multi_timeframe (15.0% confidence)
+   ✅ Primary Decision allows proceeding: STRONG_BUY
+   📊 Confirmers adjustment: -1.2%
+     • SEPA Method: -1.2% (weak)
+   ✅ No veto filters triggered
+📊 RULE 2 Auto-normalization: Raw total 108.0% → Normalized to 100.0%
+📊 RULE 2 Weight Breakdown (auto-normalized to 100%):
+   🎯 Primary Decision: 50.9%
+   ✅ Confirmers: 35.2%
+   🛡️ Vetoes: 0.0%
+   📈 Backtest: 13.9%
+   🎯 Final Decision: STRONG_BUY (13.8% confidence)
+   📊 Confidence adjustment: -1.2%
+   📏 Position sizing: NORMAL
+   🔧 Resolution method: deterministic_hierarchy
+🛡️ Calculating Structure-Aware Stops (Direction: NEUTRAL) with Adaptive ATR...
+🚨 RULE 4: Hierarchical Stop Loss Engine - Analyzing priority levels...
+📊 RULE 4: Volatility Stop ACTIVATED: {
+  stopPrice: 3107.7176534598216,
+  atrMultiplier: 2.2,
+  volatilityRegime: 'LOW_VOL'
+}
+   🛡️ Neutral Stop: 3103.71 (1.5x ATR above current price)
+   🎯 Neutral Targets: 3021.52 (defensive), 2961.68 (fallback)
+📊 Risk-Reward Analysis:
+   R/R Ratio: 0.67 ❌ REJECTED
+   Risk Level: UNACCEPTABLE
+   Max Risk: 0%
+🎯 RULE 7: Determining Trade Readiness...
+📋 RULE 11: Generating Scenario Plans with Directional Consistency...
+   🎯 Primary Action: AVOID
+   📊 Base Confidence: 20.0%
+   🎯 HOLD Signal: Both scenarios equal (12.0% each)
+📊 RULE 9: Applying Sentiment Rules...
+   ⚠️ No sentiment data available - ignored without penalty
+🔍 Microstructure Timing: -10.0% confidence adjustment (Timing Score: 20)
+🎲 Monte Carlo Scenarios: +5.0% confidence adjustment (Scenario Clarity: 98.2%)
+🔍 Microstructure Execution: 0.7x multiplier applied
+   📊 Poor execution timing - reduced position (20/100)
+🎲 Monte Carlo Position Sizing: 0.7875000000000001x multiplier applied
+   🎯 BEARISH scenario (98.2% probability)
+   📊 High bearish probability (98.2%) requires defensive positioning + high scenario confidence boost
+📊 RULE 3 Enhanced Trend Analysis:
+   🎯 Trend State: BELOW_BAND (-15.6% vs ±6.8% band)
+   📏 Dynamic Band: 5% base + 1.8% ATR = 6.8%
+   ✅ Active Exceptions: None
+   🛡️ Restrictions: Grade(B+) Sizing(50%)
+🎯 Expert Decision: AVOID (Grade: C-) | R/R: 0.67 | Regime: NORMAL_LOW
+✅ Expert AI Decision Engine completed successfully
+🔥 RULE 8: Portfolio Heat Monitoring - Calculating risk-scaled position...
+   🌡️ Portfolio Heat: 91°C (CRITICAL)
+   🔗 Correlation Risk: LOW (0% exposure)
+   📊 Market Regime: NEUTRAL
+   🚨 RULE 8: Portfolio overheating - position reduced to 0.6%
+   💰 RULE 8 Final Position: 0.6% (0 shares @ $3036.39990234375)
+   🛡️ Stop Loss: $NaN (NaN% risk)
+   🎯 Target: $NaN (R:R = 0.00)
+📊 RULE 3 Enhanced Trend Analysis:
+   🎯 Trend State: BELOW_BAND (-15.6% vs ±6.8% band)
+   📏 Dynamic Band: 5% base + 1.8% ATR = 6.8%
+   ✅ Active Exceptions: None
+   🛡️ Restrictions: Grade(B+) Sizing(50%)
+🔍 Volume Analysis: Last Volume = 2762140, 20DMA Volume = 2860326.85
+✅ Expert AI analysis complete for TCS.NS
+   🎯 Decision: HOLD (Grade: C-) - 15% confidence
+   📊 Entry: 3036.4 | Stop: 3103.71 | R/R: 0.67
+   🔧 Position: 0 shares, 0 value, 0% risk
+🎯 Starting unified AI analysis for AAPL...
+   ✅ Period 3mo within swing range (3-6mo)
+📊 RULE 1 Timeframe Policy:
+   📅 Requested: 3mo
+   🎯 Swing Decision: 3mo (clamped 3-6mo)
+   📈 Context Data: 24mo (always 24mo)
+📊 Phase 1: Collecting data for AAPL...
+📈 Fetching historical data for AAPL...
+   📊 Long-term analysis: 24 months (reliable backtesting)
+   ⚡ Short-term filter: 3 months (momentum/timing)
+🔬 Starting leak-free backtest validation for AAPL...
+   📊 Initializing LeakFreeBacktestingEngine...
+🛡️ Leak-Free Backtesting Engine initialized - Zero look-ahead bias guaranteed
+   🎯 Running leak-free backtest: AAPL, 24mo...
+🎯 Starting Leak-Free Backtest for AAPL...
+📰 Free News Sentiment Service initialized
+   Google News RSS: Enabled
+   Yahoo Finance: Enabled
+
+🔍 Getting news sentiment for AAPL
+📰 Fetching real news for AAPL (AAPL)
+   📡 Fetching from Google News RSS...
+📰 Free News Sentiment Service initialized
+   Google News RSS: Enabled
+   Yahoo Finance: Enabled
+🆓 Real news sentiment service enabled (Google News + Yahoo Finance)
+🧠 Sentiment analysis lexicons initialized
+   Positive keywords: 28
+   Negative keywords: 26
+   Impact multipliers: 10
+📰 Sentiment Analysis Service initialized
+   News monitoring: Enabled
+   Real news APIs: Enabled (FREE)
+   Social monitoring: Enabled
+   Sentiment threshold: 0.6
+🔗 Enhanced Alert Service with Sentiment Analysis initialized
+   Sentiment filtering: Enabled
+   Sentiment boost threshold: 0.3
+   Sentiment caution threshold: -0.3
+🔔 Generating sentiment-enhanced alert for AAPL...
+📰 Analyzing sentiment for AAPL...
+  🆓 Fetching REAL news sentiment for AAPL...
+
+🔍 Getting news sentiment for AAPL
+📰 Fetching real news for AAPL (AAPL)
+   📡 Fetching from Google News RSS...
+🛡️ Getting tail risk assessment for AAPL...
+📈 Fetching historical data for AAPL...
+   📊 Long-term analysis: 24 months (reliable backtesting)
+   ⚡ Short-term filter: 3 months (momentum/timing)
+🔍 Getting market microstructure analysis for AAPL...
+📈 Fetching historical data for AAPL...
+   📊 Long-term analysis: 24 months (reliable backtesting)
+   ⚡ Short-term filter: 3 months (momentum/timing)
+🎲 Getting Monte Carlo scenario analysis for AAPL...
+📈 Fetching historical data for AAPL...
+   📊 Long-term analysis: 24 months (reliable backtesting)
+   ⚡ Short-term filter: 3 months (momentum/timing)
+📊 Yahoo Finance returned 501 data points for AAPL (24mo base + 3mo filter)
+📊 Running dual-timeframe technical analysis for AAPL:
+   📈 Long-term (501 data points): Foundation analysis
+   ⚡ Short-term (62 data points): Momentum filter
+📅 Fetching earnings data for AAPL...
+📊 Yahoo Finance returned 501 data points for AAPL (24mo base + 3mo filter)
+📊 Running dual-timeframe technical analysis for AAPL:
+   📈 Long-term (501 data points): Foundation analysis
+   ⚡ Short-term (62 data points): Momentum filter
+📅 Fetching earnings data for AAPL...
+📊 Yahoo Finance returned 501 data points for AAPL (24mo base + 3mo filter)
+📊 Running dual-timeframe technical analysis for AAPL:
+   📈 Long-term (501 data points): Foundation analysis
+   ⚡ Short-term (62 data points): Momentum filter
+📅 Fetching earnings data for AAPL...
+📊 Historical data: 500 bars (Fri Aug 11 2023 21:30:00 GMT+0800 (Singapore Standard Time) to Fri Aug 08 2025 21:30:00 GMT+0800 (Singapore Standard Time))
+🚶 Starting Walk-Forward Analysis...
+📊 Processing 46 walk-forward windows...
+✅ Walk-Forward Analysis complete: 0 windows processed
+🎲 Running Monte Carlo Analysis (10 simulations)...
+⚠️ Insufficient trades for Monte Carlo analysis
+   ✅ Leak-free backtest completed for AAPL
+   📊 Results: 0 trades, Health: 0/100
+📊 Yahoo Finance returned 501 data points for AAPL (24mo base + 3mo filter)
+📊 Running dual-timeframe technical analysis for AAPL:
+   📈 Long-term (501 data points): Foundation analysis
+   ⚡ Short-term (62 data points): Momentum filter
+📅 Fetching earnings data for AAPL...
+   ✅ Earnings data fetched successfully for AAPL
+ADX calculation failed, using fallback values
+🔥 ALWAYS_BUY called with price: 229.35000610351562
+ADX calculation failed, using fallback values
+🔥 ALWAYS_BUY called with price: 229.35000610351562
+🔍 Running pattern detection on both timeframes...
+📈 Running multi-timeframe confluence analysis...
+📊 Analyzing AAPL on 1d timeframe...
+   ✅ Earnings data fetched successfully for AAPL
+ADX calculation failed, using fallback values
+🔥 ALWAYS_BUY called with price: 229.35000610351562
+ADX calculation failed, using fallback values
+🔥 ALWAYS_BUY called with price: 229.35000610351562
+🔍 Running pattern detection on both timeframes...
+📈 Running multi-timeframe confluence analysis...
+📊 Analyzing AAPL on 1d timeframe...
+   ✅ Earnings data fetched successfully for AAPL
+ADX calculation failed, using fallback values
+🔥 ALWAYS_BUY called with price: 229.35000610351562
+ADX calculation failed, using fallback values
+🔥 ALWAYS_BUY called with price: 229.35000610351562
+🔍 Running pattern detection on both timeframes...
+📈 Running multi-timeframe confluence analysis...
+📊 Analyzing AAPL on 1d timeframe...
+ADX calculation failed, using fallback values
+🔥 ALWAYS_BUY called with price: 229.35000610351562
+📊 Analyzing AAPL on 1wk timeframe...
+   ✅ Earnings data fetched successfully for AAPL
+ADX calculation failed, using fallback values
+🔥 ALWAYS_BUY called with price: 229.35000610351562
+ADX calculation failed, using fallback values
+🔥 ALWAYS_BUY called with price: 229.35000610351562
+🔍 Running pattern detection on both timeframes...
+📈 Running multi-timeframe confluence analysis...
+📊 Analyzing AAPL on 1d timeframe...
+ADX calculation failed, using fallback values
+🔥 ALWAYS_BUY called with price: 229.35000610351562
+📊 Analyzing AAPL on 1wk timeframe...
+ADX calculation failed, using fallback values
+🔥 ALWAYS_BUY called with price: 229.35000610351562
+📊 Analyzing AAPL on 1wk timeframe...
+ADX calculation failed, using fallback values
+🔥 ALWAYS_BUY called with price: 229.35000610351562
+📊 Analyzing AAPL on 1wk timeframe...
+ADX calculation failed, using fallback values
+🔥 ALWAYS_BUY called with price: 229.35000610351562
+🔄 Synthesizing dual timeframe analysis (2y foundation + 3mo filter)...
+   ✅ Timeframes aligned: NEUTRAL (confidence boosted)
+   🎯 Unified Result: NEUTRAL (90.0% confidence)
+   📊 Resolution: ALIGNMENT - NORMAL position size
+✅ Unified technical analysis complete for AAPL: {
+  longTermDataPoints: 501,
+  shortTermDataPoints: 62,
+  foundationSignal: 'NEUTRAL',
+  momentumFilter: 'NEUTRAL',
+  unifiedSignal: 'NEUTRAL',
+  longTermPatterns: 2,
+  shortTermPatterns: 2,
+  multiTimeframeScore: 73,
+  earningsDataAvailable: true,
+  hasTechnicalIndicators: true,
+  hasLatestIndicators: true,
+  technicalIndicatorsKeys: [
+    'ema',
+    'sma',
+    'rsi',
+    'macd',
+    'bollinger',
+    'atr',
+    'stochastic',
+    'adx',
+    'directionalMovement',
+    'volume',
+    'latest'
+  ],
+  latestIndicatorsKeys: [
+    'price',      'ema12',
+    'ema13',      'ema20',
+    'ema26',      'ema50',
+    'ema200',     'rsi',
+    'macd',       'macdSignal',
+    'bollinger',  'atr',
+    'stochastic', 'adx',
+    'plusDI',     'minusDI',
+    'volume',     'volumeRatio',
+    'avgVolume',  'avgVolume20DMA',
+    'vol20dma',   'resistance',
+    'support'
+  ]
+}
+ADX calculation failed, using fallback values
+🔥 ALWAYS_BUY called with price: 229.35000610351562
+🔄 Synthesizing dual timeframe analysis (2y foundation + 3mo filter)...
+   ✅ Timeframes aligned: NEUTRAL (confidence boosted)
+   🎯 Unified Result: NEUTRAL (90.0% confidence)
+   📊 Resolution: ALIGNMENT - NORMAL position size
+✅ Unified technical analysis complete for AAPL: {
+  longTermDataPoints: 501,
+  shortTermDataPoints: 62,
+  foundationSignal: 'NEUTRAL',
+  momentumFilter: 'NEUTRAL',
+  unifiedSignal: 'NEUTRAL',
+  longTermPatterns: 2,
+  shortTermPatterns: 2,
+  multiTimeframeScore: 73,
+  earningsDataAvailable: true,
+  hasTechnicalIndicators: true,
+  hasLatestIndicators: true,
+  technicalIndicatorsKeys: [
+    'ema',
+    'sma',
+    'rsi',
+    'macd',
+    'bollinger',
+    'atr',
+    'stochastic',
+    'adx',
+    'directionalMovement',
+    'volume',
+    'latest'
+  ],
+  latestIndicatorsKeys: [
+    'price',      'ema12',
+    'ema13',      'ema20',
+    'ema26',      'ema50',
+    'ema200',     'rsi',
+    'macd',       'macdSignal',
+    'bollinger',  'atr',
+    'stochastic', 'adx',
+    'plusDI',     'minusDI',
+    'volume',     'volumeRatio',
+    'avgVolume',  'avgVolume20DMA',
+    'vol20dma',   'resistance',
+    'support'
+  ]
+}
+🛡️ Tail Risk Protection: Analyzing market conditions...
+🛡️ Tail Risk Score: 17/100 (LOW)
+   📊 Protection Level: NORMAL
+   📉 Position Size Multiplier: 1x
+✅ Tail risk assessment complete for AAPL
+ADX calculation failed, using fallback values
+🔥 ALWAYS_BUY called with price: 229.35000610351562
+🔄 Synthesizing dual timeframe analysis (2y foundation + 3mo filter)...
+   ✅ Timeframes aligned: NEUTRAL (confidence boosted)
+   🎯 Unified Result: NEUTRAL (90.0% confidence)
+   📊 Resolution: ALIGNMENT - NORMAL position size
+✅ Unified technical analysis complete for AAPL: {
+  longTermDataPoints: 501,
+  shortTermDataPoints: 62,
+  foundationSignal: 'NEUTRAL',
+  momentumFilter: 'NEUTRAL',
+  unifiedSignal: 'NEUTRAL',
+  longTermPatterns: 2,
+  shortTermPatterns: 2,
+  multiTimeframeScore: 73,
+  earningsDataAvailable: true,
+  hasTechnicalIndicators: true,
+  hasLatestIndicators: true,
+  technicalIndicatorsKeys: [
+    'ema',
+    'sma',
+    'rsi',
+    'macd',
+    'bollinger',
+    'atr',
+    'stochastic',
+    'adx',
+    'directionalMovement',
+    'volume',
+    'latest'
+  ],
+  latestIndicatorsKeys: [
+    'price',      'ema12',
+    'ema13',      'ema20',
+    'ema26',      'ema50',
+    'ema200',     'rsi',
+    'macd',       'macdSignal',
+    'bollinger',  'atr',
+    'stochastic', 'adx',
+    'plusDI',     'minusDI',
+    'volume',     'volumeRatio',
+    'avgVolume',  'avgVolume20DMA',
+    'vol20dma',   'resistance',
+    'support'
+  ]
+}
+🎲 Monte Carlo: Starting probabilistic scenario analysis...
+🎲 Monte Carlo: 1000 simulations complete
+   📊 Bullish Probability: 99.0%
+   📉 Bearish Probability: 0.0%
+   ↔️ Sideways Probability: 1.0%
+✅ Monte Carlo analysis complete for AAPL
+ADX calculation failed, using fallback values
+🔥 ALWAYS_BUY called with price: 229.35000610351562
+🔄 Synthesizing dual timeframe analysis (2y foundation + 3mo filter)...
+   ✅ Timeframes aligned: NEUTRAL (confidence boosted)
+   🎯 Unified Result: NEUTRAL (90.0% confidence)
+   📊 Resolution: ALIGNMENT - NORMAL position size
+✅ Unified technical analysis complete for AAPL: {
+  longTermDataPoints: 501,
+  shortTermDataPoints: 62,
+  foundationSignal: 'NEUTRAL',
+  momentumFilter: 'NEUTRAL',
+  unifiedSignal: 'NEUTRAL',
+  longTermPatterns: 2,
+  shortTermPatterns: 2,
+  multiTimeframeScore: 73,
+  earningsDataAvailable: true,
+  hasTechnicalIndicators: true,
+  hasLatestIndicators: true,
+  technicalIndicatorsKeys: [
+    'ema',
+    'sma',
+    'rsi',
+    'macd',
+    'bollinger',
+    'atr',
+    'stochastic',
+    'adx',
+    'directionalMovement',
+    'volume',
+    'latest'
+  ],
+  latestIndicatorsKeys: [
+    'price',      'ema12',
+    'ema13',      'ema20',
+    'ema26',      'ema50',
+    'ema200',     'rsi',
+    'macd',       'macdSignal',
+    'bollinger',  'atr',
+    'stochastic', 'adx',
+    'plusDI',     'minusDI',
+    'volume',     'volumeRatio',
+    'avgVolume',  'avgVolume20DMA',
+    'vol20dma',   'resistance',
+    'support'
+  ]
+}
+🔍 Market Microstructure: Analyzing order flow and liquidity patterns...
+🔍 Microstructure Analysis Complete:
+   📊 Order Flow: NEUTRAL (4/100)
+   💧 Liquidity Quality: MEDIUM (2 zones)
+   🏛️ Institutional Activity: LOW (0% confidence)
+   ⏰ Optimal Timing: AVOID_ENTRY
+✅ Market microstructure analysis complete for AAPL
+   ✅ Google News: 40 articles
+   📡 Fetching from Yahoo Finance...
+   ✅ Google News: 40 articles
+   📡 Fetching from Yahoo Finance...
+   ✅ Yahoo Finance: 10 articles
+   📊 Total unique articles: 15
+📊 Analyzing sentiment for 15 articles about AAPL
+   📄 "Why Apple (AAPL) Stock Is Moving Upwards - Yahoo Finance..." - Score: 0.000 (Google News)
+   📄 "After Earnings, Is Apple Stock a Buy, a Sell, or Fairly Valu..." - Score: 1.500 (Google News)
+   📄 "Apple: $600 Billion Noise (NASDAQ:AAPL) - Seeking Alpha..." - Score: 0.000 (Google News)
+   📄 "Apple surges on a new $100 billion U.S. investment. What Cra..." - Score: 0.000 (Google News)
+   📄 "What drives AAPL stock price - Free Wealth Planning Blueprin..." - Score: 0.000 (Google News)
+   📄 "Apple Stock Retakes Key Level After Dodging Tariff Bullet - ..." - Score: 0.000 (Google News)
+   📄 "Weekly Option Windfall: Trading AAPL Options Ahead of iPhone..." - Score: 3.464 (Google News)
+   📄 "Apple’s iPhone Sales Blow Past Estimates as Customers Raced ..." - Score: 0.000 (Google News)
+   📄 "Apple roars back with stronger-than-expected iPhone sales an..." - Score: 1.500 (Google News)
+   📄 "Apple (NASDAQ: AAPL) Stock Price Prediction and Forecast 202..." - Score: 0.000 (Google News)
+   📄 "Apple (AAPL) iPhone Production Soars as India Gains Prominen..." - Score: 0.000 (Google News)
+   📄 "AAPL Stock Surges on US Investment and TSMC Tariff Relief: K..." - Score: 0.000 (Google News)
+   📄 "AAPL Earnings: Apple’s Financial Results Beat on Top and Bot..." - Score: 2.598 (Google News)
+   📄 "Apple reports second quarter results - Business Wire..." - Score: 0.000 (Google News)
+   📄 "How to Buy Apple Stock: Is AAPL Worth Investing? - Markets.c..." - Score: 2.598 (Google News)
+   📈 Final Sentiment: POSITIVE (0.777) - Confidence: 100.0%
+🔎 Sentiment raw result for AAPL: {
+  "symbol": "AAPL",
+  "sentiment": "POSITIVE",
+  "score": 0.7773502691896258,
+  "confidence": 1,
+  "articles": 15,
+  "keywords": [
+    "apple",
+    "stock",
+    "iphone",
+    "billion",
+    "finance"
+  ],
+  "sources": [
+    "Google News"
+  ],
+  "timestamp": "2025-08-10T18:16:04.200Z"
+}
+   ✅ Yahoo Finance: 10 articles
+   📊 Total unique articles: 15
+📊 Analyzing sentiment for 15 articles about AAPL
+   📄 "Why Apple (AAPL) Stock Is Moving Upwards - Yahoo Finance..." - Score: 0.000 (Google News)
+   📄 "After Earnings, Is Apple Stock a Buy, a Sell, or Fairly Valu..." - Score: 1.500 (Google News)
+   📄 "Apple: $600 Billion Noise (NASDAQ:AAPL) - Seeking Alpha..." - Score: 0.000 (Google News)
+   📄 "Apple surges on a new $100 billion U.S. investment. What Cra..." - Score: 0.000 (Google News)
+   📄 "What drives AAPL stock price - Free Wealth Planning Blueprin..." - Score: 0.000 (Google News)
+   📄 "Apple Stock Retakes Key Level After Dodging Tariff Bullet - ..." - Score: 0.000 (Google News)
+   📄 "Weekly Option Windfall: Trading AAPL Options Ahead of iPhone..." - Score: 3.464 (Google News)
+   📄 "Apple’s iPhone Sales Blow Past Estimates as Customers Raced ..." - Score: 0.000 (Google News)
+   📄 "Apple roars back with stronger-than-expected iPhone sales an..." - Score: 1.500 (Google News)
+   📄 "Apple (NASDAQ: AAPL) Stock Price Prediction and Forecast 202..." - Score: 0.000 (Google News)
+   📄 "Apple (AAPL) iPhone Production Soars as India Gains Prominen..." - Score: 0.000 (Google News)
+   📄 "AAPL Stock Surges on US Investment and TSMC Tariff Relief: K..." - Score: 0.000 (Google News)
+   📄 "AAPL Earnings: Apple’s Financial Results Beat on Top and Bot..." - Score: 2.598 (Google News)
+   📄 "Apple reports second quarter results - Business Wire..." - Score: 0.000 (Google News)
+   📄 "How to Buy Apple Stock: Is AAPL Worth Investing? - Markets.c..." - Score: 2.598 (Google News)
+   📈 Final Sentiment: POSITIVE (0.777) - Confidence: 100.0%
+  ✅ Real news: POSITIVE (0.777) from 15 articles
+  💬 Social sentiment: -0.293 (513 mentions)
+✅ Sentiment analysis complete for AAPL: 0.456 (POSITIVE_BIAS)
+✅ Generated LOW priority alert for AAPL with NaN% confidence
+🧠 Phase 2: Integrating AI insights...
+⚡ Phase 3: Running Expert AI Decision Engine...
+🧠 Calling Expert AI Decision Engine...
+🧠 Starting Expert AI Decision Engine...
+   📊 Context: AAPL, Price: $229.35000610351562, Capital: $undefined
+   🔧 Technical: YES, Backtest: YES, Sentiment: YES
+   🎲 Monte Carlo: YES, Microstructure: YES
+   📈 OHLC Data Length: 501 points
+   📈 Sample OHLC: {
+  first: { date: 2023-08-10T13:30:00.000Z, close: 177.97000122070312 },
+  last: { date: 2025-08-08T13:30:00.000Z, close: 229.35000610351562 }
+}
+🧠 Expert AI: Analyzing AAPL with regime-aware multi-signal reconciliation...
+🛡️ Tail Risk Multiplier: 1x (LOW risk level)
+🔍 Microstructure Timing: Score 20/100, Adjustment: -20.0%, Multiplier: 0.7x
+🎲 Monte Carlo Integration: Scenario bullish (99.0%), Size Multiplier: 1.25x
+   🎯 Dual Timeframe Primary: NEUTRAL (ALIGNMENT)
+🔄 Divergence Detection: Analyzing 501 data points...
+📊 Divergences Found: 0 (NEUTRAL - 0.0%)
+📋 RULE 0: Collecting signals with deterministic ordering...
+🎨 RULE 10: Advanced Pattern Validation Engine - Analyzing pattern quality...
+   📊 Validating Pattern 1: HEAD_AND_SHOULDERS
+   ❌ Pattern REJECTED: HEAD_AND_SHOULDERS (Grade: D+, Below B+ threshold)
+   📊 Validating Pattern 2: DOUBLE_TOP
+   ❌ Pattern REJECTED: DOUBLE_TOP (Grade: D+, Below B+ threshold)
+🎯 RULE 10 Summary: 0/2 patterns passed validation
+🎨 RULE 10: Pattern Validation - 2 raw → 0 validated patterns
+📊 RULE 0 Signal Processing Summary:
+   📝 Total Signals Registered: 7
+   🎯 Primary Signals: 2
+   ✅ Confirmer Signals: 1
+   🛡️ Veto Signals: 1
+   📏 Position Sizing Signals: 0
+   📋 Processing Order: multi_timeframe → dual_timeframe → sepa_method → triple_screen → core_systems → technical_analysis → sentiment_analysis
+🔍 Debug: OHLC data length: 501, has technical: true
+📊 Volatility Regime Detection: Analyzing 501 data points...
+   🔍 Volatility Debug: ATR=2.36% (daily) → 37.50% (annualized), Realized=27.86% (annualized), Avg=32.68%
+📈 Volatility Regime: HIGH_VOLATILITY (86.2% confidence)
+   ATR: 2.36% | Realized Vol: 27.86%
+✅ Regime detection successful: HIGH_VOLATILITY
+⚖️ Enhanced Bayesian Weighting: Processing 7 signals for HIGH_VOLATILITY regime (ChatGPT formula)...
+   🧠 multi_timeframe: R=67.0% C=0.0% (0t) ⚠️
+      Formula: 0.66 * 0.96 * 0.670 * 0.000 = 0.000 → floor(0.15) = 0.150
+   🧠 dual_timeframe: R=67.0% C=0.0% (0t) ⚠️
+      Formula: 0.90 * 0.96 * 0.670 * 0.000 = 0.000 → floor(0.15) = 0.150
+   🧠 sepa_method: R=67.0% C=0.0% (0t) ⚠️
+      Formula: 0.30 * 0.96 * 0.670 * 0.000 = 0.000 → floor(0.15) = 0.150
+   🧠 triple_screen: R=67.0% C=0.0% (0t) ⚠️
+      Formula: 0.40 * 0.96 * 0.670 * 0.000 = 0.000 → floor(0.15) = 0.150
+   🧠 multi_timeframe: R=67.0% C=0.0% (0t) ⚠️
+      Formula: 0.66 * 0.96 * 0.670 * 0.000 = 0.000 → floor(0.15) = 0.150
+   🧠 dual_timeframe: R=67.0% C=0.0% (0t) ⚠️
+      Formula: 0.90 * 0.96 * 0.670 * 0.000 = 0.000 → floor(0.15) = 0.150
+   🧠 sepa_method: R=67.0% C=0.0% (0t) ⚠️
+      Formula: 0.30 * 0.96 * 0.670 * 0.000 = 0.000 → floor(0.15) = 0.150
+   🧠 triple_screen: R=67.0% C=0.0% (0t) ⚠️
+      Formula: 0.40 * 0.96 * 0.670 * 0.000 = 0.000 → floor(0.15) = 0.150
+   🧠 core_systems: R=67.0% C=0.0% (0t) ⚠️
+      Formula: 0.60 * 0.96 * 0.670 * 0.000 = 0.000 → floor(0.15) = 0.150
+   🧠 technical_analysis: R=67.0% C=0.0% (0t) ⚠️
+      Formula: 0.40 * 0.96 * 0.670 * 0.000 = 0.000 → floor(0.15) = 0.150
+   🧠 sentiment_analysis: R=67.0% C=0.0% (0t) ⚠️
+      Formula: 0.47 * 0.96 * 0.670 * 0.000 = 0.000 → floor(0.15) = 0.150
+🧠 Bayesian Impact: 7 signals adjusted for HIGH_VOLATILITY market conditions
+🎯 RULE 0: Applying Deterministic Signal Conflict Resolution...
+📋 RULE 0: Processing 7 signals in deterministic order...
+   1. [PRIMARY] multi_timeframe (P:1.1) → BUY (15.0%)
+   2. [PRIMARY] dual_timeframe (P:1.2) → NEUTRAL (15.0%)
+   3. [CONFIRMER] sepa_method (P:2.2) → WATCH (15.0%)
+   4. [VETO] triple_screen (P:3.1) → WATCH (15.0%)
+   5. [SUPPLEMENTARY] core_systems (P:5.14) → WATCH (15.0%)
+   6. [SUPPLEMENTARY] technical_analysis (P:5.8) → NEUTRAL (15.0%)
+   7. [SUPPLEMENTARY] sentiment_analysis (P:5.9) → HOLD (15.0%)
+   🎯 Primary Decision: BUY from multi_timeframe (15.0% confidence)
+   ✅ Primary Decision allows proceeding: BUY
+   📊 Confirmers adjustment: -1.2%
+     • SEPA Method: -1.2% (weak)
+   ✅ No veto filters triggered
+📊 RULE 2 Auto-normalization: Raw total 108.0% → Normalized to 100.0%
+📊 RULE 2 Weight Breakdown (auto-normalized to 100%):
+   🎯 Primary Decision: 50.9%
+   ✅ Confirmers: 35.2%
+   🛡️ Vetoes: 0.0%
+   📈 Backtest: 13.9%
+   🎯 Final Decision: BUY (13.8% confidence)
+   📊 Confidence adjustment: -1.2%
+   📏 Position sizing: NORMAL
+   🔧 Resolution method: deterministic_hierarchy
+🛡️ Calculating Structure-Aware Stops (Direction: LONG) with Adaptive ATR...
+🚨 RULE 4: Hierarchical Stop Loss Engine - Analyzing priority levels...
+📊 RULE 4: Volatility Stop ACTIVATED: {
+  stopPrice: 217.42914646693637,
+  atrMultiplier: 2.2,
+  volatilityRegime: 'NORMAL_VOL'
+}
+   🛡️ Stop Method: Volatility_NORMAL_VOL (70% confidence)
+   📊 Stop Analysis: ATR-based stop
+   ⚡ Adaptive ATR: 2.2x (ADX: undefined)
+📊 Risk-Reward Analysis:
+   R/R Ratio: 1.62 ✅
+   Risk Level: MODERATE
+   Max Risk: 2%
+🎯 RULE 7: Determining Trade Readiness...
+📊 RULE 3 Enhanced Trend Analysis:
+   🎯 Trend State: SIDEWAYS (7.4% vs ±7.8% band)
+   📏 Dynamic Band: 5% base + 2.8% ATR = 7.8%
+   ✅ Active Exceptions: RECLAIM_VOLUME
+   🛡️ Restrictions: Grade(None) Sizing(75%)
+� RULE 5: Enhanced Volume Validation for HOLD...
+   📊 Volume Analysis: Current=113,696,100, Avg=56,719,250, Ratio=2.00x
+   🎯 Volume Classification: VERY_HIGH (Very high volume)
+   📋 Breakout Ready: ✅, Institutional: ✅
+📊 RULE 7 Readiness Analysis:
+   🎯 Final Status: WAIT
+   📈 Grade: C+ (❌)
+   💰 Risk/Reward: 1.62 (✅)
+   📉 200EMA Position: 7.4% from EMA200 (✅)
+   📊 Trend State: SIDEWAYS (✅)
+   🛡️ Veto Status: ✅ No veto
+   📰 Sentiment: ✅ Fresh/Neutral
+📋 RULE 11: Generating Scenario Plans with Directional Consistency...
+   🎯 Primary Action: HOLD
+   📊 Base Confidence: 40.0%
+   🎯 HOLD Signal: Both scenarios equal (24.0% each)
+📊 RULE 9: Applying Sentiment Rules...
+   ⚠️ No sentiment data available - ignored without penalty
+🔍 Microstructure Timing: -20.0% confidence adjustment (Timing Score: 20)
+🎲 Monte Carlo Scenarios: +5.0% confidence adjustment (Scenario Clarity: 99.0%)
+🔍 Microstructure Execution: 0.5599999999999999x multiplier applied
+   📊 Poor execution timing - reduced position (20/100) + high slippage risk penalty
+🎲 Monte Carlo Position Sizing: 1.3125x multiplier applied
+   🎯 BULLISH scenario (99.0% probability)
+   📊 Strong bullish probability (99.0%) with manageable downside risk + high scenario confidence boost
+📊 RULE 3 Enhanced Trend Analysis:
+   🎯 Trend State: SIDEWAYS (7.4% vs ±7.8% band)
+   📏 Dynamic Band: 5% base + 2.8% ATR = 7.8%
+   ✅ Active Exceptions: RECLAIM_VOLUME
+   🛡️ Restrictions: Grade(None) Sizing(75%)
+🎯 Expert Decision: HOLD (Grade: C+) | R/R: 1.62 | Regime: HIGH_VOLATILITY
+✅ Expert AI Decision Engine completed successfully
+🔥 RULE 8: Portfolio Heat Monitoring - Calculating risk-scaled position...
+   🌡️ Portfolio Heat: 91°C (CRITICAL)
+   🔗 Correlation Risk: LOW (0% exposure)
+   📊 Market Regime: NEUTRAL
+   🚨 RULE 8: Portfolio overheating - position reduced to 0.6%
+   💰 RULE 8 Final Position: 0.6% (2 shares @ $229.35000610351562)
+   🛡️ Stop Loss: $NaN (NaN% risk)
+   🎯 Target: $NaN (R:R = 0.00)
+📊 RULE 3 Enhanced Trend Analysis:
+   🎯 Trend State: SIDEWAYS (7.4% vs ±7.8% band)
+   📏 Dynamic Band: 5% base + 2.8% ATR = 7.8%
+   ✅ Active Exceptions: RECLAIM_VOLUME
+   🛡️ Restrictions: Grade(None) Sizing(75%)
+🔍 Volume Analysis: Last Volume = 113696100, 20DMA Volume = 60415765
+✅ Expert AI analysis complete for AAPL
+   🎯 Decision: HOLD (Grade: C+) - 25% confidence
+   📊 Entry: 229.35 | Stop: 217.43 | R/R: 1.62
+   🔧 Position: 0 shares, 0 value, 0% risk

@@ -347,40 +347,89 @@ class LeakFreeBacktestingEngine {
    * Handles signal processing with proper delays and confirmation
    */
   async processSystemSignal(systemName, analysis, currentBar, allData, currentIndex, positions, trades, results, phase) {
-    if (!analysis || !analysis.signals || !analysis.signals.systems) return;
-    
-    // ✅ SYSTEM NAME MAPPING: Map API parameter names to actual system names
-    const systemMap = {
-      'sepa': 'sepa',
-      'tripleScreen': 'tripleScreen',
-      'triple_screen': 'tripleScreen',
-      'ema_cross': 'EMA_SYSTEM',
-      'ema': 'EMA_SYSTEM', 
-      'rsi_oversold': 'RSI_SYSTEM',
-      'rsi': 'RSI_SYSTEM',
-      'simple_momentum': 'SIMPLE_MOMENTUM',
-      'momentum': 'SIMPLE_MOMENTUM',
-      'always_buy': 'ALWAYS_BUY',
-      'demo': 'ALWAYS_BUY',
-      'threeWeeksTight': 'threeWeeksTight',
-      'three_weeks_tight': 'threeWeeksTight',
-      'cupHandle': 'cupHandle',
-      'cup_handle': 'cupHandle',
-      'darvasBox': 'darvasBox',
-      'darvas_box': 'darvasBox',
-      'darvas': 'darvasBox',
-      'flagPennant': 'flagPennant',
-      'flag_pennant': 'flagPennant'
-    };
-    
-    const actualSystemName = systemMap[systemName] || systemName;
-    const systemSignal = analysis.signals.systems[actualSystemName];
-    
-    if (!systemSignal) {
-      console.log(`⚠️  System '${systemName}' (mapped to '${actualSystemName}') not found in signals`);
-      console.log(`   Available systems:`, Object.keys(analysis.signals.systems));
+    if (!analysis || !analysis.signals) {
+      console.log(`⚠️ No analysis or signals available for ${systemName}`);
       return;
     }
+    
+    // ✅ ENHANCED SYSTEM NAME MAPPING with comprehensive fallbacks
+    const systemMap = {
+      'sepa': ['sepa', 'SEPA_METHOD', 'SEPA'],
+      'tripleScreen': ['tripleScreen', 'triple_screen', 'TRIPLE_SCREEN'],
+      'triple_screen': ['tripleScreen', 'triple_screen', 'TRIPLE_SCREEN'],
+      'ema_cross': ['EMA_SYSTEM', 'ema_cross', 'EMA_CROSSOVER'],
+      'ema': ['EMA_SYSTEM', 'ema_cross', 'EMA_CROSSOVER'], 
+      'rsi_oversold': ['RSI_SYSTEM', 'rsi_oversold', 'RSI'],
+      'rsi': ['RSI_SYSTEM', 'rsi_oversold', 'RSI'],
+      'simple_momentum': ['SIMPLE_MOMENTUM', 'simple_momentum', 'momentum'],
+      'momentum': ['SIMPLE_MOMENTUM', 'simple_momentum', 'momentum'],
+      'always_buy': ['ALWAYS_BUY', 'always_buy', 'demo'],
+      'demo': ['ALWAYS_BUY', 'always_buy', 'demo'],
+      'threeWeeksTight': ['threeWeeksTight', 'three_weeks_tight', 'THREE_WEEKS_TIGHT'],
+      'three_weeks_tight': ['threeWeeksTight', 'three_weeks_tight', 'THREE_WEEKS_TIGHT'],
+      'cupHandle': ['cupHandle', 'cup_handle', 'CUP_HANDLE'],
+      'cup_handle': ['cupHandle', 'cup_handle', 'CUP_HANDLE'],
+      'darvasBox': ['darvasBox', 'darvas_box', 'darvas', 'DARVAS_BOX'],
+      'darvas_box': ['darvasBox', 'darvas_box', 'darvas', 'DARVAS_BOX'],
+      'darvas': ['darvasBox', 'darvas_box', 'darvas', 'DARVAS_BOX'],
+      'flagPennant': ['flagPennant', 'flag_pennant', 'FLAG_PENNANT'],
+      'flag_pennant': ['flagPennant', 'flag_pennant', 'FLAG_PENNANT']
+    };
+    
+    // Try to find the system signal using multiple name variations
+    let systemSignal = null;
+    let foundSystemName = null;
+    
+    // First, try direct lookup
+    if (analysis.signals.systems) {
+      systemSignal = analysis.signals.systems[systemName];
+      if (systemSignal) foundSystemName = systemName;
+    }
+    
+    // If not found, try mapped names
+    if (!systemSignal && systemMap[systemName]) {
+      for (const mappedName of systemMap[systemName]) {
+        if (analysis.signals.systems && analysis.signals.systems[mappedName]) {
+          systemSignal = analysis.signals.systems[mappedName];
+          foundSystemName = mappedName;
+          break;
+        }
+      }
+    }
+    
+    // If still not found, try all available systems (case-insensitive)
+    if (!systemSignal && analysis.signals.systems) {
+      const availableSystems = Object.keys(analysis.signals.systems);
+      const searchName = systemName.toLowerCase();
+      
+      for (const availableSystem of availableSystems) {
+        if (availableSystem.toLowerCase().includes(searchName) || searchName.includes(availableSystem.toLowerCase())) {
+          systemSignal = analysis.signals.systems[availableSystem];
+          foundSystemName = availableSystem;
+          break;
+        }
+      }
+    }
+    
+    // Final fallback - use overall signal
+    if (!systemSignal && analysis.signals.overall && analysis.signals.overall !== 'NEUTRAL') {
+      console.log(`⚠️ Using overall signal as fallback for ${systemName}`);
+      systemSignal = {
+        signal: analysis.signals.overall,
+        confidence: analysis.signals.strength || 0.5,
+        pattern: 'FALLBACK_OVERALL'
+      };
+      foundSystemName = 'FALLBACK';
+    }
+    
+    if (!systemSignal) {
+      console.log(`⚠️ System '${systemName}' not found in any variation`);
+      console.log(`   Available systems:`, analysis.signals.systems ? Object.keys(analysis.signals.systems) : 'None');
+      console.log(`   Overall signal available:`, analysis.signals.overall || 'None');
+      return;
+    }
+    
+    console.log(`✅ Found signal for ${systemName} -> ${foundSystemName}: ${systemSignal.signal} (confidence: ${systemSignal.confidence})`);
     
     // ✅ STEP 1: APPLY SIGNAL DELAY
     const signalBar = currentIndex + this.signalDelayBars;
@@ -397,8 +446,10 @@ class LeakFreeBacktestingEngine {
       // Additional confirmation logic could be added here
     }
     
-    // ✅ STEP 3: EXECUTE TRADE
-    if (systemSignal.signal === 'BUY' && this.canOpenPosition(positions, 'LONG')) {
+    // ✅ STEP 3: EXECUTE TRADE - Enhanced signal handling
+    const shouldExecute = this.shouldExecuteSignal(systemSignal, currentBar, analysis);
+    
+    if (shouldExecute && (systemSignal.signal === 'BUY' || systemSignal.signal === 'STRONG_BUY') && this.canOpenPosition(positions, 'LONG')) {
       this.openPosition(
         positions,
         trades,
@@ -409,10 +460,12 @@ class LeakFreeBacktestingEngine {
           entryDate: executionBar.date,
           entryIndex: signalBar,
           confidence: systemSignal.confidence || 0.5,
-          phase
+          phase,
+          foundSystemName
         }
       );
-    } else if (systemSignal.signal === 'SELL' && this.canOpenPosition(positions, 'SHORT')) {
+      console.log(`🔥 LONG position opened: ${systemName} at ${executionPrice} (${phase})`);
+    } else if (shouldExecute && (systemSignal.signal === 'SELL' || systemSignal.signal === 'STRONG_SELL') && this.canOpenPosition(positions, 'SHORT')) {
       this.openPosition(
         positions,
         trades,
@@ -423,20 +476,42 @@ class LeakFreeBacktestingEngine {
           entryDate: executionBar.date,
           entryIndex: signalBar,
           confidence: systemSignal.confidence || 0.5,
-          phase
+          phase,
+          foundSystemName
         }
       );
+      console.log(`🔥 SHORT position opened: ${systemName} at ${executionPrice} (${phase})`);
     }
     
-    // Store signal for analysis
+    // Store signal for analysis (even if not executed)
+    if (!results.systemSignals[systemName]) {
+      results.systemSignals[systemName] = [];
+    }
+    
     results.systemSignals[systemName].push({
       date: currentBar.date,
       signal: systemSignal.signal,
       confidence: systemSignal.confidence,
       executionPrice,
       executionDate: executionBar.date,
-      phase
+      phase,
+      foundSystemName,
+      executed: shouldExecute
     });
+  }
+  
+  /**
+   * ✅ ENHANCED SIGNAL EXECUTION LOGIC
+   */
+  shouldExecuteSignal(systemSignal, currentBar, analysis) {
+    // Basic signal strength filter
+    if (systemSignal.confidence && systemSignal.confidence < 0.3) {
+      return false; // Skip very low confidence signals
+    }
+    
+    // Allow most BUY/SELL signals through for backtesting
+    const executeableSignals = ['BUY', 'STRONG_BUY', 'SELL', 'STRONG_SELL'];
+    return executeableSignals.includes(systemSignal.signal);
   }
 
   /**

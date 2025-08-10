@@ -473,10 +473,35 @@ class EnhancedAlertService extends AlertService {
    * Calculate confidence based on sentiment strength and data quality
    */
   calculateConfidence(sentimentAnalysis) {
-    const overall = Math.abs(sentimentAnalysis.overall || 0);
-    const newsCount = sentimentAnalysis.news?.articleCount || 0;
+    // ✅ VALIDATE SENTIMENT ANALYSIS INPUT
+    if (!sentimentAnalysis || typeof sentimentAnalysis !== 'object') {
+      console.warn('⚠️ Invalid sentimentAnalysis input for confidence calculation');
+      return 50; // Default confidence
+    }
+
+    // Handle both object and numeric overall values
+    let overall = 0;
+    if (sentimentAnalysis.overall && typeof sentimentAnalysis.overall === 'object') {
+      overall = Math.abs(sentimentAnalysis.overall.score || 0);
+    } else {
+      overall = Math.abs(sentimentAnalysis.overall || 0);
+    }
+    
+    const newsCount = sentimentAnalysis.news?.articleCount || sentimentAnalysis.news?.articles || 0;
+    
+    // ✅ VALIDATE OVERALL SENTIMENT VALUE
+    if (isNaN(overall) || !isFinite(overall)) {
+      console.warn('⚠️ Invalid overall sentiment value for confidence calculation:', overall);
+      return 50; // Default confidence
+    }
     
     let confidence = overall * 100; // Base confidence from sentiment strength
+    
+    // ✅ VALIDATE CONFIDENCE CALCULATION
+    if (isNaN(confidence) || !isFinite(confidence)) {
+      console.warn('⚠️ Invalid confidence calculation result:', confidence);
+      return 50; // Default confidence
+    }
     
     // Boost confidence if we have more news articles
     if (newsCount > 10) {
@@ -485,7 +510,14 @@ class EnhancedAlertService extends AlertService {
       confidence = Math.min(100, confidence * 1.1);
     }
     
-    return Math.round(confidence);
+    // ✅ FINAL VALIDATION BEFORE RETURN
+    const finalConfidence = Math.round(confidence);
+    if (isNaN(finalConfidence) || !isFinite(finalConfidence)) {
+      console.warn('⚠️ Invalid final confidence value:', finalConfidence);
+      return 50; // Default confidence
+    }
+    
+    return finalConfidence;
   }
 
   /**
