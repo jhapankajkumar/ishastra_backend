@@ -1,0 +1,63 @@
+{
+  "symbol": "TCS.NS",
+  "currentPrice": 4234.50,
+  "timestamp": "2024-12-28T10:30:00.000Z",
+  
+  "decision": {
+    "status": "READY_TO_BUY",
+    "confidence": 78,
+    "grade": "B+",
+    "reasonCodes": ["MOMENTUM_BREAKOUT", "VOLUME_CONFIRMED"]
+  },
+  
+  "execution": {
+    "entry": 4240.00,
+    "stop": 4160.00,
+    "riskReward": 3.2,
+    "positionSize": {
+      "shares": 12,
+      "value": 50880,
+      "risk": "2.1%"
+    }
+  },
+  
+  "context": {
+    "trend": "UPTREND",
+    "levels": {
+      "support": 4180.00,
+      "resistance": 4320.00
+    },
+    "volume": {
+      "status": "STRONG",
+      "multiple": 1.8
+    },
+    "earnings": {
+      "daysAway": 23,
+      "impact": "NONE"
+    }
+  },
+  
+  "nextStepSummary": "Ready to buy at 4240 with stop 4160 (R/R: 3.2x). Position size: 12 shares risking 2.1%",
+  
+  "scenarios": {
+    "breakout": {
+      "trigger": 4320.00,
+      "probability": 68,
+      "target": 4480.00
+    },
+    "breakdown": {
+      "trigger": 4180.00,
+      "probability": 32,
+      "target": 3980.00
+    }
+  },
+  
+  "whyAvoid": [],
+  "flipToReady": [],
+  
+  "risk": {
+    "level": "MEDIUM",
+    "tailRiskScore": 25,
+    "maxDrawdown": "12%"
+  }
+}
