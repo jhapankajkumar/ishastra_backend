@@ -868,130 +868,155 @@ async function getMarketMicrostructureAnalysis(symbol, period) {
   try {
     console.log(`🔍 Getting market microstructure analysis for ${symbol}...`);
 
-    // Return properly structured placeholder until proper data integration
+    // Get technical data with OHLCV for microstructure analysis
+    const technicalData = await getTechnicalAnalysisData(symbol, period);
+    const ohlcvData = technicalData?.ohlcData || technicalData?.historicalData || [];
+    
+    if (!ohlcvData || ohlcvData.length < 20) {
+      console.log(`⚠️ Insufficient OHLCV data for microstructure analysis (${ohlcvData.length} bars)`);
+      return createFallbackMicrostructureResponse('Insufficient historical data');
+    }
+
+    // Prepare market data for analysis
+    const marketData = {
+      currentPrice: technicalData.currentPrice || technicalData.latestPrice || 0,
+      latestPrice: technicalData.currentPrice || technicalData.latestPrice || 0,
+      volume: ohlcvData[ohlcvData.length - 1]?.volume || 0
+    };
+
+    // **ACTUALLY USE THE IMPORTED FUNCTION**
+    const microstructureResult = analyzeMarketMicrostructure(marketData, ohlcvData, null);
+
+    console.log(`✅ Market microstructure analysis complete for ${symbol}`);
+    
     return {
-      enabled: false,
-      multiplier: 1.0,
-      confidence: 0,
-      analysis: 'STANDARD',
-      components: [],
-      recommendation: 'Market microstructure analysis needs proper data integration - using standard execution timing',
-      timing: {
+      enabled: true,
+      multiplier: microstructureResult.executionQuality?.timingScore > 70 ? 1.1 : 
+                 microstructureResult.executionQuality?.timingScore < 40 ? 0.85 : 1.0,
+      confidence: microstructureResult.timing?.score || 50,
+      analysis: 'REAL_MICROSTRUCTURE',
+      components: [
+        'ORDER_FLOW_ANALYSIS',
+        'LIQUIDITY_ZONES',
+        'MARKET_DEPTH',
+        'INSTITUTIONAL_ACTIVITY',
+        'VOLUME_PROFILE'
+      ],
+      recommendation: `${microstructureResult.timing?.recommendation || 'NEUTRAL'} - ${microstructureResult.insights?.entryTiming?.[0] || 'Standard timing'}`,
+      
+      // Map the real analysis results to expected structure
+      timing: microstructureResult.timing || {
         score: 50,
         recommendation: 'NEUTRAL',
         optimalWindow: 'CURRENT',
-        guidance: {
-          executionStrategy: 'STANDARD',
-          maxOrderSize: 1000
-        }
+        guidance: { executionStrategy: 'STANDARD', maxOrderSize: 1000 }
       },
-      orderFlow: {
-        dominantFlow: 'NEUTRAL',
-        strength: 50
-      },
-      liquidityZones: {
-        overallQuality: 'MEDIUM'
-      },
-      institutionalActivity: {
-        level: 'MODERATE'
-      },
-      executionQuality: {
-        slippageRisk: 'MEDIUM'
-      },
-      insights: {
-        riskFactors: []
-      }
+      orderFlow: microstructureResult.orderFlow || { dominantFlow: 'NEUTRAL', strength: 0 },
+      liquidityZones: microstructureResult.liquidityZones || { overallQuality: 'UNKNOWN' },
+      institutionalActivity: microstructureResult.institutionalActivity || { level: 'UNKNOWN' },
+      executionQuality: microstructureResult.executionQuality || { slippageRisk: 'UNKNOWN' },
+      insights: microstructureResult.insights || { riskFactors: [] }
     };
 
   } catch (error) {
     console.error(`❌ Market microstructure analysis failed for ${symbol}:`, error.message);
-    return {
-      enabled: false,
-      multiplier: 1.0,
-      confidence: 0,
-      analysis: 'UNKNOWN',
-      components: [],
-      recommendation: 'Market microstructure analysis unavailable - using standard execution timing',
-      timing: {
-        score: 50,
-        recommendation: 'NEUTRAL',
-        optimalWindow: 'CURRENT',
-        guidance: {
-          executionStrategy: 'STANDARD',
-          maxOrderSize: 1000
-        }
-      },
-      orderFlow: {
-        dominantFlow: 'NEUTRAL',
-        strength: 0
-      },
-      liquidityZones: {
-        overallQuality: 'UNKNOWN'
-      },
-      institutionalActivity: {
-        level: 'UNKNOWN'
-      },
-      executionQuality: {
-        slippageRisk: 'UNKNOWN'
-      },
-      insights: {
-        riskFactors: []
-      }
-    };
+    return createFallbackMicrostructureResponse(error.message);
   }
+}
+
+function createFallbackMicrostructureResponse(reason) {
+  return {
+    enabled: false,
+    multiplier: 1.0,
+    confidence: 0,
+    analysis: 'FALLBACK',
+    components: [],
+    recommendation: `Market microstructure analysis unavailable: ${reason}`,
+    timing: {
+      score: 50,
+      recommendation: 'NEUTRAL',
+      optimalWindow: 'CURRENT',
+      guidance: { executionStrategy: 'STANDARD', maxOrderSize: 1000 }
+    },
+    orderFlow: { dominantFlow: 'NEUTRAL', strength: 0 },
+    liquidityZones: { overallQuality: 'UNKNOWN' },
+    institutionalActivity: { level: 'UNKNOWN' },
+    executionQuality: { slippageRisk: 'UNKNOWN' },
+    insights: { riskFactors: [] }
+  };
 }
 
 async function getMonteCarloScenarios(symbol, period) {
   try {
     console.log(`🎲 Getting Monte Carlo scenario analysis for ${symbol}...`);
 
-    // Import the real simulation engine
-    const { runMonteCarloAnalysis } = require('../../utils/monteCarloEngine');
-
-    // Fetch historical price data (use technical analysis util or fallback)
+    // Get technical data with OHLCV for Monte Carlo simulation
     const technicalData = await getTechnicalAnalysisData(symbol, period);
-    const priceSeries = technicalData?.ohlcData || technicalData?.historicalData || [];
-    if (!priceSeries || priceSeries.length < 30) {
-      throw new Error('Insufficient price data for Monte Carlo simulation');
+    const ohlcvData = technicalData?.ohlcData || technicalData?.historicalData || [];
+    
+    if (!ohlcvData || ohlcvData.length < 30) {
+      console.log(`⚠️ Insufficient OHLCV data for Monte Carlo analysis (${ohlcvData.length} bars)`);
+      return createFallbackMonteCarloResponse('Insufficient historical data');
     }
 
-    // Run the simulation
+    // Prepare market data for Monte Carlo simulation
     const marketData = {
       symbol,
-      currentPrice: priceSeries[priceSeries.length - 1]?.close || 0,
-      latestPrice: priceSeries[priceSeries.length - 1]?.close || 0
+      currentPrice: ohlcvData[ohlcvData.length - 1]?.close || 0,
+      latestPrice: ohlcvData[ohlcvData.length - 1]?.close || 0,
+      volume: ohlcvData[ohlcvData.length - 1]?.volume || 0
     };
     
-    const mcResult = await runMonteCarloAnalysis(
+    // **ACTUALLY USE THE IMPORTED FUNCTION**
+    const monteCarloResult = await runMonteCarloAnalysis(
       marketData,
-      priceSeries,
+      ohlcvData,
       technicalData,
       {
         simulations: 1000,
-        tradingDays: 20
+        tradingDays: 20,
+        confidenceLevel: 0.95
       }
     );
 
-    // Map simulation output to expected API response structure
+    console.log(`✅ Monte Carlo analysis complete for ${symbol}`);
+
     return {
       enabled: true,
-      multiplier: mcResult?.recommendations?.positionSizing?.multiplier || 1.0,
-      confidence: mcResult?.confidence || 0.5,
-      reliability: mcResult?.reliability || 'MEDIUM',
+      multiplier: monteCarloResult?.recommendations?.positionSizing?.multiplier || 1.0,
+      confidence: monteCarloResult?.confidence || 0.5,
+      reliability: monteCarloResult?.reliability || 'MEDIUM',
+      
+      // Map the real analysis results to expected structure
       recommendations: {
-        dominantScenario: mcResult?.recommendations?.dominantScenario || { scenario: 'sideways', probability: 0.34, expectedReturn: 0.0 },
-        positionSizing: mcResult?.recommendations?.positionSizing || { recommendation: 'NORMAL', multiplier: 1.0, reasoning: 'Standard sizing' },
-        entryTiming: mcResult?.recommendations?.entryTiming || { recommendation: 'NEUTRAL', reasoning: 'No scenario guidance' },
-        targetLevels: mcResult?.recommendations?.targetLevels || { conservative: 0.05, moderate: 0.10, aggressive: 0.15 }
+        dominantScenario: monteCarloResult?.recommendations?.dominantScenario || { 
+          scenario: 'sideways', 
+          probability: 0.34, 
+          expectedReturn: 0.0 
+        },
+        positionSizing: monteCarloResult?.recommendations?.positionSizing || { 
+          recommendation: 'NORMAL', 
+          multiplier: 1.0, 
+          reasoning: 'Standard sizing' 
+        },
+        entryTiming: monteCarloResult?.recommendations?.entryTiming || { 
+          recommendation: 'NEUTRAL', 
+          reasoning: 'No scenario guidance' 
+        },
+        targetLevels: monteCarloResult?.recommendations?.targetLevels || { 
+          conservative: 0.05, 
+          moderate: 0.10, 
+          aggressive: 0.15 
+        }
       },
-      scenarioAnalysis: mcResult?.scenarioAnalysis || {
+      scenarioAnalysis: monteCarloResult?.scenarioAnalysis || {
         scenarios: {
           bullish: { probability: 0.33 },
           bearish: { probability: 0.33 },
           sideways: { probability: 0.34 }
         }
       },
-      riskMetrics: mcResult?.riskMetrics || {
+      riskMetrics: monteCarloResult?.riskMetrics || {
         valueAtRisk: { var95: -0.12, var99: -0.18 },
         drawdownAnalysis: { worstMaxDrawdown: 0.25 },
         tailRiskMetrics: { probabilityOfLoss: 0.50, probabilityOfBigGain: 0.15 }
@@ -1000,101 +1025,127 @@ async function getMonteCarloScenarios(symbol, period) {
 
   } catch (error) {
     console.error(`❌ Monte Carlo analysis failed for ${symbol}:`, error.message);
-    return {
-      enabled: false,
-      multiplier: 1.0,
-      confidence: 0,
-      reliability: 'UNKNOWN',
-      recommendations: {
-        dominantScenario: {
-          scenario: 'unknown',
-          probability: 0.0,
-          expectedReturn: 0.0
-        },
-        positionSizing: {
-          recommendation: 'NORMAL',
-          multiplier: 1.0,
-          reasoning: 'Monte Carlo analysis unavailable - using standard sizing'
-        },
-        entryTiming: {
-          recommendation: 'NEUTRAL',
-          reasoning: 'No scenario guidance available'
-        },
-        targetLevels: {
-          conservative: 0.0,
-          moderate: 0.0,
-          aggressive: 0.0
-        }
-      },
-      scenarioAnalysis: {
-        scenarios: {}
-      },
-      riskMetrics: {
-        valueAtRisk: { var95: 0, var99: 0 },
-        drawdownAnalysis: { worstMaxDrawdown: 0 },
-        tailRiskMetrics: { probabilityOfLoss: 0, probabilityOfBigGain: 0 }
-      }
-    };
+    return createFallbackMonteCarloResponse(error.message);
   }
+}
+
+function createFallbackMonteCarloResponse(reason) {
+  return {
+    enabled: false,
+    multiplier: 1.0,
+    confidence: 0,
+    reliability: 'UNKNOWN',
+    recommendations: {
+      dominantScenario: {
+        scenario: 'unknown',
+        probability: 0.0,
+        expectedReturn: 0.0
+      },
+      positionSizing: {
+        recommendation: 'NORMAL',
+        multiplier: 1.0,
+        reasoning: `Monte Carlo analysis unavailable: ${reason}`
+      },
+      entryTiming: {
+        recommendation: 'NEUTRAL',
+        reasoning: 'No scenario guidance available'
+      },
+      targetLevels: {
+        conservative: 0.0,
+        moderate: 0.0,
+        aggressive: 0.0
+      }
+    },
+    scenarioAnalysis: {
+      scenarios: {}
+    },
+    riskMetrics: {
+      valueAtRisk: { var95: 0, var99: 0 },
+      drawdownAnalysis: { worstMaxDrawdown: 0 },
+      tailRiskMetrics: { probabilityOfLoss: 0, probabilityOfBigGain: 0 }
+    }
+  };
 }
 
 async function getTailRiskAssessment(symbol, period) {
   try {
     console.log(`🛡️ Getting tail risk assessment for ${symbol}...`);
 
-    // Return properly structured placeholder until proper data integration
+    // Get technical data with OHLCV for tail risk analysis
+    const technicalData = await getTechnicalAnalysisData(symbol, period);
+    const ohlcvData = technicalData?.ohlcData || technicalData?.historicalData || [];
+    
+    if (!ohlcvData || ohlcvData.length < 30) {
+      console.log(`⚠️ Insufficient OHLCV data for tail risk assessment (${ohlcvData.length} bars)`);
+      return createFallbackTailRiskResponse('Insufficient historical data');
+    }
+
+    // Prepare market data for tail risk analysis
+    const marketData = {
+      currentPrice: technicalData.currentPrice || technicalData.latestPrice || 0,
+      symbol: symbol,
+      volume: ohlcvData[ohlcvData.length - 1]?.volume || 0
+    };
+
+    // **ACTUALLY USE THE IMPORTED FUNCTION**
+    const tailRiskResult = assessTailRisk(marketData, ohlcvData, technicalData);
+
+    console.log(`✅ Tail risk assessment complete for ${symbol}`);
+    
     return {
-      enabled: false,
-      multiplier: 1.0,
-      confidence: 0,
-      riskLevel: 'LOW',
-      overallRiskScore: 25,
-      detectors: [],
-      recommendation: 'Tail risk analysis needs OHLC data integration - using standard position sizing',
-      protectionPlan: {
+      enabled: true,
+      multiplier: tailRiskResult.protectionPlan?.positionSizeMultiplier || 1.0,
+      confidence: tailRiskResult.confidence || 0.7,
+      riskLevel: tailRiskResult.riskLevel || 'MEDIUM',
+      overallRiskScore: tailRiskResult.overallRiskScore || 50,
+      detectors: tailRiskResult.activeDetectors || [],
+      recommendation: tailRiskResult.recommendation || 'Standard position sizing with basic tail risk monitoring',
+      
+      // Map the real analysis results to expected structure
+      protectionPlan: tailRiskResult.protectionPlan || {
         positionSizeMultiplier: 1.0,
         protectionLevel: 'NORMAL'
       },
-      riskComponents: {
+      riskComponents: tailRiskResult.riskComponents || {
         volatilitySpike: { riskLevel: 'LOW' },
         flashCrash: { riskLevel: 'LOW' },
         liquidityEvaporation: { riskLevel: 'LOW' },
         correlationBreakdown: { riskLevel: 'LOW' },
         sectorContagion: { riskLevel: 'LOW' }
       },
-      earlyWarnings: {
-        alerts: []
-      },
-      emergencyActions: null
+      earlyWarnings: tailRiskResult.earlyWarnings || { alerts: [] },
+      emergencyActions: tailRiskResult.emergencyActions || null
     };
 
   } catch (error) {
     console.error(`❌ Tail risk assessment failed for ${symbol}:`, error.message);
-    return {
-      enabled: false,
-      multiplier: 1.0,
-      confidence: 0,
-      riskLevel: 'UNKNOWN',
-      overallRiskScore: 0,
-      detectors: [],
-      recommendation: 'Tail risk analysis unavailable - using standard position sizing',
-      protectionPlan: {
-        positionSizeMultiplier: 1.0,
-        protectionLevel: 'NORMAL'
-      },
-      riskComponents: {
-        volatilitySpike: { riskLevel: 'LOW' },
-        flashCrash: { riskLevel: 'LOW' },
-        liquidityEvaporation: { riskLevel: 'LOW' },
-        correlationBreakdown: { riskLevel: 'LOW' },
-        sectorContagion: { riskLevel: 'LOW' }
-      },
-      earlyWarnings: {
-        alerts: []
-      },
-      emergencyActions: null
-    };
+    return createFallbackTailRiskResponse(error.message);
   }
+}
+
+function createFallbackTailRiskResponse(reason) {
+  return {
+    enabled: false,
+    multiplier: 1.0,
+    confidence: 0,
+    riskLevel: 'UNKNOWN',
+    overallRiskScore: 0,
+    detectors: [],
+    recommendation: `Tail risk analysis unavailable: ${reason}`,
+    protectionPlan: {
+      positionSizeMultiplier: 1.0,
+      protectionLevel: 'NORMAL'
+    },
+    riskComponents: {
+      volatilitySpike: { riskLevel: 'LOW' },
+      flashCrash: { riskLevel: 'LOW' },
+      liquidityEvaporation: { riskLevel: 'LOW' },
+      correlationBreakdown: { riskLevel: 'LOW' },
+      sectorContagion: { riskLevel: 'LOW' }
+    },
+    earlyWarnings: { alerts: [] },
+    emergencyActions: null
+  };
 }
 
 // ==============================================
