@@ -11,6 +11,8 @@ const LeakFreeBacktestingEngine = require('../../utils/leakFreeBacktestingEngine
 const AIRecommendationEngine = require('../../services/aiRecommendationEngine');
 const FreeNewsSentimentService = require('../../services/freeNewsSentimentService');
 const EnhancedAlertService = require('../../services/enhancedAlertService');
+const { detectVolatilityRegime } = require('../../utils/volatilityRegimeDetector');
+const { detectMomentumDivergences } = require('../../utils/momentumDivergenceDetector');
 
 /**
  * GET /api/trading/unified-analysis?symbol=HDFCBANK.NS&period=3mo
@@ -936,7 +938,7 @@ function collectAllSignals(technical, backtest, sentiment) {
         source: 'pattern_recognition',
         signal: pattern.signal,
         confidence: pattern.confidence || 0.6,
-        weight: 0.10, // Split 20% between patterns and SEPA
+        weight: 0.08, // Adjusted to 8% to make room for momentum divergences
         tier: 'CONFIRMER',
         reasoning: `${pattern.name || pattern.pattern} pattern detected`,
         patternName: pattern.name || pattern.pattern,
@@ -947,6 +949,31 @@ function collectAllSignals(technical, backtest, sentiment) {
     });
   }
   
+  // Momentum Divergence Detection (early reversal signals)
+  const ohlcData = technical?.ohlcData || technical?.historicalData || [];
+  if (ohlcData.length >= 20) {
+    const technicalIndicators = technical?.technicalIndicators || {};
+    const divergenceAnalysis = detectMomentumDivergences(ohlcData, technicalIndicators);
+    
+    if (divergenceAnalysis.signal !== 'NEUTRAL' && divergenceAnalysis.confidence > 0.3) {
+      const divergenceSignal = {
+        source: 'momentum_divergences',
+        signal: divergenceAnalysis.signal,
+        confidence: divergenceAnalysis.confidence,
+        weight: 0.07, // 7% weight - significant for early reversal signals
+        tier: 'CONFIRMER',
+        reasoning: `Momentum divergences detected: ${divergenceAnalysis.summary.totalDivergences} patterns (${divergenceAnalysis.summary.bullishDivergences} bullish, ${divergenceAnalysis.summary.bearishDivergences} bearish)`,
+        divergences: divergenceAnalysis.divergences,
+        confidenceAdjustment: 12, // ±12% confidence adjustment for divergences
+        reversalSignal: true // Indicates this is a potential reversal signal
+      };
+      signals.confirmers.push(divergenceSignal);
+      signals.all.push(divergenceSignal);
+      
+      console.log(`   🔄 Momentum Divergences: ${divergenceAnalysis.signal} (${(divergenceAnalysis.confidence * 100).toFixed(1)}%) - ${divergenceAnalysis.summary.totalDivergences} patterns`);
+    }
+  }
+  
   // SEPA Method (can increase/decrease confidence by ±10% or act as veto)
   if (technical?.signals?.systems?.sepa) {
     const sepaData = technical.signals.systems.sepa;
@@ -955,7 +982,7 @@ function collectAllSignals(technical, backtest, sentiment) {
         source: 'sepa_method',
         signal: sepaData.signal,
         confidence: sepaData.confidence || 0.5,
-        weight: 0.10,
+        weight: 0.05, // Adjusted to 5% to accommodate momentum divergences (8% + 7% + 5% = 20%)
         tier: 'CONFIRMER', // Can also act as VETO_FILTER
         reasoning: `SEPA Method: ${sepaData.reasoning}`,
         confidenceAdjustment: 10, // ±10% confidence adjustment
@@ -3815,6 +3842,20 @@ function calculateDynamicPositionSize(capital, finalDecision, riskRewardAnalysis
     }
   }
   
+  // ⭐ VOLATILITY REGIME ADJUSTMENT - Dynamic sizing based on market volatility
+  let volatilityMultiplier = 1.0;
+  let volatilityReason = '';
+  
+  if (technical?.marketRegime?.volatilityRegimeDetails) {
+    const volRegime = technical.marketRegime.volatilityRegimeDetails;
+    volatilityMultiplier = volRegime.adjustments?.positionSizeMultiplier || 1.0;
+    volatilityReason = `${volRegime.regime} volatility regime`;
+    
+    if (volatilityMultiplier !== 1.0) {
+      console.log(`📊 Volatility regime adjustment: ${volatilityMultiplier}x (${volatilityReason})`);
+    }
+  }
+  
   // Calculate final position size with all multipliers
   const adjustedShares = Math.floor(
     adjustedSharesBasedOnRisk * 
@@ -3824,7 +3865,8 @@ function calculateDynamicPositionSize(capital, finalDecision, riskRewardAnalysis
     hierarchyMultiplier *
     trendMultiplier *
     overheadGapMultiplier * // ✅ Overhead supply gating
-    earningsMultiplier      // ✅ NEW: Earnings proximity gating
+    earningsMultiplier *    // ✅ Earnings proximity gating
+    volatilityMultiplier    // ⭐ NEW: Volatility regime gating
   );
   
   const positionValue = Math.max(0, adjustedShares) * riskRewardAnalysis.currentPrice;
@@ -3853,6 +3895,8 @@ function calculateDynamicPositionSize(capital, finalDecision, riskRewardAnalysis
     sizingReason = 'Increased position - Historical win rate ≥65% with positive returns';
   } else if (rrMultiplier >= 1.2) {
     sizingReason = `Increased position - Excellent Risk/Reward ratio (${riskRewardAnalysis.riskReward.toFixed(2)})`;
+  } else if (volatilityMultiplier !== 1.0) {
+    sizingReason = `Position adjusted for ${volatilityReason} (${volatilityMultiplier}x)`;
   }
   
   // 🎯 DUAL TIMEFRAME CONFLICT ADJUSTMENTS (override sizing reason if applicable)
@@ -5770,28 +5814,51 @@ function detectMarketRegime(ohlcData, technical) {
   };
   
   // ==============================================
-  // INDICATOR 3: ATR Volatility Regime
+  // INDICATOR 3: ⭐ ADVANCED VOLATILITY REGIME DETECTION ⭐
   // ==============================================
-  const atr = technical?.technicalIndicators?.latest?.atr || calculateATR(ohlcData);
-  const atrPct = (atr / currentPrice) * 100;
-  const atrSMA = calculateAveragePeriodValue(ohlcData, 'atr', 50) || atrPct;
+  const volatilityRegimeAnalysis = detectVolatilityRegime(ohlcData, technical?.technicalIndicators);
   
-  const volatilityRatio = atrPct / atrSMA;
+  console.log(`   📊 Volatility Regime: ${volatilityRegimeAnalysis.regime} (${(volatilityRegimeAnalysis.confidence * 100).toFixed(1)}% confidence)`);
+  
+  // Map volatility regime to market regime signal  
   let volatilitySignal = 'SIDEWAYS';
+  let volatilityStrength = volatilityRegimeAnalysis.confidence || 0.5;
   
-  if (volatilityRatio > 1.3) {
-    volatilitySignal = 'CRISIS'; // High volatility = uncertain regime
-  } else if (volatilityRatio < 0.7) {
-    volatilitySignal = 'GRIND'; // Low volatility = trending regime
+  switch (volatilityRegimeAnalysis.regime) {
+    case 'CRISIS':
+      volatilitySignal = 'BEAR'; // Crisis usually means bear market
+      volatilityStrength = 0.9;
+      break;
+    case 'HIGH_VOLATILITY':
+      volatilitySignal = 'BEAR'; // High volatility often bearish
+      volatilityStrength = 0.7;
+      break;
+    case 'LOW_VOLATILITY':
+      volatilitySignal = 'BULL'; // Low volatility often bullish complacency
+      volatilityStrength = 0.6;
+      break;
+    case 'NORMAL_LOW':
+      volatilitySignal = 'BULL'; // Below normal volatility - mild bullish
+      volatilityStrength = 0.5;
+      break;
+    case 'NORMAL_HIGH':
+      volatilitySignal = 'SIDEWAYS'; // Normal high volatility - choppy
+      volatilityStrength = 0.4;
+      break;
+    default:
+      volatilitySignal = 'SIDEWAYS';
+      volatilityStrength = 0.3;
   }
   
-  indicators.volatility = {
-    atrPct: atrPct,
-    atrSMA: atrSMA,
-    ratio: volatilityRatio,
+  indicators.volatilityRegime = {
+    value: volatilityRegimeAnalysis.atrPercent,
+    regime: volatilityRegimeAnalysis.regime,
     signal: volatilitySignal,
-    strength: Math.min(1.0, Math.abs(volatilityRatio - 1.0)), // ✅ FIX #3: Normalize volatility
-    weight: 0.15
+    strength: volatilityStrength,
+    weight: 0.25, // Increased weight for advanced volatility analysis
+    details: volatilityRegimeAnalysis.regimeCharacteristics,
+    adjustments: volatilityRegimeAnalysis.adjustments,
+    recommendations: volatilityRegimeAnalysis.recommendations
   };
   
   // ==============================================
@@ -5935,11 +6002,14 @@ function detectMarketRegime(ohlcData, technical) {
     regimeMetrics: {
       priceVs200SMA: priceVs200SMA.toFixed(1),
       adxStrength: adx.toFixed(1),
-      volatilityRatio: volatilityRatio.toFixed(2),
+      volatilityRegime: volatilityRegimeAnalysis.regime,
+      volatilityConfidence: (volatilityRegimeAnalysis.confidence * 100).toFixed(1),
       breadthScore: `${breadthScore}/4`,
       momentumScore: momentumScore,
       totalStrength: totalStrength.toFixed(3)
-    }
+    },
+    // ⭐ Enhanced volatility regime details
+    volatilityRegimeDetails: volatilityRegimeAnalysis
   };
 }
 
