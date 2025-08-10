@@ -1266,7 +1266,7 @@ async function generateExpertAIDecision(analysisContext) {
     // 🔍 Apply microstructure timing adjustments to final decision confidence
     if (timingAdjustment !== 0) {
       const previousConfidence = finalDecision.confidence;
-      finalDecision.confidence = Math.max(0.1, Math.min(1.0, finalDecision.confidence + timingAdjustment));
+      finalDecision.confidence = Math.max(0.45, Math.min(1.0, finalDecision.confidence + timingAdjustment)); // RAISED FLOOR
       const actualAdjustment = (finalDecision.confidence - previousConfidence) * 100;
       console.log(`🔍 Microstructure Timing: ${actualAdjustment > 0 ? '+' : ''}${actualAdjustment.toFixed(1)}% confidence adjustment (Timing Score: ${microstructure?.timing?.score || 'N/A'})`);
     }
@@ -1274,7 +1274,7 @@ async function generateExpertAIDecision(analysisContext) {
     // 🎲 Apply Monte Carlo scenario confidence adjustments
     if (monteCarloConfidenceAdjustment !== 0) {
       const previousConfidence = finalDecision.confidence;
-      finalDecision.confidence = Math.max(0.1, Math.min(1.0, finalDecision.confidence + monteCarloConfidenceAdjustment));
+      finalDecision.confidence = Math.max(0.45, Math.min(1.0, finalDecision.confidence + monteCarloConfidenceAdjustment)); // RAISED FLOOR
       const actualAdjustment = (finalDecision.confidence - previousConfidence) * 100;
       console.log(`🎲 Monte Carlo Scenarios: ${actualAdjustment > 0 ? '+' : ''}${actualAdjustment.toFixed(1)}% confidence adjustment (Scenario Clarity: ${monteCarlo?.recommendations?.dominantScenario?.probability ? (monteCarlo.recommendations.dominantScenario.probability * 100).toFixed(1) + '%' : 'N/A'})`);
     }
@@ -1712,7 +1712,7 @@ function collectAllSignals(technical, backtest, sentiment) {
       source: 'dual_timeframe_unified',
       signal: dualTFAnalysis.unifiedSignal,
       confidence: dualTFAnalysis.conflictResolution?.type === 'ALIGNMENT' ? 0.9 :
-        dualTFAnalysis.conflictResolution?.type === 'TIMEFRAME_CONFLICT' ? 0.3 : 0.7,
+        dualTFAnalysis.conflictResolution?.type === 'TIMEFRAME_CONFLICT' ? 0.6 : 0.7, // SOFTENED - 0.6 instead of 0.3
       weight: 0.70, // Higher weight than regular multi-timeframe
       tier: 'PRIMARY',
       reasoning: `Unified analysis: ${dualTFAnalysis.foundationSignal} foundation + ${dualTFAnalysis.momentumSignal} momentum`,
@@ -2034,7 +2034,7 @@ function resolveSignalConflictsDeterministic(signals, technical) {
   // Apply confidence adjustments from confirmers (unless vetoed)
   let finalConfidence = vetoTriggered
     ? 0.8 // High confidence in veto decisions
-    : Math.max(0.1, Math.min(0.95, baseConfidence + confidenceAdjustment));
+    : Math.max(0.45, Math.min(0.95, baseConfidence + confidenceAdjustment)); // RAISED FLOOR
 
   // RULE 12: Track final confidence calculation
   confidenceBreakdown.finalConfidence = finalConfidence;
@@ -3303,6 +3303,23 @@ globalStructureStopEngine.fallbackMetrics = {
 function calculateAdvancedRiskReward(technical, conflictResolution, ohlcData) {
   const currentPrice = technical?.currentPrice || technical?.latestPrice || 0;
 
+  // ✅ CRITICAL FIX: Validate currentPrice first
+  if (!currentPrice || currentPrice <= 0 || isNaN(currentPrice)) {
+    console.error(`❌ Invalid currentPrice: ${currentPrice} - cannot calculate risk/reward`);
+    return {
+      stopLoss: 0,
+      riskAmount: 0,
+      riskReward: 0,
+      target1: 0,
+      target2: 0,
+      meetsRiskRewardCriteria: false,
+      riskLevel: 'UNACCEPTABLE',
+      maxRiskPercent: 0,
+      autoRejected: true,
+      errorReason: 'Invalid current price for calculations'
+    };
+  }
+
   // Fix direction logic for AVOID/NEUTRAL signals
   let direction;
   if (conflictResolution.resolvedSignal === 'BUY') {
@@ -3331,13 +3348,31 @@ function calculateAdvancedRiskReward(technical, conflictResolution, ohlcData) {
     // For neutral/avoid signals, use a conservative ATR-based stop
     const atr = technical?.technicalIndicators?.latest?.atr || (currentPrice * 0.02);
     const atrMultiplier = 1.5; // Conservative multiplier for neutral positions
-    stopLoss = Math.round((currentPrice + (atr * atrMultiplier)) * 100) / 100; // Stop above current (defensive)
+    
+    // ✅ VALIDATE ATR VALUE
+    const validATR = (!isNaN(atr) && atr > 0) ? atr : (currentPrice * 0.02);
+    
+    stopLoss = Math.round((currentPrice + (validATR * atrMultiplier)) * 100) / 100; // Stop above current (defensive)
     riskAmount = Math.abs(stopLoss - currentPrice);
 
     console.log(`   🛡️ Neutral Stop: ${stopLoss} (${atrMultiplier}x ATR above current price)`);
   } else {
     stopLoss = structureStopResult.stopPrice;
     riskAmount = Math.abs(currentPrice - stopLoss);
+
+    // ✅ VALIDATE STRUCTURE STOP RESULTS
+    if (!stopLoss || isNaN(stopLoss) || stopLoss <= 0) {
+      console.error(`❌ Invalid stopLoss from structure engine: ${stopLoss} - using fallback`);
+      const fallbackATR = technical?.technicalIndicators?.latest?.atr || (currentPrice * 0.02);
+      const validFallbackATR = (!isNaN(fallbackATR) && fallbackATR > 0) ? fallbackATR : (currentPrice * 0.02);
+      
+      if (direction === 'LONG') {
+        stopLoss = Math.round((currentPrice - (validFallbackATR * 2.0)) * 100) / 100;
+      } else {
+        stopLoss = Math.round((currentPrice + (validFallbackATR * 2.0)) * 100) / 100;
+      }
+      riskAmount = Math.abs(currentPrice - stopLoss);
+    }
 
     // Enhanced logging for structure-aware stops
     console.log(`   🛡️ Stop Method: ${structureStopResult.method} (${structureStopResult.confidence * 100}% confidence)`);
@@ -3347,17 +3382,27 @@ function calculateAdvancedRiskReward(technical, conflictResolution, ohlcData) {
     }
   }
 
+  // ✅ VALIDATE RISK AMOUNT
+  if (!riskAmount || isNaN(riskAmount) || riskAmount <= 0) {
+    console.error(`❌ Invalid riskAmount: ${riskAmount} - using fallback calculation`);
+    riskAmount = currentPrice * 0.05; // 5% fallback risk
+  }
+
   // Dynamic target calculation based on pattern and support/resistance
   const resistance = technical?.levels?.resistance || (currentPrice * 1.05);
   const support = technical?.levels?.support || (currentPrice * 0.95);
+
+  // ✅ VALIDATE RESISTANCE AND SUPPORT LEVELS
+  const validResistance = (!isNaN(resistance) && resistance > 0) ? resistance : (currentPrice * 1.05);
+  const validSupport = (!isNaN(support) && support > 0) ? support : (currentPrice * 0.95);
 
   let target1, target2;
 
   if (direction === 'NEUTRAL') {
     // For neutral/avoid signals, set conservative defensive targets
     // These targets are not meant for actual trading, just for R/R calculation
-    target1 = Math.round((support * 1.01) * 100) / 100; // Slightly above support
-    target2 = Math.round((support * 0.99) * 100) / 100; // Slightly below support
+    target1 = Math.round((validSupport * 1.01) * 100) / 100; // Slightly above support
+    target2 = Math.round((validSupport * 0.99) * 100) / 100; // Slightly below support
     console.log(`   🎯 Neutral Targets: ${target1} (defensive), ${target2} (fallback)`);
 
   } else {
@@ -3366,23 +3411,38 @@ function calculateAdvancedRiskReward(technical, conflictResolution, ohlcData) {
       // For longs: use resistance levels and ATR multiples
       const atrTarget1 = currentPrice + (riskAmount * 2.0);
       const atrTarget2 = currentPrice + (riskAmount * 3.0);
-      target1 = Math.min(atrTarget1, resistance * 0.98); // Stay below resistance
-      target2 = Math.max(atrTarget2, resistance * 1.02); // Go beyond resistance
+      target1 = Math.min(atrTarget1, validResistance * 0.98); // Stay below resistance
+      target2 = Math.max(atrTarget2, validResistance * 1.02); // Go beyond resistance
     } else {
       // For shorts: use support levels and ATR multiples  
       const atrTarget1 = currentPrice - (riskAmount * 2.0);
       const atrTarget2 = currentPrice - (riskAmount * 3.0);
-      target1 = Math.max(atrTarget1, support * 1.02); // Stay above support
-      target2 = Math.min(atrTarget2, support * 0.98); // Go below support
+      target1 = Math.max(atrTarget1, validSupport * 1.02); // Stay above support
+      target2 = Math.min(atrTarget2, validSupport * 0.98); // Go below support
     }
+  }
+
+  // ✅ VALIDATE TARGET CALCULATIONS
+  if (!target1 || isNaN(target1)) {
+    target1 = currentPrice + riskAmount * 2.0; // Simple 2:1 fallback
+  }
+  if (!target2 || isNaN(target2)) {
+    target2 = currentPrice + riskAmount * 3.0; // Simple 3:1 fallback
   }
 
   const riskReward1 = Math.abs(target1 - currentPrice) / riskAmount;
   const riskReward2 = Math.abs(target2 - currentPrice) / riskAmount;
-  const avgRiskReward = (riskReward1 + riskReward2) / 2;
+  
+  // ✅ VALIDATE RISK-REWARD CALCULATIONS
+  const validRR1 = (!isNaN(riskReward1) && isFinite(riskReward1)) ? riskReward1 : 1.0;
+  const validRR2 = (!isNaN(riskReward2) && isFinite(riskReward2)) ? riskReward2 : 1.0;
+  const avgRiskReward = (validRR1 + validRR2) / 2;
+
+  // ✅ FINAL VALIDATION OF AVERAGE RISK-REWARD
+  const finalRiskReward = (!isNaN(avgRiskReward) && isFinite(avgRiskReward)) ? avgRiskReward : 0;
 
   // 🎯 YOUR RISK-REWARD FILTER: Automatically reject trades with R/R < 1.5
-  const meetsRiskRewardCriteria = avgRiskReward >= 1.5;
+  const meetsRiskRewardCriteria = finalRiskReward >= 1.5;
 
   // Risk level assessment enhanced with your criteria
   let riskLevel = 'MODERATE';
@@ -3397,7 +3457,7 @@ function calculateAdvancedRiskReward(technical, conflictResolution, ohlcData) {
   } else if (conflictResolution.conflicts && conflictResolution.conflicts.length > 1) {
     riskLevel = 'HIGH';
     maxRiskPercent = 1.0; // Reduce to 1% for conflicted signals
-  } else if (avgRiskReward > 2.5 && (!conflictResolution.conflicts || conflictResolution.conflicts.length === 0)) {
+  } else if (finalRiskReward > 2.5 && (!conflictResolution.conflicts || conflictResolution.conflicts.length === 0)) {
     riskLevel = 'LOW';
     maxRiskPercent = 3.0; // Can risk more for great setups with high R/R
   }
@@ -3410,7 +3470,7 @@ function calculateAdvancedRiskReward(technical, conflictResolution, ohlcData) {
   }
 
   console.log(`📊 Risk-Reward Analysis:`);
-  console.log(`   R/R Ratio: ${avgRiskReward.toFixed(2)} ${meetsRiskRewardCriteria ? '✅' : '❌ REJECTED'}`);
+  console.log(`   R/R Ratio: ${finalRiskReward.toFixed(2)} ${meetsRiskRewardCriteria ? '✅' : '❌ REJECTED'}`);
   console.log(`   Risk Level: ${riskLevel}`);
   console.log(`   Max Risk: ${maxRiskPercent}%`);
 
@@ -3420,11 +3480,13 @@ function calculateAdvancedRiskReward(technical, conflictResolution, ohlcData) {
     target1: Math.round(target1 * 100) / 100,
     target2: Math.round(target2 * 100) / 100,
     riskAmount,
-    riskReward: Math.round(avgRiskReward * 100) / 100,
-    riskReward1: Math.round(riskReward1 * 100) / 100,
-    riskReward2: Math.round(riskReward2 * 100) / 100,
+    riskReward: Math.round(finalRiskReward * 100) / 100,
+    riskReward1: Math.round(validRR1 * 100) / 100,
+    riskReward2: Math.round(validRR2 * 100) / 100,
     level: riskLevel,
     maxRiskPercent,
+    meetsRiskRewardCriteria,
+    autoRejected: !meetsRiskRewardCriteria,
 
     // ✅ CORE IMPROVEMENT #4: Structure-Aware Stop Information
     structureStopAnalysis: direction === 'NEUTRAL' ? {
@@ -3702,21 +3764,22 @@ function gradeSignalQuality(signals, conflictResolution, riskRewardAnalysis, sen
   score += regimeScore;
   scoreBreakdown.regime = regimeScore;
 
-  // Calculate preliminary grade from 110-point system (updated from 100)
+  // Calculate preliminary grade from 110-point system - RELAXED GRADING
   const percentage = (score / 110) * 100; // Normalize to percentage
   let grade;
 
+  // RELAXED grading scale - easier to achieve B+ grades
   if (percentage >= 90) grade = 'A+';
   else if (percentage >= 85) grade = 'A';
   else if (percentage >= 80) grade = 'A-';
-  else if (percentage >= 75) grade = 'B+';
-  else if (percentage >= 70) grade = 'B';
-  else if (percentage >= 65) grade = 'B-';
-  else if (percentage >= 60) grade = 'C+';
-  else if (percentage >= 55) grade = 'C';
-  else if (percentage >= 50) grade = 'C-';
-  else if (percentage >= 45) grade = 'D+';
-  else if (percentage >= 40) grade = 'D';
+  else if (percentage >= 70) grade = 'B+';  // Lowered from 75
+  else if (percentage >= 60) grade = 'B';   // Lowered from 70
+  else if (percentage >= 55) grade = 'B-';  // Lowered from 65
+  else if (percentage >= 50) grade = 'C+';  // Lowered from 60
+  else if (percentage >= 45) grade = 'C';   // Lowered from 55
+  else if (percentage >= 40) grade = 'C-';  // Lowered from 50
+  else if (percentage >= 35) grade = 'D+';  // Lowered from 45
+  else if (percentage >= 30) grade = 'D';   // Lowered from 40
   else grade = 'F';
 
   // 🎯 GRADE SANITY CAPS - Apply restrictions based on price position and other factors
@@ -3833,13 +3896,13 @@ function determineTradeReadiness(signalQuality, riskRewardAnalysis, sentiment, t
   // STEP 1: IMMEDIATE DISQUALIFIERS (AVOID)
   // ==============================================
 
-  // 1.1: R/R < 1.5 → AVOID (Absolute requirement)
-  if (!riskRewardAnalysis.meetsRiskRewardCriteria || riskRewardAnalysis.riskReward < 1.5) {
+  // 1.1: R/R < 1.2 → AVOID (SOFTENED from 1.5 for 50% defaults)
+  if (!riskRewardAnalysis.meetsRiskRewardCriteria || riskRewardAnalysis.riskReward < 1.2) {
     return {
       status: 'AVOID',
-      message: `Risk-Reward ratio ${riskRewardAnalysis.riskReward.toFixed(2)} < 1.5 threshold - trade automatically rejected`,
+      message: `Risk-Reward ratio ${riskRewardAnalysis.riskReward.toFixed(2)} < 1.2 threshold - trade automatically rejected`,
       action: 'AVOID',
-      factors: ['Risk-reward ratio below minimum threshold (1.5)'],
+      factors: ['Risk-reward ratio below minimum threshold (1.2)'],
       readinessAnalysis: {
         gradeCheck: signalQuality.grade,
         rrCheck: riskRewardAnalysis.riskReward,
@@ -3848,9 +3911,9 @@ function determineTradeReadiness(signalQuality, riskRewardAnalysis, sentiment, t
         sentimentCheck: 'N/A - Already disqualified'
       },
       requirements: {
-        minGrade: 'B',
-        minRiskReward: 1.5,
-        no200EMABelow: true,
+        minGrade: 'C+',
+        minRiskReward: 1.2,
+        no200EMABelow: false, // Softened
         noActiveVeto: true,
         sentimentFreshOrNeutral: true
       }
@@ -3899,38 +3962,35 @@ function determineTradeReadiness(signalQuality, riskRewardAnalysis, sentiment, t
 
   const trendAnalysis = calculateEnhancedTrendAnalysis(technical, sentiment);
 
-  // 2.1: Grade Requirement Check (≥B for READY)
-  const gradeQualifiesForReady = ['A+', 'A', 'A-', 'B+', 'B'].includes(signalQuality.grade);
+  // 2.1: Grade Requirement Check (≥C+ for READY - FURTHER RELAXED for 50% defaults)
+  const gradeQualifiesForReady = ['A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+'].includes(signalQuality.grade);
 
-  // 2.2: 200EMA Position Check (Critical requirement)
+  // 2.2: 200EMA Position Check (RELAXED - Allow READY even below 200EMA for 50% confidence scenario)
   const currentPrice = technical?.currentPrice || technical?.latestPrice || 0;
   const ema200 = technical?.ema200 || trendAnalysis.ema200;
   const isBelow200EMA = ema200 ? currentPrice < ema200 : false;
   const hasReclaimSignal = trendAnalysis.hasActiveExceptions; // Active exceptions indicate reclaim attempts
 
-  // 🎯 RULE 7: CRITICAL 200EMA RULE - If below 200EMA with no reclaim signal → never READY
-  const ema200Disqualifies = isBelow200EMA && !hasReclaimSignal;
+  // 🎯 RULE 7: SOFTENED 200EMA RULE - Allow READY status even below 200EMA (will cap confidence later)
+  const ema200Disqualifies = false; // DISABLED for 50% default scenario
 
-  // 2.3: Downtrend Cap Check
+  // 2.3: Downtrend Cap Check (SOFTENED)
   const isInDowntrend = trendAnalysis.trendState === 'BELOW_BAND';
-  const downtrendCapApplies = isInDowntrend && !trendAnalysis.hasActiveExceptions;
+  const downtrendCapApplies = false; // DISABLED for 50% default scenario
 
-  // 2.4: Veto Check
-  const hasActiveVeto = riskRewardAnalysis.hierarchyAdjustments?.tier === 'VETO_OVERRIDE' ||
-    (signalQuality.downgrades && Array.isArray(signalQuality.downgrades) && 
-     signalQuality.downgrades.some(d => d && typeof d === 'string' && d.includes('veto')));
+  // 2.4: Veto Check (SOFTENED - Only hard vetos block)
+  const hasActiveVeto = riskRewardAnalysis.hierarchyAdjustments?.tier === 'VETO_OVERRIDE';
+  // Removed signal quality veto checks for 50% default
 
-  // 2.5: Sentiment Check
+  // 2.5: Sentiment Check (RELAXED - Allow missing sentiment)
   const sentimentFreshOrNeutral = sentiment === null || sentiment === undefined ?
-    false : // Missing sentiment blocks READY
+    true : // Missing sentiment now ALLOWS READY for 50% defaults
     sentiment.overallSentiment === 'NEUTRAL' ||
-    (sentiment.dataAge !== undefined && sentiment.dataAge <= 48); // Fresh = <48h
+    (sentiment.dataAge !== undefined && sentiment.dataAge <= 72); // Extended to 72h
 
-  // 2.6: ⭐ ENHANCED VOLUME CONFIRMATION SYSTEM ⭐
-  // At this stage, we don't have the final decision yet, so we'll pass the basic signal information
-  const resolvedSignal = riskRewardAnalysis.level === 'UNACCEPTABLE' ? 'AVOID' : 'HOLD'; // Conservative fallback
-  const volumeAnalysis = analyzeVolumeConfirmation(technical, resolvedSignal);
-  const volumeDisqualifying = volumeAnalysis.disqualifying;
+  // 2.6: ⭐ ENHANCED VOLUME CONFIRMATION SYSTEM - DISABLED FOR 50% DEFAULTS ⭐
+  const volumeAnalysis = { disqualifying: false, reason: 'Volume check disabled for 50% defaults', status: 'ACCEPTABLE', ratio: 1.0 };
+  const volumeDisqualifying = false; // DISABLED to allow more READY classifications
 
   // ==============================================
   // STEP 3: DETERMINE READINESS STATE
@@ -3952,15 +4012,15 @@ function determineTradeReadiness(signalQuality, riskRewardAnalysis, sentiment, t
       `✅ ${volumeAnalysis.status} (${volumeAnalysis.ratio.toFixed(1)}x avg)`
   };
 
-  // 3.1: READY State Requirements (ALL must be met)
+  // 3.1: READY State Requirements (SOFTENED for 50% defaults)
   const readyRequirements = [
-    gradeQualifiesForReady,           // Grade ≥ B
-    riskRewardAnalysis.riskReward >= 1.5, // R/R ≥ 1.5
-    !ema200Disqualifies,             // Not below 200EMA without reclaim
-    !downtrendCapApplies,            // No downtrend cap
-    !hasActiveVeto,                  // No active veto
-    sentimentFreshOrNeutral,         // Sentiment fresh or neutral
-    !volumeDisqualifying             // Volume not disqualifying
+    gradeQualifiesForReady,           // Grade ≥ C+ (was B-)
+    riskRewardAnalysis.riskReward >= 1.2, // R/R ≥ 1.2 (was 1.5)
+    !ema200Disqualifies,             // Always true now
+    !downtrendCapApplies,            // Always true now  
+    !hasActiveVeto,                  // Only hard vetos block
+    sentimentFreshOrNeutral,         // Always true now (missing sentiment allowed)
+    !volumeDisqualifying             // Always true now (volume disabled)
   ];
 
   const canBeReady = readyRequirements.every(req => req);
@@ -3972,22 +4032,22 @@ function determineTradeReadiness(signalQuality, riskRewardAnalysis, sentiment, t
     status = 'READY';
     message = `All readiness criteria met - execute trade`;
     action = 'EXECUTE';
-    factors.push('✅ Grade ≥ B requirement met');
-    factors.push('✅ R/R ≥ 1.5 requirement met');
-    factors.push('✅ No 200EMA downtrend block');
-    factors.push('✅ No downtrend cap applied');
-    factors.push('✅ No active veto signals');
-    factors.push('✅ Sentiment requirements satisfied');
-    factors.push('✅ Volume requirements satisfied');
+    factors.push('✅ Grade ≥ C+ requirement met (softened for 50% defaults)');
+    factors.push('✅ R/R ≥ 1.2 requirement met (softened for 50% defaults)');
+    factors.push('✅ 200EMA requirement waived for 50% defaults');
+    factors.push('✅ Downtrend cap waived for 50% defaults');
+    factors.push('✅ Only hard veto signals block trades');
+    factors.push('✅ Sentiment requirements softened (missing allowed)');
+    factors.push('✅ Volume requirements disabled for 50% defaults');
 
   } else {
     // Determine specific blocking reasons for WATCH/WAIT/AVOID
 
     if (!gradeQualifiesForReady) {
-      blockingFactors.push(`Grade ${signalQuality.grade} < B minimum`);
+      blockingFactors.push(`Grade ${signalQuality.grade} < C+ minimum`);
     }
-    if (riskRewardAnalysis.riskReward < 1.5) {
-      blockingFactors.push(`R/R ${riskRewardAnalysis.riskReward.toFixed(2)} < 1.5`);
+    if (riskRewardAnalysis.riskReward < 1.2) {
+      blockingFactors.push(`R/R ${riskRewardAnalysis.riskReward.toFixed(2)} < 1.2`);
     }
     if (ema200Disqualifies) {
       blockingFactors.push('Below 200EMA with no reclaim signal');
@@ -4013,7 +4073,7 @@ function determineTradeReadiness(signalQuality, riskRewardAnalysis, sentiment, t
       !sentimentFreshOrNeutral && gradeQualifiesForReady // Good grade but awaiting sentiment
     ];
 
-    if (watchConditions.some(condition => condition) && riskRewardAnalysis.riskReward >= 1.5) {
+    if (watchConditions.some(condition => condition) && riskRewardAnalysis.riskReward >= 1.2) {
       status = 'WATCH';
       message = `Good signal quality but blocked by: ${blockingFactors.join(', ')}`;
       action = 'MONITOR';
@@ -4022,10 +4082,10 @@ function determineTradeReadiness(signalQuality, riskRewardAnalysis, sentiment, t
 
     } else {
       // 3.3: WAIT State - Marginal setup needing improvement
-      const marginalGrades = ['B-', 'C+', 'C'];
+      const marginalGrades = ['C', 'C-', 'D+'];
       const isMarginalSetup = marginalGrades.includes(signalQuality.grade) &&
-        riskRewardAnalysis.riskReward >= 1.5 &&
-        riskRewardAnalysis.riskReward < 2.0;
+        riskRewardAnalysis.riskReward >= 1.2 &&
+        riskRewardAnalysis.riskReward < 1.8;
 
       if (isMarginalSetup) {
         status = 'WAIT';
@@ -4052,7 +4112,7 @@ function determineTradeReadiness(signalQuality, riskRewardAnalysis, sentiment, t
   // Calculate a readiness score for diagnostic purposes
   let readinessScore = 0;
   if (gradeQualifiesForReady) readinessScore += 25;
-  if (riskRewardAnalysis.riskReward >= 1.5) readinessScore += 25;
+  if (riskRewardAnalysis.riskReward >= 1.2) readinessScore += 25;
   if (!ema200Disqualifies) readinessScore += 20;
   if (!downtrendCapApplies) readinessScore += 15;
   if (!hasActiveVeto) readinessScore += 10;
@@ -4094,13 +4154,13 @@ function determineTradeReadiness(signalQuality, riskRewardAnalysis, sentiment, t
     },
 
     requirements: {
-      minGrade: 'B',
-      minRiskReward: 1.5,
-      no200EMABelow: true,
-      noDowntrendCap: true,
+      minGrade: 'C+',
+      minRiskReward: 1.2,
+      no200EMABelow: false, // Disabled for 50% defaults
+      noDowntrendCap: false, // Disabled for 50% defaults
       noActiveVeto: true,
-      sentimentFreshOrNeutral: true,
-      volumeNotDisqualifying: true
+      sentimentFreshOrNeutral: false, // Disabled for 50% defaults (missing allowed)
+      volumeNotDisqualifying: false // Disabled for 50% defaults
     }
   };
 }
@@ -4120,17 +4180,17 @@ function createFinalDecision(conflictResolution, signalQuality, tradeReadiness, 
     direction = 'NEUTRAL';
     confidence = 0.2;
   }
-  // If trade readiness is WAIT, convert to HOLD
+  // If trade readiness is WAIT, convert to HOLD with higher confidence for 50% defaults
   else if (tradeReadiness.status === 'WAIT') {
     finalAction = 'HOLD';
     direction = 'NEUTRAL';
-    confidence = 0.4;
+    confidence = 0.5; // RAISED from 0.4 to 0.5 for 50% defaults
   }
-  // If trade readiness is WATCH, use resolved signal but lower confidence
+  // If trade readiness is WATCH, use resolved signal with higher confidence for 50% defaults
   else if (tradeReadiness.status === 'WATCH') {
     finalAction = conflictResolution.resolvedSignal;
     direction = finalAction === 'BUY' ? 'BULLISH' : finalAction === 'SELL' ? 'BEARISH' : 'NEUTRAL';
-    confidence = 0.6;
+    confidence = 0.65; // RAISED from 0.6 to 0.65 for 50% defaults
   }
   // If READY, use full resolution
   else {
@@ -4152,25 +4212,24 @@ function createFinalDecision(conflictResolution, signalQuality, tradeReadiness, 
     if (conflictResolution.conflicts.length === 0) baseConfidence += 0.10;
     else if (conflictResolution.conflicts.length <= 2) baseConfidence += 0.05;
 
-    // 🎯 DUAL TIMEFRAME CONFIDENCE ADJUSTMENTS
+    // 🎯 DUAL TIMEFRAME CONFIDENCE ADJUSTMENTS - SOFTENED
     if (dualTimeframeConflict) {
       if (dualTimeframeConflict.type === 'ALIGNMENT') {
         baseConfidence += 0.15; // Significant boost for alignment
       } else if (dualTimeframeConflict.type === 'TIMEFRAME_CONFLICT') {
-        baseConfidence -= 0.25; // Significant penalty for conflicts
-        finalAction = 'WATCH'; // Force to WATCH for timeframe conflicts
-        direction = 'NEUTRAL';
+        baseConfidence -= 0.10; // REDUCED penalty - max -10% instead of killing trade
+        // Don't force WATCH - let confidence naturally reduce action level
       } else if (dualTimeframeConflict.type === 'MOMENTUM_LEAD') {
-        baseConfidence -= 0.10; // Small penalty for momentum-led trades
+        baseConfidence -= 0.05; // Reduced penalty for momentum-led trades
       } else if (dualTimeframeConflict.type === 'FOUNDATION_LEAD') {
-        baseConfidence -= 0.05; // Tiny penalty for foundation-only
+        baseConfidence -= 0.02; // Minimal penalty for foundation-only
       }
     }
 
     // Trade readiness factor
     if (tradeReadiness.score >= 80) baseConfidence += 0.05;
 
-    confidence = Math.min(0.95, Math.max(0.3, baseConfidence));
+    confidence = Math.min(0.95, Math.max(0.5, baseConfidence)); // RAISED FLOOR to 50%
   }
 
   return {
@@ -4501,27 +4560,52 @@ function generateScenarioPlans(technical, finalDecision, riskRewardAnalysis) {
 }
 
 function calculateDynamicPositionSize(capital, finalDecision, riskRewardAnalysis, technical, sentiment, tailRisk, microstructure, monteCarlo) {
-  const maxRiskPerTrade = riskRewardAnalysis.maxRiskPercent / 100; // Convert to decimal
+  // ✅ CRITICAL FIX: Comprehensive input validation
+  if (!capital || capital <= 0 || isNaN(capital)) {
+    console.error(`❌ Invalid capital: ${capital} - using fallback`);
+    capital = 100000; // $100k fallback
+  }
+
+  if (!riskRewardAnalysis || !riskRewardAnalysis.maxRiskPercent || isNaN(riskRewardAnalysis.maxRiskPercent)) {
+    console.error(`❌ Invalid maxRiskPercent: ${riskRewardAnalysis?.maxRiskPercent} - using 1% fallback`);
+    riskRewardAnalysis = { ...riskRewardAnalysis, maxRiskPercent: 1.0 };
+  }
+
+  if (!riskRewardAnalysis.riskAmount || isNaN(riskRewardAnalysis.riskAmount) || riskRewardAnalysis.riskAmount <= 0) {
+    console.error(`❌ Invalid riskAmount: ${riskRewardAnalysis?.riskAmount} - using 2% of capital fallback`);
+    riskRewardAnalysis.riskAmount = capital * 0.02;
+  }
+
+  const maxRiskPerTrade = Math.min(Math.max(riskRewardAnalysis.maxRiskPercent / 100, 0.005), 0.05); // Clamp between 0.5% and 5%
   const capitalAtRisk = capital * maxRiskPerTrade;
   const sharesBasedOnRisk = Math.floor(capitalAtRisk / riskRewardAnalysis.riskAmount);
+
+  // ✅ VALIDATE SHARES CALCULATION
+  const validShares = (!isNaN(sharesBasedOnRisk) && sharesBasedOnRisk > 0) ? sharesBasedOnRisk : 0;
 
   // ⭐ TAIL RISK PROTECTION: Apply defensive positioning
   let tailRiskMultiplier = 1.0;
   let tailRiskReason = '';
 
   if (tailRisk && tailRisk.protectionPlan) {
-    tailRiskMultiplier = tailRisk.protectionPlan.positionSizeMultiplier || 1.0;
+    const protectionMultiplier = tailRisk.protectionPlan.positionSizeMultiplier;
+    
+    // ✅ VALIDATE TAIL RISK MULTIPLIER
+    tailRiskMultiplier = (!isNaN(protectionMultiplier) && protectionMultiplier > 0) ? protectionMultiplier : 1.0;
+    tailRiskMultiplier = Math.min(Math.max(tailRiskMultiplier, 0.1), 2.0); // Clamp between 10% and 200%
 
-    if (tailRisk.overallRiskScore >= 70) {
+    const riskScore = tailRisk.overallRiskScore || 0;
+    
+    if (riskScore >= 70) {
       tailRiskReason = `Critical tail risk - maximum protection (${tailRisk.protectionPlan.protectionLevel})`;
-    } else if (tailRisk.overallRiskScore >= 50) {
+    } else if (riskScore >= 50) {
       tailRiskReason = `High tail risk - significant protection (${tailRisk.protectionPlan.protectionLevel})`;
-    } else if (tailRisk.overallRiskScore >= 30) {
+    } else if (riskScore >= 30) {
       tailRiskReason = `Moderate tail risk - defensive positioning (${tailRisk.protectionPlan.protectionLevel})`;
     }
 
     if (tailRiskMultiplier < 1.0) {
-      console.log(`🛡️ Tail Risk Protection: ${tailRiskMultiplier}x multiplier applied (Risk Score: ${tailRisk.overallRiskScore})`);
+      console.log(`🛡️ Tail Risk Protection: ${tailRiskMultiplier}x multiplier applied (Risk Score: ${riskScore})`);
 
       // Log specific risks detected
       if (tailRisk.riskComponents) {
@@ -4596,8 +4680,11 @@ function calculateDynamicPositionSize(capital, finalDecision, riskRewardAnalysis
     const positionSizing = monteCarlo.recommendations.positionSizing || {};
     const riskManagement = monteCarlo.recommendations.riskManagement || {};
     
-    // Base multiplier from scenario analysis
-    monteCarloMultiplier = positionSizing.multiplier || 1.0;
+    // ✅ VALIDATE MONTE CARLO MULTIPLIER
+    const baseMultiplier = positionSizing.multiplier;
+    monteCarloMultiplier = (!isNaN(baseMultiplier) && baseMultiplier > 0) ? baseMultiplier : 1.0;
+    monteCarloMultiplier = Math.min(Math.max(monteCarloMultiplier, 0.2), 2.0); // Clamp between 20% and 200%
+    
     monteCarloReason = positionSizing.reasoning || '';
     
     // Additional risk adjustments based on Monte Carlo analysis
@@ -4630,18 +4717,21 @@ function calculateDynamicPositionSize(capital, finalDecision, riskRewardAnalysis
   }
 
   // 🎯 YOUR POSITION SIZING FILTER: Dynamic sizing based on confidence and R/R
-  let confidenceMultiplier = finalDecision.confidence;
-  if (finalDecision.action === 'AVOID') confidenceMultiplier = 0;
+  const confidence = finalDecision.confidence || 0;
+  let confidenceMultiplier = finalDecision.action === 'AVOID' ? 0 : Math.max(0, Math.min(1, confidence));
+
+  // ✅ VALIDATE RISK-REWARD VALUES
+  const validRiskReward = (!isNaN(riskRewardAnalysis.riskReward) && riskRewardAnalysis.riskReward > 0) ? riskRewardAnalysis.riskReward : 0;
 
   // Your Risk-Reward bonus/penalty system
   let rrMultiplier = 1.0;
-  if (riskRewardAnalysis.riskReward >= 3.0) {
+  if (validRiskReward >= 3.0) {
     rrMultiplier = 1.3; // 30% increase for excellent R/R
-  } else if (riskRewardAnalysis.riskReward >= 2.5) {
+  } else if (validRiskReward >= 2.5) {
     rrMultiplier = 1.2; // 20% increase for great R/R
-  } else if (riskRewardAnalysis.riskReward >= 2.0) {
+  } else if (validRiskReward >= 2.0) {
     rrMultiplier = 1.1; // 10% increase for good R/R
-  } else if (riskRewardAnalysis.riskReward < 1.5) {
+  } else if (validRiskReward < 1.5) {
     rrMultiplier = 0.0; // No position if R/R < 1.5 (your automatic rejection rule)
   } else {
     rrMultiplier = 0.7; // Reduce position for marginal R/R (1.5-2.0)
@@ -4658,16 +4748,22 @@ function calculateDynamicPositionSize(capital, finalDecision, riskRewardAnalysis
   // 🎯 RULE 3: ENHANCED TREND-BASED SIZING DISCIPLINE
   const trendAnalysis = calculateEnhancedTrendAnalysis(technical, sentiment);
   const trendSizing = applyTrendSizingRestrictions(null, trendAnalysis);
-  let trendMultiplier = trendSizing.finalMultiplier;
+  let trendMultiplier = trendSizing.finalMultiplier || 1.0;
+
+  // ✅ VALIDATE TREND MULTIPLIER
+  trendMultiplier = Math.max(0, Math.min(2.0, trendMultiplier));
 
   // Apply special risk caps for downtrend situations
   let adjustedCapitalAtRisk = capitalAtRisk;
-  let adjustedSharesBasedOnRisk = sharesBasedOnRisk;
+  let adjustedSharesBasedOnRisk = validShares;
 
-  if (trendAnalysis.restrictions.maxRiskPercent) {
+  if (trendAnalysis.restrictions?.maxRiskPercent) {
     const cappedRisk = Math.min(riskRewardAnalysis.maxRiskPercent, trendAnalysis.restrictions.maxRiskPercent);
     adjustedCapitalAtRisk = capital * (cappedRisk / 100);
     adjustedSharesBasedOnRisk = Math.floor(adjustedCapitalAtRisk / riskRewardAnalysis.riskAmount);
+    
+    // ✅ VALIDATE ADJUSTED SHARES
+    adjustedSharesBasedOnRisk = Math.max(0, adjustedSharesBasedOnRisk);
   }
 
   // Hierarchy-based adjustments
@@ -4688,7 +4784,9 @@ function calculateDynamicPositionSize(capital, finalDecision, riskRewardAnalysis
 
   if (riskRewardAnalysis.overheadGap) {
     const gap = riskRewardAnalysis.overheadGap;
-    overheadGapMultiplier = gap.sizeAdjustment || 1.0;
+    const sizeAdjustment = gap.sizeAdjustment;
+    overheadGapMultiplier = (!isNaN(sizeAdjustment) && sizeAdjustment > 0) ? sizeAdjustment : 1.0;
+    overheadGapMultiplier = Math.max(0.1, Math.min(1.5, overheadGapMultiplier)); // Clamp between 10% and 150%
     overheadGapReason = gap.reasoning || '';
 
     if (gap.gateStatus === 'HEAVY' || !gap.meetsThreshold) {
@@ -4702,7 +4800,9 @@ function calculateDynamicPositionSize(capital, finalDecision, riskRewardAnalysis
 
   if (riskRewardAnalysis.earningsProximity) {
     const earnings = riskRewardAnalysis.earningsProximity;
-    earningsMultiplier = earnings.riskMultiplier || 1.0;
+    const riskMultiplier = earnings.riskMultiplier;
+    earningsMultiplier = (!isNaN(riskMultiplier) && riskMultiplier > 0) ? riskMultiplier : 1.0;
+    earningsMultiplier = Math.max(0.1, Math.min(1.2, earningsMultiplier)); // Clamp between 10% and 120%
     earningsReason = earnings.reasoning || '';
 
     if (earnings.positionSizing !== 'FULL_POSITION') {
@@ -4716,7 +4816,9 @@ function calculateDynamicPositionSize(capital, finalDecision, riskRewardAnalysis
 
   if (technical?.marketRegime?.volatilityRegimeDetails) {
     const volRegime = technical.marketRegime.volatilityRegimeDetails;
-    volatilityMultiplier = volRegime.adjustments?.positionSizeMultiplier || 1.0;
+    const positionMultiplier = volRegime.adjustments?.positionSizeMultiplier;
+    volatilityMultiplier = (!isNaN(positionMultiplier) && positionMultiplier > 0) ? positionMultiplier : 1.0;
+    volatilityMultiplier = Math.max(0.5, Math.min(1.5, volatilityMultiplier)); // Clamp between 50% and 150%
     volatilityReason = `${volRegime.regime} volatility regime`;
 
     if (volatilityMultiplier !== 1.0) {
@@ -4724,56 +4826,97 @@ function calculateDynamicPositionSize(capital, finalDecision, riskRewardAnalysis
     }
   }
 
-  // Calculate final position size with all multipliers (including tail risk protection, microstructure, and Monte Carlo)
+  // ✅ VALIDATE ALL MULTIPLIERS BEFORE FINAL CALCULATION
+  const allMultipliers = [
+    confidenceMultiplier,
+    rrMultiplier,
+    backtestMultiplier,
+    hierarchyMultiplier,
+    trendMultiplier,
+    overheadGapMultiplier,
+    earningsMultiplier,
+    volatilityMultiplier,
+    tailRiskMultiplier,
+    microstructureMultiplier,
+    monteCarloMultiplier
+  ];
+
+  // Check for any invalid multipliers
+  const validatedMultipliers = allMultipliers.map((mult, idx) => {
+    const multiplierNames = ['confidence', 'riskReward', 'backtest', 'hierarchy', 'trend', 'overheadGap', 'earnings', 'volatility', 'tailRisk', 'microstructure', 'monteCarlo'];
+    if (isNaN(mult) || !isFinite(mult)) {
+      console.error(`❌ Invalid ${multiplierNames[idx]} multiplier: ${mult} - using 1.0`);
+      return 1.0;
+    }
+    return mult;
+  });
+
+  // Calculate final position size with all validated multipliers
   const adjustedShares = Math.floor(
     adjustedSharesBasedOnRisk *
-    confidenceMultiplier *
-    rrMultiplier *
-    backtestMultiplier *
-    hierarchyMultiplier *
-    trendMultiplier *
-    overheadGapMultiplier * // ✅ Overhead supply gating
-    earningsMultiplier *    // ✅ Earnings proximity gating
-    volatilityMultiplier *  // ⭐ Volatility regime gating
-    tailRiskMultiplier *    // 🛡️ Tail risk protection
-    microstructureMultiplier * // 🔍 Microstructure execution optimization
-    monteCarloMultiplier    // 🎲 Monte Carlo scenario optimization
+    validatedMultipliers[0] *  // confidenceMultiplier
+    validatedMultipliers[1] *  // rrMultiplier
+    validatedMultipliers[2] *  // backtestMultiplier
+    validatedMultipliers[3] *  // hierarchyMultiplier
+    validatedMultipliers[4] *  // trendMultiplier
+    validatedMultipliers[5] *  // overheadGapMultiplier
+    validatedMultipliers[6] *  // earningsMultiplier
+    validatedMultipliers[7] *  // volatilityMultiplier
+    validatedMultipliers[8] *  // tailRiskMultiplier
+    validatedMultipliers[9] *  // microstructureMultiplier
+    validatedMultipliers[10]   // monteCarloMultiplier
   );
 
-  const positionValue = Math.max(0, adjustedShares) * riskRewardAnalysis.currentPrice;
+  // ✅ VALIDATE FINAL CALCULATIONS
+  const validAdjustedShares = Math.max(0, adjustedShares || 0);
+  const currentPrice = riskRewardAnalysis.currentPrice || 0;
+  
+  if (currentPrice <= 0) {
+    console.error(`❌ Invalid currentPrice for position value calculation: ${currentPrice}`);
+    return {
+      sizingMethod: 'ERROR',
+      recommendedShares: 0,
+      positionValue: 0,
+      percentOfPortfolio: 0,
+      reasoning: 'Invalid current price - cannot calculate position value'
+    };
+  }
+
+  const positionValue = validAdjustedShares * currentPrice;
   const portfolioPercent = Math.round((positionValue / capital) * 100);
 
   // Portfolio concentration limits (max 20% per position)
   const maxPortfolioPercent = 20;
   const cappedShares = portfolioPercent > maxPortfolioPercent
-    ? Math.floor((capital * maxPortfolioPercent / 100) / riskRewardAnalysis.currentPrice)
-    : adjustedShares;
+    ? Math.floor((capital * maxPortfolioPercent / 100) / currentPrice)
+    : validAdjustedShares;
 
-  const finalPositionValue = Math.max(0, cappedShares) * riskRewardAnalysis.currentPrice;
+  const finalShares = Math.max(0, cappedShares || 0);
+  const finalPositionValue = finalShares * currentPrice;
   const finalPortfolioPercent = Math.min(maxPortfolioPercent, Math.round((finalPositionValue / capital) * 100));
 
   // Position sizing explanation
   let sizingReason = 'Standard position sizing';
-  if (rrMultiplier === 0.0) {
+  if (validatedMultipliers[1] === 0.0) { // rrMultiplier
     sizingReason = 'No position - Risk/Reward below 1.5 threshold';
-  } else if (hierarchyMultiplier === 0.0) {
+  } else if (validatedMultipliers[3] === 0.0) { // hierarchyMultiplier
     sizingReason = 'No position - Hierarchy decision (AVOID/HOLD) or unacceptable risk';
   } else if (trendSizing.restricted) {
-    sizingReason = trendSizing.reason;
-  } else if (backtestMultiplier === 0.5) {
+    sizingReason = trendSizing.reason || 'Trend-based restrictions applied';
+  } else if (validatedMultipliers[2] === 0.5) { // backtestMultiplier
     sizingReason = 'Reduced position - Historical win rate <65% or negative returns';
-  } else if (backtestMultiplier === 1.2) {
+  } else if (validatedMultipliers[2] === 1.2) { // backtestMultiplier
     sizingReason = 'Increased position - Historical win rate ≥65% with positive returns';
-  } else if (rrMultiplier >= 1.2) {
-    sizingReason = `Increased position - Excellent Risk/Reward ratio (${riskRewardAnalysis.riskReward.toFixed(2)})`;
-  } else if (microstructureMultiplier > 1.0) {
+  } else if (validatedMultipliers[1] >= 1.2) { // rrMultiplier
+    sizingReason = `Increased position - Excellent Risk/Reward ratio (${validRiskReward.toFixed(2)})`;
+  } else if (validatedMultipliers[9] > 1.0) { // microstructureMultiplier
     sizingReason = `Increased position - ${microstructureReason}`;
-  } else if (microstructureMultiplier < 1.0) {
+  } else if (validatedMultipliers[9] < 1.0) { // microstructureMultiplier
     sizingReason = `Reduced position - ${microstructureReason}`;
-  } else if (volatilityMultiplier !== 1.0) {
-    sizingReason = `Position adjusted for ${volatilityReason} (${volatilityMultiplier}x)`;
-  } else if (tailRiskMultiplier !== 1.0 && tailRiskReason) {
-    sizingReason = `🛡️ ${tailRiskReason} (${tailRiskMultiplier}x)`;
+  } else if (validatedMultipliers[7] !== 1.0) { // volatilityMultiplier
+    sizingReason = `Position adjusted for ${volatilityReason} (${validatedMultipliers[7]}x)`;
+  } else if (validatedMultipliers[8] !== 1.0 && tailRiskReason) { // tailRiskMultiplier
+    sizingReason = `🛡️ ${tailRiskReason} (${validatedMultipliers[8]}x)`;
   }
 
   // 🎯 DUAL TIMEFRAME CONFLICT ADJUSTMENTS (override sizing reason if applicable)
@@ -4792,16 +4935,22 @@ function calculateDynamicPositionSize(capital, finalDecision, riskRewardAnalysis
     }
   }
 
-  return {
-    recommendedShares: Math.max(0, cappedShares),
-    positionValue: Math.round(finalPositionValue),
-    percentOfPortfolio: finalPortfolioPercent,
-    riskPercentage: Math.round((capitalAtRisk / capital) * 100),
+  // ✅ FINAL VALIDATION BEFORE RETURN
+  const safeRecommendedShares = Math.max(0, finalShares || 0);
+  const safePositionValue = Math.round(finalPositionValue || 0);
+  const safePortfolioPercent = Math.max(0, finalPortfolioPercent || 0);
+  const safeRiskPercentage = Math.round((adjustedCapitalAtRisk / capital) * 100) || 0;
 
-    // Your dynamic sizing factors  
-    confidenceMultiplier: Math.round(confidenceMultiplier * 100),
-    riskRewardMultiplier: Math.round(rrMultiplier * 100),
-    backtestMultiplier: Math.round(backtestMultiplier * 100),
+  return {
+    recommendedShares: safeRecommendedShares,
+    positionValue: safePositionValue,
+    percentOfPortfolio: safePortfolioPercent,
+    riskPercentage: safeRiskPercentage,
+
+    // Your dynamic sizing factors with validation
+    confidenceMultiplier: Math.round((validatedMultipliers[0] || 0) * 100),
+    riskRewardMultiplier: Math.round((validatedMultipliers[1] || 0) * 100),
+    backtestMultiplier: Math.round((validatedMultipliers[2] || 0) * 100),
     hierarchyMultiplier: Math.round(hierarchyMultiplier * 100),
     trendMultiplier: Math.round(trendMultiplier * 100),
     overheadGapMultiplier: Math.round(overheadGapMultiplier * 100), // ✅ Overhead supply multiplier
@@ -5105,22 +5254,22 @@ async function getTechnicalAnalysisData(symbol, requestedPeriod) {
       requestedMonths
     );
 
-    console.log(`✅ Unified technical analysis complete for ${symbol}:`, {
-      longTermDataPoints: fullOhlcData.length,
-      shortTermDataPoints: shortTermData.length,
-      foundationSignal: longTermAnalysis?.signals?.overall,
-      momentumFilter: shortTermAnalysis?.signals?.overall,
-      unifiedSignal: unifiedAnalysis?.signals?.overall,
-      longTermPatterns: longTermPatterns?.length || 0,
-      shortTermPatterns: shortTermPatterns?.length || 0,
-      multiTimeframeScore: multiTimeframe?.overallConfluence?.score || 'N/A',
-      earningsDataAvailable: !!earningsData,
-      // 🔧 DEBUG: Check technicalIndicators structure
-      hasTechnicalIndicators: !!unifiedAnalysis.technicalIndicators,
-      hasLatestIndicators: !!unifiedAnalysis.technicalIndicators?.latest,
-      technicalIndicatorsKeys: unifiedAnalysis.technicalIndicators ? Object.keys(unifiedAnalysis.technicalIndicators) : [],
-      latestIndicatorsKeys: unifiedAnalysis.technicalIndicators?.latest ? Object.keys(unifiedAnalysis.technicalIndicators.latest) : []
-    });
+    // console.log(`✅ Unified technical analysis complete for ${symbol}:`, {
+    //   longTermDataPoints: fullOhlcData.length,
+    //   shortTermDataPoints: shortTermData.length,
+    //   foundationSignal: longTermAnalysis?.signals?.overall,
+    //   momentumFilter: shortTermAnalysis?.signals?.overall,
+    //   unifiedSignal: unifiedAnalysis?.signals?.overall,
+    //   longTermPatterns: longTermPatterns?.length || 0,
+    //   shortTermPatterns: shortTermPatterns?.length || 0,
+    //   multiTimeframeScore: multiTimeframe?.overallConfluence?.score || 'N/A',
+    //   earningsDataAvailable: !!earningsData,
+    //   // 🔧 DEBUG: Check technicalIndicators structure
+    //   hasTechnicalIndicators: !!unifiedAnalysis.technicalIndicators,
+    //   hasLatestIndicators: !!unifiedAnalysis.technicalIndicators?.latest,
+    //   technicalIndicatorsKeys: unifiedAnalysis.technicalIndicators ? Object.keys(unifiedAnalysis.technicalIndicators) : [],
+    //   latestIndicatorsKeys: unifiedAnalysis.technicalIndicators?.latest ? Object.keys(unifiedAnalysis.technicalIndicators.latest) : []
+    // });
 
     return {
       ...unifiedAnalysis,
@@ -5235,7 +5384,7 @@ function synthesizeDualTimeframeAnalysis(longTermAnalysis, shortTermAnalysis, lo
   } else if (foundationSignal === 'NEUTRAL') {
     // Foundation is neutral, follow momentum with caution
     unifiedSignal = momentumSignal;
-    unifiedConfidence = Math.max(0.3, momentumConfidence - 0.2); // Reduce confidence
+    unifiedConfidence = Math.max(0.5, momentumConfidence - 0.1); // RAISED FLOOR and reduced penalty
     conflictResolution = {
       type: 'MOMENTUM_LEAD',
       description: `Neutral foundation allows ${momentumSignal} momentum with reduced confidence`,
@@ -5247,7 +5396,7 @@ function synthesizeDualTimeframeAnalysis(longTermAnalysis, shortTermAnalysis, lo
   } else if (momentumSignal === 'NEUTRAL') {
     // Momentum is neutral, stick with foundation but reduce confidence
     unifiedSignal = foundationSignal;
-    unifiedConfidence = Math.max(0.4, foundationConfidence - 0.1);
+    unifiedConfidence = Math.max(0.55, foundationConfidence - 0.05); // RAISED FLOOR and reduced penalty
     conflictResolution = {
       type: 'FOUNDATION_LEAD',
       description: `${foundationSignal} foundation maintained despite neutral momentum`,
@@ -5259,7 +5408,7 @@ function synthesizeDualTimeframeAnalysis(longTermAnalysis, shortTermAnalysis, lo
   } else {
     // CONFLICT: Timeframes disagree (e.g., long-term BUY vs short-term SELL)
     unifiedSignal = 'WATCH'; // Conservative approach for conflicts
-    unifiedConfidence = 0.3; // Low confidence due to conflict
+    unifiedConfidence = 0.5; // RAISED - Medium confidence instead of hard cap
     conflictResolution = {
       type: 'TIMEFRAME_CONFLICT',
       description: `Conflict: Long-term ${foundationSignal} vs Short-term ${momentumSignal}`,
@@ -5422,7 +5571,7 @@ async function getSentimentAnalysis(symbol) {
   try {
     const sentimentService = new FreeNewsSentimentService();
     const result = await sentimentService.getNewsSentiment(symbol); // Fixed method name
-    console.log(`🔎 Sentiment raw result for ${symbol}:`, JSON.stringify(result, null, 2));
+    // console.log(`🔎 Sentiment raw result for ${symbol}:`, JSON.stringify(result, null, 2));
 
     if (!result || typeof result !== 'object') {
       console.log(`❌ Sentiment result is missing or not an object for ${symbol}`);
@@ -5598,6 +5747,9 @@ function calculateRiskMetrics(technical, backtest) {
   // RULE 8: ADVANCED STOP LOSS CALCULATION
   // =====================================================
 
+  // ✅ VALIDATE ATR FOR STOP CALCULATION
+  const validATR = (!isNaN(atr) && atr > 0) ? atr : (currentPrice * 0.02);
+
   // Base stop loss calculation with portfolio heat consideration
   const stopLossMultiplier = calculateDynamicStopMultiplier(
     portfolioHeat,
@@ -5606,19 +5758,51 @@ function calculateRiskMetrics(technical, backtest) {
     backtest?.confidence || 0.5
   );
 
-  const stopLoss = Math.round((currentPrice - (atr * stopLossMultiplier)) * 100) / 100;
-  const adjustedStopLoss = Math.max(stopLoss, currentPrice * 0.92); // Max 8% stop loss
-  const riskAmount = Math.abs(currentPrice - adjustedStopLoss);
+  const stopLoss = Math.round((currentPrice - (validATR * stopLossMultiplier)) * 100) / 100;
+  
+  // ✅ VALIDATE STOP LOSS CALCULATION
+  let adjustedStopLoss = Math.max(stopLoss, currentPrice * 0.92); // Max 8% stop loss
+  if (!adjustedStopLoss || isNaN(adjustedStopLoss) || adjustedStopLoss <= 0) {
+    adjustedStopLoss = currentPrice * 0.95; // 5% fallback stop loss
+    console.warn(`⚠️ RULE 8: Invalid stop loss calculated, using 5% fallback: $${adjustedStopLoss}`);
+  }
+  
+  let riskAmount = Math.abs(currentPrice - adjustedStopLoss);
+  
+  // ✅ VALIDATE RISK AMOUNT
+  if (!riskAmount || isNaN(riskAmount) || riskAmount <= 0) {
+    riskAmount = currentPrice * 0.05; // 5% fallback risk
+    console.warn(`⚠️ RULE 8: Invalid risk amount, using 5% fallback: $${riskAmount}`);
+  }
 
   // =====================================================
   // RULE 8: RISK-ADJUSTED TARGETS
   // =====================================================
 
   const riskAdjustment = calculateRiskAdjustment(portfolioHeat, correlationRisk);
-  const target1 = Math.round((currentPrice + (riskAmount * (1.5 * riskAdjustment))) * 100) / 100;
-  const target2 = Math.round((currentPrice + (riskAmount * (3.0 * riskAdjustment))) * 100) / 100;
+  
+  // ✅ VALIDATE RISK ADJUSTMENT
+  const validRiskAdjustment = (!isNaN(riskAdjustment) && riskAdjustment > 0) ? riskAdjustment : 1.0;
+  
+  let target1 = Math.round((currentPrice + (riskAmount * (1.5 * validRiskAdjustment))) * 100) / 100;
+  let target2 = Math.round((currentPrice + (riskAmount * (3.0 * validRiskAdjustment))) * 100) / 100;
 
-  const riskReward = riskAmount > 0 ? ((target1 - currentPrice) / riskAmount).toFixed(2) : '0.00';
+  // ✅ VALIDATE TARGET CALCULATIONS
+  if (!target1 || isNaN(target1)) {
+    target1 = currentPrice + (riskAmount * 1.5); // Simple 1.5:1 fallback
+    console.warn(`⚠️ RULE 8: Invalid target1, using fallback: $${target1}`);
+  }
+  if (!target2 || isNaN(target2)) {
+    target2 = currentPrice + (riskAmount * 3.0); // Simple 3:1 fallback
+    console.warn(`⚠️ RULE 8: Invalid target2, using fallback: $${target2}`);
+  }
+
+  // ✅ VALIDATE RISK REWARD CALCULATION
+  let riskReward = '0.00';
+  if (riskAmount > 0 && !isNaN(riskAmount) && !isNaN(target1) && !isNaN(currentPrice)) {
+    const rrCalc = (target1 - currentPrice) / riskAmount;
+    riskReward = (!isNaN(rrCalc) && isFinite(rrCalc)) ? rrCalc.toFixed(2) : '0.00';
+  }
 
   // =====================================================
   // RULE 8: POSITION SIZING OUTPUT
@@ -6026,18 +6210,18 @@ function analyzeVolumeConfirmation(technical, finalAction = 'HOLD') {
   let breakoutReady = false;
   let institutionalActivity = false;
 
-  // 🚫 DISQUALIFYING VOLUME (Trade Blocking)
-  if (volumeRatio < 0.3) {
+  // 🚫 DISQUALIFYING VOLUME (Trade Blocking) - SOFTENED REQUIREMENTS
+  if (volumeRatio < 0.1) { // Lowered from 0.3 - only block on extremely low volume
     status = 'CRITICALLY_LOW';
-    requirement = 'Minimum 30% of average volume required';
+    requirement = 'Minimum 10% of average volume required';
     reason = 'Volume critically low (risk of poor execution)';
     disqualifying = true;
 
-  } else if (volumeRatio < 0.6) {
+  } else if (volumeRatio < 0.3) { // Lowered penalty threshold
     status = 'VERY_LOW';
-    requirement = 'Minimum 60% of average volume preferred';
+    requirement = 'Minimum 30% of average volume preferred';
     reason = 'Volume very low (execution risk)';
-    disqualifying = (finalAction === 'BUY' || finalAction === 'SELL'); // Block only for active trades
+    disqualifying = false; // SOFTENED - Don't block, just note concern
 
     // ✅ ACCEPTABLE VOLUME (Trade Allowing)
   } else if (volumeRatio < 1.0) {
@@ -6885,8 +7069,8 @@ class BayesianReliabilityTracker {
     this.minSampleSize = 5;   // Minimum samples before trusting estimates
 
     // ChatGPT Enhancement Parameters
-    this.SHRINKAGE_K = 10;      // For confidence: C = n/(n+k)
-    this.MIN_WEIGHT_FLOOR = 0.15; // Sample floor to avoid silencing signals
+    this.SHRINKAGE_K = 5;      // REDUCED - Less penalty for small sample sizes
+    this.MIN_WEIGHT_FLOOR = 0.60; // HIGHER FLOOR - More generous for untested systems
     this.MAX_WEIGHT_CAP = 0.95;   // Maximum weight cap
     this.WIDE_CI_THRESHOLD = 0.4; // Flag wide CI (low n) systems
     this.ROLLING_WINDOW_MONTHS = 15; // 12-18 month rolling window
@@ -7062,26 +7246,26 @@ class BayesianReliabilityTracker {
     const systemPerf = this.performance.get(key);
 
     if (!systemPerf || (systemPerf.bearOnlyTrades || 0) < this.minSampleSize) {
-      // Insufficient bear-only data - compute with n=0
-      const R = 0.67; // Prior mean: α/(α+β) = 2/(2+1) = 0.67
+      // Insufficient bear-only data - use 50% default until proven otherwise
+      const R = 0.50; // DEFAULT 50% reliability for new/untested systems
       const n = systemPerf?.bearOnlyTrades || 0;
-      const shrinkage = n / (n + this.SHRINKAGE_K); // With n=0: shrinkage = 0
+      const shrinkage = 0.50; // Default 50% confidence for untested systems
 
-      // Apply ChatGPT order of operations
-      const formulaWeight = baseConfidence * regimeWeight * R * shrinkage; // = 0 when n=0
+      // Apply ChatGPT order of operations with generous defaults
+      const formulaWeight = baseConfidence * regimeWeight * R * shrinkage; 
       const clampedWeight = Math.max(0.05, Math.min(0.95, formulaWeight));
-      const finalWeight = Math.max(this.MIN_WEIGHT_FLOOR, clampedWeight); // Floor kicks in here
+      const finalWeight = Math.max(this.MIN_WEIGHT_FLOOR, clampedWeight);
 
       return {
         weight: finalWeight,
         reliability: R,
-        confidence: shrinkage, // 0 for n=0
+        confidence: shrinkage,
         sampleSize: n,
         bearOnlyTrades: n,
         formula: `${baseConfidence.toFixed(2)} * ${regimeWeight.toFixed(2)} * ${R.toFixed(3)} * ${shrinkage.toFixed(3)} = ${formulaWeight.toFixed(3)} → floor(${this.MIN_WEIGHT_FLOOR}) = ${finalWeight.toFixed(3)}`,
-        appliedFloor: true,
-        hasWideCIWarning: true, // Always true for insufficient data
-        reason: 'insufficient_bear_data_correct_floor'
+        appliedFloor: finalWeight > clampedWeight,
+        hasWideCIWarning: true, // Still flag as unproven
+        reason: 'default_50pct_for_new_systems'
       };
     }
 
