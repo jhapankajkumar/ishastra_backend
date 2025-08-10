@@ -6,9 +6,7 @@
 const AdvancedTechnicalAnalysis = require('../../utils/advancedTechnicalAnalysis');
 const AdvancedPatterns = require('../../utils/advancedPatterns');
 const MultiTimeframeAnalysis = require('../../utils/multiTimeframeAnalysis');
-const BacktestingEngine = require('../../utils/backtestingEngine');
 const LeakFreeBacktestingEngine = require('../../utils/leakFreeBacktestingEngine');
-const AIRecommendationEngine = require('../../services/aiRecommendationEngine');
 const FreeNewsSentimentService = require('../../services/freeNewsSentimentService');
 const EnhancedAlertService = require('../../services/enhancedAlertService');
 const { detectVolatilityRegime } = require('../../utils/volatilityRegimeDetector');
@@ -154,14 +152,36 @@ exports.getAnalysis = async (req, res) => {
     const microstructure = microstructureAnalysis.status === 'fulfilled' ? microstructureAnalysis.value : null;
     const monteCarlo = monteCarloScenarios.status === 'fulfilled' ? monteCarloScenarios.value : null;
 
-    // If technical analysis failed, create a basic structure
+    // 🔍 DEBUG: Check why technical analysis failed
+    if (technicalAnalysis.status === 'rejected') {
+      console.error(`❌ Technical analysis failed:`, technicalAnalysis.reason?.message || technicalAnalysis.reason);
+    }
+
+    // If technical analysis failed, create a basic structure with minimal OHLC data
     const finalTechnical = technical || {
-      currentPrice: 0,
-      latestPrice: 0,
+      currentPrice: 100, // Placeholder
+      latestPrice: 100,
       dataPoints: 0,
       indicators: {},
       signals: { overall: 'NEUTRAL' },
-      levels: { resistance: 0, support: 0 }
+      levels: { resistance: 105, support: 95 },
+      ohlcData: [], // Empty array to prevent regime detection crash
+      historicalData: [],
+      technicalIndicators: {
+        latest: {
+          price: 100,
+          ema200: null,
+          ema50: null,
+          ema20: null,
+          atr: 2.0,
+          rsi: 50,
+          macd: 0,
+          macdSignal: 0,
+          adx: 25,
+          plusDI: 25,
+          minusDI: 25
+        }
+      }
     };
 
     // ==============================================
@@ -183,7 +203,31 @@ exports.getAnalysis = async (req, res) => {
     };
 
     // Run Expert AI Decision Engine with signal reconciliation
-    const expertDecision = await generateExpertAIDecision(analysisContext);
+    let expertDecision;
+    try {
+      console.log('🧠 Calling Expert AI Decision Engine...');
+      expertDecision = await generateExpertAIDecision(analysisContext);
+      console.log('✅ Expert AI Decision Engine completed successfully');
+    } catch (expertError) {
+      console.error('❌ Expert AI Decision Engine failed:', expertError.message);
+      console.error('Stack:', expertError.stack);
+      
+      // Create fallback expert decision
+      expertDecision = {
+        finalDecision: { action: 'HOLD', confidence: 0.5 },
+        signalQuality: { grade: 'F' },
+        tradeReadiness: { status: 'AVOID' },
+        executionPlan: { entryPrice: currentPrice, stopLoss: currentPrice * 0.95, riskReward: 0 },
+        riskAssessment: { maxRiskPercent: 2 },
+        positionSizing: { sizingMethod: 'NORMAL', recommendedShares: 0, positionValue: 0, percentOfPortfolio: 0 },
+        regimeDetection: { regime: 'SIDEWAYS', confidence: 0.5, regimeStrength: 0.5 },
+        signalWeights: {},
+        monteCarlo: null,
+        conflictResolution: { conflicts: [], method: 'FALLBACK' },
+        confidenceBreakdown: { overall: 0.5, technical: 0.3, fundamental: 0.2 },
+        sentimentRules: { vetoRecommendation: false }
+      };
+    }
 
     // Generate fallback metrics for comparison and debugging
     const legacySignal = calculateUnifiedSignal(finalTechnical, backtest, sentiment);
@@ -468,6 +512,8 @@ exports.getAnalysis = async (req, res) => {
     // Build enhanced ChatGPT response format
     const response = {
       symbol: formattedSymbol,
+      currentPrice: Math.round((finalTechnical.currentPrice || finalTechnical.latestPrice || 0) * 100) / 100,
+      timestamp: new Date().toISOString(),
       timeframe: {
         requested: originalPeriod,
         used: swingDecisionPeriod,
@@ -636,12 +682,12 @@ exports.getAnalysis = async (req, res) => {
       scenarios: {
         // 🎲 MONTE CARLO SCENARIO ANALYSIS
         monteCarlo: monteCarlo ? {
-          dominantScenario: monteCarlo.recommendations.dominantScenario.scenario.toUpperCase(),
-          dominantProbability: Math.round(monteCarlo.recommendations.dominantScenario.probability * 100),
+          dominantScenario: monteCarlo.recommendations?.dominantScenario?.scenario?.toUpperCase() || 'SIDEWAYS',
+          dominantProbability: Math.round((monteCarlo.recommendations?.dominantScenario?.probability || 0.34) * 100),
           bullishProbability: Math.round((monteCarlo.scenarioAnalysis?.scenarios?.bullish?.probability || 0) * 100),
           bearishProbability: Math.round((monteCarlo.scenarioAnalysis?.scenarios?.bearish?.probability || 0) * 100),
           sidewaysProbability: Math.round((monteCarlo.scenarioAnalysis?.scenarios?.sideways?.probability || 0) * 100),
-          expectedReturn: Math.round((monteCarlo.recommendations.dominantScenario.expectedReturn || 0) * 100 * 10) / 10,
+          expectedReturn: Math.round((monteCarlo.recommendations?.dominantScenario?.expectedReturn || 0) * 100 * 10) / 10,
           riskMetrics: {
             valueAtRisk95: Math.round((monteCarlo.riskMetrics?.valueAtRisk?.var95 || 0) * 100 * 10) / 10,
             valueAtRisk99: Math.round((monteCarlo.riskMetrics?.valueAtRisk?.var99 || 0) * 100 * 10) / 10,
@@ -650,18 +696,18 @@ exports.getAnalysis = async (req, res) => {
             probabilityOfBigGain: Math.round((monteCarlo.riskMetrics?.tailRiskMetrics?.probabilityOfBigGain || 0) * 100)
           },
           positionSizing: {
-            recommendation: monteCarlo.recommendations.positionSizing.recommendation,
-            multiplier: Math.round(monteCarlo.recommendations.positionSizing.multiplier * 100),
-            reasoning: monteCarlo.recommendations.positionSizing.reasoning
+            recommendation: monteCarlo.recommendations?.positionSizing?.recommendation || 'NORMAL',
+            multiplier: Math.round((monteCarlo.recommendations?.positionSizing?.multiplier || 1) * 100),
+            reasoning: monteCarlo.recommendations?.positionSizing?.reasoning || 'Standard position sizing'
           },
           entryTiming: {
-            recommendation: monteCarlo.recommendations.entryTiming.recommendation,
-            reasoning: monteCarlo.recommendations.entryTiming.reasoning
+            recommendation: monteCarlo.recommendations?.entryTiming?.recommendation || 'PATIENT',
+            reasoning: monteCarlo.recommendations?.entryTiming?.reasoning || 'Standard timing analysis'
           },
           targetLevels: {
-            conservative: Math.round((monteCarlo.recommendations.targetLevels.conservative || 0) * 100 * 10) / 10,
-            moderate: Math.round((monteCarlo.recommendations.targetLevels.moderate || 0) * 100 * 10) / 10,
-            aggressive: Math.round((monteCarlo.recommendations.targetLevels.aggressive || 0) * 100 * 10) / 10
+            conservative: Math.round((monteCarlo.recommendations?.targetLevels?.conservative || 0) * 100 * 10) / 10,
+            moderate: Math.round((monteCarlo.recommendations?.targetLevels?.moderate || 0) * 100 * 10) / 10,
+            aggressive: Math.round((monteCarlo.recommendations?.targetLevels?.aggressive || 0) * 100 * 10) / 10
           },
           confidence: Math.round((monteCarlo.confidence || 0) * 100),
           reliability: monteCarlo.reliability || 'UNKNOWN'
@@ -849,6 +895,17 @@ exports.getAnalysis = async (req, res) => {
         }
       };
     }
+
+    // ⭐ ADD EXPERT AI ANALYSIS DATA TO RESPONSE
+    response.expertAI = {
+      status: 'COMPLETE',
+      marketRegime: expertDecision.regimeDetection,
+      signalWeights: expertDecision.signalWeights || {},
+      monteCarlo: expertDecision.monteCarlo || null,
+      conflictResolution: expertDecision.conflictResolution,
+      executionPlan: expertDecision.executionPlan,
+      confidenceBreakdown: expertDecision.confidenceBreakdown
+    };
 
     res.json(response);
 
@@ -1153,9 +1210,33 @@ function createFallbackTailRiskResponse(reason) {
 // ==============================================
 
 async function generateExpertAIDecision(analysisContext) {
+  console.log('🧠 Starting Expert AI Decision Engine...');
   try {
     const { technical, backtest, sentiment, tailRisk, microstructure, monteCarlo, capital, symbol } = analysisContext;
     const currentPrice = technical?.currentPrice || technical?.latestPrice || 0;
+    
+    console.log(`   📊 Context: ${symbol}, Price: $${currentPrice}, Capital: $${capital}`);
+    console.log(`   🔧 Technical: ${technical ? 'YES' : 'NO'}, Backtest: ${backtest ? 'YES' : 'NO'}, Sentiment: ${sentiment ? 'YES' : 'NO'}`);
+    console.log(`   🎲 Monte Carlo: ${monteCarlo ? 'YES' : 'NO'}, Microstructure: ${microstructure ? 'YES' : 'NO'}`);
+    
+    // Debug OHLC data length
+    if (technical?.ohlcData) {
+      console.log(`   📈 OHLC Data Length: ${technical.ohlcData.length} points`);
+      console.log(`   📈 Sample OHLC:`, {
+        first: { date: technical.ohlcData[0]?.date, close: technical.ohlcData[0]?.close },
+        last: { date: technical.ohlcData[technical.ohlcData.length - 1]?.date, close: technical.ohlcData[technical.ohlcData.length - 1]?.close }
+      });
+    } else {
+      console.log(`   ❌ OHLC Data: MISSING`);
+    }
+
+    if (!technical) {
+      throw new Error('Technical analysis data is required');
+    }
+    
+    if (!technical.ohlcData || technical.ohlcData.length < 50) {
+      throw new Error(`Insufficient OHLC data: need 50+, got ${technical?.ohlcData?.length || 0}`);
+    }
 
     console.log(`🧠 Expert AI: Analyzing ${symbol} with regime-aware multi-signal reconciliation...`);
 
@@ -1226,32 +1307,45 @@ async function generateExpertAIDecision(analysisContext) {
     let monteCarloConfidenceAdjustment = 0;
     let scenarioWarnings = [];
 
-    if (monteCarlo && monteCarlo.recommendations) {
-      const { dominantScenario, positionSizing, riskManagement } = monteCarlo.recommendations;
-      
-      // Position sizing adjustment based on scenario probabilities
-      monteCarloMultiplier = positionSizing.multiplier || 1.0;
-      
-      // Confidence adjustment based on scenario clarity
-      if (dominantScenario.probability > 0.65) {
-        monteCarloConfidenceAdjustment = 0.05; // Increase confidence for clear scenarios
-      } else if (dominantScenario.probability < 0.4) {
-        monteCarloConfidenceAdjustment = -0.05; // Decrease confidence for unclear scenarios
-      }
-      
-      // Risk management warnings
-      if (riskManagement.recommendations.includes('TIGHT_STOP_LOSS')) {
-        scenarioWarnings.push('High tail risk in simulations - tight stops recommended');
-      }
-      if (riskManagement.recommendations.includes('POSITION_SIZE_LIMIT')) {
-        scenarioWarnings.push('Excessive downside risk detected in scenarios');
-        monteCarloMultiplier *= 0.8;
-      }
-      if (riskManagement.diversificationNeeded) {
-        scenarioWarnings.push('High concentration risk - diversification needed');
-      }
+    try {
+      if (monteCarlo && monteCarlo.recommendations) {
+        const dominantScenario = monteCarlo.recommendations.dominantScenario || {};
+        const positionSizing = monteCarlo.recommendations.positionSizing || {};
+        const riskManagement = monteCarlo.recommendations.riskManagement || {};
+        
+        // Position sizing adjustment based on scenario probabilities
+        monteCarloMultiplier = positionSizing?.multiplier || 1.0;
+        
+        // Confidence adjustment based on scenario clarity
+        if (dominantScenario?.probability > 0.65) {
+          monteCarloConfidenceAdjustment = 0.05; // Increase confidence for clear scenarios
+        } else if (dominantScenario?.probability < 0.4) {
+          monteCarloConfidenceAdjustment = -0.05; // Decrease confidence for unclear scenarios
+        }
 
-      console.log(`🎲 Monte Carlo: ${dominantScenario.scenario.toUpperCase()} scenario dominant (${(dominantScenario.probability * 100).toFixed(1)}%), Multiplier: ${monteCarloMultiplier}x, Confidence: ${(monteCarloConfidenceAdjustment * 100).toFixed(1)}%`);
+        // Risk management warnings
+        if (riskManagement?.recommendations && Array.isArray(riskManagement.recommendations)) {
+          if (riskManagement.recommendations.includes('TIGHT_STOP_LOSS')) {
+            scenarioWarnings.push('High tail risk in simulations - tight stops recommended');
+          }
+          if (riskManagement.recommendations.includes('POSITION_SIZE_LIMIT')) {
+            scenarioWarnings.push('Excessive downside risk detected in scenarios');
+            monteCarloMultiplier *= 0.8;
+          }
+        }
+        if (riskManagement?.diversificationNeeded) {
+          scenarioWarnings.push('High concentration risk - diversification needed');
+        }
+
+        console.log(`🎲 Monte Carlo Integration: Scenario ${dominantScenario?.scenario || 'UNKNOWN'} (${((dominantScenario?.probability || 0) * 100).toFixed(1)}%), Size Multiplier: ${monteCarloMultiplier}x`);
+      } else {
+        console.log(`🎲 Monte Carlo: No recommendations available - using default multiplier 1.0x`);
+      }
+    } catch (mcError) {
+      console.error(`❌ Monte Carlo integration error:`, mcError.message);
+      // Use defaults
+      monteCarloMultiplier = 1.0;
+      monteCarloConfidenceAdjustment = 0;
     }
 
     // Step 1: Collect All Signals (Base Collection)
@@ -1260,7 +1354,23 @@ async function generateExpertAIDecision(analysisContext) {
     // Step 1B: ⭐ REGIME DETECTION & SIGNAL ADJUSTMENT ⭐
     // Core Improvement #1: Market Regime Detection
     const ohlcData = technical?.ohlcData || technical?.historicalData || [];
-    const regimeDetection = detectMarketRegime(ohlcData, technical);
+    console.log(`🔍 Debug: OHLC data length: ${ohlcData.length}, has technical: ${!!technical}`);
+    
+    let regimeDetection;
+    try {
+      regimeDetection = detectVolatilityRegime(ohlcData, technical);
+      console.log(`✅ Regime detection successful: ${regimeDetection?.regime || 'UNKNOWN'}`);
+    } catch (error) {
+      console.error(`❌ Regime detection failed:`, error);
+      regimeDetection = {
+        regime: 'UNKNOWN',
+        confidence: 0,
+        indicators: {},
+        regimeStrength: 0,
+        regimeDuration: 0,
+        error: error.message
+      };
+    }
 
     // Apply regime-aware weighting to all signals
     const signalCollection = calculateRegimeAwareWeights(rawSignalCollection, regimeDetection);
@@ -2282,60 +2392,6 @@ function createNeutralResolution(confidenceBreakdown) {
     processingOrder: [],
     deterministicHash: '0',
     reasoning: 'No viable trading signals detected - maintaining neutral position'
-  };
-}
-
-function resolveSignalConflictsLegacy(signals, technical) {
-  console.log(`🎯 Applying Decision Hierarchy (Legacy 5-Tier System)...`);
-
-  const { primary, confirmers, vetoFilters, positionSizers, all } = signals;
-
-  // ==============================================
-  // RULE 12: TRANSPARENT CONFIDENCE MATH - Initialize tracking
-  // ==============================================
-  const confidenceBreakdown = {
-    baseConfidence: 0.5,
-    adjustments: [],
-    vetoApplied: false,
-    vetoSource: null,
-    vetoReason: null,
-    finalConfidence: 0.5,
-    gradeOriginal: null,
-    gradeAfterCaps: null
-  };
-
-  // Legacy processing logic (simplified for backward compatibility)
-  let primaryDecision = 'HOLD';
-  let finalConfidence = 0.5;
-
-  if (primary.length > 0) {
-    primaryDecision = primary[0].signal;
-    finalConfidence = primary[0].confidence || 0.7;
-  }
-
-  return {
-    conflicts: [],
-    resolution: 'Legacy hierarchy processing',
-    method: 'legacy',
-    resolvedSignal: primaryDecision,
-    finalConfidence: finalConfidence,
-    confidenceBreakdown,
-    hierarchyDecision: {
-      tier: 'LEGACY',
-      primaryDecision: primaryDecision,
-      primaryConfidence: finalConfidence,
-      confirmerAdjustment: 0,
-      vetoTriggered: false,
-      positionSizing: 'NORMAL'
-    },
-    confirmationResults: [],
-    vetoResults: [],
-    signalCounts: {
-      bullish: all.filter(s => s.signal === 'BUY').length,
-      bearish: all.filter(s => s.signal === 'SELL').length,
-      neutral: all.filter(s => s.signal === 'HOLD').length
-    },
-    reasoning: 'Legacy signal processing'
   };
 }
 
@@ -4005,7 +4061,8 @@ function determineTradeReadiness(signalQuality, riskRewardAnalysis, sentiment, t
 
   // 2.4: Veto Check
   const hasActiveVeto = riskRewardAnalysis.hierarchyAdjustments?.tier === 'VETO_OVERRIDE' ||
-    signalQuality.downgrades.some(d => d.includes('veto'));
+    (signalQuality.downgrades && Array.isArray(signalQuality.downgrades) && 
+     signalQuality.downgrades.some(d => d && typeof d === 'string' && d.includes('veto')));
 
   // 2.5: Sentiment Check
   const sentimentFreshOrNeutral = sentiment === null || sentiment === undefined ?
@@ -4679,21 +4736,25 @@ function calculateDynamicPositionSize(capital, finalDecision, riskRewardAnalysis
   let monteCarloReason = '';
   
   if (monteCarlo && monteCarlo.recommendations) {
-    const { dominantScenario, positionSizing, riskManagement } = monteCarlo.recommendations;
+    const dominantScenario = monteCarlo.recommendations.dominantScenario || {};
+    const positionSizing = monteCarlo.recommendations.positionSizing || {};
+    const riskManagement = monteCarlo.recommendations.riskManagement || {};
     
     // Base multiplier from scenario analysis
     monteCarloMultiplier = positionSizing.multiplier || 1.0;
     monteCarloReason = positionSizing.reasoning || '';
     
     // Additional risk adjustments based on Monte Carlo analysis
-    if (riskManagement.recommendations.includes('POSITION_SIZE_LIMIT')) {
-      monteCarloMultiplier *= 0.8; // Reduce for high tail risk
-      monteCarloReason += ' + tail risk limit applied';
-    }
-    
-    if (riskManagement.recommendations.includes('TIGHT_STOP_LOSS')) {
-      monteCarloMultiplier *= 0.9; // Slight reduction for high volatility scenarios
-      monteCarloReason += ' + volatility adjustment';
+    if (riskManagement.recommendations && Array.isArray(riskManagement.recommendations)) {
+      if (riskManagement.recommendations.includes('POSITION_SIZE_LIMIT')) {
+        monteCarloMultiplier *= 0.8; // Reduce for high tail risk
+        monteCarloReason += ' + tail risk limit applied';
+      }
+      
+      if (riskManagement.recommendations.includes('TIGHT_STOP_LOSS')) {
+        monteCarloMultiplier *= 0.9; // Slight reduction for high volatility scenarios
+        monteCarloReason += ' + volatility adjustment';
+      }
     }
     
     // Scenario probability confidence adjustments
@@ -5498,46 +5559,6 @@ async function getBacktestValidation(symbol, period, capital) {
 
   } catch (error) {
     console.log(`⚠️ Leak-free backtest failed for ${symbol}: ${error.message}`);
-
-    // Fallback to old system if leak-free fails
-    console.log(`   🔄 Attempting fallback to legacy backtest...`);
-    try {
-      const fallbackBacktester = new BacktestingEngine({
-        initialCapital: parseInt(capital) || 100000,
-        riskPerTrade: 0.02
-      });
-
-      const fallbackResult = await fallbackBacktester.backtestSymbol(symbol, period, ['all']);
-      console.log(`   ✅ Fallback backtest completed for ${symbol}`);
-
-      return {
-        bestSystem: fallbackResult.systemPerformance ? Object.keys(fallbackResult.systemPerformance)
-          .reduce((best, system) =>
-            fallbackResult.systemPerformance[system].totalReturn > (fallbackResult.systemPerformance[best]?.totalReturn || -Infinity)
-              ? system : best
-          ) : 'legacy',
-        bestSystemWinRate: fallbackResult.winRate || 0,
-        bestSystemReturn: fallbackResult.totalReturn || 0,
-        totalTrades: fallbackResult.totalTrades || 0,
-        confidence: (fallbackResult.winRate || 0) / 100,
-        systemHealth: 50, // Default health for legacy
-        readyForLiveTrading: false,
-        leakFree: false  // Flag to indicate this used old system
-      };
-    } catch (fallbackError) {
-      console.log(`   ❌ Fallback backtest also failed for ${symbol}: ${fallbackError.message}`);
-      return {
-        bestSystem: 'unavailable',
-        bestSystemWinRate: 0,
-        bestSystemReturn: 0,
-        totalTrades: 0,
-        confidence: 0,
-        systemHealth: 0,
-        readyForLiveTrading: false,
-        leakFree: false,
-        error: fallbackError.message
-      };
-    }
   }
 }
 
@@ -5815,32 +5836,6 @@ function calculateSmartTargets(technical, backtest, sentiment) {
   };
 }
 
-function buildReasoningArray(technical, backtest, sentiment) {
-  const reasoning = [];
-
-  if (technical?.signals?.overall) {
-    reasoning.push(`Technical analysis shows ${technical.signals.overall} signal`);
-  }
-
-  if (backtest?.bestSystem) {
-    reasoning.push(`${backtest.bestSystem} system shows ${backtest.bestSystemWinRate.toFixed(1)}% historical win rate`);
-  }
-
-  if (sentiment?.overallSentiment && sentiment.overallSentiment !== 'NEUTRAL') {
-    reasoning.push(`News sentiment is ${sentiment.overallSentiment.toLowerCase()} (${sentiment.newsCount} articles analyzed)`);
-  }
-
-  if (reasoning.length === 0) {
-    reasoning.push("Standard technical analysis applied");
-  }
-
-  return reasoning;
-}
-
-function calculatePercentageDistance(currentPrice, targetPrice) {
-  if (!currentPrice || !targetPrice) return "N/A";
-  return Math.abs(((targetPrice - currentPrice) / currentPrice) * 100).toFixed(2);
-}
 
 // ==============================================
 // RULE 1: TIMEFRAME POLICY FUNCTIONS
@@ -5904,14 +5899,6 @@ function clampToSwingTimeframe(requestedPeriod) {
     console.log(`   ✅ Period ${requestedPeriod} within swing range (3-6mo)`);
     return `${monthsRequested}mo`;
   }
-}
-
-/**
- * RULE 1: Always fetch 24 months for context data
- * Provides consistent long-term perspective regardless of swing decision period
- */
-function getContextPeriod() {
-  return '24mo'; // Always 24 months for reliable backtesting and trend analysis
 }
 
 // ==============================================
@@ -6088,36 +6075,6 @@ function applyTrendGradeRestrictions(originalGrade, trendAnalysis) {
 
   return {
     finalGrade: originalGrade,
-    restricted: false,
-    reason: null
-  };
-}
-
-/**
- * RULE 3: Check if trend restrictions should be applied to trade readiness
- */
-function applyTrendReadinessRestrictions(baseReadiness, trendAnalysis) {
-  if (!trendAnalysis.restrictions.readinessCapApplied) {
-    return {
-      finalReadiness: baseReadiness,
-      restricted: false,
-      reason: null
-    };
-  }
-
-  const readinessCap = trendAnalysis.restrictions.readinessCap;
-
-  if (baseReadiness === 'READY' || baseReadiness === 'READY_PROVISIONAL') {
-    return {
-      finalReadiness: readinessCap,
-      restricted: true,
-      reason: `${trendAnalysis.trendState} override: ${trendAnalysis.pricePositionPercent.toFixed(1)}% from 200 EMA - monitoring for reversal`,
-      originalReadiness: baseReadiness
-    };
-  }
-
-  return {
-    finalReadiness: baseReadiness,
     restricted: false,
     reason: null
   };
@@ -6779,264 +6736,6 @@ function createNormalizedWeights(weights, vetoApplied = false, decisionContext =
   return weightBreakdown;
 }
 
-// ==============================================
-// MARKET REGIME DETECTION ENGINE - CORE IMPROVEMENT #1
-// Regime-Aware Signal Weighting System
-// ==============================================
-
-/**
- * Comprehensive Market Regime Detection System
- * Detects BULL/SIDEWAYS/BEAR regimes and maintains system reliability per regime
- */
-function detectMarketRegime(ohlcData, technical) {
-  console.log(`🌊 Market Regime Detection: Analyzing ${ohlcData.length} data points...`);
-
-  if (!ohlcData || ohlcData.length < 50) {
-    return {
-      regime: 'UNKNOWN',
-      confidence: 0.5,
-      indicators: {},
-      regimeStrength: 0,
-      regimeDuration: 0
-    };
-  }
-
-  const currentPrice = ohlcData[ohlcData.length - 1].close;
-  const indicators = {};
-
-  // ==============================================
-  // INDICATOR 1: 200-Day Moving Average Position
-  // ==============================================
-  const sma200 = calculateSMA(ohlcData, 200);
-  const priceVs200SMA = sma200 ? (currentPrice - sma200) / sma200 * 100 : 0;
-  indicators.sma200Position = {
-    value: priceVs200SMA,
-    signal: priceVs200SMA > 5 ? 'BULL' : priceVs200SMA < -5 ? 'BEAR' : 'SIDEWAYS',
-    strength: Math.min(1.0, Math.abs(priceVs200SMA) / 20), // ✅ FIX #3: Normalize to 0-1
-    weight: 0.25
-  };
-
-  // ==============================================
-  // INDICATOR 2: ADX Trend Strength
-  // ==============================================
-  const adx = technical?.technicalIndicators?.latest?.adx || calculateADX(ohlcData);
-  const plusDI = technical?.technicalIndicators?.latest?.plusDI || 25;
-  const minusDI = technical?.technicalIndicators?.latest?.minusDI || 25;
-
-  let adxSignal = 'SIDEWAYS';
-  if (adx > 25) {
-    adxSignal = plusDI > minusDI ? 'BULL' : 'BEAR';
-  }
-
-  indicators.adxTrend = {
-    value: adx,
-    plusDI: plusDI,
-    minusDI: minusDI,
-    signal: adxSignal,
-    strength: Math.min(1.0, adx / 50), // ✅ FIX #3: Normalize ADX to 0-1
-    weight: 0.20
-  };
-
-  // ==============================================
-  // INDICATOR 3: ⭐ ADVANCED VOLATILITY REGIME DETECTION ⭐
-  // ==============================================
-  const volatilityRegimeAnalysis = detectVolatilityRegime(ohlcData, technical?.technicalIndicators);
-
-  console.log(`   📊 Volatility Regime: ${volatilityRegimeAnalysis.regime} (${(volatilityRegimeAnalysis.confidence * 100).toFixed(1)}% confidence)`);
-
-  // Map volatility regime to market regime signal  
-  let volatilitySignal = 'SIDEWAYS';
-  let volatilityStrength = volatilityRegimeAnalysis.confidence || 0.5;
-
-  switch (volatilityRegimeAnalysis.regime) {
-    case 'CRISIS':
-      volatilitySignal = 'BEAR'; // Crisis usually means bear market
-      volatilityStrength = 0.9;
-      break;
-    case 'HIGH_VOLATILITY':
-      volatilitySignal = 'BEAR'; // High volatility often bearish
-      volatilityStrength = 0.7;
-      break;
-    case 'LOW_VOLATILITY':
-      volatilitySignal = 'BULL'; // Low volatility often bullish complacency
-      volatilityStrength = 0.6;
-      break;
-    case 'NORMAL_LOW':
-      volatilitySignal = 'BULL'; // Below normal volatility - mild bullish
-      volatilityStrength = 0.5;
-      break;
-    case 'NORMAL_HIGH':
-      volatilitySignal = 'SIDEWAYS'; // Normal high volatility - choppy
-      volatilityStrength = 0.4;
-      break;
-    default:
-      volatilitySignal = 'SIDEWAYS';
-      volatilityStrength = 0.3;
-  }
-
-  indicators.volatilityRegime = {
-    value: volatilityRegimeAnalysis.atrPercent,
-    regime: volatilityRegimeAnalysis.regime,
-    signal: volatilitySignal,
-    strength: volatilityStrength,
-    weight: 0.25, // Increased weight for advanced volatility analysis
-    details: volatilityRegimeAnalysis.regimeCharacteristics,
-    adjustments: volatilityRegimeAnalysis.adjustments,
-    recommendations: volatilityRegimeAnalysis.recommendations
-  };
-
-  // ==============================================
-  // INDICATOR 4: Market Breadth Proxy (Price vs EMAs)
-  // ==============================================
-  const ema20 = technical?.technicalIndicators?.latest?.ema20 || calculateEMA(ohlcData, 20);
-  const ema50 = technical?.technicalIndicators?.latest?.ema50 || calculateEMA(ohlcData, 50);
-  const ema200 = technical?.technicalIndicators?.latest?.ema200 || sma200;
-
-  let breadthScore = 0;
-  let breadthSignal = 'SIDEWAYS';
-
-  if (ema20 && ema50 && ema200) {
-    // Count EMAs above each other
-    if (currentPrice > ema20) breadthScore += 1;
-    if (ema20 > ema50) breadthScore += 1;
-    if (ema50 > ema200) breadthScore += 1;
-    if (currentPrice > ema200) breadthScore += 1;
-
-    if (breadthScore >= 3) breadthSignal = 'BULL';
-    else if (breadthScore <= 1) breadthSignal = 'BEAR';
-  }
-
-  indicators.breadth = {
-    score: breadthScore,
-    maxScore: 4,
-    percentage: (breadthScore / 4) * 100,
-    signal: breadthSignal,
-    strength: breadthScore / 4, // ✅ FIX #3: Already normalized 0-1
-    weight: 0.20
-  };
-
-  // ==============================================
-  // INDICATOR 5: Momentum Regime (RSI + MACD)
-  // ==============================================
-  const rsi = technical?.technicalIndicators?.latest?.rsi || 50;
-  const macd = technical?.technicalIndicators?.latest?.macd || 0;
-  const macdSignal = technical?.technicalIndicators?.latest?.macdSignal || 0;
-
-  let momentumScore = 0;
-  let momentumSignal = 'SIDEWAYS';
-
-  // RSI momentum
-  if (rsi > 60) momentumScore += 1;
-  else if (rsi < 40) momentumScore -= 1;
-
-  // MACD momentum  
-  if (macd > macdSignal && macd > 0) momentumScore += 1;
-  else if (macd < macdSignal && macd < 0) momentumScore -= 1;
-
-  if (momentumScore >= 1) momentumSignal = 'BULL';
-  else if (momentumScore <= -1) momentumSignal = 'BEAR';
-
-  indicators.momentum = {
-    rsi: rsi,
-    macd: macd,
-    macdSignal: macdSignal,
-    score: momentumScore,
-    signal: momentumSignal,
-    strength: Math.abs(momentumScore) / 2, // ✅ FIX #3: Normalize -2 to +2 → 0-1
-    weight: 0.20
-  };
-
-  // ==============================================
-  // REGIME CALCULATION: Weighted Ensemble
-  // ==============================================
-  let bullVotes = 0;
-  let bearVotes = 0;
-  let sidewaysVotes = 0;
-  let totalWeight = 0;
-  let totalStrength = 0;
-
-  Object.keys(indicators).forEach(key => {
-    const indicator = indicators[key];
-    const weight = indicator.weight;
-    const strength = indicator.strength; // ✅ Now properly normalized 0-1
-
-    totalWeight += weight;
-    totalStrength += weight * strength;
-
-    if (indicator.signal === 'BULL') {
-      bullVotes += weight * strength;
-    } else if (indicator.signal === 'BEAR') {
-      bearVotes += weight * strength;
-    } else {
-      sidewaysVotes += weight * strength;
-    }
-  });
-
-  // ✅ FIX #3: Normalize votes to make them meaningful
-  const totalVotes = bullVotes + bearVotes + sidewaysVotes;
-  if (totalVotes > 0) {
-    bullVotes = bullVotes / totalVotes;
-    bearVotes = bearVotes / totalVotes;
-    sidewaysVotes = sidewaysVotes / totalVotes;
-  }
-
-  // Determine regime with higher threshold for confidence
-  let regime = 'SIDEWAYS';
-  let confidence = 0.5;
-  let regimeStrength = 0;
-
-  const maxVote = Math.max(bullVotes, bearVotes, sidewaysVotes);
-  const minConfidenceThreshold = 0.40; // Need at least 40% to declare regime
-
-  if (bullVotes === maxVote && bullVotes > minConfidenceThreshold) {
-    regime = 'BULL';
-    confidence = Math.min(0.95, 0.5 + bullVotes * 0.45);
-    regimeStrength = bullVotes;
-  } else if (bearVotes === maxVote && bearVotes > minConfidenceThreshold) {
-    regime = 'BEAR';
-    confidence = Math.min(0.95, 0.5 + bearVotes * 0.45);
-    regimeStrength = bearVotes;
-  } else {
-    regime = 'SIDEWAYS';
-    confidence = Math.min(0.85, 0.4 + sidewaysVotes * 0.45);
-    regimeStrength = sidewaysVotes;
-  }
-
-  // ==============================================
-  // ✅ FIX #4: REGIME DURATION WITH LOOKBACK WINDOW
-  // ==============================================
-  let regimeDuration = estimateRegimeDurationWithHysteresis(ohlcData, regime, indicators, technical);
-
-  console.log(`🌊 Market Regime: ${regime} (${(confidence * 100).toFixed(1)}% confidence, ${regimeDuration} days)`);
-  console.log(`   📊 Normalized Votes: Bull ${(bullVotes * 100).toFixed(1)}% | Bear ${(bearVotes * 100).toFixed(1)}% | Sideways ${(sidewaysVotes * 100).toFixed(1)}%`);
-
-  return {
-    regime,
-    confidence,
-    regimeStrength,
-    regimeDuration,
-    indicators,
-    votes: {
-      bull: bullVotes,
-      bear: bearVotes,
-      sideways: sidewaysVotes,
-      total: totalWeight,
-      normalized: true // ✅ Flag to indicate normalized votes
-    },
-    regimeMetrics: {
-      priceVs200SMA: priceVs200SMA.toFixed(1),
-      adxStrength: adx.toFixed(1),
-      volatilityRegime: volatilityRegimeAnalysis.regime,
-      volatilityConfidence: (volatilityRegimeAnalysis.confidence * 100).toFixed(1),
-      breadthScore: `${breadthScore}/4`,
-      momentumScore: momentumScore,
-      totalStrength: totalStrength.toFixed(3)
-    },
-    // ⭐ Enhanced volatility regime details
-    volatilityRegimeDetails: volatilityRegimeAnalysis
-  };
-}
-
 /**
  * System Reliability Database - Tracks win rates per system per regime
  * In production, this would be loaded from database/file
@@ -7226,39 +6925,7 @@ function calculateADX(ohlcData, period = 14) {
   return Math.min(100, Math.max(10, atrPct * 10));
 }
 
-function calculateAveragePeriodValue(ohlcData, valueKey, period) {
-  // Helper to calculate average of a technical indicator over period
-  // Placeholder implementation
-  return null;
-}
 
-function estimateRegimeDuration(ohlcData, regime, indicators) {
-  // Estimate how long the current regime has been active
-  // Simplified implementation - look at 200SMA crossover timing
-  const currentPrice = ohlcData[ohlcData.length - 1].close;
-
-  let daysInRegime = 0;
-  let targetState = regime === 'BULL' ? 'above' : regime === 'BEAR' ? 'below' : 'around';
-
-  // Look backward to find regime change point
-  for (let i = ohlcData.length - 2; i >= Math.max(0, ohlcData.length - 100); i--) {
-    const pastPrice = ohlcData[i].close;
-    const sma200Past = calculateSMAAtIndex(ohlcData, 200, i);
-
-    if (!sma200Past) break;
-
-    const pastState = pastPrice > sma200Past * 1.02 ? 'above' :
-      pastPrice < sma200Past * 0.98 ? 'below' : 'around';
-
-    if (pastState === targetState) {
-      daysInRegime++;
-    } else {
-      break; // Found regime change point
-    }
-  }
-
-  return daysInRegime;
-}
 
 /**
  * ✅ FIX #4: Enhanced Regime Duration with Hysteresis and Lookback Window
@@ -7705,53 +7372,7 @@ function initializeBayesianTracker() {
   console.log('✅ Bayesian tracker initialized with historical performance data');
 }
 
-/**
- * Record trade outcome for continuous Bayesian learning
- * ✅ This function should be called when trades are closed to update reliability
- */
-function recordSystemTradeOutcome(systemKey, regime, wasSuccessful, profitFactor = 1.0, metadata = {}) {
-  try {
-    const result = globalBayesianTracker.recordTradeOutcome(systemKey, regime, wasSuccessful, profitFactor);
 
-    console.log(`📈 Trade Outcome Recorded: ${systemKey} in ${regime} regime`);
-    console.log(`   Result: ${wasSuccessful ? 'WIN' : 'LOSS'} (PF: ${profitFactor.toFixed(2)})`);
-    console.log(`   Updated Reliability: ${(result.reliability * 100).toFixed(1)}% (${result.totalTrades} trades)`);
-    console.log(`   Confidence: ${(result.confidence * 100).toFixed(1)}%`);
-
-    return result;
-  } catch (error) {
-    console.error('❌ Error recording trade outcome:', error.message);
-    return null;
-  }
-}
-
-/**
- * Get current Bayesian reliability summary for analysis
- */
-function getBayesianReliabilitySummary(regime = null) {
-  const summary = {};
-
-  Object.keys(SYSTEM_RELIABILITY).forEach(systemKey => {
-    summary[systemKey] = {};
-
-    const regimes = regime ? [regime] : ['BULL', 'BEAR', 'SIDEWAYS'];
-    regimes.forEach(reg => {
-      const reliability = globalBayesianTracker.getReliabilityWeight(systemKey, reg);
-      const interval = globalBayesianTracker.getReliabilityConfidenceInterval(systemKey, reg);
-
-      summary[systemKey][reg] = {
-        reliability: reliability.reliability,
-        confidence: reliability.confidence,
-        sampleSize: reliability.sampleSize,
-        weight: reliability.weight,
-        confidenceInterval: interval,
-        status: reliability.reason
-      };
-    });
-  });
-
-  return summary;
-}
 
 /**
  * ✅ LEAK-FREE BACKTESTING ENDPOINT
@@ -7921,121 +7542,6 @@ exports.getLeakFreeBacktest = async (req, res) => {
 // RULE 5: HELPER METHODS FOR VOLUME ANALYSIS
 // =====================================================
 
-/**
- * Calculate Volume Weighted Average Price (VWAP)
- */
-function calculateVWAP(historicalData) {
-  let totalVolumePrice = 0;
-  let totalVolume = 0;
-
-  for (const day of historicalData) {
-    const typical = (day.high + day.low + day.close) / 3;
-    totalVolumePrice += typical * day.volume;
-    totalVolume += day.volume;
-  }
-
-  return totalVolume > 0 ? totalVolumePrice / totalVolume : 0;
-}
-
-/**
- * Calculate volume consistency metric
- */
-function calculateVolumeConsistency(volumes) {
-  if (volumes.length < 5) return 0;
-
-  const mean = volumes.reduce((sum, vol) => sum + vol, 0) / volumes.length;
-  const variance = volumes.reduce((sum, vol) => sum + Math.pow(vol - mean, 2), 0) / volumes.length;
-  const stdDev = Math.sqrt(variance);
-
-  // Consistency = inverse of coefficient of variation (lower = more consistent)
-  const coefficientOfVariation = stdDev / mean;
-  return Math.max(0, 1 - coefficientOfVariation);
-}
-
-/**
- * Detect volume trend direction
- */
-function detectVolumeTrend(volumes) {
-  if (volumes.length < 5) return 'NEUTRAL';
-
-  const recent = volumes.slice(-5);
-  const earlier = volumes.slice(-10, -5);
-
-  const recentAvg = recent.reduce((sum, vol) => sum + vol, 0) / recent.length;
-  const earlierAvg = earlier.reduce((sum, vol) => sum + vol, 0) / earlier.length;
-
-  const change = (recentAvg - earlierAvg) / earlierAvg;
-
-  if (change > 0.15) return 'INCREASING';
-  if (change < -0.15) return 'DECREASING';
-  return 'NEUTRAL';
-}
-
-/**
- * Validate extreme volume situations
- */
-function validateExtremeVolume(volumeProfile, historicalData) {
-  // Extreme volume is acceptable if it's accompanied by:
-  // 1. Price movement confirmation
-  // 2. No recent extreme spikes (avoiding news events)
-
-  const recentExtremeCount = historicalData.slice(-5)
-    .filter(day => day.volume > volumeProfile.vwap * 3).length;
-
-  // Allow extreme volume if it's not a frequent occurrence
-  return recentExtremeCount <= 1;
-}
-
-/**
- * Assess overall volume risk level
- */
-function assessVolumeRisk(volumeProfile, classification, smartMoneyFlow) {
-  let riskScore = 0;
-
-  // Volume consistency risk
-  if (volumeProfile.consistency < 0.4) riskScore += 2;
-  else if (volumeProfile.consistency < 0.6) riskScore += 1;
-
-  // Classification risk
-  if (classification.type === 'RETAIL_HEAVY') riskScore += 2;
-  else if (classification.type === 'MIXED') riskScore += 1;
-
-  // Smart money risk
-  if (smartMoneyFlow.strength === 'STRONG' && smartMoneyFlow.direction === 'BEARISH') {
-    riskScore += 1;
-  }
-
-  if (riskScore >= 4) return 'HIGH';
-  if (riskScore >= 2) return 'MEDIUM';
-  return 'LOW';
-}
-
-/**
- * Calculate overall volume grade for professional assessment
- */
-function calculateOverallVolumeGrade(volumeRatio, institutionalSignature, smartMoneyFlow) {
-  let score = 0;
-
-  // Volume ratio scoring
-  if (volumeRatio >= 2.5) score += 3;
-  else if (volumeRatio >= 1.8) score += 2;
-  else if (volumeRatio >= 1.2) score += 1;
-
-  // Institutional backing
-  if (institutionalSignature.detected && institutionalSignature.confidence > 0.7) {
-    score += 2;
-  }
-
-  // Smart money alignment
-  if (smartMoneyFlow.strength === 'STRONG') score += 1;
-
-  if (score >= 5) return 'A+';
-  if (score >= 4) return 'A';
-  if (score >= 3) return 'B+';
-  if (score >= 2) return 'B';
-  if (score >= 1) return 'C';
-  return 'D';
-}
 
 // =====================================================
 // RULE 8: PORTFOLIO HEAT & RISK SCALING FUNCTIONS

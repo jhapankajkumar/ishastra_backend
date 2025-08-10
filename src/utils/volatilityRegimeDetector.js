@@ -58,9 +58,15 @@ function detectVolatilityRegime(ohlcData, technicalIndicators) {
 function classifyVolatilityRegime(measures, ohlcData) {
   const atr = measures.atrPercent;
   const realized = measures.realizedVolatility;
-  const avg = (atr + realized) / 2;
   
-  // Historical volatility percentiles (based on 252-day rolling)
+  // 🐛 BUG FIX: Make volatility measures consistent for proper regime classification
+  // Convert ATR from daily to annualized to match realized volatility and historical percentiles
+  const atrAnnualized = atr * Math.sqrt(252);
+  const avg = (atrAnnualized + realized) / 2;
+  
+  console.log(`   🔍 Volatility Debug: ATR=${atr.toFixed(2)}% (daily) → ${atrAnnualized.toFixed(2)}% (annualized), Realized=${realized.toFixed(2)}% (annualized), Avg=${avg.toFixed(2)}%`);
+  
+  // Historical volatility percentiles (based on 252-day rolling annualized)
   const historical = ohlcData.slice(-252).map((_, i, arr) => {
     if (i < 20) return null;
     const segment = arr.slice(i-20, i);
