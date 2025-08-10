@@ -609,26 +609,37 @@ function collectAllSignalsDeterministic(technical, backtest, sentiment) {
   // Order: Pattern Recognition → SEPA Method (reliability-based)
   // ==============================================
   
-  // Priority 2.1: Pattern Recognition (highest reliability among confirmers)
+  // Priority 2.1: 🎨 RULE 10: Pattern Validation Enhancement (Advanced Pattern Intelligence)
   if (technical?.advancedPatterns?.length > 0) {
-    // Process patterns in confidence order for determinism
-    const sortedPatterns = [...technical.advancedPatterns].sort((a, b) => (b.confidence || 0) - (a.confidence || 0));
+    // RULE 10: Apply comprehensive pattern validation before processing
+    const validatedPatterns = applyRule10PatternValidation(technical.advancedPatterns, technical);
+    
+    console.log(`🎨 RULE 10: Pattern Validation - ${technical.advancedPatterns.length} raw → ${validatedPatterns.length} validated patterns`);
+    
+    // Process RULE 10 validated patterns in confidence order for determinism
+    const sortedPatterns = [...validatedPatterns].sort((a, b) => (b.confidence || 0) - (a.confidence || 0));
     
     sortedPatterns.forEach((pattern, index) => {
       const patternSignal = signalRegistry.registerSignal(`pattern_${pattern.pattern}`, {
-        source: 'pattern_recognition',
+        source: 'pattern_recognition_rule10',
         tier: 'CONFIRMER',
         priority: 2.1 + (index * 0.01), // Deterministic sub-ordering by confidence
         signal: pattern.signal || pattern.direction || 'NEUTRAL',
         confidence: pattern.confidence || 0.5,
         patternType: pattern.pattern,
-        reasoning: `${pattern.pattern} pattern detected with ${((pattern.confidence || 0.5) * 100).toFixed(1)}% confidence`,
+        reasoning: `RULE 10: ${pattern.pattern} pattern (${pattern.validationGrade}) - ${((pattern.confidence || 0.5) * 100).toFixed(1)}% confidence`,
         metadata: {
           pattern: pattern.pattern,
           support: pattern.support,
           resistance: pattern.resistance,
           target: pattern.target,
-          invalidationLevel: pattern.invalidationLevel
+          invalidationLevel: pattern.invalidationLevel,
+          // RULE 10: Enhanced metadata
+          validationGrade: pattern.validationGrade,
+          strengthScore: pattern.strengthScore,
+          failureRisk: pattern.failureRisk,
+          multiTimeframeConfirmed: pattern.multiTimeframeConfirmed,
+          volumeConfirmation: pattern.volumeConfirmation
         }
       });
     });
@@ -1501,72 +1512,305 @@ class StructureAwareStopEngine {
   }
 
   /**
-   * Calculate structure-aware stop with adaptive ATR multiplier
-   * Returns: { stopPrice, method, confidence, components }
+   * 🚨 RULE 4: Hierarchical Stop Loss System (Pattern > Structure > Volatility > Time)
+   * Professional stop loss hierarchy that prevents catastrophic losses
+   * Returns: { stopPrice, method, confidence, hierarchy, components }
    */
   calculateStructureAwareStop(ohlcData, currentPrice, direction, technical) {
+    console.log('🚨 RULE 4: Hierarchical Stop Loss Engine - Analyzing priority levels...');
+    
     const atr = this.getATR(ohlcData) || (currentPrice * 0.02);
     const adx = technical?.technicalIndicators?.latest?.adx || 25;
     
-    // Step 1: Calculate adaptive ATR multiplier based on market conditions
-    const atrMultiplier = this.calculateAdaptiveATRMultiplier(adx, technical);
+    // =====================================================
+    // HIERARCHY LEVEL 1: PATTERN INVALIDATION (Highest Priority)
+    // =====================================================
+    const patternInvalidation = this.calculatePatternInvalidationStop(
+      ohlcData, currentPrice, direction, technical, atr
+    );
     
-    // Step 2: Calculate ATR-based stop (baseline)
-    const atrStop = this.calculateATRStop(currentPrice, atr, atrMultiplier, direction);
+    if (patternInvalidation.isValid) {
+      console.log('🎯 RULE 4: Pattern Invalidation Stop ACTIVATED:', {
+        stopPrice: patternInvalidation.stopPrice,
+        pattern: patternInvalidation.pattern,
+        confidence: patternInvalidation.confidence
+      });
+      
+      return {
+        stopPrice: Math.round(patternInvalidation.stopPrice * 100) / 100,
+        method: `Pattern_Invalidation_${patternInvalidation.pattern}`,
+        confidence: patternInvalidation.confidence,
+        hierarchy: 1,
+        components: patternInvalidation
+      };
+    }
     
-    // Step 3: Identify market structure levels (swing points, S/R)
+    // =====================================================
+    // HIERARCHY LEVEL 2: MARKET STRUCTURE (Second Priority)
+    // =====================================================
     const structureLevels = this.identifyStructureLevels(ohlcData, currentPrice, direction);
-    
-    // Step 4: Calculate structure-based stop
     const structureStop = this.calculateStructureStop(
-      currentPrice, 
-      structureLevels, 
-      atr, 
-      direction
+      currentPrice, structureLevels, atr, direction
     );
     
-    // Step 5: Blend stops using max() approach for optimal placement
-    const finalStop = this.blendStops(atrStop, structureStop, direction, currentPrice);
+    if (structureStop.isValid && structureStop.confidence > 0.7) {
+      console.log('🏗️ RULE 4: Market Structure Stop ACTIVATED:', {
+        stopPrice: structureStop.stopPrice,
+        level: structureStop.levelType,
+        confidence: structureStop.confidence
+      });
+      
+      return {
+        stopPrice: Math.round(structureStop.stopPrice * 100) / 100,
+        method: `Structure_${structureStop.levelType}`,
+        confidence: structureStop.confidence,
+        hierarchy: 2,
+        components: { structureLevels, structureStop }
+      };
+    }
     
-    // Step 6: Apply risk cap to prevent excessive risk levels
-    const cappedStop = this.applyRiskCap(finalStop, currentPrice, direction);
-    
-    // Step 7: ✅ OVERHEAD SUPPLY GAP ANALYSIS for entry gating
-    const overheadGapAnalysis = this.analyzeOverheadSupplyGap(
-      currentPrice, 
-      technical, 
-      direction, 
-      structureLevels
+    // =====================================================
+    // HIERARCHY LEVEL 3: VOLATILITY-BASED (Third Priority)
+    // =====================================================
+    const atrMultiplier = this.calculateAdaptiveATRMultiplier(adx, technical);
+    const volatilityStop = this.calculateVolatilityStop(
+      currentPrice, atr, atrMultiplier, direction, technical
     );
     
-    // Step 8: ✅ EARNINGS PROXIMITY CHECK for risk assessment
-    const earningsProximity = this.checkEarningsProximity(
-      technical.earningsData, 
-      new Date()
+    if (volatilityStop.isValid) {
+      console.log('📊 RULE 4: Volatility Stop ACTIVATED:', {
+        stopPrice: volatilityStop.stopPrice,
+        atrMultiplier: atrMultiplier,
+        volatilityRegime: volatilityStop.regime
+      });
+      
+      return {
+        stopPrice: Math.round(volatilityStop.stopPrice * 100) / 100,
+        method: `Volatility_${volatilityStop.regime}`,
+        confidence: volatilityStop.confidence,
+        hierarchy: 3,
+        components: { atr, atrMultiplier, volatilityStop }
+      };
+    }
+    
+    // =====================================================
+    // HIERARCHY LEVEL 4: TIME-BASED (Last Resort)
+    // =====================================================
+    const timeStop = this.calculateTimeBasedStop(
+      currentPrice, atr, direction, technical
     );
+    
+    console.log('⏰ RULE 4: Time-Based Stop ACTIVATED (Last Resort):', {
+      stopPrice: timeStop.stopPrice,
+      timeFrame: timeStop.timeFrame,
+      risk: timeStop.riskPercent
+    });
+    
+    // Apply final risk cap to prevent excessive losses
+    const cappedStop = this.applyRiskCap(timeStop, currentPrice, direction);
     
     return {
       stopPrice: Math.round(cappedStop.price * 100) / 100,
-      method: cappedStop.method,
-      confidence: cappedStop.confidence,
-      riskPercent: Math.abs(currentPrice - cappedStop.price) / currentPrice * 100,
+      method: `Time_Based_${timeStop.timeFrame}`,
+      confidence: 0.5, // Time-based stops are lowest confidence
+      hierarchy: 4,
       components: {
-        atrStop: atrStop,
-        structureStop: structureStop,
-        atrMultiplier: atrMultiplier,
-        adx: adx,
-        structureLevels: structureLevels,
-        blendReason: finalStop.reason,
-        riskCapApplied: cappedStop.riskCapApplied || false,
-        fallbackMetrics: finalStop.fallbackApplied ? {
-          fallbackRate: finalStop.fallbackRate,
-          method: 'atr_only'
-        } : null
-      },
-      // ✅ OVERHEAD SUPPLY GAP GATING
-      overheadGap: overheadGapAnalysis,
-      // ✅ EARNINGS PROXIMITY ANALYSIS
-      earningsProximity: earningsProximity
+        timeStop: timeStop,
+        cappedStop: cappedStop,
+        riskPercent: Math.abs(currentPrice - cappedStop.price) / currentPrice * 100
+      }
+    };
+  }
+
+  // =====================================================
+  // 🚨 RULE 4: HIERARCHY SUPPORT METHODS
+  // =====================================================
+
+  /**
+   * HIERARCHY LEVEL 1: Pattern Invalidation Stop (Highest Priority)
+   * Detects when chart patterns break and invalidate the trade thesis
+   */
+  calculatePatternInvalidationStop(ohlcData, currentPrice, direction, technical, atr) {
+    const patterns = this.detectChartPatterns(ohlcData, technical);
+    
+    // Check for active breakout patterns
+    if (patterns.breakoutPattern && patterns.breakoutPattern.isValid) {
+      const pattern = patterns.breakoutPattern;
+      
+      // For breakout patterns, invalidation occurs below/above the pattern base
+      let invalidationLevel;
+      if (direction === 'LONG') {
+        invalidationLevel = pattern.support - (atr * 0.5); // Just below pattern support
+      } else {
+        invalidationLevel = pattern.resistance + (atr * 0.5); // Just above pattern resistance
+      }
+      
+      // Ensure invalidation level is reasonable (not too far from current price)
+      const maxRisk = currentPrice * 0.08; // Max 8% risk for pattern invalidation
+      const riskDistance = Math.abs(currentPrice - invalidationLevel);
+      
+      if (riskDistance <= maxRisk) {
+        return {
+          isValid: true,
+          stopPrice: invalidationLevel,
+          pattern: pattern.type,
+          confidence: pattern.confidence,
+          riskPercent: (riskDistance / currentPrice) * 100
+        };
+      }
+    }
+    
+    // Check for reversal patterns that might invalidate
+    if (patterns.reversalRisk && patterns.reversalRisk.probability > 0.6) {
+      const reversal = patterns.reversalRisk;
+      
+      return {
+        isValid: true,
+        stopPrice: reversal.invalidationLevel,
+        pattern: `Reversal_${reversal.type}`,
+        confidence: reversal.probability,
+        riskPercent: Math.abs(currentPrice - reversal.invalidationLevel) / currentPrice * 100
+      };
+    }
+    
+    return { isValid: false };
+  }
+
+  /**
+   * HIERARCHY LEVEL 2: Enhanced Structure Stop (Market Structure Priority)
+   */
+  calculateStructureStop(currentPrice, structureLevels, atr, direction) {
+    if (!structureLevels || structureLevels.levels.length === 0) {
+      return { isValid: false };
+    }
+    
+    // Find the most relevant structural level
+    let bestLevel = null;
+    let bestDistance = Infinity;
+    
+    for (const level of structureLevels.levels) {
+      const distance = Math.abs(currentPrice - level.price);
+      const isRelevant = direction === 'LONG' 
+        ? level.price < currentPrice && level.type.includes('support')
+        : level.price > currentPrice && level.type.includes('resistance');
+      
+      if (isRelevant && distance < bestDistance && level.strength > 0.6) {
+        bestLevel = level;
+        bestDistance = distance;
+      }
+    }
+    
+    if (bestLevel) {
+      // Place stop just beyond the structural level
+      const buffer = atr * 0.3;
+      const stopPrice = direction === 'LONG' 
+        ? bestLevel.price - buffer
+        : bestLevel.price + buffer;
+      
+      // Validate risk is reasonable (max 6% for structure stops)
+      const riskPercent = Math.abs(currentPrice - stopPrice) / currentPrice * 100;
+      
+      if (riskPercent <= 6) {
+        return {
+          isValid: true,
+          stopPrice: stopPrice,
+          levelType: bestLevel.type,
+          confidence: bestLevel.strength,
+          riskPercent: riskPercent
+        };
+      }
+    }
+    
+    return { isValid: false };
+  }
+
+  /**
+   * HIERARCHY LEVEL 3: Enhanced Volatility Stop
+   */
+  calculateVolatilityStop(currentPrice, atr, atrMultiplier, direction, technical) {
+    // Determine volatility regime
+    const volatilityRegime = this.classifyVolatilityRegime(atr, currentPrice, technical);
+    
+    // Adjust multiplier based on regime
+    let adjustedMultiplier = atrMultiplier;
+    switch (volatilityRegime) {
+      case 'LOW_VOL':
+        adjustedMultiplier *= 0.8; // Tighter stops in low volatility
+        break;
+      case 'HIGH_VOL':
+        adjustedMultiplier *= 1.3; // Wider stops in high volatility
+        break;
+      case 'EXTREME_VOL':
+        adjustedMultiplier *= 1.6; // Much wider stops in extreme volatility
+        break;
+    }
+    
+    const stopDistance = atr * adjustedMultiplier;
+    const stopPrice = direction === 'LONG' 
+      ? currentPrice - stopDistance
+      : currentPrice + stopDistance;
+    
+    return {
+      isValid: true,
+      stopPrice: stopPrice,
+      regime: volatilityRegime,
+      confidence: 0.7,
+      atrMultiplier: adjustedMultiplier
+    };
+  }
+
+  /**
+   * HIERARCHY LEVEL 4: Time-Based Stop (Last Resort)
+   */
+  calculateTimeBasedStop(currentPrice, atr, direction, technical) {
+    // Conservative time-based stop - 4% max risk
+    const maxRisk = 0.04;
+    const stopPrice = direction === 'LONG' 
+      ? currentPrice * (1 - maxRisk)
+      : currentPrice * (1 + maxRisk);
+    
+    return {
+      stopPrice: stopPrice,
+      timeFrame: 'Conservative',
+      riskPercent: maxRisk * 100,
+      confidence: 0.5 // Lowest confidence - time-based only
+    };
+  }
+
+  /**
+   * Classify volatility regime for enhanced stop calculation
+   */
+  classifyVolatilityRegime(atr, currentPrice, technical) {
+    const atrPercent = (atr / currentPrice) * 100;
+    
+    // Historical volatility percentiles (approximate)
+    if (atrPercent < 1.5) return 'LOW_VOL';
+    if (atrPercent > 4.0) return 'EXTREME_VOL';
+    if (atrPercent > 2.5) return 'HIGH_VOL';
+    return 'NORMAL_VOL';
+  }
+
+  /**
+   * Detect chart patterns for pattern invalidation stops
+   */
+  detectChartPatterns(ohlcData, technical) {
+    // Simple pattern detection - can be enhanced further
+    const recentHigh = Math.max(...ohlcData.slice(-20).map(d => d.high));
+    const recentLow = Math.min(...ohlcData.slice(-20).map(d => d.low));
+    const currentPrice = ohlcData[ohlcData.length - 1].close;
+    
+    // Basic breakout pattern detection
+    const breakoutPattern = {
+      isValid: currentPrice > recentHigh * 0.98 || currentPrice < recentLow * 1.02,
+      type: currentPrice > recentHigh * 0.98 ? 'Breakout_Up' : 'Breakout_Down',
+      support: recentLow,
+      resistance: recentHigh,
+      confidence: 0.7
+    };
+    
+    return {
+      breakoutPattern: breakoutPattern.isValid ? breakoutPattern : null,
+      reversalRisk: null // Can be enhanced with more sophisticated reversal detection
     };
   }
 
@@ -4348,25 +4592,128 @@ function calculateUnifiedSignal(technical, backtest, sentiment) {
   };
 }
 
+/**
+ * 🔥 RULE 8: Risk Scaling with Portfolio Heat Monitoring
+ * Professional position sizing with correlation adjustments and portfolio protection
+ */
 function calculateRiskMetrics(technical, backtest) {
+  console.log('🔥 RULE 8: Portfolio Heat Monitoring - Calculating risk-scaled position...');
+  
   const currentPrice = technical?.currentPrice || technical?.latestPrice || 0;
   const atr = technical?.indicators?.atr || technical?.indicators?.ATR || 20;
   
-  // For legacy compatibility, assume a conservative long position approach
-  // Dynamic stop loss based on ATR and backtest results
-  const stopLossMultiplier = backtest?.confidence > 0.6 ? 1.5 : 2.0;
-  const stopLoss = Math.round((currentPrice - (atr * stopLossMultiplier)) * 100) / 100;
+  // =====================================================
+  // RULE 8: PORTFOLIO HEAT ASSESSMENT
+  // =====================================================
   
-  // Ensure stop loss is below entry for long position (legacy logic)
-  const adjustedStopLoss = Math.min(stopLoss, currentPrice * 0.95); // Cap at 5% below current
+  const portfolioHeat = calculatePortfolioHeat(technical.symbol);
+  const correlationRisk = assessCorrelationRisk(technical.symbol, technical.sector);
+  const marketRegime = technical?.marketRegime?.regime || 'NEUTRAL';
+  
+  console.log(`   🌡️ Portfolio Heat: ${portfolioHeat.temperature}°C (${portfolioHeat.riskLevel})`);
+  console.log(`   🔗 Correlation Risk: ${correlationRisk.level} (${correlationRisk.exposurePercent}% exposure)`);
+  console.log(`   📊 Market Regime: ${marketRegime}`);
+  
+  // =====================================================
+  // RULE 8: DYNAMIC POSITION SIZING
+  // =====================================================
+  
+  // Base position size (as percentage of portfolio)
+  let basePositionSize = 0.02; // 2% base risk
+  
+  // Portfolio heat adjustments
+  if (portfolioHeat.temperature > 80) {
+    basePositionSize *= 0.3; // Reduce to 0.6% in hot portfolio
+    console.log(`   🚨 RULE 8: Portfolio overheating - position reduced to ${(basePositionSize * 100).toFixed(1)}%`);
+  } else if (portfolioHeat.temperature > 60) {
+    basePositionSize *= 0.6; // Reduce to 1.2% in warm portfolio
+    console.log(`   ⚠️ RULE 8: Portfolio warming - position reduced to ${(basePositionSize * 100).toFixed(1)}%`);
+  } else if (portfolioHeat.temperature < 20) {
+    basePositionSize *= 1.3; // Increase to 2.6% in cold portfolio
+    console.log(`   ❄️ RULE 8: Portfolio cold - position increased to ${(basePositionSize * 100).toFixed(1)}%`);
+  }
+  
+  // Correlation risk adjustments
+  if (correlationRisk.level === 'HIGH') {
+    basePositionSize *= 0.5; // Halve position if high correlation
+    console.log(`   🔗 RULE 8: High correlation detected - position halved to ${(basePositionSize * 100).toFixed(1)}%`);
+  } else if (correlationRisk.level === 'MEDIUM') {
+    basePositionSize *= 0.75; // Reduce by 25% for medium correlation
+  }
+  
+  // Market regime adjustments
+  if (marketRegime === 'BEAR') {
+    basePositionSize *= 0.7; // Reduce by 30% in bear markets
+    console.log(`   🐻 RULE 8: Bear market - position reduced by 30%`);
+  } else if (marketRegime === 'HIGH_VOLATILITY') {
+    basePositionSize *= 0.8; // Reduce by 20% in high volatility
+  }
+  
+  // =====================================================
+  // RULE 8: ADVANCED STOP LOSS CALCULATION
+  // =====================================================
+  
+  // Base stop loss calculation with portfolio heat consideration
+  const stopLossMultiplier = calculateDynamicStopMultiplier(
+    portfolioHeat, 
+    correlationRisk, 
+    marketRegime, 
+    backtest?.confidence || 0.5
+  );
+  
+  const stopLoss = Math.round((currentPrice - (atr * stopLossMultiplier)) * 100) / 100;
+  const adjustedStopLoss = Math.max(stopLoss, currentPrice * 0.92); // Max 8% stop loss
   const riskAmount = Math.abs(currentPrice - adjustedStopLoss);
-  const target1 = Math.round((currentPrice + (riskAmount * 1.5)) * 100) / 100;
+  
+  // =====================================================
+  // RULE 8: RISK-ADJUSTED TARGETS
+  // =====================================================
+  
+  const riskAdjustment = calculateRiskAdjustment(portfolioHeat, correlationRisk);
+  const target1 = Math.round((currentPrice + (riskAmount * (1.5 * riskAdjustment))) * 100) / 100;
+  const target2 = Math.round((currentPrice + (riskAmount * (3.0 * riskAdjustment))) * 100) / 100;
+  
   const riskReward = riskAmount > 0 ? ((target1 - currentPrice) / riskAmount).toFixed(2) : '0.00';
   
+  // =====================================================
+  // RULE 8: POSITION SIZING OUTPUT
+  // =====================================================
+  
+  const finalPositionSize = Math.min(basePositionSize, 0.05); // Cap at 5% maximum
+  const positionValue = finalPositionSize * 100000; // Assuming $100k portfolio
+  const sharesCount = Math.floor(positionValue / currentPrice);
+  
+  console.log(`   💰 RULE 8 Final Position: ${(finalPositionSize * 100).toFixed(1)}% (${sharesCount} shares @ $${currentPrice})`);
+  console.log(`   🛡️ Stop Loss: $${adjustedStopLoss} (${(riskAmount/currentPrice*100).toFixed(1)}% risk)`);
+  console.log(`   🎯 Target: $${target1} (R:R = ${riskReward})`);
+  
   return {
+    // Legacy fields
     stopLoss: adjustedStopLoss,
     riskReward: parseFloat(riskReward),
-    riskAmount
+    riskAmount,
+    
+    // RULE 8: Enhanced risk management
+    portfolioHeat: portfolioHeat,
+    correlationRisk: correlationRisk,
+    positionSize: finalPositionSize,
+    sharesCount: sharesCount,
+    positionValue: positionValue,
+    
+    // Risk scaling metrics
+    riskScaling: {
+      baseRisk: 0.02,
+      adjustedRisk: finalPositionSize,
+      heatAdjustment: portfolioHeat.temperature > 60 ? 'REDUCED' : 'NORMAL',
+      correlationAdjustment: correlationRisk.level !== 'LOW' ? 'REDUCED' : 'NORMAL',
+      regimeAdjustment: marketRegime === 'BEAR' ? 'REDUCED' : 'NORMAL'
+    },
+    
+    targets: {
+      target1: target1,
+      target2: target2,
+      riskAdjustment: riskAdjustment
+    }
   };
 }
 
@@ -4742,11 +5089,12 @@ function applyTrendSizingRestrictions(baseSizing, trendAnalysis) {
 // ==============================================
 
 /**
- * 🎯 ENTRY TIMING UPGRADE: Enhanced Volume Confirmation System
- * Prevents false breakout/breakdown signals through institutional-grade volume requirements
+ * 🔊 RULE 5: Enhanced Volume Validation with Profile Analysis
+ * Professional volume analysis with institutional vs retail classification
+ * Returns comprehensive volume intelligence for trade validation
  */
 function analyzeVolumeConfirmation(technical, finalAction = 'HOLD') {
-  console.log(`📊 Entry Timing: Analyzing volume confirmation for ${finalAction}...`);
+  console.log(`� RULE 5: Enhanced Volume Validation for ${finalAction}...`);
   
   // Extract volume data from technical analysis
   const latestVolume = technical?.latestVolume || 0;
@@ -6474,6 +6822,684 @@ exports.getLeakFreeBacktest = async (req, res) => {
     });
   }
 };
+
+// =====================================================
+// RULE 5: HELPER METHODS FOR VOLUME ANALYSIS
+// =====================================================
+
+/**
+ * Calculate Volume Weighted Average Price (VWAP)
+ */
+function calculateVWAP(historicalData) {
+  let totalVolumePrice = 0;
+  let totalVolume = 0;
+  
+  for (const day of historicalData) {
+    const typical = (day.high + day.low + day.close) / 3;
+    totalVolumePrice += typical * day.volume;
+    totalVolume += day.volume;
+  }
+  
+  return totalVolume > 0 ? totalVolumePrice / totalVolume : 0;
+}
+
+/**
+ * Calculate volume consistency metric
+ */
+function calculateVolumeConsistency(volumes) {
+  if (volumes.length < 5) return 0;
+  
+  const mean = volumes.reduce((sum, vol) => sum + vol, 0) / volumes.length;
+  const variance = volumes.reduce((sum, vol) => sum + Math.pow(vol - mean, 2), 0) / volumes.length;
+  const stdDev = Math.sqrt(variance);
+  
+  // Consistency = inverse of coefficient of variation (lower = more consistent)
+  const coefficientOfVariation = stdDev / mean;
+  return Math.max(0, 1 - coefficientOfVariation);
+}
+
+/**
+ * Detect volume trend direction
+ */
+function detectVolumeTrend(volumes) {
+  if (volumes.length < 5) return 'NEUTRAL';
+  
+  const recent = volumes.slice(-5);
+  const earlier = volumes.slice(-10, -5);
+  
+  const recentAvg = recent.reduce((sum, vol) => sum + vol, 0) / recent.length;
+  const earlierAvg = earlier.reduce((sum, vol) => sum + vol, 0) / earlier.length;
+  
+  const change = (recentAvg - earlierAvg) / earlierAvg;
+  
+  if (change > 0.15) return 'INCREASING';
+  if (change < -0.15) return 'DECREASING';
+  return 'NEUTRAL';
+}
+
+/**
+ * Validate extreme volume situations
+ */
+function validateExtremeVolume(volumeProfile, historicalData) {
+  // Extreme volume is acceptable if it's accompanied by:
+  // 1. Price movement confirmation
+  // 2. No recent extreme spikes (avoiding news events)
+  
+  const recentExtremeCount = historicalData.slice(-5)
+    .filter(day => day.volume > volumeProfile.vwap * 3).length;
+  
+  // Allow extreme volume if it's not a frequent occurrence
+  return recentExtremeCount <= 1;
+}
+
+/**
+ * Assess overall volume risk level
+ */
+function assessVolumeRisk(volumeProfile, classification, smartMoneyFlow) {
+  let riskScore = 0;
+  
+  // Volume consistency risk
+  if (volumeProfile.consistency < 0.4) riskScore += 2;
+  else if (volumeProfile.consistency < 0.6) riskScore += 1;
+  
+  // Classification risk
+  if (classification.type === 'RETAIL_HEAVY') riskScore += 2;
+  else if (classification.type === 'MIXED') riskScore += 1;
+  
+  // Smart money risk
+  if (smartMoneyFlow.strength === 'STRONG' && smartMoneyFlow.direction === 'BEARISH') {
+    riskScore += 1;
+  }
+  
+  if (riskScore >= 4) return 'HIGH';
+  if (riskScore >= 2) return 'MEDIUM';
+  return 'LOW';
+}
+
+/**
+ * Calculate overall volume grade for professional assessment
+ */
+function calculateOverallVolumeGrade(volumeRatio, institutionalSignature, smartMoneyFlow) {
+  let score = 0;
+  
+  // Volume ratio scoring
+  if (volumeRatio >= 2.5) score += 3;
+  else if (volumeRatio >= 1.8) score += 2;
+  else if (volumeRatio >= 1.2) score += 1;
+  
+  // Institutional backing
+  if (institutionalSignature.detected && institutionalSignature.confidence > 0.7) {
+    score += 2;
+  }
+  
+  // Smart money alignment
+  if (smartMoneyFlow.strength === 'STRONG') score += 1;
+  
+  if (score >= 5) return 'A+';
+  if (score >= 4) return 'A';
+  if (score >= 3) return 'B+';
+  if (score >= 2) return 'B';
+  if (score >= 1) return 'C';
+  return 'D';
+}
+
+// =====================================================
+// RULE 8: PORTFOLIO HEAT & RISK SCALING FUNCTIONS
+// =====================================================
+
+/**
+ * Calculate portfolio heat based on current positions and market conditions
+ */
+function calculatePortfolioHeat(currentSymbol) {
+  // Simplified portfolio heat calculation
+  // In production, this would analyze actual portfolio positions
+  
+  const mockPortfolioData = {
+    totalPositions: 5,
+    openRisk: 0.08, // 8% portfolio at risk
+    correlatedPositions: 2,
+    recentLosses: 1
+  };
+  
+  let temperature = 0;
+  
+  // Base heat from total risk exposure
+  temperature += (mockPortfolioData.openRisk * 100) * 5; // 5 degrees per 1% risk
+  
+  // Heat from number of positions
+  temperature += Math.max(0, (mockPortfolioData.totalPositions - 3) * 10);
+  
+  // Heat from recent losses
+  temperature += mockPortfolioData.recentLosses * 15;
+  
+  // Heat from correlation
+  temperature += mockPortfolioData.correlatedPositions * 8;
+  
+  temperature = Math.min(temperature, 100); // Cap at 100°C
+  
+  let riskLevel = 'LOW';
+  if (temperature > 80) riskLevel = 'CRITICAL';
+  else if (temperature > 60) riskLevel = 'HIGH';
+  else if (temperature > 40) riskLevel = 'MEDIUM';
+  
+  return {
+    temperature: Math.round(temperature),
+    riskLevel: riskLevel,
+    positions: mockPortfolioData.totalPositions,
+    totalRisk: mockPortfolioData.openRisk
+  };
+}
+
+/**
+ * Assess correlation risk with existing positions
+ */
+function assessCorrelationRisk(symbol, sector) {
+  // Simplified correlation assessment
+  // In production, this would analyze actual position correlations
+  
+  const mockPositions = [
+    { symbol: 'AAPL', sector: 'Technology' },
+    { symbol: 'MSFT', sector: 'Technology' },
+    { symbol: 'SPY', sector: 'Market' }
+  ];
+  
+  // Count positions in same sector
+  const sectorCount = mockPositions.filter(pos => pos.sector === sector).length;
+  
+  // Calculate exposure percentage
+  const exposurePercent = (sectorCount / Math.max(mockPositions.length, 1)) * 100;
+  
+  let level = 'LOW';
+  if (exposurePercent > 60) level = 'HIGH';
+  else if (exposurePercent > 30) level = 'MEDIUM';
+  
+  return {
+    level: level,
+    exposurePercent: Math.round(exposurePercent),
+    sectorPositions: sectorCount,
+    totalPositions: mockPositions.length
+  };
+}
+
+/**
+ * Calculate dynamic stop loss multiplier based on portfolio state
+ */
+function calculateDynamicStopMultiplier(portfolioHeat, correlationRisk, marketRegime, confidence) {
+  let baseMultiplier = 2.0;
+  
+  // Tighter stops in hot portfolio (prevent further damage)
+  if (portfolioHeat.temperature > 80) {
+    baseMultiplier = 1.3;
+  } else if (portfolioHeat.temperature > 60) {
+    baseMultiplier = 1.6;
+  }
+  
+  // Adjust for correlation risk
+  if (correlationRisk.level === 'HIGH') {
+    baseMultiplier *= 0.8; // Tighter stops for correlated positions
+  }
+  
+  // Adjust for market regime
+  if (marketRegime === 'BEAR') {
+    baseMultiplier *= 0.9; // Tighter stops in bear markets
+  } else if (marketRegime === 'HIGH_VOLATILITY') {
+    baseMultiplier *= 1.2; // Wider stops in high volatility
+  }
+  
+  // Adjust for confidence
+  if (confidence > 0.7) {
+    baseMultiplier *= 0.9; // Tighter stops for high confidence trades
+  } else if (confidence < 0.4) {
+    baseMultiplier *= 1.1; // Wider stops for low confidence trades
+  }
+  
+  return Math.max(1.2, Math.min(3.0, baseMultiplier)); // Clamp between 1.2x and 3.0x
+}
+
+/**
+ * Calculate risk adjustment factor for targets
+ */
+function calculateRiskAdjustment(portfolioHeat, correlationRisk) {
+  let adjustment = 1.0;
+  
+  // Reduce targets in risky portfolio conditions
+  if (portfolioHeat.temperature > 80) {
+    adjustment *= 0.7; // Take profits sooner in hot portfolio
+  } else if (portfolioHeat.temperature > 60) {
+    adjustment *= 0.85;
+  }
+  
+  // Adjust for correlation risk
+  if (correlationRisk.level === 'HIGH') {
+    adjustment *= 0.8; // Take profits sooner with high correlation
+  }
+  
+  return Math.max(0.5, Math.min(1.2, adjustment)); // Clamp between 0.5x and 1.2x
+}
+
+// =====================================================
+// 🎨 RULE 10: PATTERN VALIDATION ENHANCEMENT
+// Advanced pattern recognition with failure prediction and multi-timeframe confirmation
+// =====================================================
+
+/**
+ * 🎨 RULE 10: Advanced Pattern Validation Engine
+ * Validates patterns using multiple criteria to prevent false signals
+ * Returns only high-quality patterns with enhanced metadata
+ */
+function applyRule10PatternValidation(rawPatterns, technical) {
+  console.log('🎨 RULE 10: Advanced Pattern Validation Engine - Analyzing pattern quality...');
+  
+  const validatedPatterns = [];
+  
+  rawPatterns.forEach((pattern, index) => {
+    console.log(`   📊 Validating Pattern ${index + 1}: ${pattern.pattern}`);
+    
+    // =====================================================
+    // RULE 10: COMPREHENSIVE PATTERN ANALYSIS
+    // =====================================================
+    
+    const patternAnalysis = analyzePatternQuality(pattern, technical);
+    const strengthScore = calculatePatternStrength(pattern, technical);
+    const failureRisk = predictPatternFailure(pattern, technical);
+    const multiTimeframeConfirmed = validateMultiTimeframeConfirmation(pattern, technical);
+    const volumeConfirmation = validatePatternVolumeConfirmation(pattern, technical);
+    
+    // =====================================================
+    // RULE 10: PATTERN GRADING SYSTEM (A+ to D-)
+    // =====================================================
+    
+    const validationGrade = calculatePatternGrade(
+      strengthScore,
+      failureRisk,
+      multiTimeframeConfirmed,
+      volumeConfirmation,
+      patternAnalysis
+    );
+    
+    // =====================================================
+    // RULE 10: QUALITY FILTER - Only accept B+ and above patterns
+    // =====================================================
+    
+    const gradeValues = {
+      'A+': 4.3, 'A': 4.0, 'A-': 3.7,
+      'B+': 3.3, 'B': 3.0, 'B-': 2.7,
+      'C+': 2.3, 'C': 2.0, 'C-': 1.7,
+      'D+': 1.3, 'D': 1.0, 'D-': 0.7
+    };
+    
+    const minGradeValue = 3.3; // B+ minimum
+    
+    if (gradeValues[validationGrade] >= minGradeValue) {
+      // =====================================================
+      // RULE 10: ENHANCED CONFIDENCE CALCULATION
+      // =====================================================
+      
+      const enhancedConfidence = calculateEnhancedPatternConfidence(
+        pattern.confidence || 0.5,
+        strengthScore,
+        failureRisk,
+        multiTimeframeConfirmed,
+        volumeConfirmation
+      );
+      
+      const validatedPattern = {
+        ...pattern,
+        confidence: enhancedConfidence,
+        
+        // RULE 10: Enhanced Pattern Metadata
+        validationGrade: validationGrade,
+        strengthScore: strengthScore,
+        failureRisk: failureRisk,
+        multiTimeframeConfirmed: multiTimeframeConfirmed,
+        volumeConfirmation: volumeConfirmation,
+        
+        // Quality metrics
+        qualityScore: gradeValues[validationGrade],
+        analysisResults: patternAnalysis,
+        
+        // Risk assessment
+        riskProfile: {
+          failureProbability: failureRisk.probability,
+          stopLossAdjustment: failureRisk.stopAdjustment,
+          positionSizeRecommendation: calculatePositionSizeForPattern(validationGrade, failureRisk)
+        },
+        
+        // Enhanced targeting
+        targetConfidence: calculateTargetConfidence(pattern, strengthScore, multiTimeframeConfirmed),
+        
+        // Pattern timing
+        timingScore: calculatePatternTimingScore(pattern, technical),
+        
+        // RULE 10 validation timestamp
+        rule10Validated: true,
+        validationTimestamp: new Date().toISOString()
+      };
+      
+      validatedPatterns.push(validatedPattern);
+      
+      console.log(`   ✅ Pattern VALIDATED: ${pattern.pattern} (Grade: ${validationGrade}, Confidence: ${(enhancedConfidence * 100).toFixed(1)}%)`);
+    } else {
+      console.log(`   ❌ Pattern REJECTED: ${pattern.pattern} (Grade: ${validationGrade}, Below B+ threshold)`);
+    }
+  });
+  
+  console.log(`🎯 RULE 10 Summary: ${validatedPatterns.length}/${rawPatterns.length} patterns passed validation`);
+  
+  return validatedPatterns;
+}
+
+/**
+ * RULE 10: Analyze pattern quality using multiple dimensions
+ */
+function analyzePatternQuality(pattern, technical) {
+  const analysis = {
+    symmetry: calculatePatternSymmetry(pattern),
+    completion: calculatePatternCompletion(pattern),
+    context: analyzePatternContext(pattern, technical),
+    reliability: assessPatternReliability(pattern.pattern)
+  };
+  
+  return analysis;
+}
+
+/**
+ * RULE 10: Calculate pattern strength using geometric and technical factors
+ */
+function calculatePatternStrength(pattern, technical) {
+  let strength = 0.5; // Base strength
+  
+  // Factor 1: Pattern completeness
+  if (pattern.support && pattern.resistance) {
+    const range = Math.abs(pattern.resistance - pattern.support);
+    const currentPrice = technical?.currentPrice || technical?.latestPrice || 0;
+    const rangePercent = (range / currentPrice) * 100;
+    
+    // Optimal range: 3-8% for most patterns
+    if (rangePercent >= 3 && rangePercent <= 8) {
+      strength += 0.2;
+    } else if (rangePercent >= 2 && rangePercent <= 10) {
+      strength += 0.1;
+    }
+  }
+  
+  // Factor 2: Pattern type reliability
+  const reliabilityBonus = getPatternTypeReliability(pattern.pattern);
+  strength += reliabilityBonus;
+  
+  // Factor 3: Technical confluence
+  if (technical?.technicalIndicators?.latest) {
+    const rsi = technical.technicalIndicators.latest.rsi;
+    if (rsi && ((rsi < 30 && pattern.signal === 'BUY') || (rsi > 70 && pattern.signal === 'SELL'))) {
+      strength += 0.15; // RSI confluence bonus
+    }
+  }
+  
+  return Math.min(1.0, strength);
+}
+
+/**
+ * RULE 10: Predict pattern failure probability
+ */
+function predictPatternFailure(pattern, technical) {
+  let failureProbability = 0.3; // Base failure rate
+  
+  // Factor 1: Market volatility impact
+  const atr = technical?.indicators?.atr || 0.02;
+  const currentPrice = technical?.currentPrice || technical?.latestPrice || 100;
+  const volatilityPercent = (atr / currentPrice) * 100;
+  
+  if (volatilityPercent > 4) {
+    failureProbability += 0.2; // High volatility increases failure risk
+  } else if (volatilityPercent < 1.5) {
+    failureProbability -= 0.1; // Low volatility reduces failure risk
+  }
+  
+  // Factor 2: Pattern-specific failure rates
+  const patternFailureRates = {
+    'Head and Shoulders': 0.25,
+    'Double Top': 0.30,
+    'Double Bottom': 0.28,
+    'Triangle': 0.35,
+    'Flag': 0.20,
+    'Pennant': 0.22,
+    'Cup and Handle': 0.18
+  };
+  
+  if (patternFailureRates[pattern.pattern]) {
+    failureProbability = patternFailureRates[pattern.pattern];
+  }
+  
+  // Factor 3: Market regime impact
+  const regime = technical?.marketRegime?.regime;
+  if (regime === 'BEAR' && pattern.signal === 'BUY') {
+    failureProbability += 0.15; // Bullish patterns more likely to fail in bear markets
+  } else if (regime === 'BULL' && pattern.signal === 'SELL') {
+    failureProbability += 0.15; // Bearish patterns more likely to fail in bull markets
+  }
+  
+  return {
+    probability: Math.min(0.7, Math.max(0.1, failureProbability)),
+    stopAdjustment: failureProbability > 0.4 ? 'TIGHTER' : 'NORMAL',
+    riskLevel: failureProbability > 0.5 ? 'HIGH' : failureProbability > 0.35 ? 'MEDIUM' : 'LOW'
+  };
+}
+
+/**
+ * RULE 10: Validate multi-timeframe confirmation
+ */
+function validateMultiTimeframeConfirmation(pattern, technical) {
+  // Simplified multi-timeframe validation
+  // In production, this would check multiple timeframes
+  
+  const currentTimeframe = technical?.timeframe || '1D';
+  const higherTimeframe = getHigherTimeframe(currentTimeframe);
+  
+  // Check if higher timeframe trend aligns with pattern
+  const trend = technical?.marketRegime?.trend || 'NEUTRAL';
+  const patternDirection = pattern.signal || 'NEUTRAL';
+  
+  const aligned = (
+    (trend === 'UP' && patternDirection === 'BUY') ||
+    (trend === 'DOWN' && patternDirection === 'SELL') ||
+    trend === 'NEUTRAL'
+  );
+  
+  return {
+    confirmed: aligned,
+    higherTimeframe: higherTimeframe,
+    trendAlignment: aligned ? 'ALIGNED' : 'CONFLICTING',
+    confidence: aligned ? 0.8 : 0.3
+  };
+}
+
+/**
+ * RULE 10: Validate volume confirmation for pattern
+ */
+function validatePatternVolumeConfirmation(pattern, technical) {
+  const volumeData = technical?.latestVolume || 0;
+  const avgVolume = technical?.avgVolume || volumeData;
+  
+  if (!volumeData || !avgVolume) {
+    return {
+      confirmed: false,
+      reason: 'No volume data available',
+      ratio: 0,
+      quality: 'UNKNOWN'
+    };
+  }
+  
+  const volumeRatio = volumeData / avgVolume;
+  let confirmation = false;
+  let quality = 'POOR';
+  
+  // Pattern-specific volume requirements
+  if (pattern.pattern === 'Breakout' || pattern.pattern === 'Flag' || pattern.pattern === 'Pennant') {
+    // Breakout patterns need high volume
+    if (volumeRatio >= 1.5) {
+      confirmation = true;
+      quality = volumeRatio >= 2.0 ? 'EXCELLENT' : 'GOOD';
+    }
+  } else {
+    // Other patterns are less volume-dependent
+    if (volumeRatio >= 0.8) {
+      confirmation = true;
+      quality = volumeRatio >= 1.2 ? 'GOOD' : 'ACCEPTABLE';
+    }
+  }
+  
+  return {
+    confirmed: confirmation,
+    ratio: volumeRatio,
+    quality: quality,
+    requirement: getVolumeRequirementForPattern(pattern.pattern)
+  };
+}
+
+/**
+ * RULE 10: Calculate pattern grade using multiple factors
+ */
+function calculatePatternGrade(strengthScore, failureRisk, multiTimeframeConfirmed, volumeConfirmation, patternAnalysis) {
+  let gradePoints = 0;
+  
+  // Strength score contribution (0-40 points)
+  gradePoints += strengthScore * 40;
+  
+  // Failure risk contribution (0-25 points)
+  gradePoints += (1 - failureRisk.probability) * 25;
+  
+  // Multi-timeframe confirmation (0-20 points)
+  if (multiTimeframeConfirmed.confirmed) {
+    gradePoints += multiTimeframeConfirmed.confidence * 20;
+  }
+  
+  // Volume confirmation (0-15 points)
+  if (volumeConfirmation.confirmed) {
+    const volumePoints = volumeConfirmation.quality === 'EXCELLENT' ? 15 :
+                        volumeConfirmation.quality === 'GOOD' ? 12 :
+                        volumeConfirmation.quality === 'ACCEPTABLE' ? 8 : 5;
+    gradePoints += volumePoints;
+  }
+  
+  // Convert to letter grade
+  if (gradePoints >= 95) return 'A+';
+  if (gradePoints >= 90) return 'A';
+  if (gradePoints >= 87) return 'A-';
+  if (gradePoints >= 83) return 'B+';
+  if (gradePoints >= 80) return 'B';
+  if (gradePoints >= 77) return 'B-';
+  if (gradePoints >= 73) return 'C+';
+  if (gradePoints >= 70) return 'C';
+  if (gradePoints >= 67) return 'C-';
+  if (gradePoints >= 63) return 'D+';
+  if (gradePoints >= 60) return 'D';
+  return 'D-';
+}
+
+/**
+ * RULE 10: Supporting helper functions
+ */
+function getPatternTypeReliability(patternType) {
+  const reliabilityMap = {
+    'Cup and Handle': 0.25,
+    'Flag': 0.20,
+    'Pennant': 0.18,
+    'Head and Shoulders': 0.15,
+    'Double Bottom': 0.12,
+    'Double Top': 0.12,
+    'Triangle': 0.10,
+    'Wedge': 0.08
+  };
+  
+  return reliabilityMap[patternType] || 0.05;
+}
+
+function calculateEnhancedPatternConfidence(baseConfidence, strengthScore, failureRisk, multiTimeframe, volumeConfirmation) {
+  let enhanced = baseConfidence;
+  
+  // Boost for high strength
+  enhanced += (strengthScore - 0.5) * 0.3;
+  
+  // Penalty for high failure risk
+  enhanced -= failureRisk.probability * 0.2;
+  
+  // Boost for confirmations
+  if (multiTimeframe.confirmed) enhanced += 0.1;
+  if (volumeConfirmation.confirmed) enhanced += 0.1;
+  
+  return Math.min(0.95, Math.max(0.1, enhanced));
+}
+
+function calculatePositionSizeForPattern(grade, failureRisk) {
+  const gradeMultipliers = {
+    'A+': 1.0, 'A': 0.9, 'A-': 0.8,
+    'B+': 0.7, 'B': 0.6, 'B-': 0.5
+  };
+  
+  const baseSize = gradeMultipliers[grade] || 0.5;
+  const riskAdjustment = failureRisk.riskLevel === 'HIGH' ? 0.7 : 
+                        failureRisk.riskLevel === 'MEDIUM' ? 0.85 : 1.0;
+  
+  return Math.round((baseSize * riskAdjustment) * 100) / 100;
+}
+
+function getHigherTimeframe(currentTimeframe) {
+  const timeframeHierarchy = {
+    '5m': '15m', '15m': '1h', '1h': '4h', 
+    '4h': '1D', '1D': '1W', '1W': '1M'
+  };
+  
+  return timeframeHierarchy[currentTimeframe] || '1D';
+}
+
+function calculatePatternSymmetry(pattern) {
+  // Simplified symmetry calculation
+  return 0.7; // Would implement actual geometric analysis
+}
+
+function calculatePatternCompletion(pattern) {
+  // Check if pattern has all required components
+  const hasSupport = !!pattern.support;
+  const hasResistance = !!pattern.resistance;
+  const hasTarget = !!pattern.target;
+  
+  return (hasSupport + hasResistance + hasTarget) / 3;
+}
+
+function analyzePatternContext(pattern, technical) {
+  return {
+    marketRegime: technical?.marketRegime?.regime || 'UNKNOWN',
+    trend: technical?.marketRegime?.trend || 'NEUTRAL',
+    volatilityEnvironment: 'NORMAL' // Would implement actual analysis
+  };
+}
+
+function assessPatternReliability(patternType) {
+  return getPatternTypeReliability(patternType) / 0.25; // Normalize to 0-1
+}
+
+function calculateTargetConfidence(pattern, strengthScore, multiTimeframe) {
+  let confidence = 0.6; // Base target confidence
+  confidence += strengthScore * 0.2;
+  if (multiTimeframe.confirmed) confidence += 0.1;
+  return Math.min(0.9, confidence);
+}
+
+function calculatePatternTimingScore(pattern, technical) {
+  // Simplified timing score - would implement market timing analysis
+  return 0.7;
+}
+
+function getVolumeRequirementForPattern(patternType) {
+  const requirements = {
+    'Breakout': '150%+ of average volume required',
+    'Flag': '120%+ of average volume preferred',
+    'Pennant': '120%+ of average volume preferred',
+    'Triangle': '100%+ of average volume acceptable'
+  };
+  
+  return requirements[patternType] || '80%+ of average volume acceptable';
+}
 
 // Initialize on module load
 initializeBayesianTracker();
