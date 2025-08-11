@@ -8,7 +8,6 @@ const AdvancedPatterns = require('../../utils/advancedPatterns');
 const MultiTimeframeAnalysis = require('../../utils/multiTimeframeAnalysis');
 const LeakFreeBacktestingEngine = require('../../utils/leakFreeBacktestingEngine');
 const FreeNewsSentimentService = require('../../services/freeNewsSentimentService');
-const EnhancedAlertService = require('../../services/enhancedAlertService');
 const { detectVolatilityRegime } = require('../../utils/volatilityRegimeDetector');
 const { detectMomentumDivergences } = require('../../utils/momentumDivergenceDetector');
 const { assessTailRisk } = require('../../utils/tailRiskProtection');
@@ -112,7 +111,6 @@ exports.getAnalysis = async (req, res) => {
       technicalAnalysis,
       backtestResults,
       sentimentData,
-      newsAlerts,
       tailRiskAssessment,
       microstructureAnalysis,
       monteCarloScenarios
@@ -126,8 +124,6 @@ exports.getAnalysis = async (req, res) => {
       // 3. Sentiment Analysis (real news data)
       getSentimentAnalysis(formattedSymbol),
 
-      // 4. Enhanced Alerts (priority-based alerts)
-      getEnhancedAlerts(formattedSymbol),
 
       // 5. ⭐ TAIL RISK PROTECTION - Crash detection and defensive positioning
       getTailRiskAssessment(formattedSymbol, swingDecisionPeriod),
@@ -147,7 +143,6 @@ exports.getAnalysis = async (req, res) => {
     const technical = technicalAnalysis.status === 'fulfilled' ? technicalAnalysis.value : null;
     const backtest = backtestResults.status === 'fulfilled' ? backtestResults.value : null;
     const sentiment = sentimentData.status === 'fulfilled' ? sentimentData.value : null;
-    const alerts = newsAlerts.status === 'fulfilled' ? newsAlerts.value : [];
     const tailRisk = tailRiskAssessment.status === 'fulfilled' ? tailRiskAssessment.value : null;
     const microstructure = microstructureAnalysis.status === 'fulfilled' ? microstructureAnalysis.value : null;
     const monteCarlo = monteCarloScenarios.status === 'fulfilled' ? monteCarloScenarios.value : null;
@@ -292,7 +287,7 @@ exports.getAnalysis = async (req, res) => {
       const currentPrice = finalTechnical.currentPrice || finalTechnical.latestPrice || 0;
       const resistance = finalTechnical.levels?.resistance || 0;
       const support = finalTechnical.levels?.support || 0;
-
+      const volumeRatio = expertDecision.volumeAnalysis?.ratio || 0;
       // Primary decision-based reasons
       if (expertDecision.finalDecision.action === 'AVOID' || expertDecision.tradeReadiness?.status === 'AVOID') {
         // Trend-based reasons
@@ -312,7 +307,7 @@ exports.getAnalysis = async (req, res) => {
         if (expertDecision.volumeAnalysis?.status === 'DISQUALIFYING') {
           codes.push('INSUFFICIENT_VOLUME');
         }
-        const volumeRatio = expertDecision.volumeAnalysis?.ratio || 0;
+        
         if (volumeRatio < 1.5) {
           codes.push(`VOLUME_${Math.round(volumeRatio * 100)}PCT_OF_AVERAGE`);
         }
@@ -5602,16 +5597,6 @@ async function getSentimentAnalysis(symbol) {
   } catch (error) {
     console.log(`⚠️ Sentiment analysis failed for ${symbol}:`, error.message);
     return null;
-  }
-}
-
-async function getEnhancedAlerts(symbol) {
-  try {
-    const alertService = new EnhancedAlertService();
-    return await alertService.generateSentimentEnhancedAlert(symbol) || [];
-  } catch (error) {
-    console.log(`⚠️ Enhanced alerts failed for ${symbol}:`, error.message);
-    return [];
   }
 }
 
