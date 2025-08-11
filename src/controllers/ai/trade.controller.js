@@ -288,6 +288,8 @@ exports.getAnalysis = async (req, res) => {
       const resistance = finalTechnical.levels?.resistance || 0;
       const support = finalTechnical.levels?.support || 0;
       const volumeRatio = expertDecision.volumeAnalysis?.ratio || 0;
+      // Risk/Reward reasons
+      const riskReward = expertDecision.executionPlan?.riskReward || 0;
       // Primary decision-based reasons
       if (expertDecision.finalDecision.action === 'AVOID' || expertDecision.tradeReadiness?.status === 'AVOID') {
         // Trend-based reasons
@@ -317,8 +319,7 @@ exports.getAnalysis = async (req, res) => {
           codes.push(`SIGNAL_GRADE_${expertDecision.signalQuality.grade.replace('+', 'PLUS').replace('-', 'MINUS')}`);
         }
 
-        // Risk/Reward reasons
-        const riskReward = expertDecision.executionPlan?.riskReward || 0;
+        
         if (riskReward < 2.0) {
           codes.push(`RISK_REWARD_${Math.round(riskReward * 100)}PCT_TOO_LOW`);
         }
@@ -625,6 +626,8 @@ exports.getAnalysis = async (req, res) => {
         entry: Math.round((expertDecision.executionPlan?.entryPrice || finalTechnical.currentPrice || 0) * 100) / 100,
         stop: Math.round((expertDecision.executionPlan?.stopLoss || 0) * 100) / 100,
         riskReward: Math.round((expertDecision.executionPlan?.riskReward || 0) * 100) / 100,
+        target1: expertDecision.breakoutPlan ? Math.round(expertDecision.breakoutPlan.targets.primary * 100) / 100 : Math.round(((finalTechnical.currentPrice || 0) * 1.08) * 100) / 100,
+        target2: expertDecision.breakoutPlan ? Math.round(expertDecision.breakoutPlan.targets.secondary * 100) / 100 : Math.round(((finalTechnical.currentPrice || 0) * 1.15) * 100) / 100,
         positionSize: {
           shares: expertDecision.positionSizing?.recommendedShares || 0,
           value: Math.round(expertDecision.positionSizing?.positionValue || 0),

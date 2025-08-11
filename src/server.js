@@ -114,9 +114,9 @@ app.get('/api/yahoo/indicator', async (req, res) => {
     if (!symbol) return res.status(400).json({ error: 'Missing symbol' });
     let hist;
     if (period1 && period2) {
-      hist = await yahoo.getHistorical(symbol, period1, period2);
+      hist = await yahoo.getHistoricalForTrade(symbol, period1, period2);
     } else {
-      hist = await yahoo.getHistorical(symbol, '3mo'); // Increased from 2mo to 3mo
+      hist = await yahoo.getHistoricalForTrade(symbol, '3mo'); // Increased from 2mo to 3mo
     }
     // Debug: log last date in historical data
     if (hist && hist.length > 0) {

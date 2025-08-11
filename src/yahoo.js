@@ -20,13 +20,28 @@ async function getQuote(symbol) {
   return quote
 }
 
+// Get historical data for ATR calculation
+// Always use interval: '1d'.
+// If period1 and period2 are both dates (YYYY-MM-DD), use them as range; else, treat period1 as duration string
+async function getHistoricalForTrade(symbol, period1 = '1d', period2) {
+  if (period2) {
+    // period1 and period2 are date strings
+    return await yahooFinance.historical(symbol, { period1, period2, interval: '1d' });
+  } else {
+    // period1 is a duration string (e.g. '2mo')
+    return await yahooFinance.historical(symbol, { period1, interval: '1d' });
+  }
+}
+
+
 
 // Get historical data for technical analysis
 // Convert period string to date range for yahoo-finance2 chart API
 async function getHistorical(symbol, period1 = '6mo', period2) {
   try {
     // Convert period string to actual dates
-    const endDate = new Date();
+    console.log(`Fetching historical data for ${symbol} from ${period1} to ${period2 || 'now'}`);
+    let endDate = new Date();
     let startDate = new Date();
     
     if (period2) {
@@ -85,5 +100,6 @@ module.exports = {
   searchSymbol,
   getCurrentPrice,
   getHistorical,
-  getQuote
+  getQuote,
+  getHistoricalForTrade
 };
