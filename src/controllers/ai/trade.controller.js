@@ -267,7 +267,7 @@ exports.getAnalysis = async (req, res) => {
       const action = expertDecision.finalDecision.action;
       const readiness = expertDecision.tradeReadiness.status;
       
-      // Ready to execute cases
+      // Ready to execute cases - Primary Actions
       if (readiness === 'READY' && ['BUY', 'STRONG_BUY'].includes(action)) {
         return 'BUY';
       }
@@ -275,10 +275,58 @@ exports.getAnalysis = async (req, res) => {
         return 'SELL';
       }
       
-      // Default to HOLD for all non-actionable cases
-      // This covers: avoid, wait, watch, monitor, uncertain conditions
-      // The reasonCodes will provide specific details about why we're holding
-      return 'HOLD';
+      // 🎯 CONTEXTUAL DECISION MAPPING: WATCH stays actionable when appropriate
+      if (action === 'WATCH') {
+        const signalGrade = expertDecision.signalQuality.grade;
+        const riskReward = expertDecision.executionPlan?.riskReward || 0;
+        const primarySignal = expertDecision.conflictResolution?.hierarchyDecision?.primaryDecision || 
+                            expertDecision.conflictResolution?.resolvedSignal;
+        
+        // WATCH remains WATCH when:
+        // 1. Below contextual R/R floor but positive expectancy
+        // 2. Decent setup quality (C+ or better)
+        // 3. Clear directional bias from primary signal
+        if (readiness === 'READY' || readiness === 'WATCH') {
+          if (signalGrade && !['F', 'D+', 'D', 'D-'].includes(signalGrade) && riskReward >= 1.5) {
+            // Convert WATCH+READY to actionable BUY/SELL when conditions are met
+            if (readiness === 'READY') {
+              if (primarySignal === 'BUY') {
+                console.log(`🎯 WATCH→BUY conversion: Grade ${signalGrade}, R/R ${riskReward.toFixed(2)}, Ready status`);
+                return 'BUY';
+              }
+              if (primarySignal === 'SELL') {
+                console.log(`🎯 WATCH→SELL conversion: Grade ${signalGrade}, R/R ${riskReward.toFixed(2)}, Ready status`);
+                return 'SELL';
+              }
+            }
+            
+            // Keep as actionable WATCH for probe sizing (moderate R/R scenarios)
+            if (riskReward >= 1.6) {
+              console.log(`📊 Actionable WATCH maintained: Grade ${signalGrade}, R/R ${riskReward.toFixed(2)} - probe sizing available`);
+              return 'WATCH';
+            }
+          }
+        }
+      }
+      
+      // AVOID cases - hard failures
+      if (readiness === 'AVOID' || action === 'AVOID') {
+        return 'AVOID';
+      }
+      
+      // Only set HOLD for truly non-actionable scenarios:
+      // - Very poor grades with negative expectancy
+      // - Below absolute minimums
+      // - Hard veto triggers
+      const signalGrade = expertDecision.signalQuality.grade;
+      const riskReward = expertDecision.executionPlan?.riskReward || 0;
+      
+      if (['F', 'D+', 'D', 'D-'].includes(signalGrade) || riskReward < 1.4) {
+        return 'HOLD'; // Only HOLD for truly poor setups
+      }
+      
+      // Default fallback for edge cases
+      return action === 'NEUTRAL' ? 'HOLD' : 'WATCH';
     };
 
     // Helper functions for enhanced response
@@ -781,6 +829,40 @@ exports.getAnalysis = async (req, res) => {
   }
 };
 
+/**
+ * Direct analysis function for testing/programmatic access
+ * Returns the analysis result directly instead of sending HTTP response
+ */
+async function getAnalysisDirect(symbol, period = '3mo', capital = 100000, diagnostics = false) {
+  try {
+    // Create mock req/res objects for internal use
+    const mockReq = {
+      query: { symbol, period, capital: capital.toString(), diagnostics: diagnostics.toString() }
+    };
+    
+    let resultData = null;
+    const mockRes = {
+      json: (data) => { resultData = data; },
+      status: (code) => ({ json: (data) => { resultData = { ...data, statusCode: code }; } })
+    };
+    
+    // Call the main analysis function
+    await exports.getAnalysis(mockReq, mockRes);
+    
+    return resultData;
+    
+  } catch (error) {
+    console.error('❌ Error in direct analysis:', error);
+    return {
+      success: false,
+      error: 'Failed to perform direct analysis',
+      details: error.message,
+      symbol,
+      timestamp: new Date().toISOString()
+    };
+  }
+}
+
 async function getMarketMicrostructureAnalysis(symbol, period) {
   try {
     console.log(`🔍 Getting market microstructure analysis for ${symbol}...`);
@@ -1095,7 +1177,24 @@ async function generateExpertAIDecision(analysisContext) {
     }
     
     if (!technical.ohlcData || technical.ohlcData.length < 50) {
-      throw new Error(`Insufficient OHLC data: need 50+, got ${technical?.ohlcData?.length || 0}`);
+      console.log(`⚠️ Insufficient OHLC data: need 50+, got ${technical?.ohlcData?.length || 0}`);
+      console.log(`📊 Returning HOLD/F/50% fallback decision due to insufficient data`);
+      
+      return {
+        finalDecision: { action: 'HOLD', confidence: 50 },
+        signalQuality: { grade: 'F' },
+        tradeReadiness: { status: 'AVOID' },
+        executionPlan: { entryPrice: technical.currentPrice || 0, stopLoss: 0, riskReward: 0 },
+        riskAssessment: { maxRiskPercent: 2 },
+        positionSizing: { sizingMethod: 'FALLBACK', recommendedShares: 0, positionValue: 0, percentOfPortfolio: 0 },
+        regimeDetection: { regime: 'UNKNOWN', confidence: 50, regimeStrength: 0 },
+        signalWeights: {},
+        monteCarlo: null,
+        conflictResolution: { conflicts: ['INSUFFICIENT_DATA'], method: 'FALLBACK' },
+        confidenceBreakdown: { overall: 50, technical: 0, fundamental: 0 },
+        sentimentRules: { vetoRecommendation: false },
+        reasonCodes: ['INSUFFICIENT_OHLC_DATA', 'FALLBACK_HOLD_DECISION']
+      };
     }
 
     console.log(`🧠 Expert AI: Analyzing ${symbol} with regime-aware multi-signal reconciliation...`);
@@ -1281,6 +1380,88 @@ async function generateExpertAIDecision(analysisContext) {
       finalDecision.confidence = Math.max(0.45, Math.min(1.0, finalDecision.confidence + monteCarloConfidenceAdjustment)); // RAISED FLOOR
       const actualAdjustment = (finalDecision.confidence - previousConfidence) * 100;
       console.log(`🎲 Monte Carlo Scenarios: ${actualAdjustment > 0 ? '+' : ''}${actualAdjustment.toFixed(1)}% confidence adjustment (Scenario Clarity: ${monteCarlo?.recommendations?.dominantScenario?.probability ? (monteCarlo.recommendations.dominantScenario.probability * 100).toFixed(1) + '%' : 'N/A'})`);
+    }
+
+    // 🛡️ Apply trend restrictions to confidence - CRITICAL FIX for below 200EMA
+    const trendAnalysis = calculateEnhancedTrendAnalysis(technical, sentiment);
+    if (trendAnalysis.trendState === 'BELOW_BAND' && !trendAnalysis.hasActiveExceptions) {
+      const previousConfidence = finalDecision.confidence;
+      finalDecision.confidence = Math.min(0.60, finalDecision.confidence); // Cap at 60% for downtrend
+      const actualAdjustment = (finalDecision.confidence - previousConfidence) * 100;
+      if (actualAdjustment < 0) {
+        console.log(`🛡️ RULE 3 Trend Gate: ${actualAdjustment.toFixed(1)}% confidence cap (Below 200EMA)`);
+      }
+      
+      // Also prevent aggressive BUY signals in downtrend
+      if (['BUY', 'STRONG_BUY'].includes(finalDecision.action)) {
+        finalDecision.action = 'WATCH'; // Downgrade to WATCH
+        console.log(`🛡️ RULE 3 Action Gate: Downgraded to WATCH (Below 200EMA)`);
+      }
+    }
+
+    // 🎯 CONTEXTUAL R/R ENFORCEMENT - Intelligent regime-aware risk management
+    const contextualRRAnalysis = applyContextualRiskRewardGating(
+      riskRewardAnalysis, 
+      regimeDetection, 
+      signalQuality, 
+      trendAnalysis
+    );
+    
+    // Apply contextual R/R gating with expectancy validation
+    if (contextualRRAnalysis.gateResult === 'BLOCK') {
+      const previousConfidence = finalDecision.confidence;
+      finalDecision.confidence = Math.min(0.55, finalDecision.confidence); // Hard cap for truly poor setups
+      const actualAdjustment = (finalDecision.confidence - previousConfidence) * 100;
+      console.log(`🛡️ Hard R/R Gate: ${actualAdjustment.toFixed(1)}% confidence cap (${contextualRRAnalysis.reason})`);
+      
+      // Only set HOLD for truly bad setups (EV ≤ 0 or catastrophic R/R)
+      if (['BUY', 'STRONG_BUY'].includes(finalDecision.action) && contextualRRAnalysis.expectancy <= 0) {
+        finalDecision.action = 'HOLD'; // HOLD only for negative expectancy
+        console.log(`🛡️ Expectancy Gate: Set to HOLD (EV: ${contextualRRAnalysis.expectancy.toFixed(3)} ≤ 0)`);
+      }
+    } 
+    else if (contextualRRAnalysis.gateResult === 'WATCH') {
+      const previousConfidence = finalDecision.confidence;
+      finalDecision.confidence = Math.max(0.60, finalDecision.confidence * 0.92); // Moderate reduction
+      const actualAdjustment = (finalDecision.confidence - previousConfidence) * 100;
+      console.log(`⚖️ Contextual R/R: ${actualAdjustment.toFixed(1)}% confidence adjustment (${contextualRRAnalysis.reason})`);
+      
+      // Downgrade to WATCH for moderate R/R - keeps trade actionable with probe sizing
+      if (['BUY', 'STRONG_BUY'].includes(finalDecision.action)) {
+        finalDecision.action = 'WATCH'; // WATCH remains actionable
+        console.log(`⚖️ R/R Action Gate: Downgraded to WATCH (${contextualRRAnalysis.reason}) - probe sizing available`);
+      }
+    }
+    else if (contextualRRAnalysis.gateResult === 'PASS') {
+      // Excellent R/R for regime - minor confidence boost
+      if (contextualRRAnalysis.rrQuality === 'EXCELLENT') {
+        const previousConfidence = finalDecision.confidence;
+        finalDecision.confidence = Math.min(0.95, finalDecision.confidence * 1.03); // Small boost
+        const actualAdjustment = (finalDecision.confidence - previousConfidence) * 100;
+        if (actualAdjustment > 0) {
+          console.log(`🎯 Excellent R/R: +${actualAdjustment.toFixed(1)}% confidence boost (${contextualRRAnalysis.reason})`);
+        }
+      }
+    }
+
+    // 🛡️ Apply earnings proximity enforcement - CRITICAL FIX for earnings risk
+    const earningsDate = technical?.earnings?.nextDate;
+    if (earningsDate) {
+      const daysUntil = Math.ceil((new Date(earningsDate) - new Date()) / (1000 * 60 * 60 * 24));
+      if (daysUntil <= 14 && daysUntil >= 0) {
+        const previousConfidence = finalDecision.confidence;
+        finalDecision.confidence = Math.min(0.60, finalDecision.confidence); // Cap at 60% near earnings
+        const actualAdjustment = (finalDecision.confidence - previousConfidence) * 100;
+        if (actualAdjustment < 0) {
+          console.log(`🛡️ Earnings Gate: ${actualAdjustment.toFixed(1)}% confidence cap (${daysUntil} days to earnings)`);
+        }
+        
+        // Prevent aggressive actions near earnings
+        if (['BUY', 'STRONG_BUY'].includes(finalDecision.action)) {
+          finalDecision.action = 'WATCH'; // Downgrade to WATCH
+          console.log(`🛡️ Earnings Action Gate: Downgraded to WATCH (${daysUntil} days to earnings)`);
+        }
+      }
     }
 
     // Step 9: Calculate Dynamic Position Sizing (now with tail risk + microstructure + Monte Carlo protection)
@@ -3378,6 +3559,19 @@ function calculateAdvancedRiskReward(technical, conflictResolution, ohlcData) {
       riskAmount = Math.abs(currentPrice - stopLoss);
     }
 
+    // 🛡️ SAFETY CAP: Prevent excessively wide stops (>12% for safety)
+    const stopDistancePercent = (riskAmount / currentPrice) * 100;
+    if (stopDistancePercent > 12.0) {
+      console.log(`🛡️ Stop Safety Cap: Reducing stop distance from ${stopDistancePercent.toFixed(1)}% to 12.0%`);
+      const maxRiskAmount = currentPrice * 0.12; // 12% max risk
+      if (direction === 'LONG') {
+        stopLoss = Math.round((currentPrice - maxRiskAmount) * 100) / 100;
+      } else {
+        stopLoss = Math.round((currentPrice + maxRiskAmount) * 100) / 100;
+      }
+      riskAmount = Math.abs(currentPrice - stopLoss);
+    }
+
     // Enhanced logging for structure-aware stops
     console.log(`   🛡️ Stop Method: ${structureStopResult.method} (${structureStopResult.confidence * 100}% confidence)`);
     console.log(`   📊 Stop Analysis: ${structureStopResult.components.blendReason || 'ATR-based stop'}`);
@@ -4727,7 +4921,7 @@ function calculateDynamicPositionSize(capital, finalDecision, riskRewardAnalysis
   // ✅ VALIDATE RISK-REWARD VALUES
   const validRiskReward = (!isNaN(riskRewardAnalysis.riskReward) && riskRewardAnalysis.riskReward > 0) ? riskRewardAnalysis.riskReward : 0;
 
-  // Your Risk-Reward bonus/penalty system
+  // 🎯 CONTEXTUAL R/R MULTIPLIER: More nuanced than binary cutoffs
   let rrMultiplier = 1.0;
   if (validRiskReward >= 3.0) {
     rrMultiplier = 1.3; // 30% increase for excellent R/R
@@ -4735,10 +4929,12 @@ function calculateDynamicPositionSize(capital, finalDecision, riskRewardAnalysis
     rrMultiplier = 1.2; // 20% increase for great R/R
   } else if (validRiskReward >= 2.0) {
     rrMultiplier = 1.1; // 10% increase for good R/R
-  } else if (validRiskReward < 1.5) {
-    rrMultiplier = 0.0; // No position if R/R < 1.5 (your automatic rejection rule)
+  } else if (validRiskReward >= 1.6) {
+    rrMultiplier = 0.85; // Moderate reduction for decent R/R (1.6-2.0)
+  } else if (validRiskReward >= 1.4) {
+    rrMultiplier = 0.6; // Significant reduction for marginal R/R (1.4-1.6)
   } else {
-    rrMultiplier = 0.7; // Reduce position for marginal R/R (1.5-2.0)
+    rrMultiplier = 0.0; // No position for poor R/R < 1.4
   }
 
   // 🎯 YOUR BACKTEST VALIDATION FILTER: Win rate ≥65% allows normal/full position
@@ -4757,6 +4953,17 @@ function calculateDynamicPositionSize(capital, finalDecision, riskRewardAnalysis
   // ✅ VALIDATE TREND MULTIPLIER
   trendMultiplier = Math.max(0, Math.min(2.0, trendMultiplier));
 
+  // 🎯 HIERARCHY MULTIPLIER: Based on decision strength and confidence
+  let hierarchyMultiplier = 1.0;
+  
+  if (finalDecision.confidence >= 80) {
+    hierarchyMultiplier = 1.2; // High confidence boost
+  } else if (finalDecision.confidence >= 65) {
+    hierarchyMultiplier = 1.1; // Moderate confidence boost
+  } else if (finalDecision.confidence <= 45) {
+    hierarchyMultiplier = 0.8; // Low confidence reduction
+  }
+
   // Apply special risk caps for downtrend situations
   let adjustedCapitalAtRisk = capitalAtRisk;
   let adjustedSharesBasedOnRisk = validShares;
@@ -4770,16 +4977,44 @@ function calculateDynamicPositionSize(capital, finalDecision, riskRewardAnalysis
     adjustedSharesBasedOnRisk = Math.max(0, adjustedSharesBasedOnRisk);
   }
 
-  // Hierarchy-based adjustments
-  let hierarchyMultiplier = 1.0;
-  if (riskRewardAnalysis.level === 'UNACCEPTABLE') {
-    hierarchyMultiplier = 0.0; // No position for unacceptable risk
-  } else if (riskRewardAnalysis.autoRejected) {
-    hierarchyMultiplier = 0.0; // No position for auto-rejected trades
-  } else if (finalDecision.action === 'WATCH') {
-    hierarchyMultiplier = 0.3; // Very small position for watch signals
+  // 🎯 CONTEXTUAL POSITION SIZING: Support for probe sizing on WATCH decisions
+  let contextualActionMultiplier = 1.0;
+  
+  if (finalDecision.action === 'WATCH') {
+    // Probe sizing for WATCH decisions based on R/R and expectancy
+    const signalGrade = riskRewardAnalysis.signalGrade || 'F';
+    const validRiskReward = (!isNaN(riskRewardAnalysis.riskReward) && riskRewardAnalysis.riskReward > 0) ? riskRewardAnalysis.riskReward : 0;
+    
+    if (validRiskReward >= 1.6 && validRiskReward < 2.0) {
+      // Moderate R/R WATCH → probe sizing (25-50%)
+      if (['A+', 'A', 'A-', 'B+', 'B'].includes(signalGrade)) {
+        contextualActionMultiplier = 0.5; // 50% probe for quality setups
+        console.log(`📊 WATCH Probe Sizing: 50% position (Grade ${signalGrade}, R/R ${validRiskReward.toFixed(2)})`);
+      } else if (['B-', 'C+', 'C'].includes(signalGrade)) {
+        contextualActionMultiplier = 0.35; // 35% probe for moderate setups
+        console.log(`📊 WATCH Probe Sizing: 35% position (Grade ${signalGrade}, R/R ${validRiskReward.toFixed(2)})`);
+      } else {
+        contextualActionMultiplier = 0.25; // 25% probe for weaker setups
+        console.log(`📊 WATCH Probe Sizing: 25% position (Grade ${signalGrade}, R/R ${validRiskReward.toFixed(2)})`);
+      }
+    } else if (validRiskReward >= 1.4 && validRiskReward < 1.6) {
+      // Lower R/R WATCH → minimal probe
+      contextualActionMultiplier = 0.15; // 15% minimal probe
+      console.log(`📊 WATCH Minimal Probe: 15% position (R/R ${validRiskReward.toFixed(2)} below optimal)`);
+    } else if (validRiskReward < 1.4) {
+      contextualActionMultiplier = 0.0; // No position for very poor R/R
+      console.log(`🛡️ WATCH Blocked: No position (R/R ${validRiskReward.toFixed(2)} < 1.4 minimum)`);
+    }
   } else if (finalDecision.action === 'HOLD') {
-    hierarchyMultiplier = 0.0; // No position for hold signals
+    contextualActionMultiplier = 0.0; // No position for HOLD
+  } else if (finalDecision.action === 'AVOID') {
+    contextualActionMultiplier = 0.0; // No position for AVOID
+  }
+  
+  // Bear regime additional sizing restriction
+  if (trendAnalysis.regime === 'BEAR' || trendAnalysis.trendState === 'DOWNTREND') {
+    contextualActionMultiplier *= 0.7; // 30% reduction in bear markets
+    console.log(`🐻 Bear Regime: Additional 30% position reduction applied`);
   }
 
   // ✅ OVERHEAD SUPPLY GAP ADJUSTMENT - Size reduction based on resistance proximity
@@ -4835,7 +5070,7 @@ function calculateDynamicPositionSize(capital, finalDecision, riskRewardAnalysis
     confidenceMultiplier,
     rrMultiplier,
     backtestMultiplier,
-    hierarchyMultiplier,
+    contextualActionMultiplier, // NEW: Contextual action-based sizing
     trendMultiplier,
     overheadGapMultiplier,
     earningsMultiplier,
@@ -4847,7 +5082,7 @@ function calculateDynamicPositionSize(capital, finalDecision, riskRewardAnalysis
 
   // Check for any invalid multipliers
   const validatedMultipliers = allMultipliers.map((mult, idx) => {
-    const multiplierNames = ['confidence', 'riskReward', 'backtest', 'hierarchy', 'trend', 'overheadGap', 'earnings', 'volatility', 'tailRisk', 'microstructure', 'monteCarlo'];
+    const multiplierNames = ['confidence', 'riskReward', 'backtest', 'contextualAction', 'trend', 'overheadGap', 'earnings', 'volatility', 'tailRisk', 'microstructure', 'monteCarlo'];
     if (isNaN(mult) || !isFinite(mult)) {
       console.error(`❌ Invalid ${multiplierNames[idx]} multiplier: ${mult} - using 1.0`);
       return 1.0;
@@ -4861,7 +5096,7 @@ function calculateDynamicPositionSize(capital, finalDecision, riskRewardAnalysis
     validatedMultipliers[0] *  // confidenceMultiplier
     validatedMultipliers[1] *  // rrMultiplier
     validatedMultipliers[2] *  // backtestMultiplier
-    validatedMultipliers[3] *  // hierarchyMultiplier
+    validatedMultipliers[3] *  // contextualActionMultiplier
     validatedMultipliers[4] *  // trendMultiplier
     validatedMultipliers[5] *  // overheadGapMultiplier
     validatedMultipliers[6] *  // earningsMultiplier
@@ -4902,9 +5137,12 @@ function calculateDynamicPositionSize(capital, finalDecision, riskRewardAnalysis
   // Position sizing explanation
   let sizingReason = 'Standard position sizing';
   if (validatedMultipliers[1] === 0.0) { // rrMultiplier
-    sizingReason = 'No position - Risk/Reward below 1.5 threshold';
-  } else if (validatedMultipliers[3] === 0.0) { // hierarchyMultiplier
-    sizingReason = 'No position - Hierarchy decision (AVOID/HOLD) or unacceptable risk';
+    sizingReason = 'No position - Risk/Reward below 1.4 minimum threshold';
+  } else if (validatedMultipliers[3] === 0.0) { // contextualActionMultiplier
+    sizingReason = 'No position - Contextual action decision (HOLD/AVOID)';
+  } else if (validatedMultipliers[3] < 0.5) { // contextualActionMultiplier for probe sizing
+    const probePercent = Math.round(validatedMultipliers[3] * 100);
+    sizingReason = `Probe sizing - ${probePercent}% position for WATCH decision`;
   } else if (trendSizing.restricted) {
     sizingReason = trendSizing.reason || 'Trend-based restrictions applied';
   } else if (validatedMultipliers[2] === 0.5) { // backtestMultiplier
@@ -5155,6 +5393,169 @@ function createFallbackDecision(analysisContext) {
     confidenceFactors: { signalCount: 0 }
   };
 }
+
+/**
+ * CONTEXTUAL RISK-REWARD GATING
+ * Intelligent R/R enforcement based on market regime, setup quality, and expectancy
+ */
+function applyContextualRiskRewardGating(riskRewardAnalysis, regimeDetection, signalQuality, trendAnalysis) {
+  const rr = riskRewardAnalysis.riskReward;
+  const regime = regimeDetection?.regime || 'UNKNOWN';
+  const grade = signalQuality?.grade || 'F';
+  const trendState = trendAnalysis?.trendState || 'UNKNOWN';
+  
+  // Calculate Bayesian-calibrated win probability for expectancy
+  const bayesianWinRate = calculateBayesianWinRate(signalQuality, regime, trendState);
+  const expectancy = calculateExpectancy(rr, bayesianWinRate);
+  
+  console.log(`📊 Contextual R/R Analysis: R/R=${rr.toFixed(2)}, Regime=${regime}, Grade=${grade}, p(win)=${bayesianWinRate.toFixed(2)}, EV=${expectancy.toFixed(3)}`);
+  
+  // Determine contextual R/R floor based on regime and setup quality
+  const contextualFloor = getContextualRRFloor(regime, trendState, grade);
+  
+  // HARD GATES: Block truly poor setups
+  if (expectancy <= 0) {
+    return {
+      gateResult: 'BLOCK',
+      reason: `Negative expectancy (EV: ${expectancy.toFixed(3)})`,
+      expectancy: expectancy,
+      contextualFloor: contextualFloor,
+      rrQuality: 'POOR'
+    };
+  }
+  
+  if (rr < 1.4) { // Absolute minimum - even in bull markets
+    return {
+      gateResult: 'BLOCK',
+      reason: `R/R below absolute minimum (${rr.toFixed(2)} < 1.4)`,
+      expectancy: expectancy,
+      contextualFloor: contextualFloor,
+      rrQuality: 'POOR'
+    };
+  }
+  
+  // CONDITIONAL GATES: Context-aware evaluation
+  if (rr < contextualFloor.value) {
+    // Check if expectancy compensates for lower R/R
+    const compensatedFloor = contextualFloor.value - 0.2; // Allow 0.2 R/R reduction for positive EV
+    
+    if (rr >= compensatedFloor && expectancy > 0.05) { // Decent positive expectancy
+      return {
+        gateResult: 'WATCH',
+        reason: `Below contextual floor but positive EV compensates (R/R: ${rr.toFixed(2)} vs ${contextualFloor.value} floor, EV: ${expectancy.toFixed(3)})`,
+        expectancy: expectancy,
+        contextualFloor: contextualFloor,
+        rrQuality: 'COMPENSATED'
+      };
+    } else {
+      return {
+        gateResult: 'WATCH',
+        reason: `Below ${contextualFloor.regime} floor (${rr.toFixed(2)} < ${contextualFloor.value})`,
+        expectancy: expectancy,
+        contextualFloor: contextualFloor,
+        rrQuality: 'MODERATE'
+      };
+    }
+  }
+  
+  // PASSING GRADES: Determine quality level
+  let rrQuality = 'GOOD';
+  if (rr >= contextualFloor.excellent) {
+    rrQuality = 'EXCELLENT';
+  } else if (rr >= contextualFloor.value + 0.3) {
+    rrQuality = 'STRONG';
+  }
+  
+  return {
+    gateResult: 'PASS',
+    reason: `Meets ${contextualFloor.regime} standards (${rr.toFixed(2)} ≥ ${contextualFloor.value})`,
+    expectancy: expectancy,
+    contextualFloor: contextualFloor,
+    rrQuality: rrQuality
+  };
+}
+
+/**
+ * Calculate contextual R/R floor based on market conditions
+ */
+function getContextualRRFloor(regime, trendState, grade) {
+  // Base floors by regime
+  let baseFloor = 1.9; // Default sideways market
+  let regimeLabel = 'SIDEWAYS';
+  
+  if (regime === 'BULL' || trendState === 'UPTREND') {
+    baseFloor = 1.6; // More permissive in bull markets
+    regimeLabel = 'BULL';
+  } else if (regime === 'BEAR' || trendState === 'DOWNTREND') {
+    baseFloor = 2.2; // More restrictive in bear markets
+    regimeLabel = 'BEAR';
+  }
+  
+  // Adjust for setup quality (A/B setups get lower floors)
+  let qualityAdjustment = 0;
+  if (['A+', 'A', 'A-', 'B+', 'B'].includes(grade)) {
+    qualityAdjustment = -0.1; // Lower floor for quality setups
+  } else if (['C+', 'C', 'C-'].includes(grade)) {
+    qualityAdjustment = 0.1; // Higher floor for mediocre setups
+  } else if (['D+', 'D', 'D-', 'F'].includes(grade)) {
+    qualityAdjustment = 0.3; // Much higher floor for poor setups
+  }
+  
+  const adjustedFloor = Math.max(1.4, baseFloor + qualityAdjustment); // Never below absolute minimum
+  
+  return {
+    value: adjustedFloor,
+    regime: regimeLabel,
+    baseFloor: baseFloor,
+    qualityAdjustment: qualityAdjustment,
+    excellent: adjustedFloor + 0.5 // Excellent threshold
+  };
+}
+
+/**
+ * Calculate Bayesian-calibrated win probability
+ */
+function calculateBayesianWinRate(signalQuality, regime, trendState) {
+  // Base win rates by grade
+  const gradeWinRates = {
+    'A+': 0.75, 'A': 0.70, 'A-': 0.65,
+    'B+': 0.62, 'B': 0.58, 'B-': 0.55,
+    'C+': 0.52, 'C': 0.50, 'C-': 0.48,
+    'D+': 0.45, 'D': 0.42, 'D-': 0.40,
+    'F': 0.35
+  };
+  
+  const baseWinRate = gradeWinRates[signalQuality?.grade] || 0.50;
+  
+  // Regime adjustments
+  let regimeMultiplier = 1.0;
+  if (regime === 'BULL' || trendState === 'UPTREND') {
+    regimeMultiplier = 1.08; // 8% boost in bull markets
+  } else if (regime === 'BEAR' || trendState === 'DOWNTREND') {
+    regimeMultiplier = 0.85; // 15% penalty in bear markets
+  }
+  
+  // Confidence interval consideration - wider CI means less reliable
+  const confidence = signalQuality?.confidence || 0.5;
+  const reliabilityFactor = Math.max(0.9, Math.min(1.1, confidence + 0.1)); // Slight adjustment
+  
+  const calibratedWinRate = Math.max(0.25, Math.min(0.85, baseWinRate * regimeMultiplier * reliabilityFactor));
+  
+  return calibratedWinRate;
+}
+
+/**
+ * Calculate expectancy: EV = p(win) * R - (1 - p(win))
+ */
+function calculateExpectancy(riskReward, winProbability) {
+  return (winProbability * riskReward) - (1 - winProbability);
+}
+
+// Export utility functions for testing
+module.exports.applyContextualRiskRewardGating = applyContextualRiskRewardGating;
+module.exports.calculateBayesianWinRate = calculateBayesianWinRate;
+module.exports.calculateExpectancy = calculateExpectancy;
+module.exports.getContextualRRFloor = getContextualRRFloor;
 
 async function getTechnicalAnalysisData(symbol, requestedPeriod) {
   try {
@@ -8140,5 +8541,11 @@ initializeBayesianTracker();
 
 module.exports = {
   getAnalysis: exports.getAnalysis,
-  getLeakFreeBacktest: exports.getLeakFreeBacktest
+  getAnalysisDirect,
+  getLeakFreeBacktest: exports.getLeakFreeBacktest,
+  // Contextual R/R utility functions for testing
+  applyContextualRiskRewardGating,
+  calculateBayesianWinRate,
+  calculateExpectancy,
+  getContextualRRFloor
 };

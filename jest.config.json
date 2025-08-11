@@ -1,0 +1,28 @@
+{
+  "testEnvironment": "node",
+  "collectCoverageFrom": [
+    "src/**/*.js",
+    "!src/server.js",
+    "!src/seed.js",
+    "!src/investment_seed.js"
+  ],
+  "testMatch": [
+    "**/tests/**/*.test.js",
+    "**/tests/**/*.test.ts"
+  ],
+  "setupFilesAfterEnv": [
+    "<rootDir>/tests/setup.js"
+  ],
+  "testTimeout": 30000,
+  "verbose": true,
+  "moduleFileExtensions": ["js", "ts"],
+  "transform": {
+    "^.+\\.ts$": [
+      "ts-jest",
+      {
+        "allowJs": true,
+        "checkSyntaxErrors": true
+      }
+    ]
+  }
+}
