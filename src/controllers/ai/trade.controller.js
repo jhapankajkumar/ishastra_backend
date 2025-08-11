@@ -434,6 +434,12 @@ exports.getAnalysis = async (req, res) => {
     };
 
     const getFlipToReady = (expertDecision, trendAnalysis, finalTechnical) => {
+      // ✅ FIX: Only provide flip conditions if current decision is NOT already actionable
+      const currentAction = expertDecision?.finalDecision?.action || 'HOLD';
+      if (['BUY', 'STRONG_BUY', 'SELL', 'STRONG_SELL'].includes(currentAction)) {
+        return []; // Already actionable - no flip conditions needed
+      }
+
       const conditions = [];
       const currentPrice = finalTechnical.currentPrice || finalTechnical.latestPrice || 0;
       const ema200 = finalTechnical.technicalIndicators?.latest?.ema200 || 0;
