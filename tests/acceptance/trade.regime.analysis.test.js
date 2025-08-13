@@ -11,7 +11,7 @@ jest.mock('../../src/utils/leakFreeBacktestingEngine');
 
 // Create test app matching your architecture
 const app = express();
-const controller = require('../../src/controllers/ai/trade.controller.js');
+const controller = require('../../src/controllers/ai/stock.expert.controller.js');
 app.get('/api/trading/analysis', controller.getAnalysis);
 
 const TA = require('../../src/utils/advancedTechnicalAnalysis');

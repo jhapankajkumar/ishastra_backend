@@ -9,7 +9,7 @@
 
 ### 1. Data Source Integration
 - **Yahoo Finance API**: `yahooFinance.quoteSummary()` with "earnings" module
-- **Location**: `src/controllers/ai/trade.controller.js` → `getTechnicalAnalysisData()`
+- **Location**: `src/controllers/ai/stock.expert.controller.js` → `getTechnicalAnalysisData()`
 - **Data Structure**: Earnings dates, estimates, historical earnings
 - **Error Handling**: Graceful degradation when earnings data unavailable
 
@@ -51,22 +51,22 @@ adjustedShares = baseShares *
 ## 🔗 Integration Points
 
 ### 1. Technical Analysis Pipeline
-- **File**: `src/controllers/ai/trade.controller.js` → `getTechnicalAnalysisData()`
+- **File**: `src/controllers/ai/stock.expert.controller.js` → `getTechnicalAnalysisData()`
 - **Enhancement**: Added Yahoo Finance earnings data fetching
 - **Output**: `earningsData` included in all technical analysis responses
 
 ### 2. Risk-Reward Calculation
-- **File**: `src/controllers/ai/trade.controller.js` → `calculateAdvancedRiskReward()`
+- **File**: `src/controllers/ai/stock.expert.controller.js` → `calculateAdvancedRiskReward()`
 - **Enhancement**: Added earnings proximity check and risk assessment
 - **Output**: `earningsProximity` object with risk multipliers and recommendations
 
 ### 3. Position Sizing Engine
-- **File**: `src/controllers/ai/trade.controller.js` → `calculateDynamicPositionSize()`
+- **File**: `src/controllers/ai/stock.expert.controller.js` → `calculateDynamicPositionSize()`
 - **Enhancement**: Added earnings risk multiplier to position calculation
 - **Output**: `earningsMultiplier` percentage in sizing analysis
 
 ### 4. Trade Readiness Determination
-- **File**: `src/controllers/ai/trade.controller.js` → `determineTradeReadiness()`
+- **File**: `src/controllers/ai/stock.expert.controller.js` → `determineTradeReadiness()`
 - **Enhancement**: Added earnings proximity blocking for 0-3 day danger window
 - **Output**: Trade status changes from READY to AVOID when earnings too close
 

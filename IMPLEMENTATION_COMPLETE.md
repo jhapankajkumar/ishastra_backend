@@ -17,7 +17,7 @@ Your trading system now has a **professional-grade, leak-free backtesting engine
 - System health assessment
 
 ### 2. **API Integration**
-📁 `src/controllers/ai/trade.controller.js` (Updated)
+📁 `src/controllers/ai/stock.expert.controller.js` (Updated)
 - New endpoint: `GET /api/trading/leak-free-backtest`
 - Integrated with your existing trade controller
 - Professional API response format

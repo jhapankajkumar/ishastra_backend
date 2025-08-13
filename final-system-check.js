@@ -3,7 +3,7 @@
  * Confirms all problems are resolved and system is production-ready
  */
 
-const { getAnalysisDirect } = require('./src/controllers/ai/trade.controller.js');
+const { getAnalysisDirect } = require('./src/controllers/ai/stock.expert.controller.js');
 
 async function finalSystemCheck() {
     console.log('🔍 Final System Check - Contextual R/R Implementation');

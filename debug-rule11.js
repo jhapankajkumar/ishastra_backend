@@ -11,7 +11,7 @@
  */
 
 require('dotenv').config();
-const { getAnalysis } = require('./src/controllers/ai/trade.controller');
+const { getAnalysis } = require('./src/controllers/ai/stock.expert.controller');
 
 console.log('\n🎯 RULE 11: SCENARIO PLANNING CONSISTENCY VALIDATION');
 console.log('='.repeat(80));

@@ -4,7 +4,7 @@
  */
 
 // Import the AI trade controller directly for unit testing
-const tradeController = require('../../src/controllers/ai/trade.controller');
+const tradeController = require('../../src/controllers/ai/stock.expert.controller');
 const { 
   applyContextualRiskRewardGating,
   calculateBayesianWinRate,

@@ -1,63 +1,25 @@
 const express = require('express');
 const router = express.Router();
-const { getAnalysis, getLeakFreeBacktest } = require('../../controllers/ai/trade.controller');
+const { getAnalysis, getLeakFreeBacktest, getAIAnalysis } = require('../../controllers/ai/stock.expert.controller');
 
 // 🛡️ LEAK-FREE BACKTESTING ENDPOINT
 // GET /api/trading/leak-free-backtest?symbol=HDFCBANK.NS&period=2y&systems=sepa,tripleScreen
 router.get('/leak-free-backtest', getLeakFreeBacktest);
+
+// ==============================================
+// ELDER'S TRIPLE SCREEN SYSTEM ROUTES
+// ==============================================
+
+// Include Elder's Triple Screen routes
+const elderTripleScreenRoutes = require('../elder-triple-screen.routes');
+router.use('/', elderTripleScreenRoutes);
 
 
 /**
  * GET /api/trading/advanced-analysis
  * Legacy endpoint - migrated to unified AI with enhanced response
  */
-router.get('/advanced-analysis', async (req, res) => {
-  try {
-    // Use unified analysis but format as advanced response
-    const mockReq = { query: req.query };
-    const mockRes = {
-      json: (data) => {
-        if (data.success && data.data) {
-          // Transform unified response to advanced format
-          const advancedResponse = {
-            success: true,
-            data: {
-              symbol: data.data.symbol,
-              analysis: {
-                technical: data.data.technicalIndicators,
-                systems: data.data.coreSystemsAnalysis,
-                signals: data.data.signals,
-                sentiment: data.data.sentimentAnalysis,
-                backtest: data.data.backtestingInsights
-              },
-              recommendations: data.data.recommendations,
-              levels: data.data.levels,
-              alerts: data.data.alerts
-            },
-            metadata: {
-              engine: 'Advanced Analysis - Powered by Unified AI',
-              features: [
-                'Unified Technical Analysis',
-                'Real Sentiment Analysis',
-                'Backtesting Validation',
-                'AI Recommendations'
-              ],
-              ...data.metadata
-            }
-          };
-          res.json(advancedResponse);
-        } else {
-          res.status(500).json(data);
-        }
-      },
-      status: (code) => ({ json: (data) => res.status(code).json(data) })
-    };
-    
-    await getAnalysis(mockReq, mockRes);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
+// router.get('/advanced-analysis', getAIAnalysis);
 
 // // Phase 3: Backtesting routes
 // const backtestingRoutes = require('./backtesting.routes');

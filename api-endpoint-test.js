@@ -13,7 +13,7 @@ async function testAPIEndpoint() {
     console.log('   🎯 Controller: tradeController.getLeakFreeBacktest');
     
     // Test the controller function exists
-    const tradeController = require('./src/controllers/ai/trade.controller');
+    const tradeController = require('./src/controllers/ai/stock.expert.controller');
     
     if (typeof tradeController.getLeakFreeBacktest === 'function') {
       console.log('   ✅ Controller function exists');

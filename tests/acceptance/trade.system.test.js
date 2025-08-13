@@ -17,7 +17,7 @@ try {
   app = require('../../src/app'); // <-- UPDATE PATH IF NEEDED
 } catch (e) {
   // Fallback: build a tiny express app that wires the controller route directly.
-  const controller = require('../../src/controllers/ai/trade.controller'); // <-- UPDATE PATH IF NEEDED
+  const controller = require('../../src/controllers/ai/stock.expert.controller'); // <-- UPDATE PATH IF NEEDED
   app = express();
   app.get('/api/trading/unified-analysis', controller.getAnalysis);
 }

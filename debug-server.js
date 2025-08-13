@@ -11,7 +11,7 @@ app.use(express.json());
 // Import the trading controller
 let tradeController;
 try {
-  tradeController = require('./src/controllers/ai/trade.controller.js');
+  tradeController = require('./src/controllers/ai/stock.expert.controller.js');
   console.log('✅ Trade controller loaded successfully');
 } catch (err) {
   console.error('❌ Failed to load trade controller:', err.message);

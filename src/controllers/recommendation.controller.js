@@ -334,43 +334,43 @@ const archiveRecommendation = async (req, res) => {
 };
 
 const refreshAllRecommendationPrices = async (req, res) => {
-    try {
-        const recommendations = await prisma.recommendation.findMany();
+    // try {
+    //     const recommendations = await prisma.recommendation.findMany();
 
-        const updates = recommendations.map(rec => {
-            return fetchCurrentPrice(rec.ticker).then(price => {
-                if (price !== null && price !== undefined) {
-                    return prisma.recommendation.update({
-                        where: { id: rec.id },
-                        data: {
-                            currentPrice: price,
-                            updatedAt: new Date(),
-                        },
-                    });
-                }
-            }).catch(err => {
-                console.error(`Error updating ${rec.ticker}:`, err.message);
-            });
-        });
+    //     const updates = recommendations.map(rec => {
+    //         return fetchCurrentPrice(rec.ticker).then(price => {
+    //             if (price !== null && price !== undefined) {
+    //                 return prisma.recommendation.update({
+    //                     where: { id: rec.id },
+    //                     data: {
+    //                         currentPrice: price,
+    //                         updatedAt: new Date(),
+    //                     },
+    //                 });
+    //             }
+    //         }).catch(err => {
+    //             console.error(`Error updating ${rec.ticker}:`, err.message);
+    //         });
+    //     });
 
-        await Promise.allSettled(updates);
-        res.json({
-            success: true,
-            message: `Prices refreshed for recommendations.`
-        });
-    } catch (error) {
-        console.error('Error refreshing recommendations prices:', error);
-        if (res?.status) {
-            res.status(500).json({
-                success: false,
-                message: 'Failed to refresh recommendations prices',
-                error: error.message
-            });
-        } else {
-            console.error('Failed to update recommendations');
-        }
+    //     await Promise.allSettled(updates);
+    //     res.json({
+    //         success: true,
+    //         message: `Prices refreshed for recommendations.`
+    //     });
+    // } catch (error) {
+    //     console.error('Error refreshing recommendations prices:', error);
+    //     if (res?.status) {
+    //         res.status(500).json({
+    //             success: false,
+    //             message: 'Failed to refresh recommendations prices',
+    //             error: error.message
+    //         });
+    //     } else {
+    //         console.error('Failed to update recommendations');
+    //     }
 
-    }
+    // }
 };
 
 module.exports = {

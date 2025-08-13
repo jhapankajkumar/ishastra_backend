@@ -11,7 +11,7 @@ const app = express();
 app.use(express.json());
 
 // Real controller integration
-const controller = require('../../src/controllers/ai/trade.controller.js');
+const controller = require('../../src/controllers/ai/stock.expert.controller.js');
 app.get('/api/trading/analysis', controller.getAnalysis);
 
 describe('Regime + Bayesian weighting', () => {

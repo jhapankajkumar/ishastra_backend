@@ -6,7 +6,7 @@ const request = require('supertest');
 const express = require('express');
 
 const app = express();
-const controller = require('../../src/controllers/ai/trade.controller.js');
+const controller = require('../../src/controllers/ai/stock.expert.controller.js');
 app.get('/api/trading/analysis', controller.getAnalysis);
 
 describe('Essential API Contract Tests', () => {

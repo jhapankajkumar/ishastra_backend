@@ -12,7 +12,7 @@ const app = express();
 app.use(express.json());
 
 // Import the controller directly
-const tradeController = require('../../src/controllers/ai/trade.controller');
+const tradeController = require('../../src/controllers/ai/stock.expert.controller');
 app.get('/api/trading/analysis', tradeController.getAnalysis);
 
 describe('Backtest integration', () => {

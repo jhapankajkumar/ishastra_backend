@@ -478,51 +478,51 @@ const getInvestmentSummary = async (req, res) => {
 
 // Refresh all investment prices (manual endpoint)
 const refreshAllInvestmentPrices = async (req, res) => {
-  try {
-    const investments = await prisma.investment.findMany();
-    let updatedCount = 0;
+  // try {
+  //   const investments = await prisma.investment.findMany();
+  //   let updatedCount = 0;
 
-    const updates = investments.map(async (inv) => {
-      try {
-        const quote = await getQuote(inv.ticker);
-        const data = {};
-        if (quote?.regularMarketPrice != null) {
-          data.currentPrice = quote.regularMarketPrice;
-        }
-        if (quote?.regularMarketPreviousClose != null) {
-          data.lastDayPrice = quote.regularMarketPreviousClose;
-        }
-        if (data.currentPrice != null || data.lastDayPrice != null) {
-          await prisma.investment.update({
-            where: { id: inv.id },
-            data,
-          });
-          updatedCount++;
-        }
-      } catch (err) {
-        console.error(`[ERROR] Updating ${inv.ticker}:`, err.message);
-      }
-    });
+  //   const updates = investments.map(async (inv) => {
+  //     try {
+  //       const quote = await getQuote(inv.ticker);
+  //       const data = {};
+  //       if (quote?.regularMarketPrice != null) {
+  //         data.currentPrice = quote.regularMarketPrice;
+  //       }
+  //       if (quote?.regularMarketPreviousClose != null) {
+  //         data.lastDayPrice = quote.regularMarketPreviousClose;
+  //       }
+  //       if (data.currentPrice != null || data.lastDayPrice != null) {
+  //         await prisma.investment.update({
+  //           where: { id: inv.id },
+  //           data,
+  //         });
+  //         updatedCount++;
+  //       }
+  //     } catch (err) {
+  //       console.error(`[ERROR] Updating ${inv.ticker}:`, err.message);
+  //     }
+  //   });
 
-    await Promise.allSettled(updates);
-    console.log(`[CRON] Updated ${updatedCount} investments`);
+  //   await Promise.allSettled(updates);
+  //   console.log(`[CRON] Updated ${updatedCount} investments`);
 
 
-    res.json({
-      success: true,
-      message: `Prices refreshed for ${updatedCount} investments.`
-    });
-  } catch (error) {
-    console.error('Error refreshing investment prices:', error);
-    if (res?.status) {
-      res.status(500).json({
-        success: false,
-        message: 'Failed to refresh investment prices',
-        error: error.message
-      });
-      return;
-    }
-  }
+  //   res.json({
+  //     success: true,
+  //     message: `Prices refreshed for ${updatedCount} investments.`
+  //   });
+  // } catch (error) {
+  //   console.error('Error refreshing investment prices:', error);
+  //   if (res?.status) {
+  //     res.status(500).json({
+  //       success: false,
+  //       message: 'Failed to refresh investment prices',
+  //       error: error.message
+  //     });
+  //     return;
+  //   }
+  // }
 };
 
 module.exports = {

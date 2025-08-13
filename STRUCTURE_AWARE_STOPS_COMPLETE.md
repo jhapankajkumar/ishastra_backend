@@ -26,7 +26,7 @@
 ### **Core Class: `StructureAwareStopEngine`**
 
 ```javascript
-// Location: src/controllers/ai/trade.controller.js (lines 1452-1778)
+// Location: src/controllers/ai/stock.expert.controller.js (lines 1452-1778)
 
 class StructureAwareStopEngine {
   calculateStructureAwareStop(ohlcData, currentPrice, direction, technical) {

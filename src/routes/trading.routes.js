@@ -5,7 +5,7 @@
 
 const express = require('express');
 const router = express.Router();
-const tradeController = require('../controllers/ai/trade.controller');
+const tradeController = require('../controllers/ai/stock.expert.controller');
 
 // ✅ MAIN AI TRADING ANALYSIS ENDPOINT
 // GET /api/trading/unified-analysis?symbol=HDFCBANK.NS&period=3mo

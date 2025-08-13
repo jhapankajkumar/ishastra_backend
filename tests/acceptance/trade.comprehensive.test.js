@@ -7,7 +7,7 @@ const express = require('express');
 
 // ---- TEST APP SETUP ---------------------------------------------------------
 const app = express();
-const controller = require('../../src/controllers/ai/trade.controller.js');
+const controller = require('../../src/controllers/ai/stock.expert.controller.js');
 app.get('/api/trading/unified-analysis', controller.getAnalysis);
 
 // ---- COMPREHENSIVE MOCKING --------------------------------------------------
