@@ -31,8 +31,8 @@ app.use('/api/investments', require('./routes/investment-transactions.routes'));
 // Market data routes
 app.use('/api/market', require('./routes/market.routes'));
 
-// AI Trading system routes (includes all trading features and AI dashboard)
-app.use('/api/trading', require('./routes/ai/trading.routes'));
+// Trading system routes (multi-system stock analysis)
+app.use('/api/trading', require('./routes/trading.system.routes'));
 
 // Yahoo Finance API endpoints
 app.get('/api/yahoo/search', async (req, res) => {

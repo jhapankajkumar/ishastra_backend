@@ -22,25 +22,11 @@
 
 
 const { DateTime } = require('luxon');
-
-const SYSTEM_IDS = {
-    TRIPLE_SCREEN: 'triple_screen',
-    ELDER_IMPULSE: 'impulse',
-    MINERVINI_SEPA: 'sepa',
-    CAN_SLIM_CUP_HANDLE: 'cup_handle',
-    BB_SQUEEZE_BREAKOUT: 'bb_squeeze_breakout',
-    KELTNER_BREAKOUT: 'keltner_breakout',
-    DARVAS_BREAKOUT: 'darvas_breakout',
-    DONCHIAN_BREAKOUT: 'donchian_breakout',
-    RSI_MEAN_REVERSION: 'rsi_mean',
-    DIVERGENCE: 'divergence'
-};
+const { SYSTEM_IDS, getSystemRequirements } = require('../../utils/systemConstants');
 
 // Helper: declare per-system data needs
 function requirementsFor(system) {
-    const needsWeekly = system === SYSTEM_IDS.TRIPLE_SCREEN;
-    const needsIntraday = system === SYSTEM_IDS.TRIPLE_SCREEN; // screen 3 timing
-    return { needsWeekly, needsIntraday };
+    return getSystemRequirements(system);
 }
 
 // ---------------------------

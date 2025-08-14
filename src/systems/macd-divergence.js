@@ -1,0 +1,1231 @@
+/**
+ * MACD Divergence Trading System
+ * 
+ * Detects potential trend reversals based on divergence between price action and MACD histogram.
+ * Identifies high-probability reversal opportunities when price and MACD move in opposite directions.
+ * 
+ * Signal Requirements:
+ * Bullish Divergence:
+ * - Price makes lower low while MACD histogram makes higher low
+ * - Divergence spans at least 2 swing points (5-20 days apart)
+ * - Confirmation with bullish candle structure
+ * 
+ * Bearish Divergence:
+ * - Price makes higher high while MACD histogram makes lower high
+ * - Divergence spans at least 2 swing points (5-20 days apart)
+ * - Confirmation with bearish candle structure
+ * 
+ * Author: Ishastra AI Expert Engine
+ * Version: 1.0.0
+ * Last Updated: 2024
+ */
+
+const {
+  detectTripleBullishDivergence,
+  detectTripleBearishDivergence,
+  detectBullishContinuationDivergence,
+  detectBearishContinuationDivergence
+} = require('./macd-divergence.js');
+
+class MACDDivergence {
+    constructor() {
+        this.systemId = 'divergence';
+        this.name = 'MACD Divergence';
+        this.description = 'Trend reversal system detecting price-MACD histogram divergences';
+        this.version = '1.0.0';
+        
+        // Configuration constants
+        this.MACD_FAST_PERIOD = 12;
+        this.MACD_SLOW_PERIOD = 26;
+        this.MACD_SIGNAL_PERIOD = 9;
+        this.MIN_SWING_SEPARATION = 5; // Minimum days between swing points
+        this.MAX_SWING_SEPARATION = 20; // Maximum days between swing points
+        this.SWING_LOOKBACK = 30; // Days to look back for swing points
+        this.MIN_DIVERGENCE_STRENGTH = 0.6; // Minimum divergence quality score
+        this.STOP_LOSS_PCT = 0.05; // 5% stop loss
+        this.TARGET_MULTIPLE = 2.0; // 2:1 risk/reward minimum
+    }
+
+    /**
+     * Main analysis method for MACD divergence detection
+     * @param {Object} data - Technical data with OHLCV and indicators
+     * @param {Object} options - Analysis options
+     * @returns {Object} - Complete MACD divergence analysis result
+     */
+    analyze(data, options = {}) {
+        console.log(`  📊 MACD-DIV: Starting MACD Divergence analysis...`);
+
+        try {
+            const { series, indicators } = data;
+            
+            if (!this.validateData(series, indicators)) {
+                return this.createAvoidSignal('INSUFFICIENT_DATA', 'Missing required OHLCV data or MACD indicators');
+            }
+
+            const dailyData = series.daily;
+            const latest = dailyData[dailyData.length - 1];
+            
+            console.log(`  📊 Analyzing ${dailyData.length} days of data, current price: $${latest.close.toFixed(2)}`);
+
+            // Phase 1: Calculate or extract MACD components
+            const macdAnalysis = this.analyzeMACDData(dailyData, indicators);
+            
+            // Phase 2: Find swing points in price and MACD
+            const swingAnalysis = this.findSwingPoints(dailyData, macdAnalysis);
+            
+            // Phase 3: Detect divergences
+            const divergenceAnalysis = this.detectDivergences(swingAnalysis, dailyData, macdAnalysis);
+            
+            // Phase 4: Validate candle structure
+            const candleAnalysis = this.validateCandleStructure(dailyData, divergenceAnalysis);
+            
+            // Phase 5: Generate trading signals
+            const signalAnalysis = this.generateSignals(divergenceAnalysis, candleAnalysis, latest);
+            
+            // Phase 6: Calculate risk/reward
+            const riskReward = this.calculateRisk(signalAnalysis, swingAnalysis, latest);
+            
+            // Phase 7: Final decision
+            const finalDecision = this.makeFinalDecision(signalAnalysis, riskReward, divergenceAnalysis, candleAnalysis);
+
+            return {
+                system: this.systemId,
+                systemName: this.name,
+                decision: finalDecision.signal,
+                confidence: finalDecision.confidence,
+                reasoning: [finalDecision.reasoning],
+                
+                // Analysis breakdown
+                analysis: {
+                    macd: macdAnalysis,
+                    swings: swingAnalysis,
+                    divergence: divergenceAnalysis,
+                    candle: candleAnalysis,
+                    signal: signalAnalysis
+                },
+                
+                // Risk management
+                riskReward: riskReward,
+                
+                // Execution details
+                executionPlan: finalDecision.executionPlan,
+                
+                // Quality metrics
+                signalQuality: this.calculateSignalQuality(finalDecision, divergenceAnalysis),
+                
+                // System metadata
+                timestamp: new Date().toISOString(),
+                systemVersion: this.version,
+                dataQuality: this.assessDataQuality(dailyData, indicators)
+            };
+
+        } catch (error) {
+            console.error('MACD Divergence analysis error:', error);
+            return this.createAvoidSignal('ANALYSIS_ERROR', `System error: ${error.message}`);
+        }
+    }
+
+    /**
+     * Phase 1: Analyze MACD data (calculate if needed or use existing)
+     */
+    analyzeMACDData(dailyData, indicators) {
+        console.log(`  📊 Phase 1: Analyzing MACD data...`);
+        
+        // Try to use existing MACD data first
+        let macdLine = indicators?.base?.macd;
+        let macdSignal = indicators?.base?.macd_signal;
+        let macdHistogram = indicators?.base?.macd_histogram;
+        
+        // If not available, calculate MACD
+        if (!macdLine || !macdSignal || !macdHistogram) {
+            const calculated = this.calculateMACD(dailyData);
+            macdLine = calculated.macdLine;
+            macdSignal = calculated.macdSignal;
+            macdHistogram = calculated.macdHistogram;
+        }
+        
+        // Ensure we have arrays
+        const macdArray = Array.isArray(macdLine) ? macdLine : [macdLine];
+        const signalArray = Array.isArray(macdSignal) ? macdSignal : [macdSignal];
+        const histogramArray = Array.isArray(macdHistogram) ? macdHistogram : [macdHistogram];
+        
+        const currentMACD = macdArray[macdArray.length - 1];
+        const currentSignal = signalArray[signalArray.length - 1];
+        const currentHistogram = histogramArray[histogramArray.length - 1];
+        
+        console.log(`  📊 MACD: ${currentMACD?.toFixed(4) || 'N/A'}, Signal: ${currentSignal?.toFixed(4) || 'N/A'}, Hist: ${currentHistogram?.toFixed(4) || 'N/A'}`);
+        
+        return {
+            macdLine: macdArray,
+            macdSignal: signalArray,
+            macdHistogram: histogramArray,
+            currentMACD,
+            currentSignal,
+            currentHistogram,
+            hasValidData: macdArray.length > 0 && signalArray.length > 0 && histogramArray.length > 0
+        };
+    }
+
+    /**
+     * Calculate MACD if not provided in indicators
+     */
+    calculateMACD(dailyData) {
+        const closes = dailyData.map(d => d.close);
+        const ema12 = this.calculateEMA(closes, this.MACD_FAST_PERIOD);
+        const ema26 = this.calculateEMA(closes, this.MACD_SLOW_PERIOD);
+        
+        // MACD Line = EMA12 - EMA26
+        const macdLine = [];
+        for (let i = 0; i < ema12.length; i++) {
+            if (ema12[i] !== null && ema26[i] !== null) {
+                macdLine.push(ema12[i] - ema26[i]);
+            } else {
+                macdLine.push(null);
+            }
+        }
+        
+        // Signal Line = EMA9 of MACD Line
+        const validMACD = macdLine.filter(val => val !== null);
+        const macdSignal = this.calculateEMA(validMACD, this.MACD_SIGNAL_PERIOD);
+        
+        // Histogram = MACD - Signal
+        const macdHistogram = [];
+        const signalStartIndex = macdLine.length - macdSignal.length;
+        
+        for (let i = 0; i < macdLine.length; i++) {
+            if (i >= signalStartIndex && macdLine[i] !== null && macdSignal[i - signalStartIndex] !== null) {
+                macdHistogram.push(macdLine[i] - macdSignal[i - signalStartIndex]);
+            } else {
+                macdHistogram.push(null);
+            }
+        }
+        
+        return { macdLine, macdSignal, macdHistogram };
+    }
+
+    /**
+     * Calculate Exponential Moving Average
+     */
+    calculateEMA(data, period) {
+        const ema = [];
+        const multiplier = 2 / (period + 1);
+        
+        // Start with SMA for first value
+        let sum = 0;
+        let validStart = -1;
+        
+        for (let i = 0; i < data.length; i++) {
+            if (data[i] !== null && data[i] !== undefined) {
+                if (validStart === -1) validStart = i;
+                sum += data[i];
+                
+                if (i - validStart + 1 >= period) {
+                    ema.push(sum / period);
+                    break;
+                } else {
+                    ema.push(null);
+                }
+            } else {
+                ema.push(null);
+            }
+        }
+        
+        // Calculate EMA for remaining values
+        for (let i = ema.length; i < data.length; i++) {
+            if (data[i] !== null && ema[i - 1] !== null) {
+                ema.push((data[i] - ema[i - 1]) * multiplier + ema[i - 1]);
+            } else {
+                ema.push(null);
+            }
+        }
+        
+        return ema;
+    }
+
+    /**
+     * Phase 2: Find swing points in price and MACD histogram
+     */
+    findSwingPoints(dailyData, macdAnalysis) {
+        console.log(`  📊 Phase 2: Finding swing points...`);
+        
+        const recentData = dailyData.slice(-this.SWING_LOOKBACK);
+        const recentHistogram = macdAnalysis.macdHistogram.slice(-this.SWING_LOOKBACK);
+        
+        const priceSwings = this.findPriceSwings(recentData);
+        const macdSwings = this.findMACDSwings(recentHistogram);
+        
+        console.log(`  📊 Found ${priceSwings.highs.length} price highs, ${priceSwings.lows.length} price lows`);
+        console.log(`  📊 Found ${macdSwings.highs.length} MACD highs, ${macdSwings.lows.length} MACD lows`);
+        
+        return {
+            price: priceSwings,
+            macd: macdSwings,
+            dataLength: recentData.length
+        };
+    }
+
+    /**
+     * Find price swing highs and lows
+     */
+    findPriceSwings(priceData) {
+        const highs = [];
+        const lows = [];
+        
+        for (let i = 2; i < priceData.length - 2; i++) {
+            const current = priceData[i];
+            const prev2 = priceData[i - 2];
+            const prev1 = priceData[i - 1];
+            const next1 = priceData[i + 1];
+            const next2 = priceData[i + 2];
+            
+            // Swing high
+            if (current.high > prev2.high && current.high > prev1.high && 
+                current.high > next1.high && current.high > next2.high) {
+                highs.push({
+                    index: i,
+                    price: current.high,
+                    value: current.high,
+                    date: current.date
+                });
+            }
+            
+            // Swing low
+            if (current.low < prev2.low && current.low < prev1.low && 
+                current.low < next1.low && current.low < next2.low) {
+                lows.push({
+                    index: i,
+                    price: current.low,
+                    value: current.low,
+                    date: current.date
+                });
+            }
+        }
+        
+        return { highs, lows };
+    }
+
+    /**
+     * Find MACD histogram swing highs and lows
+     */
+    findMACDSwings(histogramData) {
+        const highs = [];
+        const lows = [];
+        
+        for (let i = 2; i < histogramData.length - 2; i++) {
+            const current = histogramData[i];
+            const prev2 = histogramData[i - 2];
+            const prev1 = histogramData[i - 1];
+            const next1 = histogramData[i + 1];
+            const next2 = histogramData[i + 2];
+            
+            if (current === null || prev2 === null || prev1 === null || 
+                next1 === null || next2 === null) continue;
+            
+            // Swing high
+            if (current > prev2 && current > prev1 && current > next1 && current > next2) {
+                highs.push({
+                    index: i,
+                    value: current
+                });
+            }
+            
+            // Swing low
+            if (current < prev2 && current < prev1 && current < next1 && current < next2) {
+                lows.push({
+                    index: i,
+                    value: current
+                });
+            }
+        }
+        
+        return { highs, lows };
+    }
+
+    /**
+     * Phase 3: Detect divergences between price and MACD
+     * Enhanced: Includes regular, triple, and continuation divergences.
+     */
+    detectDivergences(swingAnalysis, dailyData, macdAnalysis) {
+        console.log(`  📊 Phase 3: Detecting divergences...`);
+
+        // --- Standard divergences ---
+        const bullish = this.findBullishDivergences(swingAnalysis);
+        const bearish = this.findBearishDivergences(swingAnalysis);
+
+        // --- Additional advanced divergence checks ---
+        // For triple and continuation divergences, use last 50 candles and full histogram
+        const candles = dailyData;
+        const macdHistogram = macdAnalysis.macdHistogram;
+        // Triple divergences
+        const tripleBullish = detectTripleBullishDivergence(candles, macdHistogram);
+        const tripleBearish = detectTripleBearishDivergence(candles, macdHistogram);
+        // Continuation divergences
+        const continuationBullish = detectBullishContinuationDivergence(candles, macdHistogram);
+        const continuationBearish = detectBearishContinuationDivergence(candles, macdHistogram);
+
+        // --- Combine all bullish and bearish signals ---
+        // Bullish: regular, triple, continuation
+        const bullishSignals = [...bullish, ...tripleBullish, ...continuationBullish];
+        // Bearish: regular, triple, continuation
+        const bearishSignals = [...bearish, ...tripleBearish, ...continuationBearish];
+
+        // Score and validate standard divergences (for bestBullish/bestBearish legacy fields)
+        const validBullish = bullish.filter(div => this.validateDivergence(div));
+        const validBearish = bearish.filter(div => this.validateDivergence(div));
+        const bestBullish = validBullish.length > 0 ?
+            validBullish.reduce((best, current) => current.strength > best.strength ? current : best) : null;
+        const bestBearish = validBearish.length > 0 ?
+            validBearish.reduce((best, current) => current.strength > best.strength ? current : best) : null;
+
+        // Determine if any divergence found (of any type)
+        const hasDivergence = bullishSignals.length > 0 || bearishSignals.length > 0;
+        let divergenceType = 'NONE';
+        if (bullishSignals.length > 0) divergenceType = 'BULLISH';
+        else if (bearishSignals.length > 0) divergenceType = 'BEARISH';
+
+        console.log(`  📊 Divergences:`);
+        console.log(`      Standard Bullish=${bullish.length}, Triple Bullish=${tripleBullish.length}, Continuation Bullish=${continuationBullish.length}`);
+        console.log(`      Standard Bearish=${bearish.length}, Triple Bearish=${tripleBearish.length}, Continuation Bearish=${continuationBearish.length}`);
+        console.log(`      Type=${divergenceType}`);
+
+        return {
+            hasDivergence,
+            divergenceType,
+            bestBullish,
+            bestBearish,
+            // For transparency, expose all signals by type
+            allBullish: bullishSignals,
+            allBearish: bearishSignals,
+            // Raw breakdown for debugging/analysis
+            _standardBullish: bullish,
+            _tripleBullish: tripleBullish,
+            _continuationBullish: continuationBullish,
+            _standardBearish: bearish,
+            _tripleBearish: tripleBearish,
+            _continuationBearish: continuationBearish,
+            reason: hasDivergence ?
+                `${divergenceType.toLowerCase()} divergence detected (standard/triple/continuation)` :
+                'No valid divergences found'
+        };
+    }
+
+    /**
+     * Find bullish divergences (price lower low, MACD higher low)
+     */
+    findBullishDivergences(swingAnalysis) {
+        const priceLows = swingAnalysis.price.lows;
+        const macdLows = swingAnalysis.macd.lows;
+        const divergences = [];
+        
+        // Compare recent price lows with MACD lows
+        for (let i = 1; i < priceLows.length; i++) {
+            const recentPriceLow = priceLows[i];
+            const previousPriceLow = priceLows[i - 1];
+            
+            // Find corresponding MACD lows
+            const recentMACDLow = this.findClosestMACDSwing(recentPriceLow.index, macdLows);
+            const previousMACDLow = this.findClosestMACDSwing(previousPriceLow.index, macdLows);
+            
+            if (recentMACDLow && previousMACDLow) {
+                // Check for bullish divergence
+                const priceDecline = recentPriceLow.value < previousPriceLow.value;
+                const macdRise = recentMACDLow.value > previousMACDLow.value;
+                const validSeparation = Math.abs(recentPriceLow.index - previousPriceLow.index) >= this.MIN_SWING_SEPARATION;
+                
+                if (priceDecline && macdRise && validSeparation) {
+                    const strength = this.calculateDivergenceStrength('BULLISH', {
+                        priceChange: (previousPriceLow.value - recentPriceLow.value) / previousPriceLow.value,
+                        macdChange: (recentMACDLow.value - previousMACDLow.value) / Math.abs(previousMACDLow.value),
+                        separation: Math.abs(recentPriceLow.index - previousPriceLow.index)
+                    });
+                    
+                    divergences.push({
+                        type: 'BULLISH',
+                        strength,
+                        pricePoints: [previousPriceLow, recentPriceLow],
+                        macdPoints: [previousMACDLow, recentMACDLow],
+                        separation: Math.abs(recentPriceLow.index - previousPriceLow.index)
+                    });
+                }
+            }
+        }
+        
+        return divergences;
+    }
+
+    /**
+     * Find bearish divergences (price higher high, MACD lower high)
+     * Updated: Use strict logic as in main inline divergence detection.
+     * Only runs if at least two recent swing highs.
+     * Returns a structured signal if conditions match, otherwise [].
+     *
+     * This method is designed for direct use with raw candles and histogram if needed.
+     */
+    findBearishDivergences(swingAnalysis, candles = null, histogram = null) {
+        // If candles and histogram are provided, use strict logic as per instructions
+        if (candles && histogram) {
+            if (candles.length < 50) return [];
+            // Find swing highs over last 20 candles
+            const findSwingHighs = (candlesArr, lookback = 20) => {
+                const highs = [];
+                for (let i = candlesArr.length - lookback; i < candlesArr.length; i++) {
+                    if (i < 2 || i > candlesArr.length - 3) continue;
+                    const current = candlesArr[i];
+                    const prev2 = candlesArr[i - 2];
+                    const prev1 = candlesArr[i - 1];
+                    const next1 = candlesArr[i + 1];
+                    const next2 = candlesArr[i + 2];
+                    if (
+                        current.high > prev2.high &&
+                        current.high > prev1.high &&
+                        current.high > next1.high &&
+                        current.high > next2.high
+                    ) {
+                        highs.push({
+                            index: i,
+                            price: current.high,
+                            date: current.date
+                        });
+                    }
+                }
+                return highs;
+            };
+            const recentHighs = findSwingHighs(candles, 20);
+            if (recentHighs.length < 2) return [];
+            const high1 = recentHighs[recentHighs.length - 2];
+            const high2 = recentHighs[recentHighs.length - 1];
+            const hist1 = histogram[high1.index];
+            const hist2 = histogram[high2.index];
+            const isBearishDivergence = high2.price > high1.price && hist2 < hist1;
+            const latest = candles[candles.length - 1];
+            const bearishCandle = latest.close < latest.open;
+            if (isBearishDivergence && bearishCandle) {
+                return [{
+                    signal: 'SELL',
+                    high1,
+                    high2,
+                    histogramDrop: hist1 - hist2,
+                    reason: 'Bearish divergence: price made higher high, MACD histogram made lower high'
+                }];
+            }
+            return [];
+        }
+        // Default behavior: legacy logic for divergence scoring
+        const priceHighs = swingAnalysis.price.highs;
+        const macdHighs = swingAnalysis.macd.highs;
+        const divergences = [];
+        // Compare recent price highs with MACD highs
+        for (let i = 1; i < priceHighs.length; i++) {
+            const recentPriceHigh = priceHighs[i];
+            const previousPriceHigh = priceHighs[i - 1];
+            // Find corresponding MACD highs
+            const recentMACDHigh = this.findClosestMACDSwing(recentPriceHigh.index, macdHighs);
+            const previousMACDHigh = this.findClosestMACDSwing(previousPriceHigh.index, macdHighs);
+            if (recentMACDHigh && previousMACDHigh) {
+                // Check for bearish divergence
+                const priceRise = recentPriceHigh.value > previousPriceHigh.value;
+                const macdDecline = recentMACDHigh.value < previousMACDHigh.value;
+                const validSeparation = Math.abs(recentPriceHigh.index - previousPriceHigh.index) >= this.MIN_SWING_SEPARATION;
+                if (priceRise && macdDecline && validSeparation) {
+                    const strength = this.calculateDivergenceStrength('BEARISH', {
+                        priceChange: (recentPriceHigh.value - previousPriceHigh.value) / previousPriceHigh.value,
+                        macdChange: (previousMACDHigh.value - recentMACDHigh.value) / Math.abs(previousMACDHigh.value),
+                        separation: Math.abs(recentPriceHigh.index - previousPriceHigh.index)
+                    });
+                    divergences.push({
+                        type: 'BEARISH',
+                        strength,
+                        pricePoints: [previousPriceHigh, recentPriceHigh],
+                        macdPoints: [previousMACDHigh, recentMACDHigh],
+                        separation: Math.abs(recentPriceHigh.index - previousPriceHigh.index)
+                    });
+                }
+            }
+        }
+        return divergences;
+    }
+
+    /**
+     * Find the closest MACD swing to a price swing
+     */
+    findClosestMACDSwing(priceIndex, macdSwings) {
+        let closest = null;
+        let minDistance = Infinity;
+        
+        for (const swing of macdSwings) {
+            const distance = Math.abs(swing.index - priceIndex);
+            if (distance < minDistance && distance <= 3) { // Within 3 days
+                minDistance = distance;
+                closest = swing;
+            }
+        }
+        
+        return closest;
+    }
+
+    /**
+     * Calculate divergence strength score
+     */
+    calculateDivergenceStrength(type, metrics) {
+        let strength = 0.5; // Base strength
+        
+        // Price change magnitude (higher = stronger)
+        const priceWeight = Math.min(Math.abs(metrics.priceChange) * 10, 0.3);
+        strength += priceWeight;
+        
+        // MACD change magnitude (higher = stronger)
+        const macdWeight = Math.min(Math.abs(metrics.macdChange) * 5, 0.2);
+        strength += macdWeight;
+        
+        // Separation bonus (optimal 10-15 days)
+        if (metrics.separation >= 8 && metrics.separation <= 18) {
+            strength += 0.1;
+        }
+        
+        return Math.min(1.0, strength);
+    }
+
+    /**
+     * Validate divergence quality
+     */
+    validateDivergence(divergence) {
+        return divergence.strength >= this.MIN_DIVERGENCE_STRENGTH &&
+               divergence.separation >= this.MIN_SWING_SEPARATION &&
+               divergence.separation <= this.MAX_SWING_SEPARATION;
+    }
+
+    /**
+     * Phase 4: Validate candle structure for confirmation
+     */
+    validateCandleStructure(dailyData, divergenceAnalysis) {
+        console.log(`  📊 Phase 4: Validating candle structure...`);
+        
+        if (!divergenceAnalysis.hasDivergence) {
+            return { isValid: false, reason: 'No divergence to confirm' };
+        }
+        
+        const latest = dailyData[dailyData.length - 1];
+        const previous = dailyData[dailyData.length - 2];
+        
+        const isBullish = latest.close > latest.open;
+        const isBearish = latest.close < latest.open;
+        
+        let isValid = false;
+        let reason = '';
+        
+        if (divergenceAnalysis.divergenceType === 'BULLISH') {
+            isValid = isBullish;
+            reason = isValid ? 'Bullish candle confirms bullish divergence' : 'Waiting for bullish candle confirmation';
+        } else if (divergenceAnalysis.divergenceType === 'BEARISH') {
+            isValid = isBearish;
+            reason = isValid ? 'Bearish candle confirms bearish divergence' : 'Waiting for bearish candle confirmation';
+        }
+        
+        // Additional candle strength checks
+        const candleRange = latest.high - latest.low;
+        const bodySize = Math.abs(latest.close - latest.open);
+        const bodyRatio = candleRange > 0 ? bodySize / candleRange : 0;
+        
+        const hasGoodBody = bodyRatio >= 0.4; // At least 40% body
+        const volumeIncrease = previous && latest.volume > previous.volume;
+        
+        console.log(`  📊 Candle: ${isBullish ? 'Bullish' : isBearish ? 'Bearish' : 'Neutral'}, Body=${(bodyRatio * 100).toFixed(0)}%, Vol=${volumeIncrease ? 'Up' : 'Down'}`);
+        
+        return {
+            isValid,
+            isBullish,
+            isBearish,
+            hasGoodBody,
+            volumeIncrease,
+            bodyRatio,
+            reason
+        };
+    }
+
+    /**
+     * Phase 5: Generate trading signals
+     * Modified: Uses all divergence types (standard, triple, continuation).
+     */
+    generateSignals(divergenceAnalysis, candleAnalysis, latest) {
+        console.log(`  📊 Phase 5: Generating trading signals...`);
+
+        let signal = 'HOLD';
+        let signalStrength = 0;
+        let reasoning = [];
+
+        // Use allBullish/allBearish (which includes standard, triple, continuation)
+        const bullishSignals = divergenceAnalysis.allBullish || [];
+        const bearishSignals = divergenceAnalysis.allBearish || [];
+
+        // Determine if any signals present and if candle confirmed
+        if (bullishSignals.length > 0 && candleAnalysis.isValid) {
+            const bestSignal = bullishSignals[0];
+            signal = 'BUY';
+            // If triple/continuation, use their confidence, else fallback to standard
+            signalStrength = bestSignal.confidence || (divergenceAnalysis.bestBullish?.strength + 0.3) * 0.8 || 0.8;
+            // Compose reasoning
+            if (bestSignal.reason) {
+                reasoning.push(bestSignal.reason);
+            } else {
+                reasoning.push('Bullish MACD divergence detected');
+            }
+            reasoning.push('Confirmed with bullish candle structure');
+            if (bestSignal.setupQuality) reasoning.push(`Setup quality: ${bestSignal.setupQuality}`);
+            if (divergenceAnalysis.bestBullish?.strength)
+                reasoning.push(`Divergence strength: ${(divergenceAnalysis.bestBullish.strength * 100).toFixed(0)}%`);
+        } else if (bearishSignals.length > 0 && candleAnalysis.isValid) {
+            const bestSignal = bearishSignals[0];
+            signal = 'SELL';
+            signalStrength = bestSignal.confidence || (divergenceAnalysis.bestBearish?.strength + 0.3) * 0.8 || 0.8;
+            if (bestSignal.reason) {
+                reasoning.push(bestSignal.reason);
+            } else {
+                reasoning.push('Bearish MACD divergence detected');
+            }
+            reasoning.push('Confirmed with bearish candle structure');
+            if (bestSignal.setupQuality) reasoning.push(`Setup quality: ${bestSignal.setupQuality}`);
+            if (divergenceAnalysis.bestBearish?.strength)
+                reasoning.push(`Divergence strength: ${(divergenceAnalysis.bestBearish.strength * 100).toFixed(0)}%`);
+        } else if (bullishSignals.length > 0 || bearishSignals.length > 0) {
+            // Divergence exists but not confirmed by candle
+            signal = 'WATCH';
+            const bestSignal = bullishSignals[0] || bearishSignals[0];
+            signalStrength = bestSignal.confidence ? bestSignal.confidence * 0.7 :
+                (divergenceAnalysis.bestBullish?.strength || divergenceAnalysis.bestBearish?.strength || 0.6) * 0.6;
+            if (bestSignal.reason) {
+                reasoning.push(bestSignal.reason);
+            } else {
+                reasoning.push(`${divergenceAnalysis.divergenceType.toLowerCase()} MACD divergence detected`);
+            }
+            reasoning.push('Waiting for candle confirmation');
+        } else {
+            signal = 'AVOID';
+            signalStrength = 0;
+            reasoning.push('No valid MACD divergences detected');
+        }
+
+        return {
+            signal,
+            signalStrength,
+            reasoning: reasoning.join('; '),
+            entryPrice: latest.close,
+            factors: {
+                hasDivergence: divergenceAnalysis.hasDivergence,
+                divergenceType: divergenceAnalysis.divergenceType,
+                candleConfirmed: candleAnalysis.isValid,
+                divergenceStrength: divergenceAnalysis.bestBullish?.strength || divergenceAnalysis.bestBearish?.strength || 0
+            }
+        };
+    }
+
+    /**
+     * Phase 6: Calculate risk/reward metrics
+     */
+    calculateRisk(signalAnalysis, swingAnalysis, latest) {
+        console.log(`  📊 Phase 6: Calculating risk/reward...`);
+        
+        const entryPrice = signalAnalysis.entryPrice;
+        let stopLoss = 0;
+        let targets = [];
+        let riskReward = 0;
+        
+        if (signalAnalysis.signal === 'BUY') {
+            // For bullish divergence: stop below recent swing low
+            const recentLows = swingAnalysis.price.lows.slice(-2);
+            const swingLowPrice = recentLows.length > 0 ? Math.min(...recentLows.map(l => l.value)) : entryPrice * 0.95;
+            
+            stopLoss = Math.min(swingLowPrice * 0.98, entryPrice * (1 - this.STOP_LOSS_PCT));
+            
+            // Targets: Next resistance levels or multiple R targets
+            const risk = entryPrice - stopLoss;
+            const target1 = entryPrice + (risk * this.TARGET_MULTIPLE);
+            const target2 = entryPrice + (risk * this.TARGET_MULTIPLE * 1.5);
+            
+            targets = [target1, target2];
+            riskReward = risk > 0 ? (target1 - entryPrice) / risk : 0;
+            
+        } else if (signalAnalysis.signal === 'SELL') {
+            // For bearish divergence: stop above recent swing high
+            const recentHighs = swingAnalysis.price.highs.slice(-2);
+            const swingHighPrice = recentHighs.length > 0 ? Math.max(...recentHighs.map(h => h.value)) : entryPrice * 1.05;
+            
+            stopLoss = Math.max(swingHighPrice * 1.02, entryPrice * (1 + this.STOP_LOSS_PCT));
+            
+            // Targets: Next support levels or multiple R targets
+            const risk = stopLoss - entryPrice;
+            const target1 = entryPrice - (risk * this.TARGET_MULTIPLE);
+            const target2 = entryPrice - (risk * this.TARGET_MULTIPLE * 1.5);
+            
+            targets = [target1, target2];
+            riskReward = risk > 0 ? (entryPrice - target1) / risk : 0;
+            
+        } else if (signalAnalysis.signal === 'WATCH') {
+            // Projected risk/reward for watch scenarios
+            const projectedStop = signalAnalysis.factors.divergenceType === 'BULLISH' ? 
+                entryPrice * 0.95 : entryPrice * 1.05;
+            const projectedTarget = signalAnalysis.factors.divergenceType === 'BULLISH' ? 
+                entryPrice * 1.08 : entryPrice * 0.92;
+                
+            stopLoss = projectedStop;
+            targets = [projectedTarget];
+            riskReward = Math.abs(projectedTarget - entryPrice) / Math.abs(entryPrice - projectedStop);
+        }
+        
+        return {
+            stopLoss: Math.round(stopLoss * 100) / 100,
+            targets: targets.map(t => Math.round(t * 100) / 100),
+            riskReward: Math.round(riskReward * 100) / 100,
+            entryPrice: Math.round(entryPrice * 100) / 100
+        };
+    }
+
+    /**
+     * Phase 7: Make final trading decision
+     */
+    makeFinalDecision(signalAnalysis, riskReward, divergenceAnalysis, candleAnalysis) {
+        console.log(`  📊 Phase 7: Making final decision...`);
+        
+        let finalSignal = signalAnalysis.signal;
+        let confidence = 0.5;
+        let reasoning = [signalAnalysis.reasoning];
+        
+        // Calculate confidence based on analysis quality
+        if (finalSignal === 'BUY' || finalSignal === 'SELL') {
+            confidence = 0.75; // Base confidence for divergence signals
+            
+            // Boost confidence for strong divergences
+            const bestDivergence = divergenceAnalysis.bestBullish || divergenceAnalysis.bestBearish;
+            if (bestDivergence && bestDivergence.strength >= 0.8) {
+                confidence = Math.min(0.90, confidence + 0.1);
+            }
+            
+            // Boost confidence for good candle confirmation
+            if (candleAnalysis.hasGoodBody && candleAnalysis.volumeIncrease) {
+                confidence = Math.min(0.92, confidence + 0.08);
+            }
+            
+            // Good risk/reward bonus
+            if (riskReward.riskReward >= 2.5) {
+                confidence = Math.min(0.95, confidence + 0.05);
+            }
+            
+            // Reduce confidence for weak signals
+            if (signalAnalysis.signalStrength < 0.7) {
+                confidence = Math.max(0.65, confidence - 0.1);
+            }
+            
+        } else if (finalSignal === 'WATCH') {
+            confidence = signalAnalysis.signalStrength + 0.2; // Boost for having divergence
+            
+        } else {
+            confidence = 0.3; // Low confidence for AVOID
+        }
+        
+        // Build execution plan
+        const executionPlan = this.buildExecutionPlan(finalSignal, riskReward, divergenceAnalysis);
+        
+        return {
+            signal: finalSignal,
+            confidence: Math.round(confidence * 100) / 100,
+            reasoning: reasoning.join('; '),
+            executionPlan
+        };
+    }
+
+    /**
+     * Build execution plan based on signal
+     */
+    buildExecutionPlan(signal, riskReward, divergenceAnalysis) {
+        const plan = {
+            action: signal,
+            entryStrategy: null,
+            exitStrategy: null,
+            positionSizing: null
+        };
+        
+        if (signal === 'BUY' || signal === 'SELL') {
+            const direction = signal === 'BUY' ? 'bullish' : 'bearish';
+            
+            plan.entryStrategy = {
+                type: 'DIVERGENCE',
+                method: `Market order on ${direction} divergence confirmation`,
+                conditions: [`${divergenceAnalysis.divergenceType} MACD divergence`, 'Candle confirmation', 'Volume support']
+            };
+            
+            plan.exitStrategy = {
+                stopLoss: riskReward.stopLoss,
+                targets: riskReward.targets,
+                timeStop: 'Review if no follow-through within 5-7 days',
+                macdExit: signal === 'BUY' ? 'Consider exit when MACD turns negative' : 'Consider exit when MACD turns positive'
+            };
+            
+            plan.positionSizing = {
+                risk: '1-2% of portfolio at stop loss',
+                recommendation: riskReward.riskReward >= 2.5 ? 'FULL' : 'HALF'
+            };
+            
+        } else if (signal === 'WATCH') {
+            plan.entryStrategy = {
+                type: 'PENDING_CONFIRMATION',
+                method: 'Wait for candle confirmation',
+                conditions: ['Monitor for reversal candle', 'Watch for volume increase', 'Confirm trend change']
+            };
+        }
+        
+        return plan;
+    }
+
+    /**
+     * Calculate signal quality grade
+     */
+    calculateSignalQuality(finalDecision, divergenceAnalysis) {
+        let score = 50; // Base score
+        
+        if (finalDecision.signal === 'BUY' || finalDecision.signal === 'SELL') {
+            const bestDivergence = divergenceAnalysis.bestBullish || divergenceAnalysis.bestBearish;
+            
+            // Divergence strength scoring (30 points max)
+            if (bestDivergence) {
+                score += bestDivergence.strength * 30;
+            }
+            
+            // Separation quality (good timing) (15 points max)
+            if (bestDivergence && bestDivergence.separation >= 8 && bestDivergence.separation <= 15) {
+                score += 15;
+            } else if (bestDivergence) {
+                score += 10;
+            }
+            
+            // Confidence bonus
+            score += (finalDecision.confidence - 0.5) * 10;
+            
+        } else if (finalDecision.signal === 'WATCH') {
+            score = 55 + (finalDecision.confidence * 20);
+        } else {
+            score = 35;
+        }
+        
+        const percentage = Math.max(0, Math.min(100, Math.round(score)));
+        
+        let grade = 'F';
+        if (percentage >= 90) grade = 'A+';
+        else if (percentage >= 85) grade = 'A';
+        else if (percentage >= 80) grade = 'A-';
+        else if (percentage >= 75) grade = 'B+';
+        else if (percentage >= 70) grade = 'B';
+        else if (percentage >= 65) grade = 'B-';
+        else if (percentage >= 60) grade = 'C+';
+        else if (percentage >= 55) grade = 'C';
+        else if (percentage >= 50) grade = 'C-';
+        else if (percentage >= 45) grade = 'D+';
+        else if (percentage >= 40) grade = 'D';
+        
+        return { grade, percentage };
+    }
+
+    /**
+     * Validate required data
+     */
+    validateData(series, indicators) {
+        if (!series?.daily || series.daily.length < 30) {
+            return false;
+        }
+        
+        // Check for required OHLCV data
+        const latest = series.daily[series.daily.length - 1];
+        if (!latest.high || !latest.low || !latest.close || !latest.open) {
+            return false;
+        }
+        
+        // MACD can be calculated if not provided
+        return true;
+    }
+
+    /**
+     * Assess data quality
+     */
+    assessDataQuality(dailyData, indicators) {
+        const hasMACD = indicators?.base?.macd && indicators?.base?.macd_signal && indicators?.base?.macd_histogram;
+        
+        if (dailyData.length >= 60 && hasMACD) return 'EXCELLENT';
+        if (dailyData.length >= 50) return 'GOOD';
+        if (dailyData.length >= 30) return 'FAIR';
+        return 'POOR';
+    }
+
+    /**
+     * Create AVOID signal
+     */
+    createAvoidSignal(code, message) {
+        return {
+            system: this.systemId,
+            systemName: this.name,
+            decision: 'AVOID',
+            confidence: 0.3,
+            reasoning: [message],
+            
+            analysis: null,
+            riskReward: null,
+            executionPlan: null,
+            signalQuality: { grade: 'F', percentage: 30 },
+            
+            timestamp: new Date().toISOString(),
+            systemVersion: this.version,
+            errorCode: code
+        };
+    }
+}
+
+module.exports = MACDDivergence;
+
+
+
+    /**
+ * Detect triple bullish divergence (Elder's definition): price makes 3 lower lows,
+ * MACD histogram makes 3 higher lows, and latest candle is bullish.
+ * Returns array with one high-conviction BUY signal if found, else [].
+ * @param {Array} candles - Array of OHLCV candles
+ * @param {Array} macdHistogram - Array of MACD histogram values
+ * @returns {Array} - [{ signal, confidence, pivots, histograms, reason, setupQuality }]
+ */
+function detectTripleBullishDivergence(candles, macdHistogram) {
+  // Find swing lows over last 20 candles
+  function findSwingLows(candlesArr, lookback = 20) {
+    const lows = [];
+    const start = Math.max(2, candlesArr.length - lookback);
+    for (let i = start; i < candlesArr.length - 2; i++) {
+      const current = candlesArr[i];
+      const prev2 = candlesArr[i - 2];
+      const prev1 = candlesArr[i - 1];
+      const next1 = candlesArr[i + 1];
+      const next2 = candlesArr[i + 2];
+      if (
+        current.low < prev2.low &&
+        current.low < prev1.low &&
+        current.low < next1.low &&
+        current.low < next2.low
+      ) {
+        lows.push({
+          index: i,
+          price: current.low,
+          date: current.date
+        });
+      }
+    }
+    return lows;
+  }
+  const swingLows = findSwingLows(candles, 20);
+  if (swingLows.length < 3) return [];
+
+  const lows = swingLows.slice(-3); // last 3
+  const [low1, low2, low3] = lows;
+  const [hist1, hist2, hist3] = [macdHistogram[low1.index], macdHistogram[low2.index], macdHistogram[low3.index]];
+  const [price1, price2, price3] = [low1.price, low2.price, low3.price];
+
+  const priceDiverging = price3 < price2 && price2 < price1;
+  const histRising = hist1 < hist2 && hist2 < hist3;
+  const latest = candles[candles.length - 1];
+  const confirmed = latest.close > latest.open;
+
+  if (priceDiverging && histRising && confirmed) {
+    return [{
+      signal: 'BUY',
+      confidence: 0.93,
+      pivots: [low1, low2, low3],
+      histograms: [hist1, hist2, hist3],
+      reason: 'Triple bullish divergence detected: price made 3 lower lows while MACD histogram made 3 higher lows',
+      setupQuality: 'A'
+    }];
+  }
+
+  return [];
+    }
+
+    /**
+ * Detect triple bearish divergence (Elder's definition): price makes 3 higher highs,
+ * MACD histogram makes 3 lower highs, and latest candle is bearish.
+ * Returns array with one high-conviction SELL signal if found, else [].
+ * @param {Array} candles - Array of OHLCV candles
+ * @param {Array} macdHistogram - Array of MACD histogram values
+ * @returns {Array} - [{ signal, confidence, pivots, histograms, reason, setupQuality }]
+ */
+function detectTripleBearishDivergence(candles, macdHistogram) {
+  // Find swing highs over last 20 candles
+  function findSwingHighs(candlesArr, lookback = 20) {
+    const highs = [];
+    const start = Math.max(2, candlesArr.length - lookback);
+    for (let i = start; i < candlesArr.length - 2; i++) {
+      const current = candlesArr[i];
+      const prev2 = candlesArr[i - 2];
+      const prev1 = candlesArr[i - 1];
+      const next1 = candlesArr[i + 1];
+      const next2 = candlesArr[i + 2];
+      if (
+        current.high > prev2.high &&
+        current.high > prev1.high &&
+        current.high > next1.high &&
+        current.high > next2.high
+      ) {
+        highs.push({
+          index: i,
+          price: current.high,
+          date: current.date
+        });
+      }
+    }
+    return highs;
+  }
+  const swingHighs = findSwingHighs(candles, 20);
+  if (swingHighs.length < 3) return [];
+
+  const highs = swingHighs.slice(-3); // last 3
+  const [high1, high2, high3] = highs;
+  const [hist1, hist2, hist3] = [macdHistogram[high1.index], macdHistogram[high2.index], macdHistogram[high3.index]];
+  const [price1, price2, price3] = [high1.price, high2.price, high3.price];
+
+  const priceDiverging = price3 > price2 && price2 > price1;
+  const histFalling = hist1 > hist2 && hist2 > hist3;
+  const latest = candles[candles.length - 1];
+  const confirmed = latest.close < latest.open;
+
+  if (priceDiverging && histFalling && confirmed) {
+    return [{
+      signal: 'SELL',
+      confidence: 0.93,
+      pivots: [high1, high2, high3],
+      histograms: [hist1, hist2, hist3],
+      reason: 'Triple bearish divergence detected: price made 3 higher highs while MACD histogram made 3 lower highs',
+      setupQuality: 'A'
+    }];
+  }
+
+  return [];
+    } 
+
+// Export new triple divergence detectors for external use if needed
+module.exports.detectTripleBullishDivergence = detectTripleBullishDivergence;
+module.exports.detectTripleBearishDivergence = detectTripleBearishDivergence;
+
+/**
+ * Detect bullish continuation divergence:
+ * - Price makes higher low, MACD histogram makes higher low, latest candle bullish.
+ * @param {Array} candles - Array of OHLCV candles
+ * @param {Array} macdHistogram - Array of MACD histogram values
+ * @returns {Array} - [{ signal, confidence, reason, pivots, histograms, setupQuality }]
+ */
+function detectBullishContinuationDivergence(candles, macdHistogram) {
+  // Helper: find swing lows
+  function findSwingLows(candlesArr, lookback = 20) {
+    const lows = [];
+    const start = Math.max(2, candlesArr.length - lookback);
+    for (let i = start; i < candlesArr.length - 2; i++) {
+      const current = candlesArr[i];
+      const prev2 = candlesArr[i - 2];
+      const prev1 = candlesArr[i - 1];
+      const next1 = candlesArr[i + 1];
+      const next2 = candlesArr[i + 2];
+      if (
+        current.low < prev2.low &&
+        current.low < prev1.low &&
+        current.low < next1.low &&
+        current.low < next2.low
+      ) {
+        lows.push({
+          index: i,
+          price: current.low,
+          date: current.date
+        });
+      }
+    }
+    return lows;
+  }
+  const swingLows = findSwingLows(candles, 20);
+  if (swingLows.length < 2) return [];
+
+  const [low1, low2] = swingLows.slice(-2); // last two
+  const hist1 = macdHistogram[low1.index];
+  const hist2 = macdHistogram[low2.index];
+
+  const priceHigherLow = low2.price > low1.price;
+  const histHigherLow = hist2 > hist1;
+
+  const latest = candles[candles.length - 1];
+  const bullishCandle = latest.close > latest.open;
+
+  if (priceHigherLow && histHigherLow && bullishCandle) {
+    return [{
+      signal: 'BUY',
+      confidence: 0.85,
+      reason: 'Bullish continuation divergence: price made higher low with stronger MACD histogram',
+      pivots: [low1, low2],
+      histograms: [hist1, hist2],
+      setupQuality: 'B+'
+    }];
+  }
+
+  return [];
+}
+
+/**
+ * Detect bearish continuation divergence:
+ * - Price makes lower high, MACD histogram makes lower high, latest candle bearish.
+ * @param {Array} candles - Array of OHLCV candles
+ * @param {Array} macdHistogram - Array of MACD histogram values
+ * @returns {Array} - [{ signal, confidence, reason, pivots, histograms, setupQuality }]
+ */
+function detectBearishContinuationDivergence(candles, macdHistogram) {
+  // Helper: find swing highs
+  function findSwingHighs(candlesArr, lookback = 20) {
+    const highs = [];
+    const start = Math.max(2, candlesArr.length - lookback);
+    for (let i = start; i < candlesArr.length - 2; i++) {
+      const current = candlesArr[i];
+      const prev2 = candlesArr[i - 2];
+      const prev1 = candlesArr[i - 1];
+      const next1 = candlesArr[i + 1];
+      const next2 = candlesArr[i + 2];
+      if (
+        current.high > prev2.high &&
+        current.high > prev1.high &&
+        current.high > next1.high &&
+        current.high > next2.high
+      ) {
+        highs.push({
+          index: i,
+          price: current.high,
+          date: current.date
+        });
+      }
+    }
+    return highs;
+  }
+  const swingHighs = findSwingHighs(candles, 20);
+  if (swingHighs.length < 2) return [];
+
+  const [high1, high2] = swingHighs.slice(-2); // last two
+  const hist1 = macdHistogram[high1.index];
+  const hist2 = macdHistogram[high2.index];
+
+  const priceLowerHigh = high2.price < high1.price;
+  const histLowerHigh = hist2 < hist1;
+
+  const latest = candles[candles.length - 1];
+  const bearishCandle = latest.close < latest.open;
+
+  if (priceLowerHigh && histLowerHigh && bearishCandle) {
+    return [{
+      signal: 'SELL',
+      confidence: 0.85,
+      reason: 'Bearish continuation divergence: price made lower high with weaker MACD histogram',
+      pivots: [high1, high2],
+      histograms: [hist1, hist2],
+      setupQuality: 'B+'
+    }];
+  }
+
+  return [];
+}
+
+// Export the new continuation divergence detectors
+module.exports.detectBullishContinuationDivergence = detectBullishContinuationDivergence;
+module.exports.detectBearishContinuationDivergence = detectBearishContinuationDivergence;

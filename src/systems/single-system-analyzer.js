@@ -11,18 +11,26 @@
  */
 
 const { ElderTripleScreen } = require('./elder-triple-screen');
+const MinerviniSEPA = require('./minervini-sepa');
+const CupWithHandle = require('./cup-with-handle');
+const RSIMeanReversion = require('./rsi-mean-reversion');
+const MACDDivergence = require('./macd-divergence');
 
 class SingleSystemAnalyzer {
   constructor(gateEngineFunction) {
     this.gateEngine = gateEngineFunction; // Your existing generateExpertAIDecision function
     this.availableSystems = {
-      'elder_triple_screen': new ElderTripleScreen()
+      'triple_screen': new ElderTripleScreen(),
+      'sepa_method': new MinerviniSEPA(),
+      'cup_handle': new CupWithHandle(),
+      'rsi_mean': new RSIMeanReversion(),
+      'divergence': new MACDDivergence()
     };
   }
 
   /**
    * Complete end-to-end analysis for a single trading system
-   * @param {string} systemId - Trading system to use ('elder_triple_screen') 
+   * @param {string} systemId - Trading system to use ('triple_screen' or 'sepa_method') 
    * @param {Object} systemData - Pre-computed indicators from MultiSystemDataGenerator
    * @param {Object} analysisContext - Additional market context for gate engine
    * @param {Object} options - Analysis options
@@ -84,19 +92,103 @@ class SingleSystemAnalyzer {
     // Use the real analysis context passed from controller
     const analysisContext = marketContext;
     
+    // Convert system analysis to proven signals format for the Expert Engine
+    const provenSignals = this.convertToProvenSignals(systemAnalysis);
+    
+    // Inject proven signals into analysis context
+    analysisContext.provenSignals = provenSignals;
+    
     console.log(`🔧 Preparing gate engine context for ${analysisContext.symbol}`);
     console.log(`   📊 Available data: Technical=${!!analysisContext.technical}, Backtest=${!!analysisContext.backtest}`);
     console.log(`   🎲 Monte Carlo=${!!analysisContext.monteCarlo}, Microstructure=${!!analysisContext.microstructure}`);
     console.log(`   🛡️ Tail Risk=${!!analysisContext.tailRisk}, Sentiment=${!!analysisContext.sentiment}`);
+    console.log(`   🎯 Proven signals: ${provenSignals.length} from ${systemAnalysis.system}`);
     
     return analysisContext;
+  }
+
+  /**
+   * Convert system analysis to proven signals format
+   * @param {Object} systemAnalysis - Results from trading system
+   * @returns {Array} Array of proven signals for Expert Engine
+   */
+  convertToProvenSignals(systemAnalysis) {
+    if (!systemAnalysis || !systemAnalysis.decision || systemAnalysis.decision === 'AVOID') {
+      return []; // No proven signals if system avoided trade
+    }
+
+    const provenSignals = [];
+
+    // Main system signal
+    provenSignals.push({
+      source: systemAnalysis.system,
+      signal: systemAnalysis.decision.toUpperCase(),
+      confidence: systemAnalysis.confidence || 0.5,
+      tier: 'CONFIRMER', // Default to confirmer to respect existing hierarchy
+      reasoning: `${systemAnalysis.systemName}: ${systemAnalysis.reasoning?.[0] || 'System analysis'}`,
+      metadata: {
+        systemName: systemAnalysis.systemName,
+        signalQuality: systemAnalysis.signalQuality,
+        riskReward: systemAnalysis.riskReward,
+        dataQuality: systemAnalysis.dataQuality,
+        systemVersion: systemAnalysis.systemVersion,
+        
+        // System-specific metadata
+        screens: systemAnalysis.screens, // For Triple Screen
+        executionPlan: systemAnalysis.executionPlan,
+        
+        // Quality metrics
+        grade: systemAnalysis.signalQuality?.grade,
+        percentage: systemAnalysis.signalQuality?.percentage
+      }
+    });
+
+    // Add sub-signals if system provides detailed breakdown (e.g., Triple Screen screens)
+    if (systemAnalysis.screens) {
+      Object.entries(systemAnalysis.screens).forEach(([screenName, screen], index) => {
+        if (screen.status && screen.status !== 'NEUTRAL' && screen.status !== 'NO_TRADE') {
+          provenSignals.push({
+            source: `${systemAnalysis.system}_${screenName}`,
+            signal: this.mapScreenStatusToSignal(screen.status),
+            confidence: (systemAnalysis.confidence || 0.5) * 0.7, // Slightly lower confidence for sub-signals
+            tier: 'SUPPLEMENTARY',
+            priority: 5.1 + (index * 0.01), // Low priority supplementary signals
+            reasoning: `${systemAnalysis.systemName} ${screenName}: ${screen.reasoning?.[0] || screen.status}`,
+            metadata: {
+              parentSystem: systemAnalysis.system,
+              screenName: screenName,
+              screenData: screen
+            }
+          });
+        }
+      });
+    }
+
+    return provenSignals;
+  }
+
+  /**
+   * Map system-specific screen status to standard signal format
+   */
+  mapScreenStatusToSignal(status) {
+    const statusMap = {
+      'GO_LONG': 'BUY',
+      'GO_SHORT': 'SELL', 
+      'SETUP': 'WATCH',
+      'NO_SETUP': 'HOLD',
+      'BULLISH': 'BUY',
+      'BEARISH': 'SELL',
+      'NEUTRAL': 'HOLD'
+    };
+    return statusMap[status] || 'HOLD';
   }
 
   /**
    * Phase 4: Execute your existing gate engine with prepared context
    */
   async executeGateEngine(context) {
-    console.log(`🚪 Executing Gate Engine with ${context.conflictResolution.resolvedSignal} signal...`);
+    const signal = context.conflictResolution?.resolvedSignal || 'HOLD';
+    console.log(`🚪 Executing Gate Engine with ${signal} signal...`);
     
     if (!this.gateEngine) {
       throw new Error('Gate engine function not provided to analyzer');

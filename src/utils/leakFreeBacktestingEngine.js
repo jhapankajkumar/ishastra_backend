@@ -44,12 +44,11 @@ class LeakFreeBacktestingEngine {
    * ✅ MAIN LEAK-FREE BACKTEST METHOD
    * Runs walk-forward analysis with proper out-of-sample validation
    */
-  async runLeakFreeBacktest(symbol, period = '2y', systems = ['sepa', 'tripleScreen']) {
+  async runLeakFreeBacktest(symbol, period = '2y', systems = ['sepa', 'tripleScreen'], historicalData) {
     console.log(`🎯 Starting Leak-Free Backtest for ${symbol}...`);
     
     try {
       // Step 1: Get historical data
-      const historicalData = await this.getHistoricalData(symbol, period);
       if (!historicalData || historicalData.length < 100) { // Realistic minimum for Indian markets
         throw new Error(`Insufficient data: ${historicalData?.length || 0} points`);
       }

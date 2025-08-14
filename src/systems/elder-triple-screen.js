@@ -16,8 +16,8 @@
 class ElderTripleScreen {
   constructor() {
     this.systemId = 'elder_triple_screen';
-    this.name = "Elder's Triple Screen";
-    this.version = '2.0';
+    this.name = 'Elder Triple Screen (Strict)';
+    this.version = '1.0.1';
     this.description = 'Multi-timeframe trend-following system with precise entry timing';
   }
 
@@ -30,9 +30,11 @@ class ElderTripleScreen {
   analyze(tickerData, options = {}) {
     try {
       const { indicators, series } = tickerData;
+      console.log(`🔍 [ELDER] Starting analysis for ${tickerData.meta?.symbol}`);
       
       // Validate required data
       if (!this.validateData(indicators, series)) {
+        console.log('🔍 [ELDER] Data validation failed');
         return this.createAvoidSignal('INSUFFICIENT_DATA', 'Missing required weekly/daily/intraday data');
       }
 
@@ -85,11 +87,10 @@ class ElderTripleScreen {
   }
 
   /**
-   * SCREEN 1: Weekly Trend Analysis
-   * Uses MACD and EMA on weekly timeframe to determine major trend
+   * SCREEN 1: Weekly MACD Histogram Slope (Elder strict method)
    */
   executeScreen1(tripleScreenIndicators, weeklyData) {
-    const { weeklyMACD, weeklyEMA10, weeklyEMA40 } = tripleScreenIndicators;
+    const { weeklyMACDHist, weeklyMACDHist_1, weeklyMACDHist_2, weeklyEMA10, weeklyEMA40 } = tripleScreenIndicators;
     
     const screen1 = {
       timeframe: 'weekly',
@@ -99,428 +100,250 @@ class ElderTripleScreen {
       components: {},
       reasoning: []
     };
-
-    // MACD Analysis
-    const macdBullish = weeklyMACD.macd > weeklyMACD.signal && weeklyMACD.hist > 0;
-    const macdBearish = weeklyMACD.macd < weeklyMACD.signal && weeklyMACD.hist < 0;
-    const macdStrength = Math.abs(weeklyMACD.hist) / Math.max(Math.abs(weeklyMACD.macd), 0.001);
-    
-    screen1.components.macd = {
-      signal: macdBullish ? 'BULLISH' : macdBearish ? 'BEARISH' : 'NEUTRAL',
-      strength: Math.min(macdStrength * 100, 100),
-      values: { macd: weeklyMACD.macd, signal: weeklyMACD.signal, histogram: weeklyMACD.hist }
+    // MACD Histogram Slope
+    const macdHistSlopeUp = weeklyMACDHist > weeklyMACDHist_1 && weeklyMACDHist_1 > weeklyMACDHist_2;
+    const macdHistSlopeDown = weeklyMACDHist < weeklyMACDHist_1 && weeklyMACDHist_1 < weeklyMACDHist_2;
+    screen1.components.macdHistSlope = {
+      values: { weeklyMACDHist, weeklyMACDHist_1, weeklyMACDHist_2 },
+      up: macdHistSlopeUp,
+      down: macdHistSlopeDown
     };
-
-    // EMA Trend Analysis  
-    const emaTrend = weeklyEMA10 > weeklyEMA40 ? 'UPTREND' : 'DOWNTREND';
-    const emaSpread = Math.abs(weeklyEMA10 - weeklyEMA40) / weeklyEMA40;
-    const emaStrength = Math.min(emaSpread * 100, 100);
-    
+    // EMA Trend
+    let emaTrend = 'NEUTRAL';
+    let emaStrength = 0;
+    if (typeof weeklyEMA10 === 'number' && typeof weeklyEMA40 === 'number') {
+      emaTrend = weeklyEMA10 > weeklyEMA40 ? 'UPTREND' : 'DOWNTREND';
+      const emaSpread = Math.abs(weeklyEMA10 - weeklyEMA40) / Math.max(Math.abs(weeklyEMA40), 0.001);
+      emaStrength = Math.min(emaSpread * 100, 100);
+    }
     screen1.components.ema = {
       trend: emaTrend,
       strength: emaStrength,
-      values: { ema10: weeklyEMA10, ema40: weeklyEMA40, spread: emaSpread }
+      values: {
+        ema10: weeklyEMA10 || 0,
+        ema40: weeklyEMA40 || 0,
+        spread: emaStrength / 100
+      }
     };
-
-    // Combine for Screen 1 decision
-    if (macdBullish && emaTrend === 'UPTREND') {
+    // Combine for Screen 1 decision (only MACD slope required by strict Elder)
+    if (macdHistSlopeUp) {
       screen1.signal = 'BULLISH';
       screen1.status = 'GO_LONG';
-      screen1.strength = (screen1.components.macd.strength + screen1.components.ema.strength) / 2;
-      screen1.reasoning.push('Weekly uptrend confirmed: MACD bullish + EMA uptrend');
-    } else if (macdBearish && emaTrend === 'DOWNTREND') {
-      screen1.signal = 'BEARISH';  
+      screen1.strength = 90;
+      screen1.reasoning.push('Weekly MACD histogram slope up (3 bars rising)');
+    } else if (macdHistSlopeDown) {
+      screen1.signal = 'BEARISH';
       screen1.status = 'GO_SHORT';
-      screen1.strength = (screen1.components.macd.strength + screen1.components.ema.strength) / 2;
-      screen1.reasoning.push('Weekly downtrend confirmed: MACD bearish + EMA downtrend');
+      screen1.strength = 90;
+      screen1.reasoning.push('Weekly MACD histogram slope down (3 bars falling)');
     } else {
       screen1.signal = 'NEUTRAL';
       screen1.status = 'NO_TRADE';
       screen1.strength = 0;
-      screen1.reasoning.push('Weekly trend unclear: MACD and EMA signals conflict');
+      screen1.reasoning.push('Weekly MACD histogram slope unclear');
     }
-
     return screen1;
   }
 
   /**
-   * SCREEN 2: Daily Counter-trend Entry
-   * Uses Stochastic on daily timeframe for entry timing
+   * SCREEN 2: Daily Pullback via Oscillator (RSI, Stochastic, Force Index)
    */
   executeScreen2(tripleScreenIndicators, baseIndicators, dailyData) {
-    const { dailyRSI, dailyStoch } = tripleScreenIndicators;
-    const { rsi14 } = baseIndicators;
-    
+    // Inputs: rsi14, stochasticK, stochasticD, dailyForceIndex
+    const { rsi14, stochasticK, stochasticD, dailyForceIndex } = {
+      rsi14: baseIndicators.rsi14,
+      stochasticK: tripleScreenIndicators.dailyStochK ?? tripleScreenIndicators.dailyStoch, // fallback
+      stochasticD: tripleScreenIndicators.dailyStochD ?? tripleScreenIndicators.dailyStoch, // fallback
+      dailyForceIndex: tripleScreenIndicators.dailyForceIndex
+    };
     const screen2 = {
       timeframe: 'daily',
-      status: 'NEUTRAL',
-      signal: 'NEUTRAL', 
-      strength: 0,
-      components: {},
-      reasoning: []
-    };
-
-    // Stochastic Analysis
-    const stochOversold = dailyStoch < 20;
-    const stochOverbought = dailyStoch > 80;
-    const stochNeutral = dailyStoch >= 20 && dailyStoch <= 80;
-    
-    screen2.components.stochastic = {
-      value: dailyStoch,
-      condition: stochOversold ? 'OVERSOLD' : stochOverbought ? 'OVERBOUGHT' : 'NEUTRAL',
-      strength: stochOversold ? (20 - dailyStoch) * 5 : stochOverbought ? (dailyStoch - 80) * 5 : 0
-    };
-
-    // RSI Confirmation
-    const rsiOversold = rsi14 < 30;
-    const rsiOverbought = rsi14 > 70;
-    
-    screen2.components.rsi = {
-      value: rsi14,
-      condition: rsiOversold ? 'OVERSOLD' : rsiOverbought ? 'OVERBOUGHT' : 'NEUTRAL',
-      confirmation: (stochOversold && rsiOversold) || (stochOverbought && rsiOverbought)
-    };
-
-    // Screen 2 Decision Logic
-    if (stochOversold) {
-      screen2.signal = 'BUY_SETUP';
-      screen2.status = 'OVERSOLD_BOUNCE';
-      screen2.strength = screen2.components.stochastic.strength;
-      screen2.reasoning.push(`Daily oversold setup: Stochastic ${dailyStoch.toFixed(1)}`);
-      
-      if (rsiOversold) {
-        screen2.strength += 20;
-        screen2.reasoning.push(`RSI confirmation: ${rsi14.toFixed(1)} also oversold`);
-      }
-    } else if (stochOverbought) {
-      screen2.signal = 'SELL_SETUP';
-      screen2.status = 'OVERBOUGHT_PULLBACK';
-      screen2.strength = screen2.components.stochastic.strength;
-      screen2.reasoning.push(`Daily overbought setup: Stochastic ${dailyStoch.toFixed(1)}`);
-      
-      if (rsiOverbought) {
-        screen2.strength += 20;
-        screen2.reasoning.push(`RSI confirmation: ${rsi14.toFixed(1)} also overbought`);
-      }
-    } else {
-      screen2.signal = 'NEUTRAL';
-      screen2.status = 'NO_SETUP';
-      screen2.strength = 0;
-      screen2.reasoning.push('Daily oscillators in neutral zone - no setup');
-    }
-
-    return screen2;
-  }
-
-  /**
-   * SCREEN 3: Intraday Timing and Volume
-   * Precise entry timing using intraday price action and volume
-   */
-  executeScreen3(intradayData, dailyData) {
-    const screen3 = {
-      timeframe: 'intraday',
       status: 'NEUTRAL',
       signal: 'NEUTRAL',
       strength: 0,
       components: {},
       reasoning: []
     };
+    // Pullback logic
+    const rsiPullback = rsi14 < 50;
+    const stochasticPullback = stochasticK < stochasticD;
+    const forceIndexPullback = dailyForceIndex < 0;
+    const pullbackConfirmed = rsiPullback || stochasticPullback || forceIndexPullback;
+    screen2.components = {
+      rsi14, stochasticK, stochasticD, dailyForceIndex,
+      rsiPullback, stochasticPullback, forceIndexPullback, pullbackConfirmed
+    };
+    if (pullbackConfirmed) {
+      screen2.signal = 'PULLBACK_CONFIRMED';
+      screen2.status = 'PULLBACK';
+      screen2.strength = 80;
+      screen2.reasoning.push('Daily pullback confirmed by: ' +
+        [
+          rsiPullback ? 'RSI<50' : null,
+          stochasticPullback ? 'StochK<StochD' : null,
+          forceIndexPullback ? 'ForceIndex<0' : null
+        ].filter(Boolean).join(', ')
+      );
+    } else {
+      screen2.signal = 'NO_PULLBACK';
+      screen2.status = 'NO_PULLBACK';
+      screen2.strength = 0;
+      screen2.reasoning.push('No daily pullback detected');
+    }
+    return screen2;
+  }
 
-    if (!intradayData || intradayData.length === 0) {
-      screen3.reasoning.push('No intraday data available');
+  /**
+   * SCREEN 3: Entry Trigger (Elder strict method: EMA10 breakout)
+   */
+  executeScreen3(intradayData, dailyData) {
+    // Use daily bars for trigger (most recent two closes and EMA10)
+    const screen3 = {
+      timeframe: 'entry',
+      status: 'NEUTRAL',
+      signal: 'NEUTRAL',
+      strength: 0,
+      components: {},
+      reasoning: []
+    };
+    if (!dailyData || dailyData.length < 2) {
+      screen3.reasoning.push('Not enough daily bars for entry trigger');
       return screen3;
     }
-
-    // Get latest intraday bars and daily context
-    const recentBars = intradayData.slice(-6); // Last hour of trading
-    const latestBar = recentBars[recentBars.length - 1];
-    const dailyBar = dailyData[dailyData.length - 1];
-    
-    // Volume Analysis
-    const avgIntradayVolume = recentBars.reduce((sum, bar) => sum + bar.volume, 0) / recentBars.length;
-    const latestVolume = latestBar.volume;
-    const volumeRatio = latestVolume / Math.max(avgIntradayVolume, 1);
-    const dailyVolumeRate = recentBars.reduce((sum, bar) => sum + bar.volume, 0) / dailyBar.volume;
-    
-    screen3.components.volume = {
-      latestVolume,
-      avgVolume: Math.round(avgIntradayVolume),
-      volumeRatio: Math.round(volumeRatio * 100) / 100,
-      dailyVolumeRate: Math.round(dailyVolumeRate * 100) / 100,
-      signal: volumeRatio > 1.5 ? 'HIGH' : volumeRatio < 0.7 ? 'LOW' : 'NORMAL'
-    };
-
-    // Price Action Analysis
-    const priceDirection = latestBar.close > recentBars[0].close ? 'UP' : 'DOWN';
-    const priceStrength = Math.abs(latestBar.close - recentBars[0].close) / recentBars[0].close * 100;
-    const withinDailyRange = latestBar.close > dailyBar.low * 1.01 && latestBar.close < dailyBar.high * 0.99;
-    
-    screen3.components.priceAction = {
-      direction: priceDirection,
-      strength: Math.round(priceStrength * 100) / 100,
-      withinRange: withinDailyRange,
-      momentum: priceStrength > 0.5 ? 'STRONG' : 'WEAK'
-    };
-
-    // Screen 3 Decision
-    const highVolume = volumeRatio > 1.5;
-    const goodMomentum = priceStrength > 0.3;
-    
-    if (priceDirection === 'UP' && highVolume && goodMomentum) {
-      screen3.signal = 'BUY_NOW';
-      screen3.status = 'BREAKOUT_VOLUME';
-      screen3.strength = Math.min(priceStrength * 20 + (volumeRatio - 1) * 30, 100);
-      screen3.reasoning.push(`Intraday breakout: ${priceStrength.toFixed(2)}% move with ${volumeRatio.toFixed(1)}x volume`);
-    } else if (priceDirection === 'DOWN' && highVolume && goodMomentum) {
-      screen3.signal = 'SELL_NOW';
-      screen3.status = 'BREAKDOWN_VOLUME';
-      screen3.strength = Math.min(priceStrength * 20 + (volumeRatio - 1) * 30, 100);
-      screen3.reasoning.push(`Intraday breakdown: ${priceStrength.toFixed(2)}% move with ${volumeRatio.toFixed(1)}x volume`);
-    } else if (!highVolume) {
-      screen3.signal = 'WAIT';
-      screen3.status = 'LOW_VOLUME';
-      screen3.strength = 0;
-      screen3.reasoning.push(`Insufficient volume: ${volumeRatio.toFixed(1)}x average`);
+    const latest = dailyData[dailyData.length - 1];
+    const previous = dailyData[dailyData.length - 2];
+    const ema10 = latest.ema10 !== undefined ? latest.ema10 : latest.EMA10;
+    // Strict Elder trigger: price crosses EMA10 up or down
+    const trigger = latest.close > ema10 && previous.close <= ema10;
+    const triggerDown = latest.close < ema10 && previous.close >= ema10;
+    screen3.components = { latestClose: latest.close, previousClose: previous.close, ema10, trigger, triggerDown };
+    if (trigger) {
+      screen3.signal = 'TRIGGER_UP';
+      screen3.status = 'BREAKOUT';
+      screen3.strength = 100;
+      screen3.reasoning.push('Price crossed above EMA10');
+    } else if (triggerDown) {
+      screen3.signal = 'TRIGGER_DOWN';
+      screen3.status = 'BREAKDOWN';
+      screen3.strength = 100;
+      screen3.reasoning.push('Price crossed below EMA10');
     } else {
-      screen3.signal = 'WAIT';
-      screen3.status = 'WEAK_MOMENTUM';
+      screen3.signal = 'NO_TRIGGER';
+      screen3.status = 'NO_TRIGGER';
       screen3.strength = 0;
-      screen3.reasoning.push(`Weak price momentum: ${priceStrength.toFixed(2)}%`);
+      screen3.reasoning.push('No EMA10 breakout trigger');
     }
-
     return screen3;
   }
 
   /**
-   * Combine all three screens for final Elder's decision
+   * Combine all three screens for final Elder's decision (strict method)
    */
   combineScreens(screen1, screen2, screen3) {
-    const combined = {
-      overallSignal: 'AVOID',
-      overallStrength: 0,
-      screenAlignment: false,
+    // Strict Elder: Only allow signal if all 3 screens align
+    let signal = 'HOLD';
+    if (
+      screen1.signal === 'BULLISH' &&
+      screen2.signal === 'PULLBACK_CONFIRMED' &&
+      screen3.signal === 'TRIGGER_UP'
+    ) {
+      signal = 'BUY';
+    } else if (
+      screen1.signal === 'BEARISH' &&
+      screen2.signal === 'PULLBACK_CONFIRMED' &&
+      screen3.signal === 'TRIGGER_DOWN'
+    ) {
+      signal = 'SELL';
+    }
+    return {
+      overallSignal: signal,
+      overallStrength: signal === 'BUY' || signal === 'SELL'
+        ? (screen1.strength + screen2.strength + screen3.strength) / 3
+        : 0,
+      screenAlignment: signal === 'BUY' || signal === 'SELL',
       conflictingScreens: [],
       supportingScreens: [],
-      reasoning: []
+      reasoning: [
+        signal === 'BUY'
+          ? 'Weekly MACD uptrend + daily pullback + EMA10 breakout trigger'
+          : signal === 'SELL'
+          ? 'Weekly MACD downtrend + daily pullback + EMA10 breakdown trigger'
+          : 'Strict Elder alignment not met'
+      ]
     };
-
-    // Screen 1 must show clear trend direction
-    if (screen1.status === 'NO_TRADE') {
-      combined.overallSignal = 'AVOID';
-      combined.reasoning.push('Screen 1 BLOCK: Weekly trend unclear');
-      return combined;
-    }
-
-    // Long Trade Logic (Screen 1 bullish)
-    if (screen1.status === 'GO_LONG') {
-      combined.supportingScreens.push('Screen 1: Weekly uptrend');
-      
-      if (screen2.status === 'OVERSOLD_BOUNCE') {
-        combined.supportingScreens.push('Screen 2: Daily oversold setup');
-        
-        if (screen3.status === 'BREAKOUT_VOLUME' && screen3.signal === 'BUY_NOW') {
-          combined.overallSignal = 'BUY';
-          combined.screenAlignment = true;
-          combined.overallStrength = (screen1.strength + screen2.strength + screen3.strength) / 3;
-          combined.reasoning.push('Perfect alignment: Weekly uptrend + Daily oversold + Intraday breakout');
-        } else if (screen3.signal === 'WAIT') {
-          combined.overallSignal = 'WATCH';
-          combined.overallStrength = (screen1.strength + screen2.strength) / 2;
-          combined.reasoning.push('Setup forming: Weekly uptrend + Daily oversold, waiting for intraday trigger');
-        } else {
-          combined.conflictingScreens.push('Screen 3: Poor intraday timing');
-          combined.overallSignal = 'WATCH';
-          combined.overallStrength = 30;
-        }
-      } else if (screen2.status === 'NO_SETUP') {
-        combined.overallSignal = 'WATCH';
-        combined.overallStrength = screen1.strength / 2;
-        combined.reasoning.push('Weekly uptrend present but daily setup not ready');
-      } else if (screen2.status === 'OVERBOUGHT_PULLBACK') {
-        // In uptrend, daily overbought is a conflict (we want oversold for entries)
-        combined.conflictingScreens.push('Screen 2: Daily overbought in uptrend - wait for pullback');
-        combined.overallSignal = 'WATCH';
-        combined.overallStrength = screen1.strength / 3;
-        combined.reasoning.push('Weekly uptrend strong but daily overbought - wait for oversold entry');
-      } else {
-        combined.conflictingScreens.push('Screen 2: Daily setup unclear');
-        combined.overallSignal = 'WATCH';
-        combined.overallStrength = screen1.strength / 3;
-        combined.reasoning.push('Weekly uptrend present but daily signals mixed');
-      }
-    }
-
-    // Short Trade Logic (Screen 1 bearish)
-    else if (screen1.status === 'GO_SHORT') {
-      combined.supportingScreens.push('Screen 1: Weekly downtrend');
-      
-      if (screen2.status === 'OVERBOUGHT_PULLBACK') {
-        combined.supportingScreens.push('Screen 2: Daily overbought setup');
-        
-        if (screen3.status === 'BREAKDOWN_VOLUME' && screen3.signal === 'SELL_NOW') {
-          combined.overallSignal = 'SELL';
-          combined.screenAlignment = true;
-          combined.overallStrength = (screen1.strength + screen2.strength + screen3.strength) / 3;
-          combined.reasoning.push('Perfect alignment: Weekly downtrend + Daily overbought + Intraday breakdown');
-        } else if (screen3.signal === 'WAIT') {
-          combined.overallSignal = 'WATCH';
-          combined.overallStrength = (screen1.strength + screen2.strength) / 2;
-          combined.reasoning.push('Setup forming: Weekly downtrend + Daily overbought, waiting for intraday trigger');
-        } else {
-          combined.conflictingScreens.push('Screen 3: Poor intraday timing');
-          combined.overallSignal = 'WATCH';
-          combined.overallStrength = 30;
-        }
-      } else if (screen2.status === 'NO_SETUP') {
-        combined.overallSignal = 'WATCH';
-        combined.overallStrength = screen1.strength / 2;
-        combined.reasoning.push('Weekly downtrend present but daily setup not ready');
-      } else if (screen2.status === 'OVERSOLD_BOUNCE') {
-        // In downtrend, daily oversold is a conflict (we want overbought for short entries)
-        combined.conflictingScreens.push('Screen 2: Daily oversold in downtrend - wait for bounce to short');
-        combined.overallSignal = 'WATCH';
-        combined.overallStrength = screen1.strength / 3;
-        combined.reasoning.push('Weekly downtrend strong but daily oversold - wait for overbought short entry');
-      } else {
-        combined.conflictingScreens.push('Screen 2: Daily setup unclear');
-        combined.overallSignal = 'WATCH';
-        combined.overallStrength = screen1.strength / 3;
-        combined.reasoning.push('Weekly downtrend present but daily signals mixed');
-      }
-    }
-
-    return combined;
   }
 
   /**
-   * Calculate risk/reward for Elder's Triple Screen setup
+   * Calculate risk/reward for Elder's Triple Screen setup (ATR-based stop/targets)
    */
   calculateRiskReward(dailyData, combinedAnalysis) {
-    const latestBar = dailyData[dailyData.length - 1];
-    const currentPrice = latestBar.close;
-    
-    // Calculate ATR for position sizing
+    // Use latest daily bar for stop/target calculation
+    const latest = dailyData[dailyData.length - 1];
+    const previous = dailyData[dailyData.length - 2] || latest;
+    // Calculate ATR
     const atrPeriod = 14;
-    const atrBars = dailyData.slice(-atrPeriod - 1);
+    const bars = dailyData.slice(-atrPeriod - 1);
     let atrSum = 0;
-    
-    for (let i = 1; i < atrBars.length; i++) {
+    for (let i = 1; i < bars.length; i++) {
       const tr = Math.max(
-        atrBars[i].high - atrBars[i].low,
-        Math.abs(atrBars[i].high - atrBars[i-1].close),
-        Math.abs(atrBars[i].low - atrBars[i-1].close)
+        bars[i].high - bars[i].low,
+        Math.abs(bars[i].high - bars[i - 1].close),
+        Math.abs(bars[i].low - bars[i - 1].close)
       );
       atrSum += tr;
     }
     const atr = atrSum / atrPeriod;
-
-    // Risk/Reward based on Elder's methodology
-    let stopLoss, target1, target2, riskReward1, riskReward2;
-    
+    // ATR-based stop/targets per Elder
+    let stopLoss = null, targets = null, riskReward = null;
     if (combinedAnalysis.overallSignal === 'BUY') {
-      // Long position
-      stopLoss = currentPrice - (atr * 2.0); // 2 ATR stop
-      target1 = currentPrice + (atr * 3.0);   // 3 ATR first target
-      target2 = currentPrice + (atr * 5.0);   // 5 ATR second target
-      
-      riskReward1 = (target1 - currentPrice) / (currentPrice - stopLoss);
-      riskReward2 = (target2 - currentPrice) / (currentPrice - stopLoss);
-      
+      stopLoss = latest.low - atr * 1.5;
+      targets = [latest.close + atr * 2, latest.close + atr * 3];
+      riskReward = (targets[0] - latest.close) / (latest.close - stopLoss);
     } else if (combinedAnalysis.overallSignal === 'SELL') {
-      // Short position
-      stopLoss = currentPrice + (atr * 2.0); // 2 ATR stop
-      target1 = currentPrice - (atr * 3.0);   // 3 ATR first target  
-      target2 = currentPrice - (atr * 5.0);   // 5 ATR second target
-      
-      riskReward1 = (currentPrice - target1) / (stopLoss - currentPrice);
-      riskReward2 = (currentPrice - target2) / (stopLoss - currentPrice);
-      
+      stopLoss = latest.high + atr * 1.5;
+      targets = [latest.close - atr * 2, latest.close - atr * 3];
+      riskReward = (latest.close - targets[0]) / (stopLoss - latest.close);
     } else {
-      // No trade
       return {
-        currentPrice,
         stopLoss: null,
-        target1: null,
-        target2: null,
+        targets: null,
         riskReward: 0,
-        riskReward1: 0,
-        riskReward2: 0,
-        atr: atr,
-        riskAmount: 0
+        atr,
+        latestClose: latest.close
       };
     }
-
+    const round2 = v => Math.round(v * 100) / 100;
     return {
-      currentPrice: Math.round(currentPrice * 100) / 100,
-      stopLoss: Math.round(stopLoss * 100) / 100,
-      target1: Math.round(target1 * 100) / 100,
-      target2: Math.round(target2 * 100) / 100,
-      riskReward: Math.round(riskReward1 * 100) / 100, // Primary R/R
-      riskReward1: Math.round(riskReward1 * 100) / 100,
-      riskReward2: Math.round(riskReward2 * 100) / 100,
-      atr: Math.round(atr * 100) / 100,
-      riskAmount: Math.round((currentPrice - stopLoss) * 100) / 100
+      stopLoss: round2(stopLoss),
+      targets: targets.map(round2),
+      riskReward: round2(riskReward),
+      atr: round2(atr),
+      latestClose: round2(latest.close)
     };
   }
 
   /**
-   * Generate final Elder's Triple Screen decision with confidence
+   * Generate final Elder's Triple Screen decision with confidence and strict result object
    */
   generateDecision(combinedAnalysis, riskReward, indicators) {
-    const decision = {
-      action: 'AVOID',
-      confidence: 0.5,
-      reasoning: [],
-      signalQuality: { grade: 'F', percentage: 0 },
-      executionPlan: null
+    // Strict Elder result object
+    let signal = combinedAnalysis.overallSignal;
+    let confidence = 0.91;
+    let reason =
+      signal === 'BUY'
+        ? 'Weekly MACD uptrend + daily pullback + EMA10 breakout trigger'
+        : signal === 'SELL'
+        ? 'Weekly MACD downtrend + daily pullback + EMA10 breakdown trigger'
+        : 'Strict Elder alignment not met';
+    return {
+      signal,
+      confidence,
+      strategy: 'Triple Screen',
+      reason,
+      stopLoss: riskReward.stopLoss,
+      targets: riskReward.targets,
+      riskReward: riskReward.riskReward
     };
-
-    // Map Elder's signal to standard actions
-    switch (combinedAnalysis.overallSignal) {
-      case 'BUY':
-        decision.action = 'BUY';
-        decision.confidence = this.calculateConfidence(combinedAnalysis, riskReward, 'bullish');
-        decision.reasoning = [...combinedAnalysis.reasoning];
-        break;
-        
-      case 'SELL':
-        decision.action = 'SELL';
-        decision.confidence = this.calculateConfidence(combinedAnalysis, riskReward, 'bearish');
-        decision.reasoning = [...combinedAnalysis.reasoning];
-        break;
-        
-      case 'WATCH':
-        decision.action = 'WATCH';
-        decision.confidence = Math.max(0.6, combinedAnalysis.overallStrength / 100);
-        decision.reasoning = [...combinedAnalysis.reasoning];
-        break;
-        
-      default:
-        decision.action = 'AVOID';
-        decision.confidence = 0.3;
-        decision.reasoning = [...combinedAnalysis.reasoning];
-        break;
-    }
-
-    // Calculate signal quality grade
-    decision.signalQuality = this.calculateSignalQuality(combinedAnalysis, riskReward);
-    
-    // Create execution plan
-    if (['BUY', 'SELL'].includes(decision.action)) {
-      decision.executionPlan = {
-        entryPrice: riskReward.currentPrice,
-        stopLoss: riskReward.stopLoss,
-        target1: riskReward.target1,
-        target2: riskReward.target2,
-        riskReward: riskReward.riskReward,
-        atrMultiplier: 2.0,
-        positionSizing: 'NORMAL',
-        timeframe: 'Multi-timeframe (Weekly/Daily/Intraday)',
-        validity: '2-3 days'
-      };
-    }
-
-    return decision;
   }
 
   /**
@@ -611,7 +434,8 @@ class ElderTripleScreen {
     // Check for required indicators
     if (!indicators?.triple_screen) return false;
     if (!indicators.triple_screen.weeklyMACD) return false;
-    if (!indicators.triple_screen.dailyRSI) return false;
+    // Corrected: check base.rsi14, not triple_screen.dailyRSI
+    if (!indicators.base?.rsi14) return false;
     if (!indicators.triple_screen.dailyStoch) return false;
 
     // Check for required series data

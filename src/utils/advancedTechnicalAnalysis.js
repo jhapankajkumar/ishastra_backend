@@ -6,8 +6,7 @@ const {
   BollingerBands, 
   ATR, 
   Stochastic,
-  ADX,
-  ADXDI
+  ADX
 } = require('technicalindicators');
 const _ = require('lodash');
 const existingIndicators = require('./technicalIndicators');
@@ -141,27 +140,14 @@ class AdvancedTechnicalAnalysis {
         throw new Error('Insufficient data for ADX');
       }
 
-      // ✅ CRITICAL FIX: Validate ADX and ADXDI imports before use
+      // ✅ CRITICAL FIX: Validate ADX import before use
       if (!ADX || typeof ADX.calculate !== 'function') {
         console.error('❌ ADX import failed or invalid - using proxy calculation');
         throw new Error('ADX library function not available');
       }
-      
-      if (!ADXDI || typeof ADXDI.calculate !== 'function') {
-        console.error('❌ ADXDI import failed or invalid - using proxy calculation');
-        throw new Error('ADXDI library function not available');
-      }
 
-      // Calculate ADX using the technicalindicators library
-      adxData = ADX.calculate({
-        high: highs,
-        low: lows,
-        close: closes,
-        period: 14
-      });
-      
-      // Calculate Directional Indicators separately  
-      const adxdiData = ADXDI.calculate({
+      // Calculate ADX with directional indicators using the technicalindicators library
+      const adxResults = ADX.calculate({
         high: highs,
         low: lows,
         close: closes,
@@ -169,27 +155,23 @@ class AdvancedTechnicalAnalysis {
       });
       
       // Validate the results before using them
-      if (adxData && adxData.length > 0 && !isNaN(adxData[adxData.length - 1])) {
-        console.log(`✅ ADX calculation successful: Latest ADX = ${adxData[adxData.length - 1].toFixed(2)}`);
-      } else {
-        throw new Error('ADX calculation returned invalid results');
-      }
-      
-      if (adxdiData && adxdiData.length > 0) {
-        plusDI = adxdiData.map(d => d.pdi);
-        minusDI = adxdiData.map(d => d.mdi);
+      if (adxResults && adxResults.length > 0) {
+        // Extract ADX values and directional indicators
+        adxData = adxResults.map(result => result.adx);
+        plusDI = adxResults.map(result => result.pdi);
+        minusDI = adxResults.map(result => result.mdi);
         
-        // Validate DI results
+        const latestADX = adxData[adxData.length - 1];
         const latestPlusDI = plusDI[plusDI.length - 1];
         const latestMinusDI = minusDI[minusDI.length - 1];
         
-        if (!isNaN(latestPlusDI) && !isNaN(latestMinusDI)) {
-          console.log(`✅ Directional Indicators successful: +DI = ${latestPlusDI.toFixed(2)}, -DI = ${latestMinusDI.toFixed(2)}`);
+        if (!isNaN(latestADX) && !isNaN(latestPlusDI) && !isNaN(latestMinusDI)) {
+          console.log(`✅ ADX calculation successful: Latest ADX = ${latestADX.toFixed(2)}, +DI = ${latestPlusDI.toFixed(2)}, -DI = ${latestMinusDI.toFixed(2)}`);
         } else {
-          throw new Error('DI calculation returned invalid results');
+          throw new Error('ADX calculation returned invalid results');
         }
       } else {
-        throw new Error('ADXDI calculation failed');
+        throw new Error('ADX calculation failed - no results returned');
       }
       
     } catch (error) {

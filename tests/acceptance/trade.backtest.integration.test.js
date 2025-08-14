@@ -13,6 +13,7 @@ app.use(express.json());
 
 // Import the controller directly
 const tradeController = require('../../src/controllers/ai/stock.expert.controller');
+const { defaultLookBackPeriod } = require('../../src/utils/systemConstants');
 app.get('/api/trading/analysis', tradeController.getAnalysis);
 
 describe('Backtest integration', () => {
@@ -40,7 +41,7 @@ describe('Backtest integration', () => {
   test('Backtesting system processes walk-forward analysis correctly', async () => {
     const res = await request(app)
       .get('/api/trading/analysis')
-      .query({ symbol: 'AAPL', period: '6mo', capital: 25000, diagnostics: 1 })
+      .query({ symbol: 'AAPL', period: defaultLookBackPeriod, capital: 25000, diagnostics: 1 })
       .expect(200);
 
     const body = res.body;

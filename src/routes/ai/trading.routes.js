@@ -14,6 +14,14 @@ router.get('/leak-free-backtest', getLeakFreeBacktest);
 const elderTripleScreenRoutes = require('../elder-triple-screen.routes');
 router.use('/', elderTripleScreenRoutes);
 
+// ==============================================
+// MULTI-SYSTEM TRADING ANALYSIS ROUTES  
+// ==============================================
+
+// Include generic trading system routes (Elder + SEPA + future systems)
+const tradingSystemRoutes = require('../trading.system.routes');
+router.use('/', tradingSystemRoutes);
+
 
 /**
  * GET /api/trading/advanced-analysis

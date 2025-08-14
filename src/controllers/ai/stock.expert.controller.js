@@ -13,6 +13,25 @@ const { detectMomentumDivergences } = require('../../utils/momentumDivergenceDet
 const { assessTailRisk } = require('../../utils/tailRiskProtection');
 const { analyzeMarketMicrostructure } = require('../../utils/marketMicrostructure');
 const { runMonteCarloAnalysis } = require('../../utils/monteCarloEngine');
+const { SYSTEM_IDS, normalizeSystemKey } = require('../../utils/systemConstants');
+
+// ==============================================
+// PROVEN SYSTEMS INTEGRATION - Feature Flags & Tier Policy
+// ==============================================
+const PROVEN_SYSTEMS_CONFIG = {
+  // Feature flags for tier overrides
+  ALLOW_PROVEN_PRIMARY: process.env.ALLOW_PROVEN_PRIMARY === 'true' || false,
+  ALLOW_PROVEN_VETO: false, // Always false - veto power stays with internal guardrails
+  
+  // Whitelisted systems that can use PRIMARY tier (if feature flag enabled)
+  PRIMARY_WHITELIST: [SYSTEM_IDS.MINERVINI_SEPA, SYSTEM_IDS.DARVAS_BREAKOUT],
+  
+  // Priority ranges for proven systems
+  PRIORITY_RANGE: { min: 2.05, max: 2.49 },
+  
+  // Minimum confidence for PRIMARY tier
+  PRIMARY_MIN_CONFIDENCE: 0.80
+};
 
 
 // ---- Diagnostics helpers ----
@@ -733,31 +752,42 @@ async function prepareAnalysisContext(symbol, period, capital) {
   console.log(`   📈 Context Data: ${contextPeriod} (always 24mo)`);
 
   // ==============================================
-  // PHASE 1: PARALLEL DATA COLLECTION
+  // PHASE 1: OPTIMIZED DATA COLLECTION - Single API Call Strategy
   // ==============================================
   console.log(`📊 Phase 1: Collecting data for ${formattedSymbol}...`);
 
+  // OPTIMIZATION: Fetch technical data once and share it across all modules
+  console.log(`🚀 OPTIMIZATION: Fetching market data once (instead of 5 separate calls)...`);
+  let sharedTechnicalData = null;
+  
+  try {
+    sharedTechnicalData = await getTechnicalAnalysisData(formattedSymbol, swingDecisionPeriod);
+    console.log(`✅ Shared market data fetched: ${sharedTechnicalData?.ohlcData?.length || 0} OHLC bars, ${sharedTechnicalData?.dataPoints || 0} data points`);
+  } catch (error) {
+    console.error(`❌ Failed to fetch shared market data:`, error.message);
+  }
+
+  // PHASE 1.1: Run all analyses in parallel using shared data
   const [
     technicalAnalysis, backtestResults, sentimentData, tailRiskAssessment, microstructureAnalysis, monteCarloScenarios
   ] = await Promise.allSettled([
-    // 1. Advanced Technical Analysis - RULE 1: Use swing decision period (clamped)
-    getTechnicalAnalysisData(formattedSymbol, swingDecisionPeriod),
+    // 1. Technical analysis is already done - just return it
+    Promise.resolve(sharedTechnicalData),
 
-    // 2. Backtesting Validation - RULE 1: Always use 24mo for reliable backtesting
-    getBacktestValidation(formattedSymbol, contextPeriod, capital),
+    // 2. Backtesting with pre-fetched data
+    getBacktestValidation(formattedSymbol, contextPeriod, capital, sharedTechnicalData),
 
-    // 3. Sentiment Analysis (real news data)
+    // 3. Sentiment Analysis (independent - no market data needed)
     getSentimentAnalysis(formattedSymbol),
 
+    // 4. Tail Risk with shared data
+    getTailRiskAssessment(formattedSymbol, swingDecisionPeriod, sharedTechnicalData),
 
-    // 5. ⭐ TAIL RISK PROTECTION - Crash detection and defensive positioning
-    getTailRiskAssessment(formattedSymbol, swingDecisionPeriod),
+    // 5. Market Microstructure with shared data  
+    getMarketMicrostructureAnalysis(formattedSymbol, swingDecisionPeriod, sharedTechnicalData),
 
-    // 6. 🔍 MARKET MICROSTRUCTURE - Order flow and liquidity analysis
-    getMarketMicrostructureAnalysis(formattedSymbol, swingDecisionPeriod),
-
-    // 7. 🎲 MONTE CARLO SCENARIOS - Multiple outcome probability analysis
-    getMonteCarloScenarios(formattedSymbol, swingDecisionPeriod)
+    // 6. Monte Carlo with shared data
+    getMonteCarloScenarios(formattedSymbol, swingDecisionPeriod, sharedTechnicalData)
   ]);
 
   // ==============================================
@@ -819,7 +849,8 @@ async function prepareAnalysisContext(symbol, period, capital) {
     monteCarlo: monteCarlo,
     capital: capital,
     symbol: formattedSymbol,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    provenSignals: []
   };
   return { analysisContext, finalTechnical, backtest, sentiment, formattedSymbol, monteCarlo, tailRisk };
 }
@@ -858,12 +889,11 @@ async function getAnalysisDirect(symbol, period = '3mo', capital = 100000, diagn
   }
 }
 
-async function getMarketMicrostructureAnalysis(symbol, period) {
+async function getMarketMicrostructureAnalysis(symbol, period, technicalData) {
   try {
     console.log(`🔍 Getting market microstructure analysis for ${symbol}...`);
 
     // Get technical data with OHLCV for microstructure analysis
-    const technicalData = await getTechnicalAnalysisData(symbol, period);
     const ohlcvData = technicalData?.ohlcData || technicalData?.historicalData || [];
     
     if (!ohlcvData || ohlcvData.length < 20) {
@@ -940,12 +970,11 @@ function createFallbackMicrostructureResponse(reason) {
   };
 }
 
-async function getMonteCarloScenarios(symbol, period) {
+async function getMonteCarloScenarios(symbol, period, technicalData) {
   try {
     console.log(`🎲 Getting Monte Carlo scenario analysis for ${symbol}...`);
 
     // Get technical data with OHLCV for Monte Carlo simulation
-    const technicalData = await getTechnicalAnalysisData(symbol, period);
     const ohlcvData = technicalData?.ohlcData || technicalData?.historicalData || [];
     
     if (!ohlcvData || ohlcvData.length < 30) {
@@ -1061,12 +1090,11 @@ function createFallbackMonteCarloResponse(reason) {
   };
 }
 
-async function getTailRiskAssessment(symbol, period) {
+async function getTailRiskAssessment(symbol, period, technicalData) {
   try {
     console.log(`🛡️ Getting tail risk assessment for ${symbol}...`);
 
     // Get technical data with OHLCV for tail risk analysis
-    const technicalData = await getTechnicalAnalysisData(symbol, period);
     const ohlcvData = technicalData?.ohlcData || technicalData?.historicalData || [];
     
     if (!ohlcvData || ohlcvData.length < 30) {
@@ -1302,8 +1330,13 @@ async function generateExpertAIDecision(analysisContext) {
       monteCarloConfidenceAdjustment = 0;
     }
 
-    // Step 1: Collect All Signals (Base Collection)
-    const rawSignalCollection = collectAllSignals(technical, backtest, sentiment);
+    // Step 1: Collect All Signals (Base Collection + Proven Systems)
+    const rawSignalCollection = collectAllSignals(
+      technical, 
+      backtest, 
+      sentiment, 
+      analysisContext.provenSignals || []
+    );
 
     // Step 1B: ⭐ REGIME DETECTION & SIGNAL ADJUSTMENT ⭐
     // Core Improvement #1: Market Regime Detection
@@ -1584,89 +1617,7 @@ function collectAllSignalsDeterministic(technical, backtest, sentiment) {
   }
 
   // ==============================================
-  // PHASE 2: CONFIRMER SIGNALS (Medium Priority - Order by Reliability)
-  // Order: Pattern Recognition → SEPA Method (reliability-based)
-  // ==============================================
-
-  // Priority 2.1: 🎨 RULE 10: Pattern Validation Enhancement (Advanced Pattern Intelligence)
-  if (technical?.advancedPatterns?.length > 0) {
-    // RULE 10: Apply comprehensive pattern validation before processing
-    const validatedPatterns = applyRule10PatternValidation(technical.advancedPatterns, technical);
-
-    console.log(`🎨 RULE 10: Pattern Validation - ${technical.advancedPatterns.length} raw → ${validatedPatterns.length} validated patterns`);
-
-    // Process RULE 10 validated patterns in confidence order for determinism
-    const sortedPatterns = [...validatedPatterns].sort((a, b) => (b.confidence || 0) - (a.confidence || 0));
-
-    sortedPatterns.forEach((pattern, index) => {
-      const patternSignal = signalRegistry.registerSignal(`pattern_${pattern.pattern}`, {
-        source: 'pattern_recognition_rule10',
-        tier: 'CONFIRMER',
-        priority: 2.1 + (index * 0.01), // Deterministic sub-ordering by confidence
-        signal: pattern.signal || pattern.direction || 'NEUTRAL',
-        confidence: pattern.confidence || 0.5,
-        patternType: pattern.pattern,
-        reasoning: `RULE 10: ${pattern.pattern} pattern (${pattern.validationGrade}) - ${((pattern.confidence || 0.5) * 100).toFixed(1)}% confidence`,
-        metadata: {
-          pattern: pattern.pattern,
-          support: pattern.support,
-          resistance: pattern.resistance,
-          target: pattern.target,
-          invalidationLevel: pattern.invalidationLevel,
-          // RULE 10: Enhanced metadata
-          validationGrade: pattern.validationGrade,
-          strengthScore: pattern.strengthScore,
-          failureRisk: pattern.failureRisk,
-          multiTimeframeConfirmed: pattern.multiTimeframeConfirmed,
-          volumeConfirmation: pattern.volumeConfirmation
-        }
-      });
-    });
-  }
-
-  // Priority 2.2: SEPA Method
-  if (technical?.signals?.systems?.sepa) {
-    const sepaData = formatSystemSignal(technical.signals.systems.sepa);
-    const sepaSignal = signalRegistry.registerSignal('sepa_method', {
-      source: 'sepa_method',
-      tier: 'CONFIRMER',
-      priority: 2.2,
-      signal: sepaData.signal,
-      confidence: sepaData.confidence || 0.5,
-      reasoning: sepaData.reasoning || 'SEPA system analysis',
-      detected: sepaData.detected,
-      metadata: {
-        systemData: sepaData,
-        canVeto: sepaData.confidence >= 0.8 && sepaData.detected
-      }
-    });
-  }
-
-  // ==============================================
-  // PHASE 3: VETO SIGNALS (Critical Priority - Processed for Overrides)
-  // Order: Triple Screen → High-Confidence Opposing Signals
-  // ==============================================
-
-  // Priority 3.1: Triple Screen System (primary veto filter)
-  if (technical?.signals?.systems?.tripleScreen) {
-    const tripleScreenData = formatSystemSignal(technical.signals.systems.tripleScreen);
-    const tripleScreenSignal = signalRegistry.registerSignal('triple_screen', {
-      source: 'triple_screen',
-      tier: 'VETO',
-      priority: 3.1,
-      signal: tripleScreenData.signal,
-      confidence: tripleScreenData.confidence || 0.5,
-      reasoning: tripleScreenData.reasoning || 'Triple Screen system analysis',
-      detected: tripleScreenData.detected,
-      vetoStrength: tripleScreenData.confidence >= 0.8 ? 'HIGH' : 'MODERATE',
-      metadata: {
-        systemData: tripleScreenData
-      }
-    });
-  }
-
-  // ==============================================
-  // PHASE 4: POSITION SIZING SIGNALS (Lowest Priority - Size Adjustment Only)
+  // PHASE 2: POSITION SIZING SIGNALS (Lowest Priority - Size Adjustment Only)
   // Order: Backtest Validation → Risk Assessment
   // ==============================================
 
@@ -1797,27 +1748,107 @@ function collectAllSignalsDeterministicWithProven(technical, backtest, sentiment
     });
   });
 
-  // 3) Append proven system signals (optional)
+  // 3) Append proven system signals with tier validation and security
   if (Array.isArray(provenSignals)) {
+    console.log(`📋 Processing ${provenSignals.length} proven system signals...`);
+    
     provenSignals.forEach((ps, idx) => {
       const normalizedSource = normalizeSystemKey(ps.source || 'proven_system');
-      // default to CONFIRMER mid-tier, after 2.1 pattern/2.2 sepa; keep a tiny deterministic offset
-      const defaultPriority = 2.05 + (idx * 0.01);
+      const defaultPriority = Math.max(PROVEN_SYSTEMS_CONFIG.PRIORITY_RANGE.min, 
+                                      Math.min(PROVEN_SYSTEMS_CONFIG.PRIORITY_RANGE.max, 
+                                              2.05 + (idx * 0.01)));
 
-      registry.registerSignal(`proven_${normalizedSource}_${idx}`, {
+      // Validate and normalize tier with security controls
+      let validatedTier = validateProvenSystemTier(ps.tier, normalizedSource, ps.confidence);
+      
+      // Clamp priority to valid range for proven systems
+      let validatedPriority = typeof ps.priority === 'number' ? 
+        Math.max(PROVEN_SYSTEMS_CONFIG.PRIORITY_RANGE.min, 
+                Math.min(PROVEN_SYSTEMS_CONFIG.PRIORITY_RANGE.max, ps.priority)) :
+        defaultPriority;
+
+      const provenSignal = {
         source: normalizedSource,
-        tier: ps.tier || 'CONFIRMER',
-        priority: (typeof ps.priority === 'number' ? ps.priority : defaultPriority),
+        tier: validatedTier,
+        priority: validatedPriority,
         signal: (ps.signal || 'HOLD').toUpperCase(),
-        confidence: ps.confidence ?? 0.5,
-        reasoning: ps.reasoning || 'Proven system input',
-        metadata: ps.metadata || {},
-      });
+        confidence: Math.max(0, Math.min(1, ps.confidence ?? 0.5)),
+        reasoning: ps.reasoning || `Proven system: ${normalizedSource}`,
+        metadata: {
+          ...ps.metadata,
+          isProvenSystem: true,
+          originalTier: ps.tier,
+          originalPriority: ps.priority
+        }
+      };
+
+      registry.registerSignal(`proven_${normalizedSource}_${idx}`, provenSignal);
+
+      // Log each proven signal registration
+      console.log(`   🎯 Proven signal registered: ${normalizedSource} → ${provenSignal.signal} (tier: ${validatedTier}, priority: ${validatedPriority}, confidence: ${(provenSignal.confidence * 100).toFixed(1)}%)`);
     });
   }
 
   // 4) Return grouped, ordered signals in the same shape as collectAllSignalsDeterministic
   return registry.getOrderedSignals();
+}
+
+/**
+ * Validate proven system tier assignments with security controls
+ * @param {string} requestedTier - Requested tier from proven system
+ * @param {string} systemSource - Normalized system source
+ * @param {number} confidence - Signal confidence (0-1)
+ * @returns {string} Validated tier
+ */
+function validateProvenSystemTier(requestedTier, systemSource, confidence = 0.5) {
+  // Default to CONFIRMER for safety
+  if (!requestedTier) {
+    return 'CONFIRMER';
+  }
+
+  const tier = requestedTier.toUpperCase();
+
+  // VETO tier is never allowed for proven systems
+  if (tier === 'VETO') {
+    console.warn(`⚠️ VETO tier rejected for proven system ${systemSource} - veto power reserved for internal guardrails`);
+    return 'CONFIRMER';
+  }
+
+  // PRIMARY tier requires feature flag + whitelist + confidence threshold
+  if (tier === 'PRIMARY') {
+    if (!PROVEN_SYSTEMS_CONFIG.ALLOW_PROVEN_PRIMARY) {
+      console.warn(`⚠️ PRIMARY tier rejected for ${systemSource} - feature flag ALLOW_PROVEN_PRIMARY disabled`);
+      return 'CONFIRMER';
+    }
+    
+    if (!PROVEN_SYSTEMS_CONFIG.PRIMARY_WHITELIST.includes(systemSource)) {
+      console.warn(`⚠️ PRIMARY tier rejected for ${systemSource} - not in whitelist`);
+      return 'CONFIRMER';
+    }
+    
+    if (confidence < PROVEN_SYSTEMS_CONFIG.PRIMARY_MIN_CONFIDENCE) {
+      console.warn(`⚠️ PRIMARY tier rejected for ${systemSource} - confidence ${(confidence * 100).toFixed(1)}% < ${(PROVEN_SYSTEMS_CONFIG.PRIMARY_MIN_CONFIDENCE * 100)}% threshold`);
+      return 'CONFIRMER';
+    }
+    
+    console.log(`✅ PRIMARY tier approved for ${systemSource} (confidence: ${(confidence * 100).toFixed(1)}%)`);
+    return 'PRIMARY';
+  }
+
+  // Allow POSITION_SIZER only if metadata contains backtest stats
+  if (tier === 'POSITION_SIZER') {
+    // For now, allow but could add validation for backtest metadata
+    return 'POSITION_SIZER';
+  }
+
+  // Allow SUPPLEMENTARY and CONFIRMER
+  if (['SUPPLEMENTARY', 'CONFIRMER'].includes(tier)) {
+    return tier;
+  }
+
+  // Default fallback
+  console.warn(`⚠️ Unknown tier '${tier}' for ${systemSource} - defaulting to CONFIRMER`);
+  return 'CONFIRMER';
 }
 
 /**
@@ -1901,9 +1932,9 @@ class DeterministicSignalRegistry {
   }
 }
 
-function collectAllSignals(technical, backtest, sentiment) {
-  // RULE 0: Use deterministic signal collection by default
-  return collectAllSignalsDeterministic(technical, backtest, sentiment);
+function collectAllSignals(technical, backtest, sentiment, provenSignals = []) {
+  // RULE 0: Use deterministic signal collection with proven systems integration
+  return collectAllSignalsDeterministicWithProven(technical, backtest, sentiment, provenSignals);
 }
 
 function resolveSignalConflicts(signals, technical) {
@@ -5497,23 +5528,6 @@ async function getTechnicalAnalysisData(symbol, requestedPeriod) {
       requestedMonths
     );
 
-    // console.log(`✅ Unified technical analysis complete for ${symbol}:`, {
-    //   longTermDataPoints: fullOhlcData.length,
-    //   shortTermDataPoints: shortTermData.length,
-    //   foundationSignal: longTermAnalysis?.signals?.overall,
-    //   momentumFilter: shortTermAnalysis?.signals?.overall,
-    //   unifiedSignal: unifiedAnalysis?.signals?.overall,
-    //   longTermPatterns: longTermPatterns?.length || 0,
-    //   shortTermPatterns: shortTermPatterns?.length || 0,
-    //   multiTimeframeScore: multiTimeframe?.overallConfluence?.score || 'N/A',
-    //   earningsDataAvailable: !!earningsData,
-    //   // 🔧 DEBUG: Check technicalIndicators structure
-    //   hasTechnicalIndicators: !!unifiedAnalysis.technicalIndicators,
-    //   hasLatestIndicators: !!unifiedAnalysis.technicalIndicators?.latest,
-    //   technicalIndicatorsKeys: unifiedAnalysis.technicalIndicators ? Object.keys(unifiedAnalysis.technicalIndicators) : [],
-    //   latestIndicatorsKeys: unifiedAnalysis.technicalIndicators?.latest ? Object.keys(unifiedAnalysis.technicalIndicators.latest) : []
-    // });
-
     return {
       ...unifiedAnalysis,
       dataPoints: fullOhlcData.length,
@@ -5760,7 +5774,7 @@ function combinePatternAnalysis(longTermPatterns, shortTermPatterns, conflictRes
   return combinedPatterns;
 }
 
-async function getBacktestValidation(symbol, period, capital) {
+async function getBacktestValidation(symbol, period, capital, technicalData) {
   console.log(`🔬 Starting leak-free backtest validation for ${symbol}...`);
 
   try {
@@ -5776,6 +5790,16 @@ async function getBacktestValidation(symbol, period, capital) {
     });
 
     console.log(`   🎯 Running leak-free backtest: ${symbol}, ${period}...`);
+    
+    // 🔧 DEBUG: Check technical data structure
+    console.log(`   🔍 Technical data debug:`, {
+      hasTechnicalData: !!technicalData,
+      hasOhlcData: !!technicalData?.ohlcData,
+      hasHistoricalData: !!technicalData?.historicalData,
+      ohlcDataLength: technicalData?.ohlcData?.length || 0,
+      historicalDataLength: technicalData?.historicalData?.length || 0,
+      technicalDataKeys: Object.keys(technicalData || {})
+    });
 
     // Add timeout to prevent hanging
     const timeoutPromise = new Promise((_, reject) =>
@@ -5785,7 +5809,8 @@ async function getBacktestValidation(symbol, period, capital) {
     const backtestPromise = backtester.runLeakFreeBacktest(
       symbol,
       period,
-      ['sepa']  // Single system for speed
+      ['sepa'], // Single system for speed
+      technicalData?.ohlcData || technicalData?.historicalData // Pass OHLC data
     );
 
     const result = await Promise.race([backtestPromise, timeoutPromise]);
@@ -8387,7 +8412,13 @@ module.exports = {
   calculateBayesianWinRate,
   calculateExpectancy,
   getContextualRRFloor,
+  
   // Export the gate engine function for Elder's Triple Screen
   generateExpertAIDecision,
-  prepareAnalysisContext
+  prepareAnalysisContext,
+  
+  // Proven Systems Integration exports
+  collectAllSignalsDeterministicWithProven,
+  validateProvenSystemTier,
+  PROVEN_SYSTEMS_CONFIG
 };
