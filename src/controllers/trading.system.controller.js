@@ -149,6 +149,19 @@ class TradingSystemController {
             } else if (systemId === SYSTEM_IDS.MINERVINI_SEPA) {
               systemData = this.convertToSEPAFormat(analysisContext.technical);
               systemAnalysis = this.systems[systemId].analyze(systemData);
+            } else if (systemId === SYSTEM_IDS.CAN_SLIM_CUP_HANDLE) {
+              systemData = this.convertToCupHandleFormat(analysisContext.technical);
+              systemAnalysis = this.systems[systemId].analyze(systemData);
+            } else if (systemId === SYSTEM_IDS.RSI_MEAN_REVERSION) {
+              systemData = this.convertToRSIMeanFormat(analysisContext.technical);
+              systemAnalysis = this.systems[systemId].analyze(systemData);
+            } else if (systemId === SYSTEM_IDS.MACD_DIVERGENCE) {
+              systemData = this.convertToMACDDivergenceFormat(analysisContext.technical);
+              systemAnalysis = this.systems[systemId].analyze(systemData);
+            } else {
+              // Default: pass raw technical data
+              systemData = analysisContext.technical;
+              systemAnalysis = this.systems[systemId].analyze(systemData);
             }
             
             // Run through gate engine for this system (with timeout)
@@ -196,6 +209,8 @@ class TradingSystemController {
           technicalData,
           elderAnalysis,
           sepaAnalysis,
+          systemResults,
+          supportedSystems,
           gateResult,
           finalResult,
           unifiedDecision,
@@ -1001,6 +1016,8 @@ class TradingSystemController {
     technicalData,
     elderAnalysis,
     sepaAnalysis,
+    systemResults,
+    supportedSystems,
     gateResult,
     finalResult,
     unifiedDecision,
@@ -1115,11 +1132,34 @@ class TradingSystemController {
       flipToReady: actionableIntelligence.flipToReady,
       
       // SIMPLIFIED SYSTEM DETAILS - Essential info only
-      systems: {
-        elderTripleScreen: this.simplifySystemResponse(elderAnalysis, 'Elder\'s Triple Screen', 'elder_triple_screen'),
-        minerviniSEPA: this.simplifySystemResponse(sepaAnalysis, 'Minervini SEPA', 'minervini_sepa')
-      }
+      systems: this.buildSystemsResponse(systemResults, supportedSystems)
     };
+  }
+
+  // NEW: Build systems response dynamically for all analyzed systems
+  buildSystemsResponse(systemResults, supportedSystems) {
+    const systems = {};
+    
+    // Map system IDs to display names
+    const systemDisplayNames = {
+      [SYSTEM_IDS.TRIPLE_SCREEN]: { key: 'elderTripleScreen', name: 'Elder\'s Triple Screen' },
+      [SYSTEM_IDS.MINERVINI_SEPA]: { key: 'minerviniSEPA', name: 'Minervini SEPA' },
+      [SYSTEM_IDS.CAN_SLIM_CUP_HANDLE]: { key: 'cupWithHandle', name: 'Cup-with-Handle' },
+      [SYSTEM_IDS.RSI_MEAN_REVERSION]: { key: 'rsiMeanReversion', name: 'RSI Mean Reversion' },
+      [SYSTEM_IDS.MACD_DIVERGENCE]: { key: 'macdDivergence', name: 'MACD Divergence' }
+    };
+    
+    // Add all supported systems to response
+    supportedSystems.forEach(systemId => {
+      const systemResult = systemResults[systemId];
+      const displayInfo = systemDisplayNames[systemId];
+      
+      if (systemResult && displayInfo) {
+        systems[displayInfo.key] = this.simplifySystemResponse(systemResult, displayInfo.name, systemId);
+      }
+    });
+    
+    return systems;
   }
 
   // NEW: Simplify system response to essential information only
@@ -1414,6 +1454,115 @@ class TradingSystemController {
     }
     
     return conditions;
+  }
+
+  /**
+   * Convert technical data to Cup-with-Handle format
+   * Expected structure: { series: { daily: [] }, indicators: { base: {} } }
+   */
+  convertToCupHandleFormat(technicalData) {
+    console.log(`  🔧 DEBUG: Converting technical data for Cup-with-Handle system...`);
+    console.log(`  🔧 Input keys: ${Object.keys(technicalData).join(', ')}`);
+    
+    const ohlcData = technicalData.ohlcData || technicalData.historicalData || [];
+    console.log(`  🔧 OHLC data length: ${ohlcData.length}`);
+    
+    const technicalIndicators = technicalData.technicalIndicators || {};
+    const baseIndicators = technicalIndicators.latest || {};
+    console.log(`  🔧 Base indicators: ${Object.keys(baseIndicators).join(', ')}`);
+    
+    return {
+      series: {
+        daily: ohlcData
+      },
+      indicators: {
+        base: baseIndicators
+      }
+    };
+  }
+
+  /**
+   * Convert technical data to RSI Mean Reversion format
+   * Expected structure: { series: { daily: [] }, indicators: { base: { rsi14: number } } }
+   */
+  convertToRSIMeanFormat(technicalData) {
+    console.log(`  🔧 DEBUG: Converting technical data for RSI Mean Reversion system...`);
+    console.log(`  🔧 Input keys: ${Object.keys(technicalData).join(', ')}`);
+    
+    const ohlcData = technicalData.ohlcData || technicalData.historicalData || [];
+    console.log(`  🔧 OHLC data length: ${ohlcData.length}`);
+    
+    const technicalIndicators = technicalData.technicalIndicators || {};
+    const baseIndicators = technicalIndicators.latest || {};
+    
+    // Ensure RSI is available
+    let rsi14 = baseIndicators.rsi;
+    if (!rsi14 && technicalIndicators.rsi && Array.isArray(technicalIndicators.rsi)) {
+      rsi14 = technicalIndicators.rsi[technicalIndicators.rsi.length - 1];
+    }
+    
+    console.log(`  🔧 RSI14 value: ${rsi14}`);
+    console.log(`  🔧 Base indicators: ${Object.keys(baseIndicators).join(', ')}`);
+    
+    return {
+      series: {
+        daily: ohlcData
+      },
+      indicators: {
+        base: {
+          ...baseIndicators,
+          rsi14: rsi14
+        }
+      }
+    };
+  }
+
+  /**
+   * Convert technical data to MACD Divergence format
+   * Expected structure: { series: { daily: [] }, indicators: { base: { macd, macd_signal, macd_histogram } } }
+   */
+  convertToMACDDivergenceFormat(technicalData) {
+    console.log(`  🔧 DEBUG: Converting technical data for MACD Divergence system...`);
+    console.log(`  🔧 Input keys: ${Object.keys(technicalData).join(', ')}`);
+    
+    const ohlcData = technicalData.ohlcData || technicalData.historicalData || [];
+    console.log(`  🔧 OHLC data length: ${ohlcData.length}`);
+    
+    const technicalIndicators = technicalData.technicalIndicators || {};
+    const baseIndicators = technicalIndicators.latest || {};
+    
+    // Extract MACD components
+    let macd = baseIndicators.macd;
+    let macdSignal = baseIndicators.macd_signal || baseIndicators.macdSignal;
+    let macdHistogram = baseIndicators.macd_histogram || baseIndicators.macdHistogram;
+    
+    // If MACD components are arrays, take the latest values
+    if (technicalIndicators.macd && Array.isArray(technicalIndicators.macd)) {
+      macd = technicalIndicators.macd[technicalIndicators.macd.length - 1];
+    }
+    if (technicalIndicators.macd_signal && Array.isArray(technicalIndicators.macd_signal)) {
+      macdSignal = technicalIndicators.macd_signal[technicalIndicators.macd_signal.length - 1];
+    }
+    if (technicalIndicators.macd_histogram && Array.isArray(technicalIndicators.macd_histogram)) {
+      macdHistogram = technicalIndicators.macd_histogram[technicalIndicators.macd_histogram.length - 1];
+    }
+    
+    console.log(`  🔧 MACD: ${macd}, Signal: ${macdSignal}, Histogram: ${macdHistogram}`);
+    console.log(`  🔧 Base indicators: ${Object.keys(baseIndicators).join(', ')}`);
+    
+    return {
+      series: {
+        daily: ohlcData
+      },
+      indicators: {
+        base: {
+          ...baseIndicators,
+          macd: macd,
+          macd_signal: macdSignal,
+          macd_histogram: macdHistogram
+        }
+      }
+    };
   }
 }
 

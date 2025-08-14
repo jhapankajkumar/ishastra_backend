@@ -241,7 +241,7 @@ class SingleSystemAnalyzer {
       // Final integrated decision (Phase 4)
       finalDecision: {
         action: gateResult.finalDecision?.action || 'AVOID',
-        confidence: gateResult.finalDecision?.confidence || 0.3,
+        confidence: systemAnalysis.confidence || gateResult.finalDecision?.confidence || 0.3,
         reasoning: this.combineReasoning(systemAnalysis, gateResult),
         
         // Execution details

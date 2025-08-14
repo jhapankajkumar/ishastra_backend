@@ -128,9 +128,14 @@ class RSIMeanReversion {
             };
         }
 
-        // Get previous RSI for trend analysis
-        const previousRSI = rsiHistory.length > 0 ? rsiHistory[rsiHistory.length - 1] : null;
-        
+        // Ensure rsiHistory has enough length to compute a valid previousRSI
+        let previousRSI = null;
+        if (rsiHistory.length >= 2) {
+            previousRSI = rsiHistory[rsiHistory.length - 2];
+        } else if (rsiHistory.length === 1) {
+            previousRSI = rsiHistory[0];
+        }
+        // If not enough history, treat as not available
         // RSI conditions
         const isOversold = rsi14 < this.RSI_OVERSOLD_THRESHOLD;
         const isNotAlreadyReverted = rsi14 < this.RSI_MAX_THRESHOLD;
@@ -245,7 +250,10 @@ class RSIMeanReversion {
      * Find recent swing low for support analysis
      */
     findRecentSwingLow(dailyData) {
-        if (dailyData.length < this.SWING_LOW_LOOKBACK) return null;
+        if (dailyData.length < this.SWING_LOW_LOOKBACK) {
+            // Not enough data, return placeholder swing low with strength 0
+            return { low: null, daysAgo: null, strength: 0, index: null };
+        }
         
         const recentData = dailyData.slice(-this.SWING_LOW_LOOKBACK);
         let lowestIndex = -1;
@@ -268,7 +276,10 @@ class RSIMeanReversion {
             }
         }
         
-        if (lowestIndex === -1) return null;
+        if (lowestIndex === -1) {
+            // No swing low found, return placeholder with strength 0
+            return { low: null, daysAgo: null, strength: 0, index: null };
+        }
         
         const daysAgo = recentData.length - lowestIndex - 1;
         const strength = Math.max(0.6, Math.min(0.95, 1 - (daysAgo / this.SWING_LOW_LOOKBACK))); // More recent = stronger
@@ -348,6 +359,10 @@ class RSIMeanReversion {
             const candleScore = candleAnalysis.closePosition || 0.5;
             
             signalStrength = (rsiScore * 0.4 + supportScore * 0.4 + candleScore * 0.2);
+            // Enforce a minimum signalStrength floor (for marginal but valid conditions)
+            if (signalStrength < 0.1) {
+                signalStrength = 0.1;
+            }
             
             reasoning.push(
                 `RSI oversold bounce (${rsiAnalysis.currentRSI.toFixed(1)})`,
@@ -358,6 +373,7 @@ class RSIMeanReversion {
         } else if (rsiAnalysis.isValid && supportAnalysis.isValid) {
             signal = 'WATCH';
             signalStrength = 0.6;
+            if (signalStrength < 0.1) signalStrength = 0.1;
             reasoning.push(
                 'RSI oversold near support',
                 'Waiting for bullish candle confirmation'
@@ -366,6 +382,7 @@ class RSIMeanReversion {
         } else if (rsiAnalysis.isValid) {
             signal = 'WATCH';
             signalStrength = 0.4;
+            if (signalStrength < 0.1) signalStrength = 0.1;
             reasoning.push(
                 'RSI oversold condition detected',
                 'Waiting for support proximity and candle confirmation'
@@ -449,39 +466,8 @@ class RSIMeanReversion {
         let confidence = 0.5;
         let reasoning = [signalAnalysis.reasoning];
         
-        // Calculate confidence based on analysis quality
-        if (finalSignal === 'BUY') {
-            confidence = 0.7; // Base confidence for BUY
-            
-            // Boost confidence for strong setups
-            if (rsiAnalysis.currentRSI < 25) { // Very oversold
-                confidence = Math.min(0.90, confidence + 0.1);
-            }
-            
-            if (supportAnalysis.bestSupport?.strength >= 0.9) { // Strong support
-                confidence = Math.min(0.92, confidence + 0.08);
-            }
-            
-            if (candleAnalysis.closePosition >= 0.75) { // Very strong close
-                confidence = Math.min(0.95, confidence + 0.05);
-            }
-            
-            // Good risk/reward bonus
-            if (riskReward.riskReward >= 2.5) {
-                confidence = Math.min(0.95, confidence + 0.05);
-            }
-            
-            // Reduce confidence for marginal setups
-            if (signalAnalysis.signalStrength < 0.6) {
-                confidence = Math.max(0.65, confidence - 0.1);
-            }
-            
-        } else if (finalSignal === 'WATCH') {
-            confidence = signalAnalysis.signalStrength;
-            
-        } else {
-            confidence = 0.3; // Low confidence for AVOID
-        }
+        // Use dynamic confidence for ALL signal types
+        confidence = this.calculateRSIMeanConfidence(rsiAnalysis, supportAnalysis, candleAnalysis, signalAnalysis, finalSignal);
         
         // Build execution plan
         const executionPlan = this.buildExecutionPlan(finalSignal, riskReward, rsiAnalysis, supportAnalysis);
@@ -613,25 +599,110 @@ class RSIMeanReversion {
     }
 
     /**
-     * Create AVOID signal
+     * Create AVOID signal with dynamic confidence
      */
-    createAvoidSignal(code, message) {
+    createAvoidSignal(code, message, analysisData = null) {
+        // Use dynamic confidence even for AVOID signals
+        let confidence = 0.25; // Base for AVOID
+        
+        // If we have analysis data, use dynamic confidence
+        if (analysisData) {
+            confidence = this.calculateRSIMeanConfidence(
+                analysisData.rsi,
+                analysisData.support,
+                analysisData.candle,
+                analysisData.signal,
+                'AVOID'
+            );
+        }
+        
         return {
             system: this.systemId,
             systemName: this.name,
             decision: 'AVOID',
-            confidence: 0.3,
+            confidence: confidence,
             reasoning: [message],
             
             analysis: null,
             riskReward: null,
             executionPlan: null,
-            signalQuality: { grade: 'F', percentage: 30 },
+            signalQuality: { grade: 'F', percentage: Math.round(confidence * 100) },
             
             timestamp: new Date().toISOString(),
             systemVersion: this.version,
             errorCode: code
         };
+    }
+
+    /**
+     * Calculate dynamic confidence for RSI Mean Reversion system based on setup strength
+     */
+    calculateRSIMeanConfidence(rsiAnalysis, supportAnalysis, candleAnalysis, signalAnalysis, signal) {
+        let confidence = 0.3; // Base confidence
+        
+        const rsi14 = rsiAnalysis?.currentRSI || 50;
+        const isRising = rsiAnalysis?.isRising || false;
+        
+        // Adjust base confidence by signal type
+        if (signal === 'BUY') {
+            confidence = 0.65; // Higher base for BUY
+        } else if (signal === 'WATCH') {
+            confidence = 0.45; // Medium base for WATCH
+        } else if (signal === 'SELL') {
+            confidence = 0.60; // Higher base for SELL
+        } else {
+            confidence = 0.25; // Lower base for HOLD/AVOID
+        }
+        
+        // RSI oversold depth (deeper = higher confidence for bounce)
+        if (rsi14 <= 20) {
+            confidence += 0.20; // Very oversold
+        } else if (rsi14 <= 25) {
+            confidence += 0.15; // Deeply oversold
+        } else if (rsi14 <= 30) {
+            confidence += 0.10; // Oversold
+        }
+        
+        // RSI rising from oversold levels
+        if (isRising && rsi14 <= 35) {
+            confidence += 0.12;
+        }
+        
+        // Support proximity and strength
+        if (supportAnalysis?.hasNearbySupport) {
+            confidence += 0.08;
+            
+            // Strong support levels
+            if (supportAnalysis.bestSupport?.strength > 0.8) {
+                confidence += 0.10;
+            } else if (supportAnalysis.bestSupport?.strength > 0.6) {
+                confidence += 0.05;
+            }
+        }
+        
+        // Candle structure quality
+        if (candleAnalysis?.isBullish) {
+            confidence += 0.08;
+            
+            // Strong bullish candle structure
+            if (candleAnalysis.closePosition > 0.7) {
+                confidence += 0.05;
+            }
+            
+            // Large body candle shows conviction
+            if (candleAnalysis.bodyToRangeRatio > 0.6) {
+                confidence += 0.05;
+            }
+        }
+        
+        // Signal strength factor
+        if (signalAnalysis?.signalStrength > 0.7) {
+            confidence += 0.08;
+        } else if (signalAnalysis?.signalStrength > 0.5) {
+            confidence += 0.05;
+        }
+        
+        return Math.min(Math.max(confidence, 0.15), 0.80);
     }
 }
 

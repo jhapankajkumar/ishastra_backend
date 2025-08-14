@@ -346,7 +346,7 @@ class MinerviniSEPA {
             candleStrength
         ) {
             signal = 'BUY';
-            signalStrength = stageConfidence * strength;
+            signalStrength = this.calculateSEPAConfidence(stageAnalysis, trendAnalysis, series, signal);
             reasoning.push('Stage 2 markup phase with bullish trend alignment and breakout confirmation');
             entryPrice = latest.close * 1.01; // Slight premium for entry
 
@@ -355,27 +355,27 @@ class MinerviniSEPA {
             const breakoutWeak = nextCandles.some(c => c.close < breakoutPivot || c.volume < avgVolume * 0.8);
             if (breakoutWeak) {
                 reasoning.push('⚠️ Weak post-breakout behavior');
-                signalStrength *= 0.85;
+                // Let dynamic confidence handle this instead of hardcoded reduction
             }
         }
         // Stage 1 transitioning to Stage 2 = Early BUY (tighter conditions)
         else if (stageAnalysis.stageTransition === 'ADVANCING' && alignment === 'BULLISH' && trendAnalysis.strength >= 0.75) {
             signal = 'BUY';
-            signalStrength = stageConfidence * 0.8;
+            signalStrength = this.calculateSEPAConfidence(stageAnalysis, trendAnalysis, series, signal);
             reasoning.push('Stage 1 to 2 transition, early markup opportunity');
             entryPrice = latest.close;
         }
         // Stage 3 or 4 with bearish alignment = SELL signal
         else if ((currentStage === 3 || currentStage === 4) && alignment === 'BEARISH') {
             signal = 'SELL';
-            signalStrength = stageConfidence * strength;
+            signalStrength = this.calculateSEPAConfidence(stageAnalysis, trendAnalysis, series, signal);
             reasoning.push(`Stage ${currentStage} with bearish alignment, exit recommended`);
             entryPrice = latest.close * 0.99; // Slight discount for exit
         }
-        // All other cases = HOLD
+        // All other cases = HOLD with dynamic confidence
         else {
             signal = 'HOLD';
-            signalStrength = 0.3;
+            signalStrength = this.calculateSEPAConfidence(stageAnalysis, trendAnalysis, series, signal);
             reasoning.push('Mixed signals or unclear stage, maintain current position');
         }
 
@@ -609,6 +609,68 @@ class MinerviniSEPA {
             prevRange = range;
         }
         return contractions >= 2;
+    }
+
+    /**
+     * Calculate dynamic confidence for SEPA system based on setup strength
+     */
+    calculateSEPAConfidence(stageAnalysis, trendAnalysis, series, signal = 'HOLD') {
+        let confidence = 0.3; // Base confidence
+        
+        // Adjust base confidence by signal type
+        if (signal === 'BUY') {
+            confidence = 0.65; // Higher base for BUY
+        } else if (signal === 'WATCH') {
+            confidence = 0.45; // Medium base for WATCH
+        } else if (signal === 'SELL') {
+            confidence = 0.60; // Higher base for SELL
+        } else {
+            confidence = 0.35; // Medium base for HOLD
+        }
+        
+        const { currentStage, confidence: stageConfidence } = stageAnalysis;
+        const { alignment, strength } = trendAnalysis;
+        const latest = series.daily[series.daily.length - 1];
+        
+        // Volume analysis
+        const recentVolume = series.daily.slice(-5).reduce((sum, d) => sum + d.volume, 0) / 5;
+        const avgVolume = this.calculateAverageVolume(series.daily.slice(-20));
+        const volumeStrength = recentVolume / avgVolume;
+        
+        // MA alignment check
+        const dailyData = series.daily;
+        const closes = dailyData.slice(-50).map(d => d.close);
+        const sma20 = closes.slice(-20).reduce((sum, p) => sum + p, 0) / 20;
+        const sma50 = closes.slice(-50).reduce((sum, p) => sum + p, 0) / 50;
+        const maAligned = latest.close > sma20 && sma20 > sma50;
+        
+        // Stage-specific confidence adjustments
+        if (currentStage === 2) {
+            confidence += 0.25; // Stage 2 is most bullish
+            if (volumeStrength > 1.5) confidence += 0.15;
+            if (maAligned) confidence += 0.15;
+        } else if (currentStage === 1) {
+            confidence += 0.15; // Stage 1 accumulation
+            if (volumeStrength > 1.2) confidence += 0.10;
+            if (maAligned) confidence += 0.10;
+        } else if (currentStage === 3) {
+            confidence += 0.05; // Stage 3 distribution - lower confidence
+        }
+        
+        // Trend alignment bonus
+        if (alignment === 'BULLISH' && strength > 0.7) {
+            confidence += 0.20;
+        } else if (alignment === 'BULLISH' && strength > 0.5) {
+            confidence += 0.10;
+        }
+        
+        // Base structure quality (if available)
+        if (stageAnalysis.baseStructureScore) {
+            const { durationScore, tightnessScore, stabilityScore } = stageAnalysis.baseStructureScore;
+            confidence += (durationScore + tightnessScore + stabilityScore) * 0.05;
+        }
+        
+        return Math.min(Math.max(confidence, 0.15), 0.90);
     }
 
     /**

@@ -328,7 +328,7 @@ class ElderTripleScreen {
   generateDecision(combinedAnalysis, riskReward, indicators) {
     // Strict Elder result object
     let signal = combinedAnalysis.overallSignal;
-    let confidence = 0.91;
+    let confidence = this.calculateConfidence(combinedAnalysis, riskReward, signal); // Dynamic confidence!
     let reason =
       signal === 'BUY'
         ? 'Weekly MACD uptrend + daily pullback + EMA10 breakout trigger'
@@ -336,7 +336,7 @@ class ElderTripleScreen {
         ? 'Weekly MACD downtrend + daily pullback + EMA10 breakdown trigger'
         : 'Strict Elder alignment not met';
     return {
-      signal,
+      action: signal,  // Changed from signal to action
       confidence,
       strategy: 'Triple Screen',
       reason,

@@ -651,26 +651,8 @@ class CupWithHandle {
         let finalSignal = signalAnalysis.signal;
         let confidence = 0.5;
         let reasoning = [signalAnalysis.reasoning];
-        // Calculate confidence based on pattern quality
-        if (finalSignal === 'BUY') {
-            confidence = 0.7; // Base confidence for BUY
-            // Boost confidence for high-quality patterns
-            if (cupAnalysis.score >= 0.8 && handleAnalysis.score >= 0.8 && breakoutAnalysis.score >= 0.8) {
-                confidence = Math.min(0.92, confidence + 0.15);
-            }
-            // Boost confidence for good risk/reward
-            if (riskReward.riskReward >= 2.0) {
-                confidence = Math.min(0.95, confidence + 0.1);
-            }
-            // Reduce confidence for marginal patterns
-            if (signalAnalysis.signalStrength < 0.7) {
-                confidence = Math.max(0.6, confidence - 0.1);
-            }
-        } else if (finalSignal === 'WATCH') {
-            confidence = signalAnalysis.signalStrength;
-        } else {
-            confidence = 0.3; // Low confidence for AVOID
-        }
+        // Use dynamic confidence for ALL signal types
+        confidence = this.calculateCupHandleConfidence(cupAnalysis, handleAnalysis, breakoutAnalysis, signalAnalysis, finalSignal);
         // --- Begin Insert: Gate final BUY signal with new conditions ---
         // Compose gate conditions
         const isValidCupDepth = cupAnalysis?.isValid;
@@ -837,25 +819,124 @@ class CupWithHandle {
     }
 
     /**
-     * Create AVOID signal
+     * Create AVOID signal with dynamic confidence
      */
-    createAvoidSignal(code, message) {
+    createAvoidSignal(code, message, analysisData = null) {
+        // Use dynamic confidence even for AVOID signals
+        let confidence = 0.25; // Base for AVOID
+        
+        // If we have analysis data, use dynamic confidence
+        if (analysisData) {
+            confidence = this.calculateCupHandleConfidence(
+                analysisData.cup,
+                analysisData.handle,
+                analysisData.breakout,
+                analysisData.signal,
+                'AVOID'
+            );
+        }
+        
         return {
             system: this.systemId,
             systemName: this.name,
             decision: 'AVOID',
-            confidence: 0.3,
+            confidence: confidence,
             reasoning: [message],
             
             pattern: null,
             riskReward: null,
             executionPlan: null,
-            signalQuality: { grade: 'F', percentage: 30 },
+            signalQuality: { grade: 'F', percentage: Math.round(confidence * 100) },
             
             timestamp: new Date().toISOString(),
             systemVersion: this.version,
             errorCode: code
         };
+    }
+
+    /**
+     * Calculate dynamic confidence for Cup-with-Handle system based on setup strength
+     */
+    calculateCupHandleConfidence(cupAnalysis, handleAnalysis, breakoutAnalysis, signalAnalysis, signal) {
+        let confidence = 0.3; // Base confidence
+        
+        // Adjust base confidence by signal type
+        if (signal === 'BUY') {
+            confidence = 0.65; // Higher base for BUY
+        } else if (signal === 'WATCH') {
+            confidence = 0.45; // Medium base for WATCH
+        } else if (signal === 'SELL') {
+            confidence = 0.55; // Higher base for SELL
+        } else {
+            confidence = 0.25; // Lower base for HOLD/AVOID
+        }
+        
+        // Cup structure quality
+        if (cupAnalysis?.isValid) {
+            confidence += 0.15;
+            
+            // Cup depth bonus (12-35% is ideal)
+            const cupDepth = cupAnalysis.depthPercent || cupAnalysis.depth * 100 || 0;
+            if (cupDepth >= 12 && cupDepth <= 35) {
+                confidence += 0.10;
+            } else if (cupDepth >= 8 && cupDepth <= 45) {
+                confidence += 0.05;
+            }
+            
+            // Cup duration bonus
+            const cupDuration = cupAnalysis.duration || 0;
+            if (cupDuration >= 7 && cupDuration <= 65) {
+                confidence += 0.08;
+            }
+            
+            // Cup score quality
+            if (cupAnalysis.score >= 0.8) {
+                confidence += 0.08;
+            } else if (cupAnalysis.score >= 0.6) {
+                confidence += 0.05;
+            }
+        }
+        
+        // Handle quality
+        if (handleAnalysis?.isValid) {
+            confidence += 0.10;
+            
+            // Handle depth (should be shallow, 8-12% is ideal)
+            const handleDepth = handleAnalysis.depthPercent || handleAnalysis.depth * 100 || 0;
+            if (handleDepth >= 8 && handleDepth <= 12) {
+                confidence += 0.08;
+            } else if (handleDepth <= 20) {
+                confidence += 0.04;
+            }
+            
+            // Handle score quality
+            if (handleAnalysis.score >= 0.8) {
+                confidence += 0.06;
+            } else if (handleAnalysis.score >= 0.6) {
+                confidence += 0.03;
+            }
+        }
+        
+        // Breakout confirmation
+        if (breakoutAnalysis?.isBreakout) {
+            confidence += 0.12;
+            
+            // Volume breakout strength
+            if (breakoutAnalysis.volumeRatio >= 1.5) {
+                confidence += 0.08;
+            } else if (breakoutAnalysis.volumeRatio >= 1.2) {
+                confidence += 0.05;
+            }
+        }
+        
+        // Signal strength factor
+        if (signalAnalysis?.signalStrength >= 0.8) {
+            confidence += 0.06;
+        } else if (signalAnalysis?.signalStrength >= 0.6) {
+            confidence += 0.03;
+        }
+        
+        return Math.min(Math.max(confidence, 0.15), 0.85);
     }
 }
 

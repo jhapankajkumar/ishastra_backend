@@ -26,8 +26,8 @@ const tradingController = new TradingSystemController();
  * Response: Complete multi-system stock analysis with unified decisions
  */
 router.post('/stock-analysis', async (req, res) => {
-  // Always analyze with all available systems
-  req.body.systems = ['elder_triple_screen', 'sepa_method', 'cup_handle', 'rsi_mean'];
+  // Use requested systems or default to all available systems
+  req.body.systems = req.body.systems || ['elder_triple_screen', 'sepa_method', 'cup_handle', 'rsi_mean', 'macd_divergence'];
   await tradingController.analyzeTradingSystem(req, res);
 });
 
