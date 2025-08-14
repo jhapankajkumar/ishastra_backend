@@ -20,13 +20,6 @@
  * Last Updated: 2024
  */
 
-const {
-  detectTripleBullishDivergence,
-  detectTripleBearishDivergence,
-  detectBullishContinuationDivergence,
-  detectBearishContinuationDivergence
-} = require('./macd-divergence.js');
-
 class MACDDivergence {
     constructor() {
         this.systemId = 'divergence';
@@ -978,9 +971,7 @@ class MACDDivergence {
 
 module.exports = MACDDivergence;
 
-
-
-    /**
+/**
  * Detect triple bullish divergence (Elder's definition): price makes 3 lower lows,
  * MACD histogram makes 3 higher lows, and latest candle is bullish.
  * Returns array with one high-conviction BUY signal if found, else [].
@@ -1039,9 +1030,9 @@ function detectTripleBullishDivergence(candles, macdHistogram) {
   }
 
   return [];
-    }
+}
 
-    /**
+/**
  * Detect triple bearish divergence (Elder's definition): price makes 3 higher highs,
  * MACD histogram makes 3 lower highs, and latest candle is bearish.
  * Returns array with one high-conviction SELL signal if found, else [].
@@ -1100,7 +1091,7 @@ function detectTripleBearishDivergence(candles, macdHistogram) {
   }
 
   return [];
-    } 
+}
 
 // Export new triple divergence detectors for external use if needed
 module.exports.detectTripleBullishDivergence = detectTripleBullishDivergence;
