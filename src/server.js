@@ -32,7 +32,7 @@ app.use('/api/investments', require('./routes/investment-transactions.routes'));
 app.use('/api/market', require('./routes/market.routes'));
 
 // Trading system routes (multi-system stock analysis)
-app.use('/api/trading', require('./routes/trading.system.routes'));
+app.use('/api/trading', require('./routes/signal-analysis.routes'));
 
 // Yahoo Finance API endpoints
 app.get('/api/yahoo/search', async (req, res) => {

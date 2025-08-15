@@ -8,42 +8,33 @@
 
 const express = require('express');
 const router = express.Router();
-const { TradingSystemController } = require('../controllers/trading.system.controller');
+const { TradingSystemController } = require('../controllers/signal-analysis.controller');
 
 // Initialize controllers
 const tradingController = new TradingSystemController();
 
 /**
- * POST /api/trading/stock-analysis
+ * GET /api/trading/signal-analysis
  * Analyze multiple US stocks using all available trading systems
  * 
- * Request Body:
- * {
- *   "symbols": ["AAPL", "MSFT", "GOOGL", "AMZN", "TSLA"],
- *   "capital": 100000
- * }
+ * Query Parameters:
+ * - symbols: comma-separated list of stock symbols (e.g., "AAPL,MSFT,GOOGL")
+ * - capital: portfolio capital (optional, default: 100000)
+ * - systems: comma-separated list of systems (optional, default: all systems)
+ * 
+ * Example: /api/trading/signal-analysis?symbols=AAPL,MSFT&capital=50000
  * 
  * Response: Complete multi-system stock analysis with unified decisions
  */
-router.post('/stock-analysis', async (req, res) => {
-  // Use requested systems or default to all available systems
-  req.body.systems = req.body.systems || ['elder_triple_screen', 'sepa_method', 'cup_handle', 'rsi_mean', 'macd_divergence'];
-  await tradingController.analyzeTradingSystem(req, res);
-});
-
-/**
- * POST /api/trading/stock-analysis/fast
- * OPTIMIZED: Fast stock analysis - target <1 second response time
- * 
- * Request Body:
- * {
- *   "symbols": ["AAPL", "MSFT", "GOOGL", "AMZN", "TSLA"],
- *   "capital": 100000
- * }
- * 
- * Response: Lightweight multi-system analysis optimized for speed
- */
-router.post('/stock-analysis', async (req, res) => {
+router.get('/signal-analysis', async (req, res) => {
+  // Convert query parameters to req.body format for compatibility with existing controller
+  const symbols = req.query.symbols ? req.query.symbols.split(',').map(s => s.trim().toUpperCase()) : [];
+  const capital = req.query.capital ? parseInt(req.query.capital) : 100000;
+  const systems = req.query.systems ? 
+    req.query.systems.split(',').map(s => s.trim()) : 
+    ['elder_triple_screen', 'sepa_method', 'cup_handle', 'rsi_mean', 'macd_divergence'];
+    
+  req.body = { symbols, capital, systems };
   await tradingController.analyzeTradingSystem(req, res);
 });
 
