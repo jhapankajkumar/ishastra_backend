@@ -1087,11 +1087,29 @@ class TradingSystemController {
   }) {
     const currentPrice = technicalData.currentPrice || technicalData.latestPrice;
     
-    // Extract execution details
+    // Get the signal action to determine long vs short position logic
+    const signalAction = unifiedDecision.action || 'HOLD';
+    
+    // CREATE SINGLE UNIFIED DECISION (no confusion)
+    const unifiedAction = unifiedDecision.action || 'HOLD';
+    const unifiedConfidence = unifiedDecision.confidence || 0;
+    const confidencePercent = Math.round(unifiedConfidence * 100);
+    
+    // Extract execution details with proper position sizing
     const entry = currentPrice;
-    const stopLoss = this.extractStopLoss(gateResult, currentPrice);
-    const targets = this.extractTargets(gateResult, currentPrice);
+    const stopLoss = this.extractStopLoss(gateResult, currentPrice, signalAction);
+    const targets = this.extractTargets(gateResult, currentPrice, signalAction, technicalData, systemResults);
     const riskReward = this.calculateRiskReward(currentPrice, stopLoss, targets[0]);
+    
+    // Calculate proper position sizing based on available capital and risk management
+    const positionSize = this.calculatePositionSizing({
+      entryPrice: currentPrice,
+      stopLoss: stopLoss,
+      availableCapital: analysisContext.capital?.availableCapital || 100000,
+      signalAction: signalAction,
+      confidence: unifiedConfidence,
+      riskPerTrade: 0.02 // 2% risk per trade (professional standard)
+    });
     
     // Extract market context
     const trend = this.extractTrendContext(analysisContext);
@@ -1104,11 +1122,6 @@ class TradingSystemController {
     
     // Extract risk information
     const risk = this.extractRiskInformation(analysisContext, gateResult);
-    
-    // CREATE SINGLE UNIFIED DECISION (no confusion)
-    const unifiedAction = unifiedDecision.action || 'HOLD';
-    const unifiedConfidence = unifiedDecision.confidence || 0;
-    const confidencePercent = Math.round(unifiedConfidence * 100);
     
     // Determine grade based on confidence
     let grade = 'D';
@@ -1148,9 +1161,9 @@ class TradingSystemController {
         target1: targets[0] ? Number(targets[0].toFixed(2)) : null,
         target2: targets[1] ? Number(targets[1].toFixed(2)) : null,
         positionSize: {
-          shares: gateResult.positionSizing?.recommendedShares || 0,
-          value: gateResult.positionSizing?.positionValue || 0,
-          risk: `${Math.round((gateResult.positionSizing?.riskPercentage || 0) * 100)}%`
+          shares: positionSize.shares,
+          value: positionSize.value,
+          risk: positionSize.riskPercentage
         }
       },
       
@@ -1272,7 +1285,7 @@ class TradingSystemController {
   }
 
   // Helper methods for extracting trading information
-  extractStopLoss(gateResult, currentPrice) {
+  extractStopLoss(gateResult, currentPrice, signalAction = 'BUY') {
     // Look for stop loss in various places
     if (gateResult.stopLoss) return gateResult.stopLoss;
     if (gateResult.riskAssessment?.stopLoss) return gateResult.riskAssessment.stopLoss;
@@ -1280,24 +1293,38 @@ class TradingSystemController {
     
     // Calculate adaptive stop based on ATR (from logs we see 1.5x ATR)
     const atr = currentPrice * 0.027; // Approximate 2.7% ATR from logs
-    return currentPrice + (atr * 1.5); // Above current for short position protection
+    
+    // FIXED: For long positions (BUY/WATCH), stop should be BELOW current price
+    // For short positions (SELL), stop should be ABOVE current price
+    if (signalAction === 'SELL' || signalAction === 'STRONG_SELL') {
+      return currentPrice + (atr * 1.5); // Above current for short position protection
+    } else {
+      return currentPrice - (atr * 1.5); // Below current for long position protection
+    }
   }
 
-  extractTargets(gateResult, currentPrice) {
-    const targets = [];
-    
-    // Look for targets in gate result
+  extractTargets(gateResult, currentPrice, signalAction = 'BUY', technicalData = {}, systemResults = {}) {
+    // Look for targets in gate result first
     if (gateResult.targets) {
       return Array.isArray(gateResult.targets) ? gateResult.targets : [gateResult.targets];
     }
     
-    // Calculate based on risk/reward from logs (4.78 R/R)
-    const atr = currentPrice * 0.027;
+    // Calculate more reasonable targets based on ATR and realistic R/R ratios
+    const atr = currentPrice * 0.027; // Approximate 2.7% ATR
     const stopDistance = atr * 1.5;
-    const target1 = currentPrice - (stopDistance * 4.78); // Defensive target
-    const target2 = currentPrice - (stopDistance * 6.0);  // Aggressive target
     
-    return [target1, target2];
+    // FIXED: Use more realistic risk/reward ratios (1.5:1 and 2.5:1 instead of 4.78:1)
+    // For long positions (BUY/WATCH), targets should be ABOVE current price
+    // For short positions (SELL), targets should be BELOW current price
+    if (signalAction === 'SELL' || signalAction === 'STRONG_SELL') {
+      const target1 = currentPrice - (stopDistance * 1.5); // Conservative R/R for short
+      const target2 = currentPrice - (stopDistance * 2.5); // Aggressive R/R for short
+      return [target1, target2];
+    } else {
+      const target1 = currentPrice + (stopDistance * 1.5); // Conservative 1.5:1 R/R for long
+      const target2 = currentPrice + (stopDistance * 2.5); // Aggressive 2.5:1 R/R for long
+      return [target1, target2];
+    }
   }
 
   calculateRiskReward(entry, stop, target) {
@@ -1305,6 +1332,85 @@ class TradingSystemController {
     const risk = Math.abs(entry - stop);
     const reward = Math.abs(target - entry);
     return risk > 0 ? reward / risk : 0;
+  }
+
+  /**
+   * Calculate proper position sizing based on risk management principles
+   * @param {Object} params - Position sizing parameters
+   * @returns {Object} Position sizing details
+   */
+  calculatePositionSizing(params) {
+    const {
+      entryPrice,
+      stopLoss,
+      availableCapital,
+      signalAction,
+      confidence,
+      riskPerTrade = 0.02 // Default 2% risk per trade
+    } = params;
+
+    // Don't calculate position sizing for HOLD/AVOID signals
+    if (!signalAction || signalAction === 'HOLD' || signalAction === 'AVOID') {
+      return {
+        shares: 0,
+        value: 0,
+        riskPercentage: '0%'
+      };
+    }
+
+    // Must have valid entry and stop prices
+    if (!entryPrice || !stopLoss || entryPrice <= 0) {
+      return {
+        shares: 0,
+        value: 0,
+        riskPercentage: '0%'
+      };
+    }
+
+    // Calculate risk per share
+    const riskPerShare = Math.abs(entryPrice - stopLoss);
+    if (riskPerShare <= 0) {
+      return {
+        shares: 0,
+        value: 0,
+        riskPercentage: '0%'
+      };
+    }
+
+    // Adjust risk based on signal confidence and action
+    let adjustedRiskPerTrade = riskPerTrade;
+    
+    // Reduce position size for lower confidence signals
+    if (confidence < 0.7) {
+      adjustedRiskPerTrade *= 0.5; // Half position for low confidence
+    } else if (confidence < 0.8) {
+      adjustedRiskPerTrade *= 0.75; // 75% position for medium confidence
+    }
+    
+    // Reduce position size for WATCH signals vs BUY signals
+    if (signalAction === 'WATCH') {
+      adjustedRiskPerTrade *= 0.6; // 60% of normal position for WATCH
+    }
+
+    // Calculate maximum position value based on risk tolerance
+    const maxRiskAmount = availableCapital * adjustedRiskPerTrade;
+    const maxShares = Math.floor(maxRiskAmount / riskPerShare);
+    
+    // Don't exceed 20% of available capital for any single position
+    const maxPositionValue = availableCapital * 0.20;
+    const maxSharesByCapital = Math.floor(maxPositionValue / entryPrice);
+    
+    // Take the smaller of the two limits
+    const finalShares = Math.min(maxShares, maxSharesByCapital);
+    const finalValue = finalShares * entryPrice;
+    const actualRiskPercentage = finalShares > 0 ? 
+      ((finalShares * riskPerShare) / availableCapital * 100).toFixed(1) + '%' : '0%';
+
+    return {
+      shares: Math.max(0, finalShares),
+      value: Math.round(finalValue),
+      riskPercentage: actualRiskPercentage
+    };
   }
 
   extractTrendContext(analysisContext) {
