@@ -40,7 +40,7 @@ async function getHistoricalForTrade(symbol, period1 = '1d', period2) {
 async function getHistorical(symbol, period1 = '6mo', period2) {
   try {
     // Convert period string to actual dates
-    console.log(`Fetching historical data for ${symbol} from ${period1} to ${period2 || 'now'}`);
+    //console.log(`Fetching historical data for ${symbol} from ${period1} to ${period2 || 'now'}`);
     let endDate = new Date();
     let startDate = new Date();
     

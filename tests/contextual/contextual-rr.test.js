@@ -44,7 +44,7 @@ jest.mock('yahoo-finance2', () => ({
         });
       }
       
-      console.log(`🎯 Mock Yahoo Finance: Generated ${data.length} data points`);
+      //console.log(`🎯 Mock Yahoo Finance: Generated ${data.length} data points`);
       return Promise.resolve(data);
     })
   }
@@ -69,7 +69,7 @@ describe('Contextual Risk-Reward Implementation', () => {
     const expectancy3 = calculateExpectancy(2.0, 0.5);
     expect(expectancy3).toBeCloseTo(0.5, 3); // 0.5*2.0 - 0.5 = 1.0 - 0.5 = 0.5
     
-    console.log('✅ Expectancy calculations working correctly');
+    //console.log('✅ Expectancy calculations working correctly');
   });
   
   test('Contextual R/R floors adapt to market regime', () => {
@@ -95,9 +95,9 @@ describe('Contextual Risk-Reward Implementation', () => {
     const bullFloorD = getContextualRRFloor('BULL', 'UPTREND', 'D');
     expect(bullFloorD.value).toBeGreaterThan(bullFloorA.value);
     
-    console.log('✅ Contextual R/R floors working correctly');
-    console.log(`   Bull/A: ${bullFloorA.value}, Bear/A: ${bearFloorA.value}, Sideways/A: ${sidewaysFloorA.value}`);
-    console.log(`   Bull/D: ${bullFloorD.value} (higher than Bull/A: ${bullFloorA.value})`);
+    //console.log('✅ Contextual R/R floors working correctly');
+    //console.log(`   Bull/A: ${bullFloorA.value}, Bear/A: ${bearFloorA.value}, Sideways/A: ${sidewaysFloorA.value}`);
+    //console.log(`   Bull/D: ${bullFloorD.value} (higher than Bull/A: ${bullFloorA.value})`);
   });
   
   test('Contextual gating allows WATCH for moderate R/R with positive expectancy', () => {
@@ -119,11 +119,11 @@ describe('Contextual Risk-Reward Implementation', () => {
     expect(result.expectancy).toBeGreaterThan(0); // Should have positive expectancy
     expect(result.rrQuality).not.toBe('POOR'); // Should not be considered poor quality
     
-    console.log('✅ Core test case passed:');
-    console.log(`   R/R: ${mockRiskReward.riskReward}`);
-    console.log(`   Result: ${result.gateResult} (expected: WATCH)`);
-    console.log(`   Expectancy: ${result.expectancy.toFixed(3)} (positive)`);
-    console.log(`   Reason: ${result.reason}`);
+    //console.log('✅ Core test case passed:');
+    //console.log(`   R/R: ${mockRiskReward.riskReward}`);
+    //console.log(`   Result: ${result.gateResult} (expected: WATCH)`);
+    //console.log(`   Expectancy: ${result.expectancy.toFixed(3)} (positive)`);
+    //console.log(`   Reason: ${result.reason}`);
   });
   
   test('System blocks truly poor setups with negative expectancy', () => {
@@ -158,9 +158,9 @@ describe('Contextual Risk-Reward Implementation', () => {
     // Should block due to negative expectancy even with decent R/R
     expect(result2.expectancy).toBeLessThanOrEqual(0);
     
-    console.log('✅ Poor setups correctly blocked:');
-    console.log(`   Very low R/R: ${result.gateResult}`);
-    console.log(`   Negative expectancy: EV=${result2.expectancy.toFixed(3)}`);
+    //console.log('✅ Poor setups correctly blocked:');
+    //console.log(`   Very low R/R: ${result.gateResult}`);
+    //console.log(`   Negative expectancy: EV=${result2.expectancy.toFixed(3)}`);
   });
 
 });

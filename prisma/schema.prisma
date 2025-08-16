@@ -42,6 +42,7 @@ model Trade {
   tickerName         String?
   direction          String    // Consider enum: LONG, SHORT
   instrumentType     String?   // Stocks, Options, Futures
+  currency           String?   @default("USD") // 'USD' or 'INR'
   entryPrice         Float?
   stopLoss           Float?
   target1            Float?
@@ -145,6 +146,7 @@ model Recommendation {
 model Investment {
   id               Int       @id @default(autoincrement())
   ticker           String    // Stock symbol
+  currency         String?   @default("USD") // 'USD' or 'INR'
   quantity         Int       // Total quantity bought
   avgBuyPrice      Float?    // Average buy price per share
   totalInvestment  Float?    // Optional calculated field (qty * avgBuyPrice)
@@ -175,4 +177,52 @@ model InvestmentTransaction {
   exitReason        String?     // Only for sell transactions
   createdAt         DateTime    @default(now())
   investment        Investment  @relation(fields: [investmentId], references: [id], onDelete: Cascade)
+}
+
+model Capital {
+  id              String   @id @default(uuid())
+  currency        String   @unique // 'USD' or 'INR'
+  total           Float    // Total capital allocated
+  remaining       Float    // Remaining capital after open trades
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+// Watchlist Schema - Automated from Signal Analysis
+model WatchlistStock {
+  id              Int      @id @default(autoincrement())
+  symbol          String   @unique // Stock symbol (e.g., "AAPL", "ASHIANA.NS")
+  currentPrice    Float    // Price when added to watchlist
+  currency        String?  @default("USD") // 'USD' or 'INR'
+  market          String?  // 'US' or 'IN' 
+  
+  // Decision Information
+  decisionAction      String   // "BUY", "WATCH", "HOLD", etc.
+  decisionConfidence  Float    // 0.0 to 1.0
+  decisionGrade      String   // "A", "B+", "C", etc.
+  decisionReasoning  String?  // Brief reasoning text
+  systemsAgreement   String?  // "FULL", "PARTIAL", "NONE"
+  systemsAnalyzed    Int?     // Number of systems analyzed
+  
+  // Execution Information (JSON stored as String)
+  executionData   String?  // JSON: { entry, stop, targets, riskReward, positionSize }
+  
+  // System Results Summary (JSON stored as String) 
+  systemsData     String?  // JSON: Simplified systems results
+  
+  // Status and Metadata
+  status          String   @default("ACTIVE") // "ACTIVE", "EXECUTED", "EXPIRED", "REMOVED"
+  priority        Int      @default(1)        // 1=Low, 2=Medium, 3=High (based on grade/confidence)
+  nextStepSummary String?  // What to do next
+  
+  // Timestamps
+  addedAt         DateTime @default(now())
+  lastAnalyzedAt  DateTime @default(now()) 
+  updatedAt       DateTime @updatedAt
+  
+  @@index([decisionAction])
+  @@index([decisionGrade])
+  @@index([priority])
+  @@index([market])
+  @@index([status])
 }

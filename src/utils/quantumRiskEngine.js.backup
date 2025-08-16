@@ -45,7 +45,7 @@ class QuantumRiskEngine {
   }
 
   async initializeQuantumRisk() {
-    console.log('⚡ Initializing Quantum Risk Management Engine...');
+    //console.log('⚡ Initializing Quantum Risk Management Engine...');
     
     try {
       // 1. Initialize VaR calculation models
@@ -60,7 +60,7 @@ class QuantumRiskEngine {
       // 4. Initialize behavioral risk detector
       this.behavioralRiskModel = this.createBehavioralRiskModel();
       
-      console.log('✅ Quantum Risk Engine Ready');
+      //console.log('✅ Quantum Risk Engine Ready');
       
     } catch (error) {
       console.error('❌ Failed to initialize Quantum Risk Engine:', error.message);
@@ -72,7 +72,7 @@ class QuantumRiskEngine {
    * Master risk analysis combining all institutional risk measures
    */
   async analyzeComprehensiveRisk(symbol, position, marketData, portfolioContext = null) {
-    console.log(`⚡ Comprehensive risk analysis for ${symbol}...`);
+    //console.log(`⚡ Comprehensive risk analysis for ${symbol}...`);
     
     const riskAnalysis = {
       overallRiskScore: 0,
@@ -159,7 +159,7 @@ class QuantumRiskEngine {
    * Advanced VaR using Monte Carlo simulation and historical methods
    */
   async calculateValueAtRisk(symbol, position, marketData) {
-    console.log(`📊 Calculating Value at Risk for ${symbol}...`);
+    //console.log(`📊 Calculating Value at Risk for ${symbol}...`);
     
     const varAnalysis = {
       historicalVaR: {},
@@ -175,7 +175,7 @@ class QuantumRiskEngine {
       const returns = this.calculateReturns(marketData);
       
       if (returns.length < 30) {
-        console.log('⚠️ Insufficient data for VaR calculation');
+        //console.log('⚠️ Insufficient data for VaR calculation');
         return varAnalysis;
       }
 
@@ -215,7 +215,7 @@ class QuantumRiskEngine {
    * Comprehensive stress testing for extreme market scenarios
    */
   async performStressTests(symbol, position, marketData) {
-    console.log(`🧪 Performing stress tests for ${symbol}...`);
+    //console.log(`🧪 Performing stress tests for ${symbol}...`);
     
     const stressTestResults = {
       scenarios: {},
@@ -285,7 +285,7 @@ class QuantumRiskEngine {
    * Advanced liquidity risk analysis for optimal execution
    */
   async assessLiquidityRisk(symbol, position, marketData) {
-    console.log(`💧 Assessing liquidity risk for ${symbol}...`);
+    //console.log(`💧 Assessing liquidity risk for ${symbol}...`);
     
     const liquidityAnalysis = {
       liquidityScore: 0,
@@ -366,7 +366,7 @@ class QuantumRiskEngine {
    * Advanced correlation risk management for portfolio context
    */
   async analyzeCorrelationRisk(symbol, position, portfolioContext) {
-    console.log(`🔗 Analyzing correlation risk for ${symbol}...`);
+    //console.log(`🔗 Analyzing correlation risk for ${symbol}...`);
     
     const correlationAnalysis = {
       correlationScore: 0,
@@ -380,7 +380,7 @@ class QuantumRiskEngine {
 
     try {
       if (!portfolioContext || !portfolioContext.positions) {
-        console.log('⚠️ No portfolio context provided for correlation analysis');
+        //console.log('⚠️ No portfolio context provided for correlation analysis');
         return correlationAnalysis;
       }
 
@@ -450,7 +450,7 @@ class QuantumRiskEngine {
    * Detects and quantifies behavioral biases in trading decisions
    */
   async assessBehavioralRisk(symbol, position, marketData) {
-    console.log(`🧠 Assessing behavioral risk for ${symbol}...`);
+    //console.log(`🧠 Assessing behavioral risk for ${symbol}...`);
     
     const behavioralAnalysis = {
       behavioralScore: 0,
@@ -521,7 +521,7 @@ class QuantumRiskEngine {
    * Kelly Criterion optimization with risk constraints
    */
   calculateOptimalPositionSize(riskComponents, position, marketData) {
-    console.log('📐 Calculating optimal position size using Kelly Criterion...');
+    //console.log('📐 Calculating optimal position size using Kelly Criterion...');
 
     try {
       // Extract risk metrics

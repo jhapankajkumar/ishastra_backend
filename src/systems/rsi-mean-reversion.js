@@ -42,7 +42,7 @@ class RSIMeanReversion {
      * @returns {Object} - Complete RSI mean reversion analysis result
      */
     analyze(data, options = {}) {
-        console.log(`  📈 RSI-MEAN: Starting RSI Mean Reversion analysis...`);
+        //console.log(`  📈 RSI-MEAN: Starting RSI Mean Reversion analysis...`);
 
         try {
             const { series, indicators } = data;
@@ -55,7 +55,7 @@ class RSIMeanReversion {
             const latest = dailyData[dailyData.length - 1];
             const previous = dailyData[dailyData.length - 2];
             
-            console.log(`  📈 Analyzing ${dailyData.length} days of data, current price: $${latest.close.toFixed(2)}`);
+            //console.log(`  📈 Analyzing ${dailyData.length} days of data, current price: $${latest.close.toFixed(2)}`);
 
             // Phase 1: RSI analysis
             const rsiAnalysis = this.analyzeRSI(dailyData, indicators);
@@ -115,7 +115,7 @@ class RSIMeanReversion {
      * Phase 1: Analyze RSI conditions for mean reversion setup
      */
     analyzeRSI(dailyData, indicators) {
-        console.log(`  📈 Phase 1: Analyzing RSI conditions...`);
+        //console.log(`  📈 Phase 1: Analyzing RSI conditions...`);
         
         const rsi14 = indicators?.base?.rsi14;
         const rsiHistory = indicators?.base?.rsi14_history || [];
@@ -148,7 +148,7 @@ class RSIMeanReversion {
         
         const isValid = isOversold && isNotAlreadyReverted && isRising && isNotOverbought;
         
-        console.log(`  📈 RSI Analysis: Current=${rsi14.toFixed(1)}, Previous=${(previousRSI || 0).toFixed(1)}, Oversold=${isOversold}, Rising=${isRising}`);
+        //console.log(`  📈 RSI Analysis: Current=${rsi14.toFixed(1)}, Previous=${(previousRSI || 0).toFixed(1)}, Oversold=${isOversold}, Rising=${isRising}`);
         
         return {
             isValid,
@@ -179,7 +179,7 @@ class RSIMeanReversion {
      * Phase 2: Identify support levels and proximity
      */
     identifySupport(dailyData, indicators, latest) {
-        console.log(`  📈 Phase 2: Identifying support levels...`);
+        //console.log(`  📈 Phase 2: Identifying support levels...`);
         
         const currentPrice = latest.close;
         const supportLevels = [];
@@ -231,9 +231,9 @@ class RSIMeanReversion {
         
         const hasNearbySupport = validSupports.length > 0;
         
-        console.log(`  📈 Support Analysis: Found ${supportLevels.length} levels, ${validSupports.length} within range`);
+        //console.log(`  📈 Support Analysis: Found ${supportLevels.length} levels, ${validSupports.length} within range`);
         if (bestSupport) {
-            console.log(`  📈 Best Support: ${bestSupport.type} at $${bestSupport.level.toFixed(2)} (${(bestSupport.distance * 100).toFixed(1)}% away)`);
+            //console.log(`  📈 Best Support: ${bestSupport.type} at $${bestSupport.level.toFixed(2)} (${(bestSupport.distance * 100).toFixed(1)}% away)`);
         }
         
         return {
@@ -296,7 +296,7 @@ class RSIMeanReversion {
      * Phase 3: Analyze candle structure for bullish confirmation
      */
     analyzeCandleStructure(latest, previous) {
-        console.log(`  📈 Phase 3: Analyzing candle structure...`);
+        //console.log(`  📈 Phase 3: Analyzing candle structure...`);
         
         const candleRange = latest.high - latest.low;
         const isBullish = latest.close > latest.open;
@@ -315,7 +315,7 @@ class RSIMeanReversion {
         
         const isValid = isBullish && isStrongClose;
         
-        console.log(`  📈 Candle Analysis: Bullish=${isBullish}, ClosePos=${(closePosition * 100).toFixed(0)}%, Body=${(bodyToRangeRatio * 100).toFixed(0)}%`);
+        //console.log(`  📈 Candle Analysis: Bullish=${isBullish}, ClosePos=${(closePosition * 100).toFixed(0)}%, Body=${(bodyToRangeRatio * 100).toFixed(0)}%`);
         
         return {
             isValid,
@@ -343,7 +343,7 @@ class RSIMeanReversion {
      * Phase 4: Generate trading signals
      */
     generateSignals(rsiAnalysis, supportAnalysis, candleAnalysis, latest) {
-        console.log(`  📈 Phase 4: Generating trading signals...`);
+        //console.log(`  📈 Phase 4: Generating trading signals...`);
         
         let signal = 'HOLD';
         let signalStrength = 0;
@@ -413,7 +413,7 @@ class RSIMeanReversion {
      * Phase 5: Calculate risk/reward metrics
      */
     calculateRisk(signalAnalysis, supportAnalysis, latest) {
-        console.log(`  📈 Phase 5: Calculating risk/reward...`);
+        //console.log(`  📈 Phase 5: Calculating risk/reward...`);
         
         const entryPrice = signalAnalysis.entryPrice;
         let stopLoss = 0;
@@ -460,7 +460,7 @@ class RSIMeanReversion {
      * Phase 6: Make final trading decision
      */
     makeFinalDecision(signalAnalysis, riskReward, rsiAnalysis, supportAnalysis, candleAnalysis) {
-        console.log(`  📈 Phase 6: Making final decision...`);
+        //console.log(`  📈 Phase 6: Making final decision...`);
         
         let finalSignal = signalAnalysis.signal;
         let confidence = 0.5;

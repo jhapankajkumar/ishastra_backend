@@ -13,7 +13,7 @@
  */
 async function runMonteCarloAnalysis(marketData, ohlcData, technicalAnalysis, options = {}) {
   try {
-    console.log('🎲 Monte Carlo: Starting probabilistic scenario analysis...');
+    //console.log('🎲 Monte Carlo: Starting probabilistic scenario analysis...');
 
     // Default simulation parameters
     const config = {
@@ -48,10 +48,10 @@ async function runMonteCarloAnalysis(marketData, ohlcData, technicalAnalysis, op
     // Create trading recommendations based on scenarios
     const recommendations = generateScenarioRecommendations(scenarioAnalysis, riskMetrics, probabilityAnalysis);
     
-    console.log(`🎲 Monte Carlo: ${config.simulations} simulations complete`);
-    console.log(`   📊 Bullish Probability: ${(scenarioAnalysis.scenarios.bullish.probability * 100).toFixed(1)}%`);
-    console.log(`   📉 Bearish Probability: ${(scenarioAnalysis.scenarios.bearish.probability * 100).toFixed(1)}%`);
-    console.log(`   ↔️ Sideways Probability: ${(scenarioAnalysis.scenarios.sideways.probability * 100).toFixed(1)}%`);
+    //console.log(`🎲 Monte Carlo: ${config.simulations} simulations complete`);
+    //console.log(`   📊 Bullish Probability: ${(scenarioAnalysis.scenarios.bullish.probability * 100).toFixed(1)}%`);
+    //console.log(`   📉 Bearish Probability: ${(scenarioAnalysis.scenarios.bearish.probability * 100).toFixed(1)}%`);
+    //console.log(`   ↔️ Sideways Probability: ${(scenarioAnalysis.scenarios.sideways.probability * 100).toFixed(1)}%`);
     
     return {
       symbol: marketData.symbol || 'UNKNOWN',

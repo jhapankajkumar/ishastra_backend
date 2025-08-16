@@ -29,12 +29,11 @@ const tradingController = new TradingSystemController();
 router.get('/signal-analysis', async (req, res) => {
   // Convert query parameters to req.body format for compatibility with existing controller
   const symbols = req.query.symbols ? req.query.symbols.split(',').map(s => s.trim().toUpperCase()) : [];
-  const capital = req.query.capital ? parseInt(req.query.capital) : 100000;
   const systems = req.query.systems ? 
     req.query.systems.split(',').map(s => s.trim()) : 
     ['elder_triple_screen', 'sepa_method', 'cup_handle', 'rsi_mean', 'macd_divergence'];
-    
-  req.body = { symbols, capital, systems };
+
+  req.body = { symbols, systems };
   await tradingController.analyzeTradingSystem(req, res);
 });
 

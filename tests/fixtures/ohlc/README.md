@@ -9,8 +9,8 @@ This directory contains comprehensive OHLC (Open, High, Low, Close) test fixture
 const { getFixtureWithTechnicals } = require('./index');
 
 const uptrend = getFixtureWithTechnicals('uptrendHighvol');
-console.log(`Price: $${uptrend.technicals.latest.price}`);
-console.log(`RSI: ${uptrend.technicals.latest.rsi}`);
+//console.log(`Price: $${uptrend.technicals.latest.price}`);
+//console.log(`RSI: ${uptrend.technicals.latest.rsi}`);
 ```
 
 ## 📊 Available Fixtures
@@ -47,7 +47,7 @@ const { buildTechnicalFromOHLC } = require('./buildTechnicalFromOHLC');
 const uptrendFixture = require('./uptrend_highvol.json');
 
 const technicals = buildTechnicalFromOHLC(uptrendFixture);
-console.log(`Latest RSI: ${technicals.latest.rsi}`);
+//console.log(`Latest RSI: ${technicals.latest.rsi}`);
 ```
 
 ### Test Integration
@@ -69,7 +69,7 @@ const { getFixtureNames, getFixtureWithTechnicals } = require('./index');
 
 getFixtureNames().forEach(name => {
   const data = getFixtureWithTechnicals(name);
-  console.log(`${name}: RSI = ${data.technicals.latest.rsi.toFixed(1)}`);
+  //console.log(`${name}: RSI = ${data.technicals.latest.rsi.toFixed(1)}`);
 });
 ```
 

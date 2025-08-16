@@ -70,7 +70,7 @@ function generateSampleData(days = 60) {
 }
 
 // Example usage
-console.log('=== EMA Calculation Example ===\n');
+//console.log('=== EMA Calculation Example ===\n');
 
 // Generate sample data with enough points for 50-day EMA
 const historicalData = generateSampleData(60);
@@ -78,9 +78,9 @@ const historicalData = generateSampleData(60);
 // Calculate technical indicators
 const result = addTechnicalIndicators(historicalData);
 
-console.log('Sample of quotes with EMAs:');
-console.log('Date\t\t\tClose\t\tEMA20\t\tEMA50\t\tSMA20\t\tSMA50');
-console.log('='.repeat(90));
+//console.log('Sample of quotes with EMAs:');
+//console.log('Date\t\t\tClose\t\tEMA20\t\tEMA50\t\tSMA20\t\tSMA50');
+//console.log('='.repeat(90));
 
 // Show last 10 days with indicators
 result.quotes.slice(-10).forEach(quote => {
@@ -91,32 +91,32 @@ result.quotes.slice(-10).forEach(quote => {
   const sma20 = quote.sma20 ? quote.sma20.toFixed(2).padStart(8) : 'N/A'.padStart(8);
   const sma50 = quote.sma50 ? quote.sma50.toFixed(2).padStart(8) : 'N/A'.padStart(8);
   
-  console.log(`${date}\t${close}\t\t${ema20}\t\t${ema50}\t\t${sma20}\t\t${sma50}`);
+  //console.log(`${date}\t${close}\t\t${ema20}\t\t${ema50}\t\t${sma20}\t\t${sma50}`);
 });
 
 // Get latest values
 const latestValues = getLatestEMAValues(historicalData);
-console.log('\n=== Latest EMA Values ===');
-console.log(`Date: ${latestValues.date.toISOString().split('T')[0]}`);
-console.log(`Current Price: $${latestValues.price}`);
-console.log(`20-day EMA: $${latestValues.ema20}`);
-console.log(`50-day EMA: $${latestValues.ema50}`);
-console.log(`20-day SMA: $${latestValues.sma20}`);
-console.log(`50-day SMA: $${latestValues.sma50}`);
+//console.log('\n=== Latest EMA Values ===');
+//console.log(`Date: ${latestValues.date.toISOString().split('T')[0]}`);
+//console.log(`Current Price: $${latestValues.price}`);
+//console.log(`20-day EMA: $${latestValues.ema20}`);
+//console.log(`50-day EMA: $${latestValues.ema50}`);
+//console.log(`20-day SMA: $${latestValues.sma20}`);
+//console.log(`50-day SMA: $${latestValues.sma50}`);
 
 // Trend analysis
 if (latestValues.ema20 && latestValues.ema50) {
-  console.log('\n=== Trend Analysis ===');
+  //console.log('\n=== Trend Analysis ===');
   if (latestValues.ema20 > latestValues.ema50) {
-    console.log('📈 Bullish trend (EMA20 > EMA50)');
+    //console.log('📈 Bullish trend (EMA20 > EMA50)');
   } else {
-    console.log('📉 Bearish trend (EMA20 < EMA50)');
+    //console.log('📉 Bearish trend (EMA20 < EMA50)');
   }
   
   if (latestValues.price > latestValues.ema20) {
-    console.log('🟢 Price above 20-day EMA (Short-term bullish)');
+    //console.log('🟢 Price above 20-day EMA (Short-term bullish)');
   } else {
-    console.log('🔴 Price below 20-day EMA (Short-term bearish)');
+    //console.log('🔴 Price below 20-day EMA (Short-term bearish)');
   }
 }
 

@@ -8,7 +8,7 @@ const prisma = new PrismaClient({
 // Handle connection
 prisma.$connect()
   .then(() => {
-    console.log('✅ Database connected successfully');
+    //console.log('✅ Database connected successfully');
   })
   .catch((err) => {
     console.error('❌ Database connection failed:', err);
@@ -17,9 +17,9 @@ prisma.$connect()
 
 // Graceful shutdown
 process.on('beforeExit', async () => {
-  console.log('🔄 Disconnecting from database...');
+  //console.log('🔄 Disconnecting from database...');
   await prisma.$disconnect();
-  console.log('✅ Database disconnected');
+  //console.log('✅ Database disconnected');
 });
 
 module.exports = prisma;

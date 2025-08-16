@@ -37,7 +37,7 @@ class LeakFreeBacktestingEngine {
     this.monteCarloRuns = options.monteCarloRuns || 1000;
     this.bootstrapBlockSize = options.bootstrapBlockSize || 21;
     
-    console.log('🛡️ Leak-Free Backtesting Engine initialized - Zero look-ahead bias guaranteed');
+    //console.log('🛡️ Leak-Free Backtesting Engine initialized - Zero look-ahead bias guaranteed');
   }
 
   /**
@@ -45,7 +45,7 @@ class LeakFreeBacktestingEngine {
    * Runs walk-forward analysis with proper out-of-sample validation
    */
   async runLeakFreeBacktest(symbol, period = '2y', systems = ['sepa', 'tripleScreen'], historicalData) {
-    console.log(`🎯 Starting Leak-Free Backtest for ${symbol}...`);
+    // //console.log(`🎯 Starting Leak-Free Backtest for ${symbol}...`);
     
     try {
       // Step 1: Get historical data
@@ -53,7 +53,7 @@ class LeakFreeBacktestingEngine {
         throw new Error(`Insufficient data: ${historicalData?.length || 0} points`);
       }
       
-      console.log(`📊 Historical data: ${historicalData.length} bars (${historicalData[0].date} to ${historicalData[historicalData.length-1].date})`);
+      //console.log(`📊 Historical data: ${historicalData.length} bars (${historicalData[0].date} to ${historicalData[historicalData.length-1].date})`);
       
       // Step 2: Run Walk-Forward Analysis
       const walkForwardResults = await this.runWalkForwardAnalysis(
@@ -109,7 +109,7 @@ class LeakFreeBacktestingEngine {
    * Implements proper out-of-sample testing with rolling windows
    */
   async runWalkForwardAnalysis(historicalData, symbol, systems) {
-    console.log(`🚶 Starting Walk-Forward Analysis...`);
+    //console.log(`🚶 Starting Walk-Forward Analysis...`);
     
     const results = {
       windows: [],
@@ -138,7 +138,7 @@ class LeakFreeBacktestingEngine {
     
     // Walk-forward loop
     const totalWindows = Math.floor((historicalData.length - this.walkForwardWindow) / this.walkForwardStep);
-    console.log(`📊 Processing ${totalWindows} walk-forward windows...`);
+    //console.log(`📊 Processing ${totalWindows} walk-forward windows...`);
     
     for (let windowStart = 0; windowStart + this.walkForwardWindow < historicalData.length; windowStart += this.walkForwardStep) {
       const windowEnd = windowStart + this.walkForwardWindow;
@@ -150,7 +150,7 @@ class LeakFreeBacktestingEngine {
       
       if (outOfSampleData.length < 10) break; // Need minimum out-of-sample data
       
-      console.log(`  🔍 Window ${results.windowCount + 1}: In-sample ${inSampleData.length} bars, Out-sample ${outOfSampleData.length} bars`);
+      //console.log(`  🔍 Window ${results.windowCount + 1}: In-sample ${inSampleData.length} bars, Out-sample ${outOfSampleData.length} bars`);
       
       // Run leak-free analysis for this window
       const windowResults = await this.runSingleWindowBacktest(
@@ -174,7 +174,7 @@ class LeakFreeBacktestingEngine {
     // Calculate final system rankings
     this.calculateSystemRankings(results.systemPerformance);
     
-    console.log(`✅ Walk-Forward Analysis complete: ${results.windowCount} windows processed`);
+    //console.log(`✅ Walk-Forward Analysis complete: ${results.windowCount} windows processed`);
     return results;
   }
 
@@ -183,7 +183,7 @@ class LeakFreeBacktestingEngine {
    * This is where the magic happens - NO FUTURE DATA LEAKAGE
    */
   async runSingleWindowBacktest(inSampleData, outOfSampleData, symbol, systems, windowIndex) {
-    console.log(`    🔬 Running leak-free analysis for window ${windowIndex + 1}...`);
+    //console.log(`    🔬 Running leak-free analysis for window ${windowIndex + 1}...`);
     
     const results = {
       windowIndex,
@@ -220,7 +220,7 @@ class LeakFreeBacktestingEngine {
    * The heart of the system - ensures NO future data is used
    */
   async generateLeakFreeSignals(data, symbol, systems, results, phase) {
-    console.log(`      🎯 Generating ${phase} signals (${data.length} bars)...`);
+    //console.log(`      🎯 Generating ${phase} signals (${data.length} bars)...`);
     
     const positions = []; // Track open positions
     const trades = []; // Completed trades
@@ -277,7 +277,7 @@ class LeakFreeBacktestingEngine {
       results.outOfSampleTrades = trades;
     }
     
-    console.log(`      ✅ ${phase} complete: ${trades.length} trades generated`);
+    //console.log(`      ✅ ${phase} complete: ${trades.length} trades generated`);
   }
 
   /**
@@ -347,7 +347,7 @@ class LeakFreeBacktestingEngine {
    */
   async processSystemSignal(systemName, analysis, currentBar, allData, currentIndex, positions, trades, results, phase) {
     if (!analysis || !analysis.signals) {
-      console.log(`⚠️ No analysis or signals available for ${systemName}`);
+      //console.log(`⚠️ No analysis or signals available for ${systemName}`);
       return;
     }
     
@@ -412,7 +412,7 @@ class LeakFreeBacktestingEngine {
     
     // Final fallback - use overall signal
     if (!systemSignal && analysis.signals.overall && analysis.signals.overall !== 'NEUTRAL') {
-      console.log(`⚠️ Using overall signal as fallback for ${systemName}`);
+      //console.log(`⚠️ Using overall signal as fallback for ${systemName}`);
       systemSignal = {
         signal: analysis.signals.overall,
         confidence: analysis.signals.strength || 0.5,
@@ -422,13 +422,13 @@ class LeakFreeBacktestingEngine {
     }
     
     if (!systemSignal) {
-      console.log(`⚠️ System '${systemName}' not found in any variation`);
-      console.log(`   Available systems:`, analysis.signals.systems ? Object.keys(analysis.signals.systems) : 'None');
-      console.log(`   Overall signal available:`, analysis.signals.overall || 'None');
+      //console.log(`⚠️ System '${systemName}' not found in any variation`);
+      //console.log(`   Available systems:`, analysis.signals.systems ? Object.keys(analysis.signals.systems) : 'None');
+      //console.log(`   Overall signal available:`, analysis.signals.overall || 'None');
       return;
     }
     
-    console.log(`✅ Found signal for ${systemName} -> ${foundSystemName}: ${systemSignal.signal} (confidence: ${systemSignal.confidence})`);
+    //console.log(`✅ Found signal for ${systemName} -> ${foundSystemName}: ${systemSignal.signal} (confidence: ${systemSignal.confidence})`);
     
     // ✅ STEP 1: APPLY SIGNAL DELAY
     const signalBar = currentIndex + this.signalDelayBars;
@@ -463,7 +463,7 @@ class LeakFreeBacktestingEngine {
           foundSystemName
         }
       );
-      console.log(`🔥 LONG position opened: ${systemName} at ${executionPrice} (${phase})`);
+      //console.log(`🔥 LONG position opened: ${systemName} at ${executionPrice} (${phase})`);
     } else if (shouldExecute && (systemSignal.signal === 'SELL' || systemSignal.signal === 'STRONG_SELL') && this.canOpenPosition(positions, 'SHORT')) {
       this.openPosition(
         positions,
@@ -479,7 +479,7 @@ class LeakFreeBacktestingEngine {
           foundSystemName
         }
       );
-      console.log(`🔥 SHORT position opened: ${systemName} at ${executionPrice} (${phase})`);
+      //console.log(`🔥 SHORT position opened: ${systemName} at ${executionPrice} (${phase})`);
     }
     
     // Store signal for analysis (even if not executed)
@@ -693,10 +693,10 @@ class LeakFreeBacktestingEngine {
    * ✅ MONTE CARLO ANALYSIS
    */
   async runMonteCarloAnalysis(historicalData, symbol, bestSystemName, actualTrades) {
-    console.log(`🎲 Running Monte Carlo Analysis (${this.monteCarloRuns} simulations)...`);
+    //console.log(`🎲 Running Monte Carlo Analysis (${this.monteCarloRuns} simulations)...`);
     
     if (actualTrades.length < 30) {
-      console.warn('⚠️ Insufficient trades for Monte Carlo analysis');
+      // console.warn('⚠️ Insufficient trades for Monte Carlo analysis');
       return null;
     }
     

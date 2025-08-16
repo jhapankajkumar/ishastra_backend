@@ -37,17 +37,17 @@ class SentimentAnalysisService extends EventEmitter {
         enableYahooFinance: true,
         maxArticlesPerSource: 10
       });
-      console.log('🆓 Real news sentiment service enabled (Google News + Yahoo Finance)');
+      //console.log('🆓 Real news sentiment service enabled (Google News + Yahoo Finance)');
     }
     
     // Initialize sentiment analysis components
     this.initializeSentimentAnalysis();
     
-    console.log('📰 Sentiment Analysis Service initialized');
-    console.log(`   News monitoring: ${this.config.enableNews ? 'Enabled' : 'Disabled'}`);
-    console.log(`   Real news APIs: ${this.config.enableRealNews ? 'Enabled (FREE)' : 'Disabled'}`);
-    console.log(`   Social monitoring: ${this.config.enableSocial ? 'Enabled' : 'Disabled'}`);
-    console.log(`   Sentiment threshold: ${this.config.sentimentThreshold}`);
+    //console.log('📰 Sentiment Analysis Service initialized');
+    //console.log(`   News monitoring: ${this.config.enableNews ? 'Enabled' : 'Disabled'}`);
+    //console.log(`   Real news APIs: ${this.config.enableRealNews ? 'Enabled (FREE)' : 'Disabled'}`);
+    //console.log(`   Social monitoring: ${this.config.enableSocial ? 'Enabled' : 'Disabled'}`);
+    //console.log(`   Sentiment threshold: ${this.config.sentimentThreshold}`);
   }
 
   /**
@@ -83,10 +83,10 @@ class SentimentAnalysisService extends EventEmitter {
       'contract': 1.3
     };
     
-    console.log('🧠 Sentiment analysis lexicons initialized');
-    console.log(`   Positive keywords: ${this.positiveLexicon.size}`);
-    console.log(`   Negative keywords: ${this.negativeLexicon.size}`);
-    console.log(`   Impact multipliers: ${Object.keys(this.impactMultipliers).length}`);
+    //console.log('🧠 Sentiment analysis lexicons initialized');
+    //console.log(`   Positive keywords: ${this.positiveLexicon.size}`);
+    //console.log(`   Negative keywords: ${this.negativeLexicon.size}`);
+    //console.log(`   Impact multipliers: ${Object.keys(this.impactMultipliers).length}`);
   }
 
   /**
@@ -94,7 +94,7 @@ class SentimentAnalysisService extends EventEmitter {
    */
   async analyzeSentiment(symbol, options = {}) {
     try {
-      console.log(`📰 Analyzing sentiment for ${symbol}...`);
+      //console.log(`📰 Analyzing sentiment for ${symbol}...`);
       
       const analysis = {
         symbol,
@@ -132,7 +132,7 @@ class SentimentAnalysisService extends EventEmitter {
       // Emit sentiment analysis event
       this.emit('sentimentAnalyzed', { symbol, analysis });
 
-      console.log(`✅ Sentiment analysis complete for ${symbol}: ${analysis.overall.score.toFixed(3)} (${analysis.recommendation})`);
+      //console.log(`✅ Sentiment analysis complete for ${symbol}: ${analysis.overall.score.toFixed(3)} (${analysis.recommendation})`);
       return analysis;
 
     } catch (error) {
@@ -148,13 +148,13 @@ class SentimentAnalysisService extends EventEmitter {
     try {
       // Try to use real news first if enabled
       if (this.config.enableRealNews && this.freeNewsService) {
-        console.log(`  🆓 Fetching REAL news sentiment for ${symbol}...`);
+        //console.log(`  🆓 Fetching REAL news sentiment for ${symbol}...`);
         
         try {
           const realNewsSentiment = await this.freeNewsService.getNewsSentiment(symbol);
           
           if (realNewsSentiment && !realNewsSentiment.error && realNewsSentiment.articles > 0) {
-            console.log(`  ✅ Real news: ${realNewsSentiment.sentiment} (${realNewsSentiment.score.toFixed(3)}) from ${realNewsSentiment.articles} articles`);
+            //console.log(`  ✅ Real news: ${realNewsSentiment.sentiment} (${realNewsSentiment.score.toFixed(3)}) from ${realNewsSentiment.articles} articles`);
             
             return {
               score: realNewsSentiment.score,
@@ -167,7 +167,7 @@ class SentimentAnalysisService extends EventEmitter {
               timestamp: realNewsSentiment.timestamp
             };
           } else {
-            console.log(`  ⚠️  Real news failed or no articles found, falling back to simulated...`);
+            //console.log(`  ⚠️  Real news failed or no articles found, falling back to simulated...`);
           }
         } catch (realNewsError) {
           console.warn(`  ⚠️  Real news error: ${realNewsError.message}, falling back to simulated...`);
@@ -175,7 +175,7 @@ class SentimentAnalysisService extends EventEmitter {
       }
       
       // Fallback to simulated news sentiment
-      console.log(`  🎭 Using simulated news sentiment for ${symbol}...`);
+      //console.log(`  🎭 Using simulated news sentiment for ${symbol}...`);
       return await this.analyzeSimulatedNewsSentiment(symbol, options);
 
     } catch (error) {
@@ -243,7 +243,7 @@ class SentimentAnalysisService extends EventEmitter {
     newsAnalysis.score += (Math.random() - 0.5) * 0.2;
     newsAnalysis.score = Math.max(-1, Math.min(1, newsAnalysis.score)); // Clamp to [-1, 1]
 
-    console.log(`  📊 Simulated news sentiment: ${newsAnalysis.score.toFixed(3)} (${newsAnalysis.articles} articles)`);
+    //console.log(`  📊 Simulated news sentiment: ${newsAnalysis.score.toFixed(3)} (${newsAnalysis.articles} articles)`);
     return newsAnalysis;
   }
 
@@ -291,7 +291,7 @@ class SentimentAnalysisService extends EventEmitter {
       socialAnalysis.platforms.reddit.posts = Math.floor(socialAnalysis.mentions * 0.3);
       socialAnalysis.platforms.reddit.score = socialAnalysis.score + (Math.random() - 0.5) * 0.3;
 
-      console.log(`  💬 Social sentiment: ${socialAnalysis.score.toFixed(3)} (${socialAnalysis.mentions} mentions)`);
+      //console.log(`  💬 Social sentiment: ${socialAnalysis.score.toFixed(3)} (${socialAnalysis.mentions} mentions)`);
       return socialAnalysis;
 
     } catch (error) {
@@ -426,7 +426,7 @@ class SentimentAnalysisService extends EventEmitter {
         }
       };
 
-      console.log(`📊 Signal enhanced for ${signal.symbol}: ${baseConfidence}% → ${enhancedConfidence.toFixed(1)}% (${sentimentImpact})`);
+      //console.log(`📊 Signal enhanced for ${signal.symbol}: ${baseConfidence}% → ${enhancedConfidence.toFixed(1)}% (${sentimentImpact})`);
       return enhancedSignal;
 
     } catch (error) {
@@ -530,7 +530,7 @@ class SentimentAnalysisService extends EventEmitter {
     if (cached) {
       const ageMinutes = (Date.now() - cached.timestamp.getTime()) / (1000 * 60);
       if (ageMinutes <= maxAgeMinutes) {
-        console.log(`📊 Using cached sentiment for ${symbol} (${ageMinutes.toFixed(1)} min old)`);
+        //console.log(`📊 Using cached sentiment for ${symbol} (${ageMinutes.toFixed(1)} min old)`);
         return cached;
       }
     }
@@ -542,7 +542,7 @@ class SentimentAnalysisService extends EventEmitter {
    * Batch analyze sentiment for multiple symbols
    */
   async batchAnalyzeSentiment(symbols, options = {}) {
-    console.log(`📰 Batch analyzing sentiment for ${symbols.length} symbols...`);
+    //console.log(`📰 Batch analyzing sentiment for ${symbols.length} symbols...`);
     
     const results = {};
     const promises = symbols.map(async symbol => {
@@ -557,7 +557,7 @@ class SentimentAnalysisService extends EventEmitter {
     
     await Promise.allSettled(promises);
     
-    console.log(`✅ Batch sentiment analysis complete: ${Object.keys(results).length} symbols processed`);
+    //console.log(`✅ Batch sentiment analysis complete: ${Object.keys(results).length} symbols processed`);
     return results;
   }
 

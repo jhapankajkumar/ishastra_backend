@@ -19,7 +19,7 @@
  */
 function assessTailRisk(marketData, ohlcData, sectorData = null) {
   try {
-    console.log(`🛡️ Tail Risk Protection: Analyzing market conditions...`);
+    //console.log(`🛡️ Tail Risk Protection: Analyzing market conditions...`);
     
     const currentPrice = marketData.currentPrice || marketData.latestPrice || 0;
     const volume = marketData.volume || 0;
@@ -80,9 +80,9 @@ function assessTailRisk(marketData, ohlcData, sectorData = null) {
       contagion: contagionRisk
     });
     
-    console.log(`🛡️ Tail Risk Score: ${riskScore.overallScore}/100 (${riskScore.riskLevel})`);
-    console.log(`   📊 Protection Level: ${protectionPlan.protectionLevel}`);
-    console.log(`   📉 Position Size Multiplier: ${protectionPlan.positionSizeMultiplier}x`);
+    //console.log(`🛡️ Tail Risk Score: ${riskScore.overallScore}/100 (${riskScore.riskLevel})`);
+    //console.log(`   📊 Protection Level: ${protectionPlan.protectionLevel}`);
+    //console.log(`   📉 Position Size Multiplier: ${protectionPlan.positionSizeMultiplier}x`);
     
     return {
       timestamp: new Date().toISOString(),

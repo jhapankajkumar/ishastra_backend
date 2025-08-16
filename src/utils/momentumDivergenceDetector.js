@@ -8,7 +8,7 @@
  * Catches price/momentum divergences that signal potential reversals
  */
 function detectMomentumDivergences(ohlcData, technicalIndicators) {
-  console.log(`🔄 Divergence Detection: Analyzing ${ohlcData.length} data points...`);
+  //console.log(`🔄 Divergence Detection: Analyzing ${ohlcData.length} data points...`);
   
   if (!ohlcData || ohlcData.length < 20) {
     return { divergences: [], signal: 'NEUTRAL', confidence: 0 };
@@ -37,7 +37,7 @@ function detectMomentumDivergences(ohlcData, technicalIndicators) {
   // Calculate overall divergence signal
   const divergenceSignal = calculateDivergenceSignal(divergences);
   
-  console.log(`📊 Divergences Found: ${divergences.length} (${divergenceSignal.signal} - ${(divergenceSignal.confidence * 100).toFixed(1)}%)`);
+  //console.log(`📊 Divergences Found: ${divergences.length} (${divergenceSignal.signal} - ${(divergenceSignal.confidence * 100).toFixed(1)}%)`);
   
   return {
     divergences,

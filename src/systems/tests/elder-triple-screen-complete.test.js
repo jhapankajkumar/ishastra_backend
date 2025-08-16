@@ -72,7 +72,7 @@ function mockGateEngine(analysisContext) {
 
 // Test runner
 async function runElderTripleScreenTests() {
-  console.log('🚀 Starting Elder\'s Triple Screen Complete Test Suite...\n');
+  //console.log('🚀 Starting Elder\'s Triple Screen Complete Test Suite...\n');
 
   let passedTests = 0;
   let totalTests = 0;
@@ -83,7 +83,7 @@ async function runElderTripleScreenTests() {
   const systemAnalyzer = new SingleSystemAnalyzer(mockGateEngine);
 
   // ===== PHASE 1 TESTS: Data Generation =====
-  console.log('📊 PHASE 1: Data Generation Tests');
+  //console.log('📊 PHASE 1: Data Generation Tests');
   
   // Test 1: Generate Elder's Triple Screen data
   totalTests++;
@@ -97,21 +97,21 @@ async function runElderTripleScreenTests() {
     });
 
     if (tickerData && tickerData.series && tickerData.indicators) {
-      console.log('✅ Test 1: Data generation successful');
-      console.log(`   📈 Generated ${tickerData.series.daily.length} daily bars`);
-      console.log(`   📊 Generated ${tickerData.series.weekly.length} weekly bars`);
-      console.log(`   ⏰ Generated ${tickerData.series.intraday.length} intraday bars`);
-      console.log(`   🔢 Elder indicators: ${Object.keys(tickerData.indicators.triple_screen).join(', ')}\n`);
+      //console.log('✅ Test 1: Data generation successful');
+      //console.log(`   📈 Generated ${tickerData.series.daily.length} daily bars`);
+      //console.log(`   📊 Generated ${tickerData.series.weekly.length} weekly bars`);
+      //console.log(`   ⏰ Generated ${tickerData.series.intraday.length} intraday bars`);
+      //console.log(`   🔢 Elder indicators: ${Object.keys(tickerData.indicators.triple_screen).join(', ')}\n`);
       passedTests++;
     } else {
       throw new Error('Missing required data or indicators');
     }
   } catch (error) {
-    console.log(`❌ Test 1 Failed: ${error.message}\n`);
+    //console.log(`❌ Test 1 Failed: ${error.message}\n`);
   }
 
   // ===== PHASE 2 TESTS: Elder's Triple Screen Analysis =====
-  console.log('🎯 PHASE 2: Elder\'s Triple Screen Analysis Tests');
+  //console.log('🎯 PHASE 2: Elder\'s Triple Screen Analysis Tests');
 
   // Generate test data for remaining tests
   const bullishData = dataGenerator.generate({
@@ -141,17 +141,17 @@ async function runElderTripleScreenTests() {
     const bullishAnalysis = elderSystem.analyze(bullishData);
     
     if (bullishAnalysis && ['BUY', 'WATCH'].includes(bullishAnalysis.decision)) {
-      console.log('✅ Test 2: Bullish analysis successful');
-      console.log(`   📊 Decision: ${bullishAnalysis.decision}`);
-      console.log(`   📈 Confidence: ${(bullishAnalysis.confidence * 100).toFixed(1)}%`);
-      console.log(`   🎯 Signal Quality: ${bullishAnalysis.signalQuality.grade} (${bullishAnalysis.signalQuality.percentage}%)`);
-      console.log(`   💰 Risk/Reward: ${bullishAnalysis.riskReward.riskReward}`);
+      //console.log('✅ Test 2: Bullish analysis successful');
+      //console.log(`   📊 Decision: ${bullishAnalysis.decision}`);
+      //console.log(`   📈 Confidence: ${(bullishAnalysis.confidence * 100).toFixed(1)}%`);
+      //console.log(`   🎯 Signal Quality: ${bullishAnalysis.signalQuality.grade} (${bullishAnalysis.signalQuality.percentage}%)`);
+      //console.log(`   💰 Risk/Reward: ${bullishAnalysis.riskReward.riskReward}`);
       passedTests++;
     } else {
       throw new Error(`Bullish scenario returned: ${bullishAnalysis.decision} (expected BUY or WATCH)`);
     }
   } catch (error) {
-    console.log(`❌ Test 2 Failed: ${error.message}`);
+    //console.log(`❌ Test 2 Failed: ${error.message}`);
   }
 
   // Test 3: Elder's system analysis - Bearish scenario  
@@ -160,16 +160,16 @@ async function runElderTripleScreenTests() {
     const bearishAnalysis = elderSystem.analyze(bearishData);
     
     if (bearishAnalysis && ['SELL', 'WATCH'].includes(bearishAnalysis.decision)) {
-      console.log('✅ Test 3: Bearish analysis successful');
-      console.log(`   📊 Decision: ${bearishAnalysis.decision}`);
-      console.log(`   📉 Confidence: ${(bearishAnalysis.confidence * 100).toFixed(1)}%`);
-      console.log(`   🎯 Signal Quality: ${bearishAnalysis.signalQuality.grade} (${bearishAnalysis.signalQuality.percentage}%)`);
+      //console.log('✅ Test 3: Bearish analysis successful');
+      //console.log(`   📊 Decision: ${bearishAnalysis.decision}`);
+      //console.log(`   📉 Confidence: ${(bearishAnalysis.confidence * 100).toFixed(1)}%`);
+      //console.log(`   🎯 Signal Quality: ${bearishAnalysis.signalQuality.grade} (${bearishAnalysis.signalQuality.percentage}%)`);
       passedTests++;
     } else {
       throw new Error(`Bearish scenario returned: ${bearishAnalysis.decision} (expected SELL or WATCH)`);
     }
   } catch (error) {
-    console.log(`❌ Test 3 Failed: ${error.message}`);
+    //console.log(`❌ Test 3 Failed: ${error.message}`);
   }
 
   // Test 4: Screen validation
@@ -179,22 +179,22 @@ async function runElderTripleScreenTests() {
     const screens = analysis.screens;
     
     if (screens && screens.screen1 && screens.screen2 && screens.screen3) {
-      console.log('✅ Test 4: All three screens executed');
-      console.log(`   📊 Screen 1 (Weekly): ${screens.screen1.status}`);
-      console.log(`   📊 Screen 2 (Daily): ${screens.screen2.status}`);  
-      console.log(`   📊 Screen 3 (Intraday): ${screens.screen3.status}`);
+      //console.log('✅ Test 4: All three screens executed');
+      //console.log(`   📊 Screen 1 (Weekly): ${screens.screen1.status}`);
+      //console.log(`   📊 Screen 2 (Daily): ${screens.screen2.status}`);  
+      //console.log(`   📊 Screen 3 (Intraday): ${screens.screen3.status}`);
       passedTests++;
     } else {
       throw new Error('Missing screen analysis');
     }
   } catch (error) {
-    console.log(`❌ Test 4 Failed: ${error.message}`);
+    //console.log(`❌ Test 4 Failed: ${error.message}`);
   }
 
-  console.log('');
+  //console.log('');
 
   // ===== PHASE 3 & 4 TESTS: Gate Engine Integration =====
-  console.log('🚪 PHASE 3-4: Gate Engine Integration Tests');
+  //console.log('🚪 PHASE 3-4: Gate Engine Integration Tests');
 
   // Test 5: Complete end-to-end analysis
   totalTests++;
@@ -206,20 +206,20 @@ async function runElderTripleScreenTests() {
     );
 
     if (endToEndResult && endToEndResult.finalDecision) {
-      console.log('✅ Test 5: End-to-end analysis successful');
-      console.log(`   🎯 System Decision: ${endToEndResult.system.decision}`);
-      console.log(`   🚪 Gate Decision: ${endToEndResult.gateEngine.finalDecision.action}`);
-      console.log(`   ⚖️ Final Decision: ${endToEndResult.finalDecision.action}`);
-      console.log(`   📊 Final Confidence: ${(endToEndResult.finalDecision.confidence * 100).toFixed(1)}%`);
+      //console.log('✅ Test 5: End-to-end analysis successful');
+      //console.log(`   🎯 System Decision: ${endToEndResult.system.decision}`);
+      //console.log(`   🚪 Gate Decision: ${endToEndResult.gateEngine.finalDecision.action}`);
+      //console.log(`   ⚖️ Final Decision: ${endToEndResult.finalDecision.action}`);
+      //console.log(`   📊 Final Confidence: ${(endToEndResult.finalDecision.confidence * 100).toFixed(1)}%`);
       if (endToEndResult.gateEngine.positionSizing && endToEndResult.gateEngine.positionSizing.recommendedShares) {
-        console.log(`   💰 Position Size: ${endToEndResult.gateEngine.positionSizing.recommendedShares} shares`);
+        //console.log(`   💰 Position Size: ${endToEndResult.gateEngine.positionSizing.recommendedShares} shares`);
       }
       passedTests++;
     } else {
       throw new Error('End-to-end analysis failed');
     }
   } catch (error) {
-    console.log(`❌ Test 5 Failed: ${error.message}`);
+    //console.log(`❌ Test 5 Failed: ${error.message}`);
   }
 
   // Test 6: Gate engine overrides system decision
@@ -239,13 +239,13 @@ async function runElderTripleScreenTests() {
       { capital: 50000 }
     );
 
-    console.log('✅ Test 6: Gate engine override test completed');
-    console.log(`   🎯 System wanted: ${overrideResult.system.decision}`);
-    console.log(`   🚪 Gate decided: ${overrideResult.gateEngine.finalDecision.action}`);
-    console.log(`   ⚖️ Final result: ${overrideResult.finalDecision.action}`);
+    //console.log('✅ Test 6: Gate engine override test completed');
+    //console.log(`   🎯 System wanted: ${overrideResult.system.decision}`);
+    //console.log(`   🚪 Gate decided: ${overrideResult.gateEngine.finalDecision.action}`);
+    //console.log(`   ⚖️ Final result: ${overrideResult.finalDecision.action}`);
     passedTests++;
   } catch (error) {
-    console.log(`❌ Test 6 Failed: ${error.message}`);
+    //console.log(`❌ Test 6 Failed: ${error.message}`);
   }
 
   // Test 7: Risk management integration
@@ -261,22 +261,22 @@ async function runElderTripleScreenTests() {
     );
 
     if (riskResult && riskResult.gateEngine.positionSizing) {
-      console.log('✅ Test 7: Risk management integration successful');
-      console.log(`   💰 Position sizing applied: ${riskResult.gateEngine.positionSizing.sizingReason}`);
-      console.log(`   📊 Portfolio %: ${riskResult.gateEngine.positionSizing.percentOfPortfolio}%`);
+      //console.log('✅ Test 7: Risk management integration successful');
+      //console.log(`   💰 Position sizing applied: ${riskResult.gateEngine.positionSizing.sizingReason}`);
+      //console.log(`   📊 Portfolio %: ${riskResult.gateEngine.positionSizing.percentOfPortfolio}%`);
       passedTests++;
     } else {
-      console.log('✅ Test 7: Risk management integration successful (no position due to AVOID signal)');
+      //console.log('✅ Test 7: Risk management integration successful (no position due to AVOID signal)');
       passedTests++;
     }
   } catch (error) {
-    console.log(`❌ Test 7 Failed: ${error.message}`);
+    //console.log(`❌ Test 7 Failed: ${error.message}`);
   }
 
-  console.log('');
+  //console.log('');
 
   // ===== PERFORMANCE AND EDGE CASE TESTS =====
-  console.log('🔍 PERFORMANCE AND EDGE CASE TESTS');
+  //console.log('🔍 PERFORMANCE AND EDGE CASE TESTS');
 
   // Test 8: Invalid data handling
   totalTests++;
@@ -285,14 +285,14 @@ async function runElderTripleScreenTests() {
     const invalidResult = elderSystem.analyze(invalidData);
     
     if (invalidResult.decision === 'AVOID' && invalidResult.error) {
-      console.log('✅ Test 8: Invalid data handled gracefully');
-      console.log(`   ❌ Error code: ${invalidResult.error}`);
+      //console.log('✅ Test 8: Invalid data handled gracefully');
+      //console.log(`   ❌ Error code: ${invalidResult.error}`);
       passedTests++;
     } else {
       throw new Error('Should have returned AVOID for invalid data');
     }
   } catch (error) {
-    console.log(`❌ Test 8 Failed: ${error.message}`);
+    //console.log(`❌ Test 8 Failed: ${error.message}`);
   }
 
   // Test 9: Multiple scenario comparison
@@ -307,13 +307,13 @@ async function runElderTripleScreenTests() {
       scenarioResults.push({ scenario, decision: result.finalDecision.action, confidence: result.finalDecision.confidence });
     }
 
-    console.log('✅ Test 9: Multi-scenario comparison completed');
+    //console.log('✅ Test 9: Multi-scenario comparison completed');
     scenarioResults.forEach(r => {
-      console.log(`   📊 ${r.scenario}: ${r.decision} (${(r.confidence * 100).toFixed(1)}%)`);
+      //console.log(`   📊 ${r.scenario}: ${r.decision} (${(r.confidence * 100).toFixed(1)}%)`);
     });
     passedTests++;
   } catch (error) {
-    console.log(`❌ Test 9 Failed: ${error.message}`);
+    //console.log(`❌ Test 9 Failed: ${error.message}`);
   }
 
   // Test 10: Data quality assessment
@@ -321,37 +321,37 @@ async function runElderTripleScreenTests() {
   try {
     const analysis = elderSystem.analyze(bullishData);
     if (analysis.dataQuality && analysis.dataQuality.overall) {
-      console.log('✅ Test 10: Data quality assessment working');
-      console.log(`   📊 Overall Quality: ${analysis.dataQuality.overall}`);
-      console.log(`   📈 Weekly: ${analysis.dataQuality.weekly}, Daily: ${analysis.dataQuality.daily}, Intraday: ${analysis.dataQuality.intraday}`);
+      //console.log('✅ Test 10: Data quality assessment working');
+      //console.log(`   📊 Overall Quality: ${analysis.dataQuality.overall}`);
+      //console.log(`   📈 Weekly: ${analysis.dataQuality.weekly}, Daily: ${analysis.dataQuality.daily}, Intraday: ${analysis.dataQuality.intraday}`);
       passedTests++;
     } else {
       throw new Error('Data quality assessment missing');
     }
   } catch (error) {
-    console.log(`❌ Test 10 Failed: ${error.message}`);
+    //console.log(`❌ Test 10 Failed: ${error.message}`);
   }
 
-  console.log('');
+  //console.log('');
 
   // ===== FINAL RESULTS =====
-  console.log('📊 TEST SUITE RESULTS');
-  console.log('='.repeat(50));
-  console.log(`✅ Tests Passed: ${passedTests}/${totalTests}`);
-  console.log(`📊 Success Rate: ${((passedTests / totalTests) * 100).toFixed(1)}%`);
+  //console.log('📊 TEST SUITE RESULTS');
+  //console.log('='.repeat(50));
+  //console.log(`✅ Tests Passed: ${passedTests}/${totalTests}`);
+  //console.log(`📊 Success Rate: ${((passedTests / totalTests) * 100).toFixed(1)}%`);
 
   if (passedTests === totalTests) {
-    console.log('🎉 ALL TESTS PASSED! Elder\'s Triple Screen system is ready for production!');
+    //console.log('🎉 ALL TESTS PASSED! Elder\'s Triple Screen system is ready for production!');
   } else {
-    console.log(`⚠️  ${totalTests - passedTests} tests need attention before production deployment.`);
+    //console.log(`⚠️  ${totalTests - passedTests} tests need attention before production deployment.`);
   }
 
-  console.log('');
-  console.log('🎯 SYSTEM READY FOR:');
-  console.log('   ✅ Live market data integration');
-  console.log('   ✅ Real gate engine integration');
-  console.log('   ✅ Production deployment');
-  console.log('   ✅ Next system implementation (MACD Signal Cross, etc.)');
+  //console.log('');
+  //console.log('🎯 SYSTEM READY FOR:');
+  //console.log('   ✅ Live market data integration');
+  //console.log('   ✅ Real gate engine integration');
+  //console.log('   ✅ Production deployment');
+  //console.log('   ✅ Next system implementation (MACD Signal Cross, etc.)');
   
   return { passed: passedTests, total: totalTests, successRate: (passedTests / totalTests) * 100 };
 }

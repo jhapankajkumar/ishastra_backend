@@ -38,7 +38,7 @@ class SingleSystemAnalyzer {
    */
   async analyzeSystem(systemId, systemData, analysisContext = {}, options = {}) {
     try {
-      console.log(`🎯 Single System Analysis: ${systemId}`);
+      //console.log(`🎯 Single System Analysis: ${systemId}`);
       
       // Phase 2: Execute Trading System Analysis
       const systemAnalysis = this.executeSystemAnalysis(systemId, systemData, options);
@@ -56,7 +56,7 @@ class SingleSystemAnalyzer {
       // Phase 5: Combine System + Gate Results
       const finalResult = this.combineFinalResult(systemAnalysis, gateEngineResult, systemData);
       
-      console.log(`✅ ${systemId}: ${finalResult.finalDecision.action} (${(finalResult.finalDecision.confidence * 100).toFixed(1)}% confidence)`);
+      //console.log(`✅ ${systemId}: ${finalResult.finalDecision.action} (${(finalResult.finalDecision.confidence * 100).toFixed(1)}% confidence)`);
       
       return finalResult;
 
@@ -75,11 +75,11 @@ class SingleSystemAnalyzer {
       throw new Error(`Unknown trading system: ${systemId}`);
     }
 
-    console.log(`📊 Executing ${system.name} analysis...`);
+    //console.log(`📊 Executing ${system.name} analysis...`);
     const result = system.analyze(tickerData, options);
     
-    console.log(`   📈 System Decision: ${result.decision} (${(result.confidence * 100).toFixed(1)}% confidence)`);
-    console.log(`   🎯 Signal Quality: ${result.signalQuality?.grade || 'N/A'} (${result.signalQuality?.percentage || 0}%)`);
+    //console.log(`   📈 System Decision: ${result.decision} (${(result.confidence * 100).toFixed(1)}% confidence)`);
+    //console.log(`   🎯 Signal Quality: ${result.signalQuality?.grade || 'N/A'} (${result.signalQuality?.percentage || 0}%)`);
     
     return result;
   }
@@ -98,11 +98,11 @@ class SingleSystemAnalyzer {
     // Inject proven signals into analysis context
     analysisContext.provenSignals = provenSignals;
     
-    console.log(`🔧 Preparing gate engine context for ${analysisContext.symbol}`);
-    console.log(`   📊 Available data: Technical=${!!analysisContext.technical}, Backtest=${!!analysisContext.backtest}`);
-    console.log(`   🎲 Monte Carlo=${!!analysisContext.monteCarlo}, Microstructure=${!!analysisContext.microstructure}`);
-    console.log(`   🛡️ Tail Risk=${!!analysisContext.tailRisk}, Sentiment=${!!analysisContext.sentiment}`);
-    console.log(`   🎯 Proven signals: ${provenSignals.length} from ${systemAnalysis.system}`);
+    //console.log(`🔧 Preparing gate engine context for ${analysisContext.symbol}`);
+    //console.log(`   📊 Available data: Technical=${!!analysisContext.technical}, Backtest=${!!analysisContext.backtest}`);
+    //console.log(`   🎲 Monte Carlo=${!!analysisContext.monteCarlo}, Microstructure=${!!analysisContext.microstructure}`);
+    //console.log(`   🛡️ Tail Risk=${!!analysisContext.tailRisk}, Sentiment=${!!analysisContext.sentiment}`);
+    //console.log(`   🎯 Proven signals: ${provenSignals.length} from ${systemAnalysis.system}`);
     
     return analysisContext;
   }
@@ -188,7 +188,7 @@ class SingleSystemAnalyzer {
    */
   async executeGateEngine(context) {
     const signal = context.conflictResolution?.resolvedSignal || 'HOLD';
-    console.log(`🚪 Executing Gate Engine with ${signal} signal...`);
+    //console.log(`🚪 Executing Gate Engine with ${signal} signal...`);
     
     if (!this.gateEngine) {
       throw new Error('Gate engine function not provided to analyzer');
@@ -197,8 +197,8 @@ class SingleSystemAnalyzer {
     // Call your existing generateExpertAIDecision function
     const result = await this.gateEngine(context);
     
-    console.log(`   🚪 Gate Result: ${result.finalDecision?.action || 'N/A'} (${((result.finalDecision?.confidence || 0) * 100).toFixed(1)}% confidence)`);
-    console.log(`   🚪 Trade Readiness: ${result.tradeReadiness?.status || 'N/A'}`);
+    //console.log(`   🚪 Gate Result: ${result.finalDecision?.action || 'N/A'} (${((result.finalDecision?.confidence || 0) * 100).toFixed(1)}% confidence)`);
+    //console.log(`   🚪 Trade Readiness: ${result.tradeReadiness?.status || 'N/A'}`);
     
     return result;
   }
@@ -241,7 +241,7 @@ class SingleSystemAnalyzer {
       // Final integrated decision (Phase 4)
       finalDecision: {
         action: gateResult.finalDecision?.action || 'AVOID',
-        confidence: systemAnalysis.confidence || gateResult.finalDecision?.confidence || 0.3,
+        confidence: gateResult.finalDecision?.confidence ?? systemAnalysis.confidence ?? 0.3,
         reasoning: this.combineReasoning(systemAnalysis, gateResult),
         
         // Execution details

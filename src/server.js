@@ -1,5 +1,15 @@
 // Start price refresh cron job (runs at midnight and on startup)
 require('./refresh-prices-cron');
+
+// Start watchlist update cron job (runs Tuesday-Saturday at 9 AM Singapore Time)
+try {
+  const { watchlistCron } = require('./watchlist-update-cron');
+  watchlistCron.start();
+  console.log('✅ Watchlist cron job started successfully');
+} catch (error) {
+  console.error('❌ Failed to start watchlist cron job:', error.message);
+}
+
 const express = require('express');
 const cors = require('cors');
 const multer = require('multer');
@@ -33,6 +43,12 @@ app.use('/api/market', require('./routes/market.routes'));
 
 // Trading system routes (multi-system stock analysis)
 app.use('/api/trading', require('./routes/signal-analysis.routes'));
+
+// Capital management routes
+app.use('/api/capital', require('./routes/capital.routes'));
+
+// Watchlist routes
+app.use('/api/watchlist', require('./routes/watchlist'));
 
 // Yahoo Finance API endpoints
 app.get('/api/yahoo/search', async (req, res) => {
@@ -120,7 +136,7 @@ app.get('/api/yahoo/indicator', async (req, res) => {
     }
     // Debug: log last date in historical data
     if (hist && hist.length > 0) {
-      console.log(`Indicator data for ${symbol}: last date =`, hist[hist.length - 1].date);
+      //console.log(`Indicator data for ${symbol}: last date =`, hist[hist.length - 1].date);
     }
     
     // Calculate ATR (14-day default) - keeping for internal use but not exposing
@@ -192,5 +208,5 @@ app.get('/api/yahoo/indicator', async (req, res) => {
 
 // Start server
 app.listen(port, () => {
-  console.log(`🚀 Server running at http://localhost:${port}`);
+  //console.log(`🚀 Server running at http://localhost:${port}`);
 });

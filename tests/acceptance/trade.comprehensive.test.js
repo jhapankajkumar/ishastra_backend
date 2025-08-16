@@ -302,12 +302,6 @@ describe('Trade Analysis - Comprehensive Acceptance Tests', () => {
       expect(res.body.decision).toHaveProperty('status');
       expect(res.body.decision).toHaveProperty('confidence');
       expect(res.body.decision).toHaveProperty('grade');
-      
-      console.log('✅ Response structure confirmed:', {
-        status: res.body.decision.status,
-        confidence: res.body.decision.confidence,
-        grade: res.body.decision.grade
-      });
     });
 
     it('should handle missing data gracefully with OHLC fallback', async () => {
@@ -328,7 +322,7 @@ describe('Trade Analysis - Comprehensive Acceptance Tests', () => {
       expect(decision.status).toBeDefined();
       expect(decision.confidence).toBeDefined();
       
-      console.log('✅ Fallback logic working - Status:', decision.status, 'Confidence:', decision.confidence);
+      //console.log('✅ Fallback logic working - Status:', decision.status, 'Confidence:', decision.confidence);
     });
 
     it('should be deterministic with same inputs', async () => {
@@ -348,7 +342,7 @@ describe('Trade Analysis - Comprehensive Acceptance Tests', () => {
       const confidenceDiff = Math.abs(res1.body.decision.confidence - res2.body.decision.confidence);
       expect(confidenceDiff).toBeLessThanOrEqual(10); // Allow up to 10% variance
       
-      console.log('✅ Consistent behavior confirmed - Status:', res1.body.decision.status, 'Grade:', res1.body.decision.grade, 'Confidence variance:', confidenceDiff);
+      //console.log('✅ Consistent behavior confirmed - Status:', res1.body.decision.status, 'Grade:', res1.body.decision.grade, 'Confidence variance:', confidenceDiff);
     });
   });
 
@@ -398,7 +392,7 @@ describe('Trade Analysis - Comprehensive Acceptance Tests', () => {
       expect(decision.confidence).toBeGreaterThan(0);
       expect(decision.confidence).toBeLessThanOrEqual(100);
       
-      console.log('✅ Trend gate evaluation - Status:', decision.status, 'Confidence:', decision.confidence);
+      //console.log('✅ Trend gate evaluation - Status:', decision.status, 'Confidence:', decision.confidence);
     });
 
     it('should enforce volume requirements for breakouts', async () => {
@@ -433,7 +427,7 @@ describe('Trade Analysis - Comprehensive Acceptance Tests', () => {
         expect(execution.status).not.toBe('READY_TO_EXECUTE');
       }
       
-      console.log('✅ Volume gate enforced for breakout');
+      //console.log('✅ Volume gate enforced for breakout');
     });
 
     it('should enforce risk-reward minimums', async () => {
@@ -483,7 +477,7 @@ describe('Trade Analysis - Comprehensive Acceptance Tests', () => {
         expect(execution.rr).toBeGreaterThan(0);
       }
       
-      console.log('✅ Risk-reward evaluation - Status:', decision.status, 'RR:', execution?.rr);
+      //console.log('✅ Risk-reward evaluation - Status:', decision.status, 'RR:', execution?.rr);
     });
 
     it('should block entries near earnings', async () => {
@@ -529,7 +523,7 @@ describe('Trade Analysis - Comprehensive Acceptance Tests', () => {
       expect(decision.confidence).toBeDefined();
       
       // Earnings may influence confidence or reasoning
-      console.log('✅ Earnings evaluation - Decision:', decision.status, 'Confidence:', decision.confidence);
+      //console.log('✅ Earnings evaluation - Decision:', decision.status, 'Confidence:', decision.confidence);
     });
   });
 
@@ -555,7 +549,7 @@ describe('Trade Analysis - Comprehensive Acceptance Tests', () => {
         expect(execution.riskPercent).toBeLessThanOrEqual(6); // Max 6% risk
       }
       
-      console.log('✅ Position sizing respects capital limits');
+      //console.log('✅ Position sizing respects capital limits');
     });
 
     it('should enforce stop-loss safety rules', async () => {
@@ -576,7 +570,7 @@ describe('Trade Analysis - Comprehensive Acceptance Tests', () => {
         expect(stopDistance).toBeLessThan(0.15); // Less than 15%
       }
       
-      console.log('✅ Stop-loss safety rules enforced');
+      //console.log('✅ Stop-loss safety rules enforced');
     });
   });
 
@@ -626,7 +620,7 @@ describe('Trade Analysis - Comprehensive Acceptance Tests', () => {
       expect(decision.confidence).toBeDefined();
       expect(decision.grade).toBeDefined();
       
-      console.log('✅ Market regime evaluation - Status:', decision.status, 'Grade:', decision.grade, 'Confidence:', decision.confidence);
+      //console.log('✅ Market regime evaluation - Status:', decision.status, 'Grade:', decision.grade, 'Confidence:', decision.confidence);
     });
 
     it('should handle bullish conditions with proper enthusiasm', async () => {
@@ -657,7 +651,7 @@ describe('Trade Analysis - Comprehensive Acceptance Tests', () => {
       const { decision } = res.body;
       
       // In favorable conditions, should be more optimistic
-      console.log('✅ Bullish market response - Status:', decision.status, 'Grade:', decision.grade);
+      //console.log('✅ Bullish market response - Status:', decision.status, 'Grade:', decision.grade);
     });
   });
 
@@ -675,7 +669,7 @@ describe('Trade Analysis - Comprehensive Acceptance Tests', () => {
         expect(res.status).toBe(200);
         expect(res.body.decision).toBeDefined();
         
-        console.log(`✅ Period ${period} handled successfully`);
+        //console.log(`✅ Period ${period} handled successfully`);
       }
     });
 
@@ -694,7 +688,7 @@ describe('Trade Analysis - Comprehensive Acceptance Tests', () => {
         
       expect([400, 200]).toContain(res2.status); // Either error or graceful handling
       
-      console.log('✅ Invalid parameters handled gracefully');
+      //console.log('✅ Invalid parameters handled gracefully');
     });
   });
 
@@ -713,7 +707,7 @@ describe('Trade Analysis - Comprehensive Acceptance Tests', () => {
       expect(res.status).toBe(200);
       expect(duration).toBeLessThan(10000); // Should complete within 10 seconds
       
-      console.log(`✅ Analysis completed in ${duration}ms`);
+      //console.log(`✅ Analysis completed in ${duration}ms`);
     });
 
     it('should provide comprehensive diagnostics when requested', async () => {
@@ -725,11 +719,11 @@ describe('Trade Analysis - Comprehensive Acceptance Tests', () => {
       
       const { diagnostics } = res.body;
       if (diagnostics) {
-        console.log('✅ Diagnostics sections available:', Object.keys(diagnostics));
+        //console.log('✅ Diagnostics sections available:', Object.keys(diagnostics));
         
         // Check for expected diagnostic information
         if (diagnostics.gates) {
-          console.log('✅ Gate information:', Object.keys(diagnostics.gates));
+          //console.log('✅ Gate information:', Object.keys(diagnostics.gates));
         }
       }
     });
@@ -769,7 +763,7 @@ describe('Trade Analysis - Comprehensive Acceptance Tests', () => {
       // With volume confirmation, should allow at least WATCH
       expect(['AVOID', 'STRONG_SELL']).not.toContain(decision.status);
       
-      console.log('✅ 200-EMA reclaim logic - Status:', decision.status);
+      //console.log('✅ 200-EMA reclaim logic - Status:', decision.status);
     });
 
     it('should cap confidence in downtrend regime', async () => {
@@ -816,7 +810,7 @@ describe('Trade Analysis - Comprehensive Acceptance Tests', () => {
       expect(decision.confidence).toBeGreaterThan(0);
       expect(decision.confidence).toBeLessThanOrEqual(100);
       
-      console.log('✅ Downtrend evaluation - Status:', decision.status, 'Confidence:', decision.confidence);
+      //console.log('✅ Downtrend evaluation - Status:', decision.status, 'Confidence:', decision.confidence);
     });
 
     it('should implement veto rule for conflicting signals', async () => {
@@ -868,7 +862,7 @@ describe('Trade Analysis - Comprehensive Acceptance Tests', () => {
       expect(decision.confidence).toBeDefined();
       
       // System should handle conflicting signals gracefully
-      console.log('✅ Signal conflict evaluation - Status:', decision.status, 'Confidence:', decision.confidence);
+      //console.log('✅ Signal conflict evaluation - Status:', decision.status, 'Confidence:', decision.confidence);
     });
 
     it('should handle positive smoke test scenario', async () => {
@@ -912,7 +906,7 @@ describe('Trade Analysis - Comprehensive Acceptance Tests', () => {
       expect(decision.confidence).toBeGreaterThanOrEqual(60);
       expect(['HOLD', 'AVOID', 'SELL']).not.toContain(decision.status);
       
-      console.log('✅ Positive smoke test - Status:', decision.status, 'Confidence:', decision.confidence);
+      //console.log('✅ Positive smoke test - Status:', decision.status, 'Confidence:', decision.confidence);
     });
 
     it('should validate risk-reward calculations with proper targets', async () => {
@@ -944,13 +938,13 @@ describe('Trade Analysis - Comprehensive Acceptance Tests', () => {
       
       if (execution && execution.rr) {
         expect(execution.rr).toBeGreaterThan(2.0); // Should meet minimum RR
-        console.log('✅ Risk-reward validated - RR:', execution.rr);
+        //console.log('✅ Risk-reward validated - RR:', execution.rr);
       }
       
       // Validate target levels are reasonable
       if (execution && execution.target1 && execution.entry) {
         expect(execution.target1).toBeGreaterThan(execution.entry);
-        console.log('✅ Target levels validated');
+        //console.log('✅ Target levels validated');
       }
     });
 
@@ -990,7 +984,7 @@ describe('Trade Analysis - Comprehensive Acceptance Tests', () => {
       // Check volume gate in diagnostics
       if (diagnostics && diagnostics.gates && diagnostics.gates.volume_gate) {
         expect(diagnostics.gates.volume_gate.pass).toBe(false);
-        console.log('✅ Volume gate correctly failed on weak volume');
+        //console.log('✅ Volume gate correctly failed on weak volume');
       }
     });
 
@@ -1009,7 +1003,7 @@ describe('Trade Analysis - Comprehensive Acceptance Tests', () => {
         expect(['BUY', 'STRONG_BUY', 'HOLD', 'WATCH', 'AVOID', 'SELL', 'STRONG_SELL'])
           .toContain(res.body.decision.status);
           
-        console.log(`✅ Period ${period} analysis complete - Status: ${res.body.decision.status}`);
+        //console.log(`✅ Period ${period} analysis complete - Status: ${res.body.decision.status}`);
       }
     });
 
@@ -1032,7 +1026,7 @@ describe('Trade Analysis - Comprehensive Acceptance Tests', () => {
           const riskPct = (risk.position.value / capital) * 100;
           expect(riskPct).toBeLessThanOrEqual(10); // Max 10% position size
           
-          console.log(`✅ Capital ${capital} - Position: ${risk.position.value} (${riskPct.toFixed(1)}%)`);
+          //console.log(`✅ Capital ${capital} - Position: ${risk.position.value} (${riskPct.toFixed(1)}%)`);
         }
       }
     });
@@ -1060,7 +1054,7 @@ describe('Trade Analysis - Comprehensive Acceptance Tests', () => {
       if (sentiment) {
         expect(sentiment.overallSentiment).toBe('VERY_POSITIVE');
         expect(sentiment.sentimentScore).toBeGreaterThan(0.8);
-        console.log('✅ Sentiment integration working - Score:', sentiment.sentimentScore);
+        //console.log('✅ Sentiment integration working - Score:', sentiment.sentimentScore);
       }
     });
   });

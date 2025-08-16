@@ -32,7 +32,7 @@ class InstitutionalSentimentEngine {
   }
 
   async initializeSentimentModels() {
-    console.log('🧠 Initializing Institutional Sentiment Fusion Engine...');
+    //console.log('🧠 Initializing Institutional Sentiment Fusion Engine...');
     
     try {
       // 1. Deep Learning Sentiment Model (BERT-like transformer)
@@ -47,7 +47,7 @@ class InstitutionalSentimentEngine {
       // 4. Sector Rotation Prediction Model
       this.sectorRotationModel = this.createSectorRotationModel();
       
-      console.log('✅ Institutional Sentiment Engine Initialized');
+      //console.log('✅ Institutional Sentiment Engine Initialized');
       
     } catch (error) {
       console.error('❌ Failed to initialize sentiment models:', error.message);
@@ -59,7 +59,7 @@ class InstitutionalSentimentEngine {
    * Combines all sentiment sources with institutional weighting
    */
   async analyzeSentimentFusion(symbol, sector, marketCap) {
-    console.log(`🧠 Starting Institutional Sentiment Fusion for ${symbol}...`);
+    //console.log(`🧠 Starting Institutional Sentiment Fusion for ${symbol}...`);
     
     const fusionAnalysis = {
       overallSentiment: 'NEUTRAL',
@@ -140,7 +140,7 @@ class InstitutionalSentimentEngine {
    * Real-time social sentiment with bot detection and influence weighting
    */
   async analyzeSocialMediaSentiment(symbol) {
-    console.log(`📱 Analyzing social media sentiment for ${symbol}...`);
+    //console.log(`📱 Analyzing social media sentiment for ${symbol}...`);
     
     const socialAnalysis = {
       sentiment: 'NEUTRAL',
@@ -202,7 +202,7 @@ class InstitutionalSentimentEngine {
    * Advanced NLP with transformer models for news impact prediction
    */
   async analyzeNewsImpactSentiment(symbol) {
-    console.log(`📰 Analyzing news impact sentiment for ${symbol}...`);
+    //console.log(`📰 Analyzing news impact sentiment for ${symbol}...`);
     
     const newsAnalysis = {
       sentiment: 'NEUTRAL',
@@ -267,7 +267,7 @@ class InstitutionalSentimentEngine {
    * Detects insider trading patterns and their sentiment implications
    */
   async analyzeInsiderTradingSentiment(symbol) {
-    console.log(`🔍 Analyzing insider trading sentiment for ${symbol}...`);
+    //console.log(`🔍 Analyzing insider trading sentiment for ${symbol}...`);
     
     const insiderAnalysis = {
       sentiment: 'NEUTRAL',
@@ -329,7 +329,7 @@ class InstitutionalSentimentEngine {
    * Analyzes institutional money flow patterns and sentiment
    */
   async analyzeInstitutionalFlowSentiment(symbol) {
-    console.log(`🏦 Analyzing institutional flow sentiment for ${symbol}...`);
+    //console.log(`🏦 Analyzing institutional flow sentiment for ${symbol}...`);
     
     const flowAnalysis = {
       sentiment: 'NEUTRAL',
@@ -390,7 +390,7 @@ class InstitutionalSentimentEngine {
    * Analyzes macroeconomic factors and their impact on sector/stock sentiment
    */
   async analyzeMacroSentiment(symbol, sector) {
-    console.log(`🌍 Analyzing macro sentiment for ${symbol} in ${sector} sector...`);
+    //console.log(`🌍 Analyzing macro sentiment for ${symbol} in ${sector} sector...`);
     
     const macroAnalysis = {
       sentiment: 'NEUTRAL',
@@ -469,7 +469,7 @@ class InstitutionalSentimentEngine {
    * Analyzes sector rotation trends and their impact on individual stocks
    */
   async analyzeSectorRotationSentiment(symbol, sector) {
-    console.log(`🔄 Analyzing sector rotation sentiment for ${symbol} in ${sector}...`);
+    //console.log(`🔄 Analyzing sector rotation sentiment for ${symbol} in ${sector}...`);
     
     const rotationAnalysis = {
       sentiment: 'NEUTRAL',
@@ -529,7 +529,7 @@ class InstitutionalSentimentEngine {
    * Analyzes sentiment from bonds, commodities, FX, and crypto markets
    */
   async analyzeCrossAssetSentiment(symbol, sector) {
-    console.log(`⚖️ Analyzing cross-asset sentiment for ${symbol}...`);
+    //console.log(`⚖️ Analyzing cross-asset sentiment for ${symbol}...`);
     
     const crossAssetAnalysis = {
       sentiment: 'NEUTRAL',

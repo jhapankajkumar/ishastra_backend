@@ -30,11 +30,11 @@ class ElderTripleScreen {
   analyze(tickerData, options = {}) {
     try {
       const { indicators, series } = tickerData;
-      console.log(`🔍 [ELDER] Starting analysis for ${tickerData.meta?.symbol}`);
+      //console.log(`🔍 [ELDER] Starting analysis for ${tickerData.meta?.symbol}`);
       
       // Validate required data
       if (!this.validateData(indicators, series)) {
-        console.log('🔍 [ELDER] Data validation failed');
+        //console.log('🔍 [ELDER] Data validation failed');
         return this.createAvoidSignal('INSUFFICIENT_DATA', 'Missing required weekly/daily/intraday data');
       }
 

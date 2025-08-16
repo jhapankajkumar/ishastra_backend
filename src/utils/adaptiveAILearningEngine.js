@@ -46,7 +46,7 @@ class AdaptiveAILearningEngine {
   }
 
   async initializeAdaptiveLearning() {
-    console.log('🤖 Initializing Adaptive AI Learning Engine...');
+    //console.log('🤖 Initializing Adaptive AI Learning Engine...');
     
     try {
       // 1. Initialize ensemble models for different market regimes
@@ -64,7 +64,7 @@ class AdaptiveAILearningEngine {
       // 5. Initialize concept drift detection
       this.setupConceptDriftDetection();
       
-      console.log('✅ Adaptive AI Learning Engine Ready');
+      //console.log('✅ Adaptive AI Learning Engine Ready');
       
     } catch (error) {
       console.error('❌ Failed to initialize Adaptive Learning Engine:', error.message);
@@ -78,7 +78,7 @@ class AdaptiveAILearningEngine {
   async adaptiveAnalysis(marketData, currentPrediction, actualOutcome = null) {
     const startTime = performance.now();
     
-    console.log('🤖 Running Adaptive AI Analysis...');
+    //console.log('🤖 Running Adaptive AI Analysis...');
     
     const adaptiveResult = {
       enhancedPrediction: currentPrediction,
@@ -143,7 +143,7 @@ class AdaptiveAILearningEngine {
       adaptiveResult.performanceMetrics = this.generatePerformanceMetrics();
 
       const endTime = performance.now();
-      console.log(`✅ Adaptive Analysis completed in ${(endTime - startTime).toFixed(2)}ms`);
+      //console.log(`✅ Adaptive Analysis completed in ${(endTime - startTime).toFixed(2)}ms`);
 
       return adaptiveResult;
 
@@ -158,7 +158,7 @@ class AdaptiveAILearningEngine {
    * Advanced regime detection using multiple indicators and ML
    */
   async detectMarketRegime(marketData) {
-    console.log('🔍 Detecting market regime...');
+    //console.log('🔍 Detecting market regime...');
     
     const regimeAnalysis = {
       primaryRegime: 'UNKNOWN',
@@ -233,7 +233,7 @@ class AdaptiveAILearningEngine {
    * Selects best performing models for current market conditions
    */
   selectOptimalEnsemble(currentRegime, marketData) {
-    console.log(`🎯 Selecting optimal ensemble for ${currentRegime.primaryRegime} regime...`);
+    //console.log(`🎯 Selecting optimal ensemble for ${currentRegime.primaryRegime} regime...`);
 
     const ensembleSelection = {
       selectedModels: [],
@@ -274,7 +274,7 @@ class AdaptiveAILearningEngine {
         regimePerformance
       );
 
-      console.log(`✅ Selected ${ensembleSelection.selectedModels.length} models for ensemble`);
+      //console.log(`✅ Selected ${ensembleSelection.selectedModels.length} models for ensemble`);
       
       return ensembleSelection;
 
@@ -289,7 +289,7 @@ class AdaptiveAILearningEngine {
    * Combines multiple models for improved accuracy
    */
   async enhancePredictionWithEnsemble(basePrediction, ensemble, marketData) {
-    console.log('🔮 Enhancing prediction with adaptive ensemble...');
+    //console.log('🔮 Enhancing prediction with adaptive ensemble...');
 
     const enhancementResult = {
       prediction: basePrediction,
@@ -366,7 +366,7 @@ class AdaptiveAILearningEngine {
    * Uses RL agent to optimize trading decisions
    */
   async applyReinforcementLearning(marketData, currentPrediction, actualOutcome) {
-    console.log('🎮 Applying reinforcement learning optimization...');
+    //console.log('🎮 Applying reinforcement learning optimization...');
 
     const rlResult = {
       optimizedAction: currentPrediction.action || 'HOLD',
@@ -436,7 +436,7 @@ class AdaptiveAILearningEngine {
    * Detects when market dynamics change and models need updating
    */
   detectConceptDrift(marketData, currentPrediction) {
-    console.log('🌊 Detecting concept drift...');
+    //console.log('🌊 Detecting concept drift...');
 
     const driftAnalysis = {
       driftDetected: false,
@@ -490,7 +490,7 @@ class AdaptiveAILearningEngine {
    * Adapts models when concept drift is detected
    */
   async adaptToConceptDrift(driftDetection, marketData) {
-    console.log(`🔄 Adapting to concept drift (${driftDetection.driftType})...`);
+    //console.log(`🔄 Adapting to concept drift (${driftDetection.driftType})...`);
 
     const adaptationResult = {
       actions: [],
@@ -542,7 +542,7 @@ class AdaptiveAILearningEngine {
       adaptationResult.actions = adaptationActions;
       adaptationResult.adaptationSuccess = adaptationActions.length > 0;
 
-      console.log(`✅ Adaptation completed: ${adaptationActions.length} actions taken`);
+      //console.log(`✅ Adaptation completed: ${adaptationActions.length} actions taken`);
 
       return adaptationResult;
 
@@ -557,7 +557,7 @@ class AdaptiveAILearningEngine {
    * Learns how to learn quickly from new market patterns
    */
   async triggerMetaLearning(marketData) {
-    console.log('🧠 Triggering meta-learning for rapid adaptation...');
+    //console.log('🧠 Triggering meta-learning for rapid adaptation...');
 
     const metaLearningResult = {
       actions: [],
@@ -615,7 +615,7 @@ class AdaptiveAILearningEngine {
   // ========================================
 
   async initializeEnsembleModels() {
-    console.log('🏗️ Initializing ensemble models...');
+    //console.log('🏗️ Initializing ensemble models...');
 
     const modelConfigs = {
       bullMarket: { neurons: [128, 64, 32], activation: 'relu', optimizer: 'adam' },
@@ -628,7 +628,7 @@ class AdaptiveAILearningEngine {
     for (const [modelName, config] of Object.entries(modelConfigs)) {
       try {
         this.modelEnsemble[modelName] = this.createSpecializedModel(config);
-        console.log(`✅ Initialized ${modelName} model`);
+        //console.log(`✅ Initialized ${modelName} model`);
       } catch (error) {
         console.error(`❌ Failed to initialize ${modelName} model:`, error.message);
       }

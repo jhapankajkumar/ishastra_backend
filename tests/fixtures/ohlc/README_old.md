@@ -15,14 +15,14 @@ export function loadAndProcessFixture(fixtureName: string): TechnicalIndicators 
   // Build technical indicators
   const technical = buildTechnicalFromOHLC(fixtureData);
   
-  console.log(`📊 Processed ${fixtureName}:`);
-  console.log(`   Scenario: ${fixtureData.meta.scenario}`);
-  console.log(`   Bars: ${fixtureData.data.length}`);
-  console.log(`   Latest Price: $${technical.latest.price.toFixed(2)}`);
-  console.log(`   200 EMA: $${technical.latest.ema200.toFixed(2)}`);
-  console.log(`   RSI: ${technical.latest.rsi.toFixed(1)}`);
-  console.log(`   ATR: ${technical.latest.atr.toFixed(2)}`);
-  console.log(`   ADX: ${technical.latest.adx.toFixed(1)}`);
+  //console.log(`📊 Processed ${fixtureName}:`);
+  //console.log(`   Scenario: ${fixtureData.meta.scenario}`);
+  //console.log(`   Bars: ${fixtureData.data.length}`);
+  //console.log(`   Latest Price: $${technical.latest.price.toFixed(2)}`);
+  //console.log(`   200 EMA: $${technical.latest.ema200.toFixed(2)}`);
+  //console.log(`   RSI: ${technical.latest.rsi.toFixed(1)}`);
+  //console.log(`   ATR: ${technical.latest.atr.toFixed(2)}`);
+  //console.log(`   ADX: ${technical.latest.adx.toFixed(1)}`);
   
   return technical;
 }
@@ -39,7 +39,7 @@ export function validateScenario(fixtureName: string, expectedConditions: any) {
     scenario: fixtureName
   };
   
-  console.log(`✅ Validation for ${fixtureName}:`, results);
+  //console.log(`✅ Validation for ${fixtureName}:`, results);
   return results;
 }
 

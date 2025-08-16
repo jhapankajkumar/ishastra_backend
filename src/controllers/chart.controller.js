@@ -57,7 +57,7 @@ exports.createChartAnalysis = async (req, res) => {
       });
     }
 
-    console.log(`Chart Images: ${chartImages}`);
+    //console.log(`Chart Images: ${chartImages}`);
     if (chartImages.length > 0) {
       await Promise.all(
         chartImages.map(imageData =>
@@ -144,7 +144,7 @@ exports.deleteChartAnalysis = async (req, res) => {
       where: { id: analysisId }
     });
 
-    console.log(`Analysis with ID ${analysisId} deleted successfully`);
+    //console.log(`Analysis with ID ${analysisId} deleted successfully`);
     res.status(204).send(); // No content response for successful deletion
   } catch (error) {
     console.error('Error deleting analysis:', error);
@@ -185,14 +185,14 @@ exports.updateChartAnalysis = async (req, res) => {
       reviewNotes
     } = req.body;
 
-    console.log(`reviewNotes ${reviewNotes}`);
+    //console.log(`reviewNotes ${reviewNotes}`);
   
     // Prepare update data - only allow updating entryNotes and reviewNotes
     const updateData = {
       reviewNotes: reviewNotes !== undefined ? reviewNotes : existingAnalysis.reviewNotes
     };
 
-    console.log(`Files: ${req.files?.reviewCharts}`);
+    //console.log(`Files: ${req.files?.reviewCharts}`);
 
     if (req.files?.reviewCharts) {
       const chartImages = req.files.reviewCharts.map(file => ({
@@ -213,7 +213,7 @@ exports.updateChartAnalysis = async (req, res) => {
       data: updateData
     });
 
-    console.log(`Analysis with ID ${analysisId} updated successfully`);
+    //console.log(`Analysis with ID ${analysisId} updated successfully`);
     res.json({ analysis: updatedAnalysis });
   } catch (error) {
     console.error('Error updating analysis:', error);

@@ -27,7 +27,7 @@ class BacktestingEngine {
     }
 
     try {
-      console.log(`📊 Running backtest with ${this.historicalData.length} data points...`);
+      //console.log(`📊 Running backtest with ${this.historicalData.length} data points...`);
       
       // Initialize backtest state
       const backtestState = {
@@ -101,7 +101,7 @@ class BacktestingEngine {
         signals = this.filterSignalsBySystem(signals);
       }
       
-      console.log(`🎯 Generated ${signals.length} signals across all systems (${signals.filter(s => s.direction === 'LONG').length} LONG, ${signals.filter(s => s.direction === 'SHORT').length} SHORT)`);
+      //console.log(`🎯 Generated ${signals.length} signals across all systems (${signals.filter(s => s.direction === 'LONG').length} LONG, ${signals.filter(s => s.direction === 'SHORT').length} SHORT)`);
 
       // Simulate trading
       await this.simulateTrading(backtestState, signals, this.historicalData, ['threeWeeksTight', 'cupHandle', 'flagPennant', 'tripleScreen', 'sepa', 'darvasBox']);
@@ -135,7 +135,7 @@ class BacktestingEngine {
    */
   async backtestSymbol(symbol, period = '2y', systems = ['all']) {
     try {
-      console.log(`📊 Starting backtest for ${symbol} over ${period}...`);
+      //console.log(`📊 Starting backtest for ${symbol} over ${period}...`);
       
       // Get historical data
       const historicalData = await yahoo.getHistorical(symbol, period);
@@ -143,7 +143,7 @@ class BacktestingEngine {
         throw new Error(`Insufficient data for ${symbol}: ${historicalData?.length || 0} points`);
       }
 
-      console.log(`✅ Retrieved ${historicalData.length} data points for ${symbol}`);
+      //console.log(`✅ Retrieved ${historicalData.length} data points for ${symbol}`);
 
       // Initialize backtest state
       const backtestState = {
@@ -225,7 +225,7 @@ class BacktestingEngine {
         signals = this.filterSignalsBySystem(signals);
       }
 
-      console.log(`🎯 Generated ${signals.length} signals across all systems (${signals.filter(s => s.direction === 'LONG').length} LONG, ${signals.filter(s => s.direction === 'SHORT').length} SHORT)`);
+      //console.log(`🎯 Generated ${signals.length} signals across all systems (${signals.filter(s => s.direction === 'LONG').length} LONG, ${signals.filter(s => s.direction === 'SHORT').length} SHORT)`);
 
       // Simulate trading based on signals
       await this.simulateTrading(backtestState, signals, historicalData, systemsToTest);
@@ -614,7 +614,7 @@ class BacktestingEngine {
    * Backtest multiple symbols and systems
    */
   async backtestPortfolio(symbols, period = '2y', systems = ['all']) {
-    console.log(`🚀 Starting portfolio backtest for ${symbols.length} symbols...`);
+    //console.log(`🚀 Starting portfolio backtest for ${symbols.length} symbols...`);
     
     const results = [];
     const portfolioPerformance = {

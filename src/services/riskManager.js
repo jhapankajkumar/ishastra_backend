@@ -34,10 +34,10 @@ class RiskManager {
       totalRiskCapital: 0
     };
     
-    console.log('🛡️  Risk Manager initialized with strict controls');
-    console.log(`   Max risk per trade: ${this.config.maxRiskPerTrade * 100}%`);
-    console.log(`   Max portfolio risk: ${this.config.maxPortfolioRisk * 100}%`);
-    console.log(`   Max positions: ${this.config.maxPositions}`);
+    //console.log('🛡️  Risk Manager initialized with strict controls');
+    //console.log(`   Max risk per trade: ${this.config.maxRiskPerTrade * 100}%`);
+    //console.log(`   Max portfolio risk: ${this.config.maxPortfolioRisk * 100}%`);
+    //console.log(`   Max positions: ${this.config.maxPositions}`);
   }
 
   /**
@@ -190,8 +190,8 @@ class RiskManager {
       validationResults.approved = true;
       
       if (validationResults.warnings.length > 0) {
-        console.log(`⚠️  Trade approved with warnings for ${signal.symbol}:`);
-        validationResults.warnings.forEach(warning => console.log(`   - ${warning}`));
+        //console.log(`⚠️  Trade approved with warnings for ${signal.symbol}:`);
+        validationResults.warnings.forEach(warning => //console.log(`   - ${warning}`));
       }
 
     } catch (error) {
@@ -339,10 +339,10 @@ class RiskManager {
     this.positions.set(symbol, position);
     this.updateRiskMetrics();
     
-    console.log(`📊 Position added to risk tracking: ${position.direction} ${symbol}`);
-    console.log(`   Position size: ${position.positionSize} shares`);
-    console.log(`   Risk amount: $${position.riskAmount?.toFixed(2)}`);
-    console.log(`   Portfolio risk: ${(this.riskMetrics.currentPortfolioRisk * 100).toFixed(2)}%`);
+    //console.log(`📊 Position added to risk tracking: ${position.direction} ${symbol}`);
+    //console.log(`   Position size: ${position.positionSize} shares`);
+    //console.log(`   Risk amount: $${position.riskAmount?.toFixed(2)}`);
+    //console.log(`   Portfolio risk: ${(this.riskMetrics.currentPortfolioRisk * 100).toFixed(2)}%`);
   }
 
   /**

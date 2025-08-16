@@ -43,7 +43,7 @@ class CupWithHandle {
      * @returns {Object} - Complete Cup-with-Handle analysis result
      */
     analyze(data, options = {}) {
-        console.log(`  🏆 CUP-HANDLE: Starting CAN SLIM Cup-with-Handle analysis...`);
+        //console.log(`  🏆 CUP-HANDLE: Starting CAN SLIM Cup-with-Handle analysis...`);
 
         try {
             const { series, indicators } = data;
@@ -55,7 +55,7 @@ class CupWithHandle {
             const dailyData = series.daily;
             const latest = dailyData[dailyData.length - 1];
             
-            console.log(`  🏆 Analyzing ${dailyData.length} days of data, current price: $${latest.close.toFixed(2)}`);
+            //console.log(`  🏆 Analyzing ${dailyData.length} days of data, current price: $${latest.close.toFixed(2)}`);
 
             // Phase 1: Detect cup structure
             const cupAnalysis = this.detectCup(dailyData);
@@ -120,7 +120,7 @@ class CupWithHandle {
      * Phase 1: Detect valid cup structure
      */
     detectCup(dailyData) {
-        console.log(`  🏆 Phase 1: Detecting cup structure...`);
+        //console.log(`  🏆 Phase 1: Detecting cup structure...`);
         
         if (dailyData.length < this.CUP_MIN_DURATION + 20) {
             return { 
@@ -164,7 +164,7 @@ class CupWithHandle {
             };
         }
 
-        console.log(`  🏆 Cup detected: ${bestCup.duration} days, ${(bestCup.depth * 100).toFixed(1)}% depth, score: ${bestCup.score.toFixed(2)}`);
+        //console.log(`  🏆 Cup detected: ${bestCup.duration} days, ${(bestCup.depth * 100).toFixed(1)}% depth, score: ${bestCup.score.toFixed(2)}`);
         
         return {
             isValid: true,
@@ -304,7 +304,7 @@ class CupWithHandle {
      * Phase 2: Detect handle formation
      */
     detectHandle(dailyData, cupAnalysis) {
-        console.log(`  🏆 Phase 2: Detecting handle formation...`);
+        //console.log(`  🏆 Phase 2: Detecting handle formation...`);
         
         if (!cupAnalysis.isValid) {
             return { isValid: false, reason: 'No valid cup found' };
@@ -365,7 +365,7 @@ class CupWithHandle {
         
         const overallScore = (tightnessScore * 0.4 + volumeScore * 0.3 + trendScore * 0.3);
         
-        console.log(`  🏆 Handle detected: ${handleData.length} days, ${(handleDepth * 100).toFixed(1)}% depth, score: ${overallScore.toFixed(2)}`);
+        //console.log(`  🏆 Handle detected: ${handleData.length} days, ${(handleDepth * 100).toFixed(1)}% depth, score: ${overallScore.toFixed(2)}`);
         
         return {
             isValid: overallScore >= 0.6,
@@ -431,7 +431,7 @@ class CupWithHandle {
      * Phase 3: Check for breakout trigger
      */
     isBreakout(dailyData, indicators, cupAnalysis, handleAnalysis) {
-        console.log(`  🏆 Phase 3: Checking breakout trigger...`);
+        //console.log(`  🏆 Phase 3: Checking breakout trigger...`);
         
         const latest = dailyData[dailyData.length - 1];
         const previous = dailyData[dailyData.length - 2];
@@ -462,7 +462,7 @@ class CupWithHandle {
             .map(condition => condition ? 1 : 0)
             .reduce((sum, score) => sum + score, 0) / 5;
         
-        console.log(`  🏆 Breakout analysis: Price=${priceBreakout}, Volume=${volumeBreakout}, Close=${strongClose}, RSI=${rsiStrong}, Score=${breakoutScore.toFixed(2)}`);
+        //console.log(`  🏆 Breakout analysis: Price=${priceBreakout}, Volume=${volumeBreakout}, Close=${strongClose}, RSI=${rsiStrong}, Score=${breakoutScore.toFixed(2)}`);
         
         return {
             isBreakout: priceBreakout && volumeBreakout && strongClose && breakoutScore >= 0.6,
@@ -497,7 +497,7 @@ class CupWithHandle {
      * Phase 4: Generate trading signals
      */
     generateSignals(cupAnalysis, handleAnalysis, breakoutAnalysis, latest) {
-        console.log(`  🏆 Phase 4: Generating trading signals...`);
+        //console.log(`  🏆 Phase 4: Generating trading signals...`);
         
         let signal = 'HOLD';
         let signalStrength = 0;
@@ -557,7 +557,7 @@ class CupWithHandle {
      * Phase 5: Calculate risk/reward metrics
      */
     calculateRisk(signalAnalysis, cupAnalysis, handleAnalysis, latest) {
-        console.log(`  🏆 Phase 5: Calculating risk/reward...`);
+        //console.log(`  🏆 Phase 5: Calculating risk/reward...`);
         
         const entryPrice = signalAnalysis.entryPrice;
         let stopLoss = 0;
@@ -607,7 +607,7 @@ class CupWithHandle {
      * Phase 6: Make final trading decision (with volume dry-up, earnings, and enhanced logs)
      */
     makeFinalDecision(signalAnalysis, riskReward, cupAnalysis, handleAnalysis, breakoutAnalysis, options = {}) {
-        console.log(`  🏆 Phase 6: Making final decision...`);
+        //console.log(`  🏆 Phase 6: Making final decision...`);
         // --- Begin Insert: Volume Dry-Up and Earnings Checks ---
         // volume array and latest daily data
         const volume = options?.volume || (options?.series?.daily ? options.series.daily.map(d => d.volume) : []);

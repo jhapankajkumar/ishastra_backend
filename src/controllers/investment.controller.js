@@ -199,7 +199,7 @@ const createInvestment = async (req, res) => {
       finalCurrentPrice = await fetchCurrentPrice(ticker.toUpperCase());
     }
 
-    console.log(`Creating investment for ${marketCap} with current price: ${sector}`);
+    //console.log(`Creating investment for ${marketCap} with current price: ${sector}`);
     const investmentData = {
       ticker: ticker.toUpperCase(),
       entryDate: new Date(entryDate),
@@ -505,7 +505,7 @@ const refreshAllInvestmentPrices = async (req, res) => {
     });
 
     await Promise.allSettled(updates);
-    console.log(`[CRON] Updated ${updatedCount} investments`);
+    //console.log(`[CRON] Updated ${updatedCount} investments`);
 
 
     res.json({

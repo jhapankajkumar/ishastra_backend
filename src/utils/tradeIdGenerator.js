@@ -11,12 +11,14 @@ class TradeIdGenerator {
   static async generateTradeId() {
     const year = new Date().getFullYear();
     const prefix = `ISH-${year}-`;
-    
+    // Helper to generate a random 5-character alphanumeric hash
+    function randomHash(length = 5) {
+      return Math.random().toString(36).substring(2, 2 + length).toUpperCase();
+    }
     try {
       // Get the count of trades created this year
       const startOfYear = new Date(year, 0, 1);
       const endOfYear = new Date(year + 1, 0, 1);
-      
       const yearlyTradeCount = await prisma.trade.count({
         where: {
           entryDate: {
@@ -25,15 +27,14 @@ class TradeIdGenerator {
           }
         }
       });
-      
       // Generate sequential number (6 digits, zero-padded)
       const sequentialNumber = String(yearlyTradeCount + 1).padStart(6, '0');
-      
-      return `${prefix}${sequentialNumber}`;
+      // Append random hash for extra uniqueness
+      return `${prefix}${sequentialNumber}-${randomHash()}`;
     } catch (error) {
       console.error('Error generating trade ID:', error);
-      // Fallback to timestamp-based ID
-      return `ISH-${year}-${Date.now().toString().slice(-6)}`;
+      // Fallback to timestamp-based ID with random hash
+      return `ISH-${year}-${Date.now().toString().slice(-6)}-${randomHash()}`;
     }
   }
   

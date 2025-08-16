@@ -47,7 +47,7 @@ class MACDDivergence {
      * @returns {Object} - Complete MACD divergence analysis result
      */
     analyze(data, options = {}) {
-        console.log(`  📊 MACD-DIV: Starting MACD Divergence analysis...`);
+        //console.log(`  📊 MACD-DIV: Starting MACD Divergence analysis...`);
 
         try {
             const { series, indicators } = data;
@@ -59,7 +59,7 @@ class MACDDivergence {
             const dailyData = series.daily;
             const latest = dailyData[dailyData.length - 1];
             
-            console.log(`  📊 Analyzing ${dailyData.length} days of data, current price: $${latest.close.toFixed(2)}`);
+            //console.log(`  📊 Analyzing ${dailyData.length} days of data, current price: $${latest.close.toFixed(2)}`);
 
             // Phase 1: Calculate or extract MACD components
             const macdAnalysis = this.analyzeMACDData(dailyData, indicators);
@@ -80,7 +80,7 @@ class MACDDivergence {
             const riskReward = this.calculateRisk(signalAnalysis, swingAnalysis, latest);
             
             // Phase 7: Final decision
-            const finalDecision = this.makeFinalDecision(signalAnalysis, riskReward, divergenceAnalysis, candleAnalysis);
+            const finalDecision = this.makeFinalDecision(signalAnalysis, riskReward, divergenceAnalysis, candleAnalysis, swingAnalysis);
 
             return {
                 system: this.systemId,
@@ -123,7 +123,7 @@ class MACDDivergence {
      * Phase 1: Analyze MACD data (calculate if needed or use existing)
      */
     analyzeMACDData(dailyData, indicators) {
-        console.log(`  📊 Phase 1: Analyzing MACD data...`);
+        //console.log(`  📊 Phase 1: Analyzing MACD data...`);
         
         // Try to use existing MACD data first
         let macdLine = indicators?.base?.macd;
@@ -147,7 +147,7 @@ class MACDDivergence {
         const currentSignal = signalArray[signalArray.length - 1];
         const currentHistogram = histogramArray[histogramArray.length - 1];
         
-        console.log(`  📊 MACD: ${currentMACD?.toFixed(4) || 'N/A'}, Signal: ${currentSignal?.toFixed(4) || 'N/A'}, Hist: ${currentHistogram?.toFixed(4) || 'N/A'}`);
+        //console.log(`  📊 MACD: ${currentMACD?.toFixed(4) || 'N/A'}, Signal: ${currentSignal?.toFixed(4) || 'N/A'}, Hist: ${currentHistogram?.toFixed(4) || 'N/A'}`);
         
         return {
             macdLine: macdArray,
@@ -240,7 +240,7 @@ class MACDDivergence {
      * Phase 2: Find swing points in price and MACD histogram
      */
     findSwingPoints(dailyData, macdAnalysis) {
-        console.log(`  📊 Phase 2: Finding swing points...`);
+        //console.log(`  📊 Phase 2: Finding swing points...`);
         
         const recentData = dailyData.slice(-this.SWING_LOOKBACK);
         const recentHistogram = macdAnalysis.macdHistogram.slice(-this.SWING_LOOKBACK);
@@ -248,8 +248,8 @@ class MACDDivergence {
         const priceSwings = this.findPriceSwings(recentData);
         const macdSwings = this.findMACDSwings(recentHistogram);
         
-        console.log(`  📊 Found ${priceSwings.highs.length} price highs, ${priceSwings.lows.length} price lows`);
-        console.log(`  📊 Found ${macdSwings.highs.length} MACD highs, ${macdSwings.lows.length} MACD lows`);
+        //console.log(`  📊 Found ${priceSwings.highs.length} price highs, ${priceSwings.lows.length} price lows`);
+        //console.log(`  📊 Found ${macdSwings.highs.length} MACD highs, ${macdSwings.lows.length} MACD lows`);
         
         return {
             price: priceSwings,
@@ -350,7 +350,7 @@ class MACDDivergence {
      * Enhanced: Includes regular, triple, and continuation divergences.
      */
     detectDivergences(swingAnalysis, dailyData, macdAnalysis) {
-        console.log(`  📊 Phase 3: Detecting divergences...`);
+        //console.log(`  📊 Phase 3: Detecting divergences...`);
 
         // --- Standard divergences ---
         const bullish = this.findBullishDivergences(swingAnalysis);
@@ -387,10 +387,10 @@ class MACDDivergence {
         if (bullishSignals.length > 0) divergenceType = 'BULLISH';
         else if (bearishSignals.length > 0) divergenceType = 'BEARISH';
 
-        console.log(`  📊 Divergences:`);
-        console.log(`      Standard Bullish=${bullish.length}, Triple Bullish=${tripleBullish.length}, Continuation Bullish=${continuationBullish.length}`);
-        console.log(`      Standard Bearish=${bearish.length}, Triple Bearish=${tripleBearish.length}, Continuation Bearish=${continuationBearish.length}`);
-        console.log(`      Type=${divergenceType}`);
+        //console.log(`  📊 Divergences:`);
+        //console.log(`      Standard Bullish=${bullish.length}, Triple Bullish=${tripleBullish.length}, Continuation Bullish=${continuationBullish.length}`);
+        //console.log(`      Standard Bearish=${bearish.length}, Triple Bearish=${tripleBearish.length}, Continuation Bearish=${continuationBearish.length}`);
+        //console.log(`      Type=${divergenceType}`);
 
         return {
             hasDivergence,
@@ -620,7 +620,7 @@ class MACDDivergence {
      * Phase 4: Validate candle structure for confirmation
      */
     validateCandleStructure(dailyData, divergenceAnalysis) {
-        console.log(`  📊 Phase 4: Validating candle structure...`);
+        //console.log(`  📊 Phase 4: Validating candle structure...`);
         
         if (!divergenceAnalysis.hasDivergence) {
             return { isValid: false, reason: 'No divergence to confirm' };
@@ -669,7 +669,7 @@ class MACDDivergence {
         const hasGoodBody = bodyRatio >= 0.4; // At least 40% body
         const volumeIncrease = previous && latest.volume > previous.volume;
         
-        console.log(`  📊 Candle: ${isBullish ? 'Bullish' : isBearish ? 'Bearish' : 'Neutral'}, Body=${(bodyRatio * 100).toFixed(0)}%, Vol=${volumeIncrease ? 'Up' : 'Down'}`);
+        //console.log(`  📊 Candle: ${isBullish ? 'Bullish' : isBearish ? 'Bearish' : 'Neutral'}, Body=${(bodyRatio * 100).toFixed(0)}%, Vol=${volumeIncrease ? 'Up' : 'Down'}`);
         
         return {
             isValid,
@@ -717,7 +717,7 @@ class MACDDivergence {
      * Modified: Uses all divergence types (standard, triple, continuation).
      */
     generateSignals(divergenceAnalysis, candleAnalysis, latest) {
-        console.log(`  📊 Phase 5: Generating trading signals...`);
+        //console.log(`  📊 Phase 5: Generating trading signals...`);
 
         let signal = 'HOLD';
         let signalStrength = 0;
@@ -727,23 +727,23 @@ class MACDDivergence {
         const bullishSignals = divergenceAnalysis.allBullish || [];
         const bearishSignals = divergenceAnalysis.allBearish || [];
 
-        console.log(`  🔍 SIGNAL ANALYSIS DEBUG:`);
-        console.log(`     Bullish signals: ${bullishSignals.length}`);
-        console.log(`     Bearish signals: ${bearishSignals.length}`);
-        console.log(`     Candle analysis valid: ${candleAnalysis.isValid}`);
+        //console.log(`  🔍 SIGNAL ANALYSIS DEBUG:`);
+        //console.log(`     Bullish signals: ${bullishSignals.length}`);
+        //console.log(`     Bearish signals: ${bearishSignals.length}`);
+        //console.log(`     Candle analysis valid: ${candleAnalysis.isValid}`);
         
         if (bullishSignals.length > 0) {
             const bestSignal = bullishSignals[0];
-            console.log(`     Best bullish signal age: ${bestSignal.ageInBars} bars`);
-            console.log(`     Best bullish signal recent (≤15): ${bestSignal.ageInBars <= 15}`);
+            //console.log(`     Best bullish signal age: ${bestSignal.ageInBars} bars`);
+            //console.log(`     Best bullish signal recent (≤15): ${bestSignal.ageInBars <= 15}`);
         }
 
         // Filter signals to only include recent ones (≤15 bars)
         const recentBullishSignals = bullishSignals.filter(s => s.ageInBars <= 15);
         const recentBearishSignals = bearishSignals.filter(s => s.ageInBars <= 15);
         
-        console.log(`     Recent bullish signals: ${recentBullishSignals.length}`);
-        console.log(`     Recent bearish signals: ${recentBearishSignals.length}`);
+        //console.log(`     Recent bullish signals: ${recentBullishSignals.length}`);
+        //console.log(`     Recent bearish signals: ${recentBearishSignals.length}`);
 
         // Determine if any signals present and if candle confirmed
         if (recentBullishSignals.length > 0 && candleAnalysis.isValid) {
@@ -810,7 +810,7 @@ class MACDDivergence {
      * Phase 6: Calculate risk/reward metrics
      */
     calculateRisk(signalAnalysis, swingAnalysis, latest) {
-        console.log(`  📊 Phase 6: Calculating risk/reward...`);
+        //console.log(`  📊 Phase 6: Calculating risk/reward...`);
         
         const entryPrice = signalAnalysis.entryPrice;
         let stopLoss = 0;
@@ -870,8 +870,8 @@ class MACDDivergence {
     /**
      * Phase 7: Make final trading decision
      */
-    makeFinalDecision(signalAnalysis, riskReward, divergenceAnalysis, candleAnalysis) {
-        console.log(`  📊 Phase 7: Making final decision...`);
+    makeFinalDecision(signalAnalysis, riskReward, divergenceAnalysis, candleAnalysis, swingAnalysis) {
+        //console.log(`  📊 Phase 7: Making final decision...`);
 
         let finalSignal = signalAnalysis.signal;
         let confidence = 0.5;
@@ -879,35 +879,19 @@ class MACDDivergence {
 
         // Add recency check for divergence signals
         const { bestBullish, bestBearish } = divergenceAnalysis;
-        // For structured recency check, need candles (from previous context, e.g., data.series.daily)
-        // We'll try to get candles from the latest available context
-        let candles = null;
-        if (typeof signalAnalysis.entryPrice !== "undefined" && signalAnalysis.entryPrice !== null) {
-            // Try to get candles from riskReward, which uses latest.close
-            // But for robust logic, we assume we have access to the candles array
-            // In practice, the parent analyze() method should pass candles if needed
-        }
-        // We'll attempt to use divergence points and their .index fields with candles, if available
-
-        // Helper for recent divergence check
-        // Fallback: if candles are not available, skip the check
-        function safeIsRecent(divergencePoint, candles, lookback = 10) {
-            if (!candles || !divergencePoint) return false;
-            return isRecentDivergence(divergencePoint, candles, lookback);
-        }
 
         // DEBUG
-        console.log(`  🔍 FINAL DECISION DEBUG:`);
-        console.log(`     Original signal: ${finalSignal}`);
-        console.log(`     Has bullish divergence: ${!!bestBullish}`);
-        console.log(`     Has bearish divergence: ${!!bestBearish}`);
+        //console.log(`  🔍 FINAL DECISION DEBUG:`);
+        //console.log(`     Original signal: ${finalSignal}`);
+        //console.log(`     Has bullish divergence: ${!!bestBullish}`);
+        //console.log(`     Has bearish divergence: ${!!bestBearish}`);
         if (bestBullish) {
-            console.log(`     Bullish age: ${bestBullish.ageInBars} bars ago`);
-            console.log(`     Bullish recent (≤15): ${bestBullish.ageInBars <= 15}`);
+            //console.log(`     Bullish age: ${bestBullish.ageInBars} bars ago`);
+            //console.log(`     Bullish recent (≤15): ${bestBullish.ageInBars <= 15}`);
         }
         if (bestBearish) {
-            console.log(`     Bearish age: ${bestBearish.ageInBars} bars ago`);
-            console.log(`     Bearish recent (≤15): ${bestBearish.ageInBars <= 15}`);
+            //console.log(`     Bearish age: ${bestBearish.ageInBars} bars ago`);
+            //console.log(`     Bearish recent (≤15): ${bestBearish.ageInBars <= 15}`);
         }
 
         // For structured logic: Only allow BUY/SELL if has recent divergence and the divergence list is not empty
@@ -948,7 +932,7 @@ class MACDDivergence {
             // All good, keep SELL
         } else if (finalSignal === 'BUY' || finalSignal === 'SELL') {
             // If the above conditions are NOT met, override to AVOID
-            console.log(`     ❌ Overriding ${finalSignal} to AVOID: divergence not recent or missing`);
+            //console.log(`     ❌ Overriding ${finalSignal} to AVOID: divergence not recent or missing`);
             finalSignal = 'AVOID';
             if (finalSignal === 'AVOID' && bestBullish && finalSignal === 'BUY') {
                 reasoning = [`Divergence detected but too old (${bestBullish?.ageInBars} bars ago)`];
@@ -982,7 +966,7 @@ class MACDDivergence {
         } else if (finalSignal === 'WATCH') {
             confidence = signalAnalysis.signalStrength + 0.2; // Boost for having divergence
         } else {
-            confidence = this.calculateMACDDivergenceConfidence(divergenceAnalysis, candleAnalysis, swingAnalysis, data); // Dynamic confidence for AVOID
+            confidence = this.calculateMACDDivergenceConfidence(divergenceAnalysis, candleAnalysis, swingAnalysis); // Dynamic confidence for AVOID
         }
 
         // Build execution plan
@@ -1394,13 +1378,13 @@ class MACDDivergence {
     /**
      * Calculate dynamic confidence for MACD Divergence system based on setup strength
      */
-    calculateMACDDivergenceConfidence(divergenceAnalysis, candleAnalysis, swingAnalysis, data) {
+    calculateMACDDivergenceConfidence(divergenceAnalysis, candleAnalysis, swingAnalysis) {
         let confidence = 0.3; // Base confidence
         
-        const { type, bestBullish, bestBearish } = divergenceAnalysis || {};
+        const { divergenceType, bestBullish, bestBearish } = divergenceAnalysis || {};
         
         // Divergence strength and recency
-        if (type === 'BULLISH' && bestBullish) {
+        if (divergenceType === 'BULLISH' && bestBullish) {
             const strength = bestBullish.strength || 0;
             const ageInBars = bestBullish.ageInBars || 50;
             
@@ -1414,7 +1398,7 @@ class MACDDivergence {
             } else if (ageInBars <= 20) {
                 confidence += 0.05;
             }
-        } else if (type === 'BEARISH' && bestBearish) {
+        } else if (divergenceType === 'BEARISH' && bestBearish) {
             const strength = bestBearish.strength || 0;
             const ageInBars = bestBearish.ageInBars || 50;
             
@@ -1427,31 +1411,19 @@ class MACDDivergence {
             }
         }
         
-        // MACD histogram momentum
-        const macdData = data.series.daily[data.series.daily.length - 1];
-        if (macdData && typeof macdData.macdHist === 'number') {
-            const macdHist = macdData.macdHist;
-            const macdHistPrev = data.series.daily[data.series.daily.length - 2]?.macdHist || 0;
-            
-            // MACD histogram direction matches expected divergence
-            if (type === 'BULLISH' && macdHist > macdHistPrev) {
-                confidence += 0.08;
-            } else if (type === 'BEARISH' && macdHist < macdHistPrev) {
-                confidence += 0.08;
-            }
-        }
-        
         // Candle confirmation
-        if (candleAnalysis?.isBullish && type === 'BULLISH') {
+        if (candleAnalysis?.isBullish && divergenceType === 'BULLISH') {
             confidence += 0.06;
-        } else if (!candleAnalysis?.isBullish && type === 'BEARISH') {
+        } else if (candleAnalysis?.isBearish && divergenceType === 'BEARISH') {
             confidence += 0.06;
         }
         
         // Swing point quality
         if (swingAnalysis) {
-            const { priceSwings, macdSwings } = swingAnalysis;
-            if (priceSwings?.length >= 2 && macdSwings?.length >= 2) {
+            const priceSwings = swingAnalysis.price;
+            const macdSwings = swingAnalysis.macd;
+            if (priceSwings?.highs?.length >= 2 && priceSwings?.lows?.length >= 2 && 
+                macdSwings?.highs?.length >= 2 && macdSwings?.lows?.length >= 2) {
                 confidence += 0.08;
             }
         }

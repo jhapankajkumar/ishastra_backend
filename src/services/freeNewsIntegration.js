@@ -11,7 +11,7 @@ class FreeNewsIntegration {
     this.alphaVantageKey = process.env.ALPHA_VANTAGE_KEY; // Free tier: 5 calls/minute
     this.finnhubKey = process.env.FINNHUB_KEY; // Free tier: 60 calls/minute
     
-    console.log('📰 Free News Integration initialized');
+    //console.log('📰 Free News Integration initialized');
   }
 
   /**
@@ -19,7 +19,7 @@ class FreeNewsIntegration {
    */
   async fetchAlphaVantageNews(symbol) {
     if (!this.alphaVantageKey) {
-      console.log('⚠️  Alpha Vantage API key not configured');
+      //console.log('⚠️  Alpha Vantage API key not configured');
       return null;
     }
 
@@ -60,7 +60,7 @@ class FreeNewsIntegration {
    */
   async fetchFinnhubNews(symbol) {
     if (!this.finnhubKey) {
-      console.log('⚠️  Finnhub API key not configured');
+      //console.log('⚠️  Finnhub API key not configured');
       return null;
     }
 
@@ -97,7 +97,7 @@ class FreeNewsIntegration {
    * Try multiple free sources
    */
   async fetchFromMultipleSources(symbol) {
-    console.log(`🔍 Fetching real news for ${symbol} from multiple sources...`);
+    //console.log(`🔍 Fetching real news for ${symbol} from multiple sources...`);
     
     const sources = [
       () => this.fetchAlphaVantageNews(symbol),
@@ -108,16 +108,16 @@ class FreeNewsIntegration {
       try {
         const news = await fetchSource();
         if (news && news.length > 0) {
-          console.log(`✅ Found ${news.length} real news articles for ${symbol}`);
+          //console.log(`✅ Found ${news.length} real news articles for ${symbol}`);
           return news;
         }
       } catch (error) {
-        console.log(`⚠️  Source failed: ${error.message}`);
+        //console.log(`⚠️  Source failed: ${error.message}`);
         continue;
       }
     }
 
-    console.log(`📰 No real news found, using simulated data for ${symbol}`);
+    //console.log(`📰 No real news found, using simulated data for ${symbol}`);
     return null;
   }
 }

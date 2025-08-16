@@ -31,7 +31,7 @@ class MinerviniSEPALoose {
      * @returns {Object} - Complete SEPA analysis result
      */
     analyze(data, options = {}) {
-        console.log(`  🎯 SEPA: Starting Minervini Stage Analysis...`);
+        //console.log(`  🎯 SEPA: Starting Minervini Stage Analysis...`);
 
         try {
             const { series, indicators, meta } = data;
@@ -41,23 +41,23 @@ class MinerviniSEPALoose {
             }
 
             // Phase 1: Stage Identification
-            console.log(`  🎯 SEPA Phase 1: Identifying market stage...`);
+            //console.log(`  🎯 SEPA Phase 1: Identifying market stage...`);
             const stageAnalysis = this.identifyMarketStage(series, indicators);
 
             // Phase 2: Trend Analysis
-            console.log(`  🎯 SEPA Phase 2: Analyzing trends alignment...`);
+            //console.log(`  🎯 SEPA Phase 2: Analyzing trends alignment...`);
             const trendAnalysis = this.analyzeTrends(series, indicators);
 
             // Phase 3: Entry/Exit Signals
-            console.log(`  🎯 SEPA Phase 3: Generating entry/exit signals...`);
+            //console.log(`  🎯 SEPA Phase 3: Generating entry/exit signals...`);
             const signalAnalysis = this.generateSignals(stageAnalysis, trendAnalysis, series);
 
             // Phase 4: Risk Assessment
-            console.log(`  🎯 SEPA Phase 4: Assessing risk/reward...`);
+            //console.log(`  🎯 SEPA Phase 4: Assessing risk/reward...`);
             const riskAssessment = this.assessRisk(stageAnalysis, signalAnalysis, series);
 
             // Phase 5: Final Decision
-            console.log(`  🎯 SEPA Phase 5: Making final decision...`);
+            //console.log(`  🎯 SEPA Phase 5: Making final decision...`);
             const finalDecision = this.makeFinalDecision(stageAnalysis, trendAnalysis, signalAnalysis, riskAssessment);
 
             const result = {
@@ -107,12 +107,12 @@ class MinerviniSEPALoose {
                 }
             };
 
-            console.log(`  🎯 SEPA Result: ${result.decision} (Stage ${result.stage}, ${(result.confidence * 100).toFixed(1)}% confidence)`);
+            //console.log(`  🎯 SEPA Result: ${result.decision} (Stage ${result.stage}, ${(result.confidence * 100).toFixed(1)}% confidence)`);
 
             return result;
 
         } catch (error) {
-            console.error(`  ❌ SEPA Analysis Error:`, error.message);
+            // console.error(`  ❌ SEPA Analysis Error:`, error.message);
             return {
                 decision: 'HOLD',
                 confidence: 0,

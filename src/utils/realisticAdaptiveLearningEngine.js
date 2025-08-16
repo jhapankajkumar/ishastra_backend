@@ -43,7 +43,7 @@ class RealisticAdaptiveLearningEngine {
   }
 
   async initializeRealisticLearning() {
-    console.log('🎯 Initializing Realistic Adaptive Learning Engine...');
+    //console.log('🎯 Initializing Realistic Adaptive Learning Engine...');
     
     try {
       // Initialize strategy performance tracking
@@ -52,7 +52,7 @@ class RealisticAdaptiveLearningEngine {
       // Initialize market regime detection
       this.setupRegimeDetection();
       
-      console.log('✅ Realistic Adaptive Learning Engine Ready');
+      //console.log('✅ Realistic Adaptive Learning Engine Ready');
       
     } catch (error) {
       console.error('❌ Failed to initialize Adaptive Learning Engine:', error.message);
@@ -115,7 +115,7 @@ class RealisticAdaptiveLearningEngine {
    * Uses simple but effective statistical measures
    */
   async detectMarketRegime(ohlcData) {
-    console.log('🎯 Detecting market regime...');
+    //console.log('🎯 Detecting market regime...');
     
     const regimeAnalysis = {
       primaryRegime: 'UNKNOWN',
@@ -171,7 +171,7 @@ class RealisticAdaptiveLearningEngine {
    * Achievable strategy optimization using UCB1 algorithm
    */
   selectOptimalStrategy(currentRegime) {
-    console.log(`🎲 Selecting optimal strategy for ${currentRegime.primaryRegime} regime...`);
+    //console.log(`🎲 Selecting optimal strategy for ${currentRegime.primaryRegime} regime...`);
 
     const strategySelection = {
       selectedStrategy: 'momentum',
@@ -373,7 +373,7 @@ class RealisticAdaptiveLearningEngine {
   async adaptiveAnalysis(marketData, currentPrediction, actualOutcome = null) {
     const startTime = performance.now();
     
-    console.log('🎯 Running Realistic Adaptive Analysis...');
+    //console.log('🎯 Running Realistic Adaptive Analysis...');
     
     const adaptiveResult = {
       enhancedPrediction: currentPrediction,

@@ -136,7 +136,7 @@ class AdvancedTechnicalAnalysis {
     try {
       // Ensure we have sufficient data for ADX calculation (minimum 28 periods recommended)
       if (closes.length < 28) {
-        console.log(`⚠️ Insufficient data for ADX calculation: ${closes.length} periods, need 28+`);
+        //console.log(`⚠️ Insufficient data for ADX calculation: ${closes.length} periods, need 28+`);
         throw new Error('Insufficient data for ADX');
       }
 
@@ -166,7 +166,7 @@ class AdvancedTechnicalAnalysis {
         const latestMinusDI = minusDI[minusDI.length - 1];
         
         if (!isNaN(latestADX) && !isNaN(latestPlusDI) && !isNaN(latestMinusDI)) {
-          console.log(`✅ ADX calculation successful: Latest ADX = ${latestADX.toFixed(2)}, +DI = ${latestPlusDI.toFixed(2)}, -DI = ${latestMinusDI.toFixed(2)}`);
+          //console.log(`✅ ADX calculation successful: Latest ADX = ${latestADX.toFixed(2)}, +DI = ${latestPlusDI.toFixed(2)}, -DI = ${latestMinusDI.toFixed(2)}`);
         } else {
           throw new Error('ADX calculation returned invalid results');
         }
@@ -176,7 +176,7 @@ class AdvancedTechnicalAnalysis {
       
     } catch (error) {
       console.error(`❌ ADX calculation failed: ${error.message}`);
-      console.log('📊 Using calculated ATR-based trend strength as ADX proxy...');
+      //console.log('📊 Using calculated ATR-based trend strength as ADX proxy...');
       
       // Calculate a proper proxy ADX based on ATR and price momentum
       const atrValues = ATR.calculate({
@@ -208,8 +208,8 @@ class AdvancedTechnicalAnalysis {
           minusDI.push((downDays / 13) * 100);
         }
         
-        console.log(`✅ ADX proxy calculation complete: Latest proxy ADX = ${adxData[adxData.length - 1].toFixed(2)}`);
-        console.log(`✅ DI proxy calculation complete: +DI = ${plusDI[plusDI.length - 1].toFixed(2)}, -DI = ${minusDI[minusDI.length - 1].toFixed(2)}`);
+        //console.log(`✅ ADX proxy calculation complete: Latest proxy ADX = ${adxData[adxData.length - 1].toFixed(2)}`);
+        //console.log(`✅ DI proxy calculation complete: +DI = ${plusDI[plusDI.length - 1].toFixed(2)}, -DI = ${minusDI[minusDI.length - 1].toFixed(2)}`);
       } else {
         // Final fallback - use dynamic values based on volatility
         const currentPrice = closes[closes.length - 1];
@@ -220,7 +220,7 @@ class AdvancedTechnicalAnalysis {
         plusDI = Array(closes.length).fill(dynamicADX * 0.6);
         minusDI = Array(closes.length).fill(dynamicADX * 0.4);
         
-        console.log(`⚠️ Using dynamic fallback: ADX = ${dynamicADX.toFixed(2)}, +DI = ${(dynamicADX * 0.6).toFixed(2)}, -DI = ${(dynamicADX * 0.4).toFixed(2)}`);
+        //console.log(`⚠️ Using dynamic fallback: ADX = ${dynamicADX.toFixed(2)}, +DI = ${(dynamicADX * 0.6).toFixed(2)}, -DI = ${(dynamicADX * 0.4).toFixed(2)}`);
       }
     }
 
@@ -1154,7 +1154,7 @@ class AdvancedTechnicalAnalysis {
     const price = latest?.price || 100;
     
     // Add console log to see if this is being called
-    console.log(`🔥 ALWAYS_BUY called with price: ${price}`);
+    //console.log(`🔥 ALWAYS_BUY called with price: ${price}`);
     
     return {
       signal: 'BUY',

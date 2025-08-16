@@ -10,12 +10,13 @@ const CupWithHandle = require('../systems/cup-with-handle');
 const RSIMeanReversion = require('../systems/rsi-mean-reversion');
 const MACDDivergence = require('../systems/macd-divergence');
 const { SingleSystemAnalyzer } = require('../systems/single-system-analyzer');
-const { SYSTEM_IDS, normalizeSystemKey, defaultLookBackPeriod } = require('../utils/systemConstants');
+const { SYSTEM_IDS, SYSTEM_TIERS, normalizeSystemKey, getSystemWeight, isCompleteSystem, getHighConvictionThreshold, defaultLookBackPeriod } = require('../utils/systemConstants');
 
 const { 
   generateExpertAIDecision,
   prepareAnalysisContext
 } = require('./ai/stock.expert.controller');
+const CapitalManager = require('../utils/capitalManager');
 
 class TradingSystemController {
   constructor() {
@@ -35,14 +36,13 @@ class TradingSystemController {
    * Analyze stocks using all available trading systems with REAL API data
    */
   async analyzeTradingSystem(req, res) {
-    console.error(`🚀🚀🚀🚀🚀 [TRADING-SYSTEM] STARTING ANALYSIS REQUEST 🚀🚀🚀🚀🚀`);
-    console.error(`🚀🚀🚀🚀🚀 Request body: ${JSON.stringify(req.body)} 🚀🚀🚀🚀🚀`);
+    // console.error(`🚀🚀🚀🚀🚀 [TRADING-SYSTEM] STARTING ANALYSIS REQUEST 🚀🚀🚀🚀🚀`);
+    // console.error(`🚀🚀🚀🚀🚀 Request body: ${JSON.stringify(req.body)} 🚀🚀🚀🚀🚀`);
     
     try {
       const { 
         symbols, 
-        systems = [SYSTEM_IDS.TRIPLE_SCREEN, SYSTEM_IDS.MINERVINI_SEPA, SYSTEM_IDS.CAN_SLIM_CUP_HANDLE, SYSTEM_IDS.RSI_MEAN_REVERSION, SYSTEM_IDS.MACD_DIVERGENCE], // Default to all systems
-        capital = 100000 
+        systems = [SYSTEM_IDS.TRIPLE_SCREEN, SYSTEM_IDS.MINERVINI_SEPA, SYSTEM_IDS.CAN_SLIM_CUP_HANDLE, SYSTEM_IDS.RSI_MEAN_REVERSION, SYSTEM_IDS.MACD_DIVERGENCE] // Default to all systems
       } = req.body;
       
       if (!symbols || !Array.isArray(symbols) || symbols.length === 0) {
@@ -56,13 +56,36 @@ class TradingSystemController {
         });
       }
 
+      // Fetch available capital from database (USD by default)
+      //console.log(`💰 Fetching available capital from database...`);
+      let availableCapital = 100000; // Fallback default
+      try {
+        const usdCapital = await CapitalManager.getCapital('USD');
+        if (usdCapital && usdCapital.remaining > 0) {
+          availableCapital = usdCapital.remaining;
+          const allocated = usdCapital.total - usdCapital.remaining;
+          const utilizationRate = (allocated / usdCapital.total) * 100;
+          
+          //console.log(`💰 USD Capital Status:`);
+          //console.log(`  • Total: $${usdCapital.total.toLocaleString()}`);
+          //console.log(`  • Available: $${usdCapital.remaining.toLocaleString()}`);
+          //console.log(`  • Allocated: $${allocated.toLocaleString()}`);
+          //console.log(`  • Utilization: ${utilizationRate.toFixed(1)}%`);
+        } else {
+          //console.log(`⚠️  No USD capital found in database, using default: $${availableCapital.toLocaleString()}`);
+        }
+      } catch (capitalError) {
+        console.error(`❌ Error fetching capital:`, capitalError.message);
+        //console.log(`⚠️  Using fallback capital: $${availableCapital.toLocaleString()}`);
+      }
+
       // Normalize and validate systems
-      console.log(`🔧 Original systems:`, systems);
+      // //console.log(`🔧 Original systems:`, systems);
       const normalizedSystems = systems.map(sys => normalizeSystemKey(sys));
-      console.log(`🔧 Normalized systems:`, normalizedSystems);
-      console.log(`🔧 Available systems:`, Object.keys(this.systems));
+      // //console.log(`🔧 Normalized systems:`, normalizedSystems);
+      // //console.log(`🔧 Available systems:`, Object.keys(this.systems));
       const supportedSystems = normalizedSystems.filter(sys => this.systems[sys]);
-      console.log(`🔧 Supported systems:`, supportedSystems);
+      // //console.log(`🔧 Supported systems:`, supportedSystems);
       
       if (supportedSystems.length === 0) {
         return res.status(400).json({
@@ -73,30 +96,30 @@ class TradingSystemController {
         });
       }
 
-      console.log(`🚀 Trading System Analysis Starting...`);
+      // //console.log(`🚀 Trading System Analysis Starting...`);
       console.log(`📊 Analyzing ${symbols.length} stocks: ${symbols.join(', ')}`);
-      console.log(`🔧 Systems: ${supportedSystems.join(', ')}`);
-      console.log(`💰 Capital Available: $${capital.toLocaleString()}`);
+      // //console.log(`🔧 Systems: ${supportedSystems.join(', ')}`);
+      // //console.log(`💰 Available Capital: $${availableCapital.toLocaleString()}`);
 
       // PERFORMANCE OPTIMIZATION: Limit symbols and process in parallel
       const maxSymbols = 10; // Limit for performance
       const limitedSymbols = symbols.slice(0, maxSymbols);
       
       if (symbols.length > maxSymbols) {
-        console.log(`⚠️ Limited to ${maxSymbols} symbols for performance (requested ${symbols.length})`);
+        // //console.log(`⚠️ Limited to ${maxSymbols} symbols for performance (requested ${symbols.length})`);
       }
 
-      console.log(`🚀 OPTIMIZATION: Processing ${limitedSymbols.length} symbols in PARALLEL...`);
+      // //console.log(`🚀 OPTIMIZATION: Processing ${limitedSymbols.length} symbols in PARALLEL...`);
 
       // Process all symbols in parallel instead of sequential
       const symbolPromises = limitedSymbols.map(async (symbol) => {
         try {
-          console.log(`\n📈 Processing ${symbol}...`);
+          //console.log(`\n📈 Processing ${symbol}...`);
           
           // OPTIMIZATION: Call data fetching with reduced timeframe
-          console.log(`  🔄 Fetching data for ${symbol} with optimized timeframe...`);
+          //console.log(`  🔄 Fetching data for ${symbol} with optimized timeframe...`);
 
-          const { analysisContext} = await prepareAnalysisContext(symbol, defaultLookBackPeriod, capital); // Reduced from 2y to 6mo
+          const { analysisContext} = await prepareAnalysisContext(symbol, defaultLookBackPeriod, availableCapital); // Uses capital from database
 
         // Log any failures for debugging
         [
@@ -108,9 +131,9 @@ class TradingSystemController {
           ['MonteCarlo', analysisContext.monteCarlo]
         ].forEach(([name, result]) => {
           if (result && result.status === 'rejected') {
-            console.log(`    ⚠️ ${name} data failed: ${result.reason?.message || result.reason}`);
+            //console.log(`    ⚠️ ${name} data failed: ${result.reason?.message || result.reason}`);
           } else {
-            console.log(`    ✅ ${name} data: SUCCESS`);
+            //console.log(`    ✅ ${name} data: SUCCESS`);
           }
         });
 
@@ -118,23 +141,23 @@ class TradingSystemController {
           throw new Error(`Failed to fetch technical data for ${symbol}`);
         }
 
-        console.log(`  📊 Data Summary: Technical=${!!analysisContext.technical}, Backtest=${!!analysisContext.backtest}, Sentiment=${!!analysisContext.sentiment}, TailRisk=${!!analysisContext.tailRisk}`);
+        //console.log(`  📊 Data Summary: Technical=${!!analysisContext.technical}, Backtest=${!!analysisContext.backtest}, Sentiment=${!!analysisContext.sentiment}, TailRisk=${!!analysisContext.tailRisk}`);
 
         // DEBUG: Log technical data structure
-        console.log(`  🔍 DEBUG: Technical data structure for ${symbol}:`);
-        console.log(`  • OHLC Length: ${analysisContext.technical.ohlcData?.length || 'N/A'}`);
-        console.log(`  • Historical Length: ${analysisContext.technical.historicalData?.length || 'N/A'}`);
-        console.log(`  • Indicators: ${Object.keys(analysisContext.technical.indicators || {}).join(', ') || 'None'}`);
-        console.log(`  • Tech Indicators: ${Object.keys(analysisContext.technical.technicalIndicators || {}).join(', ') || 'None'}`);
+        // //console.log(`  🔍 DEBUG: Technical data structure for ${symbol}:`);
+        // //console.log(`  • OHLC Length: ${analysisContext.technical.ohlcData?.length || 'N/A'}`);
+        // //console.log(`  • Historical Length: ${analysisContext.technical.historicalData?.length || 'N/A'}`);
+        // //console.log(`  • Indicators: ${Object.keys(analysisContext.technical.indicators || {}).join(', ') || 'None'}`);
+        // //console.log(`  • Tech Indicators: ${Object.keys(analysisContext.technical.technicalIndicators || {}).join(', ') || 'None'}`);
 
         // Phase 2: Run analysis for each requested system
-        console.log(`  🔍 Phase 2: Running ${supportedSystems.length} system(s) analysis for ${symbol}...`);
+        //console.log(`  🔍 Phase 2: Running ${supportedSystems.length} system(s) analysis for ${symbol}...`);
         
         const systemResults = {};
         const systemFinalResults = {};
 
         for (const systemId of supportedSystems) {
-          console.log(`    🔧 Analyzing with ${systemId}...`);
+          //console.log(`    🔧 Analyzing with ${systemId}...`);
           
           try {
             // Convert data to system-specific format
@@ -142,9 +165,9 @@ class TradingSystemController {
             let systemAnalysis;
             
             if (systemId === SYSTEM_IDS.TRIPLE_SCREEN) {
-              console.log(`📊 [SYSTEM] Loading Elder Triple Screen system for ${symbol}`);
+              //console.log(`📊 [SYSTEM] Loading Elder Triple Screen system for ${symbol}`);
               systemData = this.convertToElderFormat(analysisContext.technical);
-              console.log(`🔧 [SYSTEM] Elder format result has indicators:`, Object.keys(systemData.indicators.triple_screen || {}));
+              //console.log(`🔧 [SYSTEM] Elder format result has indicators:`, Object.keys(systemData.indicators.triple_screen || {}));
               systemAnalysis = this.systems[systemId].analyze(systemData);
             } else if (systemId === SYSTEM_IDS.MINERVINI_SEPA) {
               systemData = this.convertToSEPAFormat(analysisContext.technical);
@@ -173,7 +196,7 @@ class TradingSystemController {
             systemResults[systemId] = systemAnalysis;
             systemFinalResults[systemId] = finalResult;
             
-            console.log(`    ✅ ${systemId} analysis complete: ${systemAnalysis.decision}`);
+            //console.log(`    ✅ ${systemId} analysis complete: ${systemAnalysis.decision}`);
             
           } catch (systemError) {
             console.error(`    ❌ ${systemId} analysis failed:`, systemError.message);
@@ -191,7 +214,7 @@ class TradingSystemController {
         }
 
         // Phase 3: Combine results and create unified decision
-        console.log(`  🚪 Phase 3: Creating unified decision for ${symbol}...`);
+        //console.log(`  🚪 Phase 3: Creating unified decision for ${symbol}...`);
         const unifiedDecision = this.createUnifiedDecision(systemResults, supportedSystems); // Use system analysis results, not gate engine
 
         // Extract system-specific analyses
@@ -249,38 +272,27 @@ class TradingSystemController {
       const response = {
         success: true,
         timestamp: new Date().toISOString(),
-        request: {
-          symbols,
-          capital,
-          systems: supportedSystems,
-          analysisType: 'comprehensive'
-        },
-        summary: {
-          totalAnalyzed: results.length,
-          errors: errors.length,
-          decisions: this.summarizeDecisions(results),
-          averageConfidence: this.calculateAverageConfidence(results),
-          recommendedActions: this.getRecommendedActions(results)
-        },
+        // request: {
+        //   symbols,
+        //   availableCapital,
+        //   systems: supportedSystems,
+        //   analysisType: 'comprehensive'
+        // },
+        // summary: {
+        //   totalAnalyzed: results.length,
+        //   errors: errors.length,
+        //   decisions: this.summarizeDecisions(results),
+        //   averageConfidence: this.calculateAverageConfidence(results),
+        //   recommendedActions: this.getRecommendedActions(results)
+        // },
         results,
         errors: errors.length > 0 ? errors : undefined,
-        metadata: {
-          systemVersion: '2.0.0',
-          analysisEngine: 'Multi-System Trading Analysis (Elder + SEPA + Gate Engine)',
-          supportedSystems: supportedSystems,
-          dataSource: 'Real Market Data (Yahoo Finance)',
-          riskManagement: 'Institutional Grade',
-          optimization: 'Parallel processing, 6-month timeframe, timeout protection',
-          maxSymbols: 10,
-          actualSymbols: limitedSymbols.length,
-          optimizations: ['PARALLEL_PROCESSING', 'REDUCED_TIMEFRAME', 'TIMEOUT_PROTECTION', 'SYMBOL_LIMIT']
-        }
       };
 
-      console.log(`\n🎉 Multi-System Trading Analysis Complete!`);
-      console.log(`📊 Successfully analyzed: ${results.length}/${symbols.length} stocks`);
-      console.log(`🔧 Systems used: ${supportedSystems.join(', ')}`);
-      console.log(`🎯 Recommended actions: ${response.summary.recommendedActions.length}`);
+      //console.log(`\n🎉 Multi-System Trading Analysis Complete!`);
+      //console.log(`📊 Successfully analyzed: ${results.length}/${symbols.length} stocks`);
+      //console.log(`🔧 Systems used: ${supportedSystems.join(', ')}`);
+      // //console.log(`🎯 Recommended actions: ${response.summary.recommendedActions.length}`);
 
       res.json(response);
 
@@ -297,24 +309,24 @@ class TradingSystemController {
 
   // OPTIMIZED: Convert technical data to Elder's format using existing data structure
   convertToElderFormat(technicalData) {
-    console.log(`  🔧 DEBUG: Converting technical data for Elder's system...`);
-    console.log(`  🔧 Input keys: ${Object.keys(technicalData).join(', ')}`);
+    //console.log(`  🔧 DEBUG: Converting technical data for Elder's system...`);
+    //console.log(`  🔧 Input keys: ${Object.keys(technicalData).join(', ')}`);
     
     const ohlcData = technicalData.ohlcData || technicalData.historicalData || [];
-    console.log(`  🔧 OHLC data length: ${ohlcData.length}`);
+    //console.log(`  🔧 OHLC data length: ${ohlcData.length}`);
     
     const indicators = technicalData.indicators || {};
     const technicalIndicators = technicalData.technicalIndicators || {};
-    console.log(`  🔧 Base indicators: ${Object.keys(indicators).join(', ') || 'None'}`);
-    console.log(`  🔧 Tech indicators: ${Object.keys(technicalIndicators).join(', ') || 'None'}`);
+    //console.log(`  🔧 Base indicators: ${Object.keys(indicators).join(', ') || 'None'}`);
+    //console.log(`  🔧 Tech indicators: ${Object.keys(technicalIndicators).join(', ') || 'None'}`);
     
     // Create weekly data from daily data (reuse logic)
     const weeklyData = this.convertDailyToWeekly(ohlcData);
-    console.log(`  🔧 Weekly data length: ${weeklyData.length}`);
+    //console.log(`  🔧 Weekly data length: ${weeklyData.length}`);
     
     // Create intraday simulation from daily data (last 30 days, 6 periods per day)
     const intradayData = this.createIntradayFromDaily(ohlcData.slice(-30));
-    console.log(`  🔧 Intraday data length: ${intradayData.length}`);
+    //console.log(`  🔧 Intraday data length: ${intradayData.length}`);
     
     // Calculate required indicators for Elder system
     const dailyRSI = indicators.rsi || technicalIndicators.rsi || this.calculateRSI(ohlcData);
@@ -326,12 +338,12 @@ class TradingSystemController {
     const dailyEMA10 = indicators.ema10 || technicalIndicators.ema10 || this.calculateEMA_OHLC(ohlcData, 10);
     const dailyForceIndex = this.calculateForceIndex(ohlcData);
     
-    console.log(`  🔧 Calculated indicators:`);
-    console.log(`    • RSI length: ${Array.isArray(dailyRSI) ? dailyRSI.length : 'single value'}`);
-    console.log(`    • Stoch length: ${Array.isArray(dailyStoch) ? dailyStoch.length : 'single value'}`);
-    console.log(`    • Weekly MACD values:`, weeklyMACD);
-    console.log(`    • Weekly EMA10 value: ${weeklyEMA10}`);
-    console.log(`    • Weekly EMA40 value: ${weeklyEMA40}`);
+    //console.log(`  🔧 Calculated indicators:`);
+    //console.log(`    • RSI length: ${Array.isArray(dailyRSI) ? dailyRSI.length : 'single value'}`);
+    //console.log(`    • Stoch length: ${Array.isArray(dailyStoch) ? dailyStoch.length : 'single value'}`);
+    //console.log(`    • Weekly MACD values:`, weeklyMACD);
+    //console.log(`    • Weekly EMA10 value: ${weeklyEMA10}`);
+    //console.log(`    • Weekly EMA40 value: ${weeklyEMA40}`);
     
     // Prepare the data structure that matches what Elder system expects
     const elderData = {
@@ -387,12 +399,12 @@ class TradingSystemController {
       }
     };
     
-    console.log(`  🔧 Final Elder data structure:`);
-    console.log(`    • Daily series: ${elderData.series.daily.length}`);
-    console.log(`    • Weekly series: ${elderData.series.weekly.length}`);
-    console.log(`    • Intraday series: ${elderData.series.intraday.length}`);
-    console.log(`    • Has weeklyMACD: ${elderData.indicators.triple_screen.weeklyMACD ? 'YES' : 'NO'}`);
-    console.log(`    • weeklyMACDHist values: [${elderData.indicators.triple_screen.weeklyMACDHist}, ${elderData.indicators.triple_screen.weeklyMACDHist_1}, ${elderData.indicators.triple_screen.weeklyMACDHist_2}]`);
+    //console.log(`  🔧 Final Elder data structure:`);
+    //console.log(`    • Daily series: ${elderData.series.daily.length}`);
+    //console.log(`    • Weekly series: ${elderData.series.weekly.length}`);
+    //console.log(`    • Intraday series: ${elderData.series.intraday.length}`);
+    //console.log(`    • Has weeklyMACD: ${elderData.indicators.triple_screen.weeklyMACD ? 'YES' : 'NO'}`);
+    //console.log(`    • weeklyMACDHist values: [${elderData.indicators.triple_screen.weeklyMACDHist}, ${elderData.indicators.triple_screen.weeklyMACDHist_1}, ${elderData.indicators.triple_screen.weeklyMACDHist_2}]`);
     
     return elderData;
   }
@@ -693,11 +705,11 @@ class TradingSystemController {
 
   // NEW: Convert technical data to SEPA format for Minervini analysis
   convertToSEPAFormat(technicalData) {
-    console.log(`  🔧 DEBUG: Converting technical data for SEPA system...`);
-    console.log(`  🔧 Input keys: ${Object.keys(technicalData).join(', ')}`);
+    //console.log(`  🔧 DEBUG: Converting technical data for SEPA system...`);
+    //console.log(`  🔧 Input keys: ${Object.keys(technicalData).join(', ')}`);
     
     const ohlcData = technicalData.ohlcData || technicalData.historicalData || [];
-    console.log(`  🔧 OHLC data length: ${ohlcData.length}`);
+    //console.log(`  🔧 OHLC data length: ${ohlcData.length}`);
     
     const indicators = technicalData.indicators || {};
     const technicalIndicators = technicalData.technicalIndicators || {};
@@ -763,19 +775,19 @@ class TradingSystemController {
       }
     };
     
-    console.log(`  🔧 Final SEPA data structure:`);
-    console.log(`    • Daily series: ${sepaData.series.daily.length}`);
-    console.log(`    • Weekly series: ${sepaData.series.weekly.length}`);
-    console.log(`    • Base ema10 length: ${Array.isArray(sepaData.indicators.base.ema10) ? sepaData.indicators.base.ema10.length : 'single value'}`);
-    console.log(`    • SEPA ema10 length: ${Array.isArray(sepaData.indicators.sepa_specific.ema10) ? sepaData.indicators.sepa_specific.ema10.length : 'single value'}`);
-    console.log(`    • Has SEPA indicators: ${sepaData.indicators.sepa_specific ? 'YES' : 'NO'}`);
+    //console.log(`  🔧 Final SEPA data structure:`);
+    //console.log(`    • Daily series: ${sepaData.series.daily.length}`);
+    //console.log(`    • Weekly series: ${sepaData.series.weekly.length}`);
+    //console.log(`    • Base ema10 length: ${Array.isArray(sepaData.indicators.base.ema10) ? sepaData.indicators.base.ema10.length : 'single value'}`);
+    //console.log(`    • SEPA ema10 length: ${Array.isArray(sepaData.indicators.sepa_specific.ema10) ? sepaData.indicators.sepa_specific.ema10.length : 'single value'}`);
+    //console.log(`    • Has SEPA indicators: ${sepaData.indicators.sepa_specific ? 'YES' : 'NO'}`);
     
     return sepaData;
   }
 
   // NEW: Create unified decision from multiple system results
   createUnifiedDecision(systemResults, supportedSystems) {
-    console.log(`  🎯 Creating unified decision from ${supportedSystems.length} systems...`);
+    //console.log(`  🎯 Creating unified decision from ${supportedSystems.length} systems...`);
     
     // Convert object to array of results - expect system analysis format
     const resultsArray = Object.values(systemResults).filter(result => {
@@ -813,28 +825,78 @@ class TradingSystemController {
       unifiedConfidence = resultsArray.reduce((sum, r) => sum + r.confidence, 0) / resultsArray.length;
       reasoning.push(`All ${resultsArray.length} systems agree on ${unifiedAction}`);
     } else if (agreement === 'PARTIAL') {
-      // Weighted decision based on confidence
+      // Professional weighted decision using hierarchical system classification
       const weightedResults = resultsArray.map(result => ({
         ...result,
-        weight: result.confidence * (result.system === 'TRIPLE_SCREEN' ? 1.1 : 1.0) // Slight Elder bias
+        weight: getSystemWeight(result) // Use centralized system weighting from constants
       }));
       
       const totalWeight = weightedResults.reduce((sum, r) => sum + r.weight, 0);
-      const buyWeight = weightedResults.filter(r => r.action === 'BUY').reduce((sum, r) => sum + r.weight, 0);
-      const sellWeight = weightedResults.filter(r => r.action === 'SELL').reduce((sum, r) => sum + r.weight, 0);
+      const buyWeight = weightedResults.filter(r => r.action === 'BUY' || r.action === 'STRONG_BUY').reduce((sum, r) => sum + r.weight, 0);
+      const sellWeight = weightedResults.filter(r => r.action === 'SELL' || r.action === 'STRONG_SELL').reduce((sum, r) => sum + r.weight, 0);
+      const watchWeight = weightedResults.filter(r => r.action === 'WATCH').reduce((sum, r) => sum + r.weight, 0);
       
-      if (buyWeight > sellWeight && buyWeight > totalWeight * 0.6) {
+      // Professional high-conviction logic using system tier classification
+      const completeSystemSignals = resultsArray.filter(r => 
+        isCompleteSystem(r.system) && r.confidence >= getHighConvictionThreshold(r.system)
+      );
+      const indicatorSystemSignals = resultsArray.filter(r => 
+        !isCompleteSystem(r.system) && r.confidence >= getHighConvictionThreshold(r.system)
+      );
+      
+      // Complete systems can override at their tier thresholds, indicators need higher confidence
+      const hasExceptionalSignal = completeSystemSignals.length > 0 || indicatorSystemSignals.length > 0;
+      
+      // Dynamic threshold based on signal quality
+      const maxConfidence = Math.max(...weightedResults.map(r => r.confidence));
+      const dynamicThreshold = maxConfidence >= 0.8 ? 0.40 :  // Lower threshold for high-confidence signals
+                              maxConfidence >= 0.7 ? 0.50 :  // Medium threshold for good signals
+                              maxConfidence >= 0.6 ? 0.55 :  // Higher threshold for moderate signals
+                              0.60;                           // Original threshold for weak signals
+      
+      if (hasExceptionalSignal) {
+        // Professional override: Complete systems take precedence over indicators
+        const allHighConvictionSignals = [...completeSystemSignals, ...indicatorSystemSignals];
+        const strongestSignal = allHighConvictionSignals.reduce((prev, current) => {
+          // Priority: Complete systems > Indicators, then by confidence
+          const prevIsComplete = isCompleteSystem(prev.system);
+          const currentIsComplete = isCompleteSystem(current.system);
+          
+          if (prevIsComplete && !currentIsComplete) return prev;
+          if (!prevIsComplete && currentIsComplete) return current;
+          return current.confidence > prev.confidence ? current : prev;
+        });
+
+        unifiedAction = strongestSignal.action === 'STRONG_BUY' ? 'BUY' : strongestSignal.action === 'STRONG_SELL' ? 'SELL' : strongestSignal.action;
+        unifiedConfidence = strongestSignal.confidence * 0.9; // Higher confidence preservation for system hierarchy
+        
+        const systemConfig = SYSTEM_TIERS[strongestSignal.system];
+        const systemType = systemConfig ? systemConfig.type : 'UNKNOWN_SYSTEM';
+        const systemName = systemConfig ? systemConfig.name : strongestSignal.system.toUpperCase();
+        
+        reasoning.push(`HIGH CONVICTION ${systemType}: ${systemName} at ${(strongestSignal.confidence * 100).toFixed(1)}% confidence overrides consensus`);
+        reasoning.push(`Position sizing: ${isCompleteSystem(strongestSignal.system) ? '75%' : '60%'} due to system classification`);
+        
+      } else if (buyWeight > sellWeight && buyWeight > totalWeight * dynamicThreshold) {
         unifiedAction = 'BUY';
         unifiedConfidence = buyWeight / totalWeight;
-        reasoning.push(`Weighted analysis favors BUY (${(buyWeight/totalWeight*100).toFixed(1)}% confidence)`);
-      } else if (sellWeight > buyWeight && sellWeight > totalWeight * 0.6) {
+        reasoning.push(`Weighted analysis favors BUY (${(buyWeight/totalWeight*100).toFixed(1)}% confidence, ${dynamicThreshold*100}% threshold)`);
+        
+      } else if (sellWeight > buyWeight && sellWeight > totalWeight * dynamicThreshold) {
         unifiedAction = 'SELL';
         unifiedConfidence = sellWeight / totalWeight;
-        reasoning.push(`Weighted analysis favors SELL (${(sellWeight/totalWeight*100).toFixed(1)}% confidence)`);
+        reasoning.push(`Weighted analysis favors SELL (${(sellWeight/totalWeight*100).toFixed(1)}% confidence, ${dynamicThreshold*100}% threshold)`);
+        
+      } else if (watchWeight > Math.max(buyWeight, sellWeight) && watchWeight > totalWeight * 0.35) {
+        // WATCH signals can be valuable - don't ignore them
+        unifiedAction = 'WATCH';
+        unifiedConfidence = watchWeight / totalWeight;
+        reasoning.push(`Multiple systems suggest WATCH (${(watchWeight/totalWeight*100).toFixed(1)}% weight) - setup developing`);
+        
       } else {
         unifiedAction = 'HOLD';
-        unifiedConfidence = Math.max(buyWeight, sellWeight) / totalWeight;
-        reasoning.push(`Systems disagree, maintaining HOLD position`);
+        unifiedConfidence = Math.max(buyWeight, sellWeight, watchWeight) / totalWeight;
+        reasoning.push(`Systems disagree (${dynamicThreshold*100}% threshold not met), maintaining HOLD position`);
       }
     } else {
       // No agreement - conservative approach
@@ -859,7 +921,7 @@ class TradingSystemController {
       validSystems: resultsArray.length
     };
 
-    console.log(`  🎯 Unified Decision: ${unifiedAction} (${(unifiedConfidence * 100).toFixed(1)}% confidence, ${agreement} agreement)`);
+    //console.log(`  🎯 Unified Decision: ${unifiedAction} (${(unifiedConfidence * 100).toFixed(1)}% confidence, ${agreement} agreement)`);
     
     return unifiedDecision;
   }
@@ -1461,15 +1523,15 @@ class TradingSystemController {
    * Expected structure: { series: { daily: [] }, indicators: { base: {} } }
    */
   convertToCupHandleFormat(technicalData) {
-    console.log(`  🔧 DEBUG: Converting technical data for Cup-with-Handle system...`);
-    console.log(`  🔧 Input keys: ${Object.keys(technicalData).join(', ')}`);
+    //console.log(`  🔧 DEBUG: Converting technical data for Cup-with-Handle system...`);
+    //console.log(`  🔧 Input keys: ${Object.keys(technicalData).join(', ')}`);
     
     const ohlcData = technicalData.ohlcData || technicalData.historicalData || [];
-    console.log(`  🔧 OHLC data length: ${ohlcData.length}`);
+    //console.log(`  🔧 OHLC data length: ${ohlcData.length}`);
     
     const technicalIndicators = technicalData.technicalIndicators || {};
     const baseIndicators = technicalIndicators.latest || {};
-    console.log(`  🔧 Base indicators: ${Object.keys(baseIndicators).join(', ')}`);
+    //console.log(`  🔧 Base indicators: ${Object.keys(baseIndicators).join(', ')}`);
     
     return {
       series: {
@@ -1486,11 +1548,11 @@ class TradingSystemController {
    * Expected structure: { series: { daily: [] }, indicators: { base: { rsi14: number } } }
    */
   convertToRSIMeanFormat(technicalData) {
-    console.log(`  🔧 DEBUG: Converting technical data for RSI Mean Reversion system...`);
-    console.log(`  🔧 Input keys: ${Object.keys(technicalData).join(', ')}`);
+    //console.log(`  🔧 DEBUG: Converting technical data for RSI Mean Reversion system...`);
+    //console.log(`  🔧 Input keys: ${Object.keys(technicalData).join(', ')}`);
     
     const ohlcData = technicalData.ohlcData || technicalData.historicalData || [];
-    console.log(`  🔧 OHLC data length: ${ohlcData.length}`);
+    //console.log(`  🔧 OHLC data length: ${ohlcData.length}`);
     
     const technicalIndicators = technicalData.technicalIndicators || {};
     const baseIndicators = technicalIndicators.latest || {};
@@ -1501,8 +1563,8 @@ class TradingSystemController {
       rsi14 = technicalIndicators.rsi[technicalIndicators.rsi.length - 1];
     }
     
-    console.log(`  🔧 RSI14 value: ${rsi14}`);
-    console.log(`  🔧 Base indicators: ${Object.keys(baseIndicators).join(', ')}`);
+    //console.log(`  🔧 RSI14 value: ${rsi14}`);
+    //console.log(`  🔧 Base indicators: ${Object.keys(baseIndicators).join(', ')}`);
     
     return {
       series: {
@@ -1522,11 +1584,11 @@ class TradingSystemController {
    * Expected structure: { series: { daily: [] }, indicators: { base: { macd, macd_signal, macd_histogram } } }
    */
   convertToMACDDivergenceFormat(technicalData) {
-    console.log(`  🔧 DEBUG: Converting technical data for MACD Divergence system...`);
-    console.log(`  🔧 Input keys: ${Object.keys(technicalData).join(', ')}`);
+    //console.log(`  🔧 DEBUG: Converting technical data for MACD Divergence system...`);
+    //console.log(`  🔧 Input keys: ${Object.keys(technicalData).join(', ')}`);
     
     const ohlcData = technicalData.ohlcData || technicalData.historicalData || [];
-    console.log(`  🔧 OHLC data length: ${ohlcData.length}`);
+    //console.log(`  🔧 OHLC data length: ${ohlcData.length}`);
     
     const technicalIndicators = technicalData.technicalIndicators || {};
     const baseIndicators = technicalIndicators.latest || {};
@@ -1547,8 +1609,8 @@ class TradingSystemController {
       macdHistogram = technicalIndicators.macd_histogram[technicalIndicators.macd_histogram.length - 1];
     }
     
-    console.log(`  🔧 MACD: ${macd}, Signal: ${macdSignal}, Histogram: ${macdHistogram}`);
-    console.log(`  🔧 Base indicators: ${Object.keys(baseIndicators).join(', ')}`);
+    //console.log(`  🔧 MACD: ${macd}, Signal: ${macdSignal}, Histogram: ${macdHistogram}`);
+    //console.log(`  🔧 Base indicators: ${Object.keys(baseIndicators).join(', ')}`);
     
     return {
       series: {

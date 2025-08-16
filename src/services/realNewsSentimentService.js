@@ -20,9 +20,9 @@ class RealNewsSentimentService {
     // XML parser for RSS feeds
     this.xmlParser = new xml2js.Parser();
     
-    console.log('📰 Real News Sentiment Service initialized (FREE APIs)');
-    console.log(`   Google News RSS: ${this.enableGoogleNews ? 'Enabled' : 'Disabled'}`);
-    console.log(`   Yahoo Finance: ${this.enableYahooFinance ? 'Enabled' : 'Disabled'}`);
+    //console.log('📰 Real News Sentiment Service initialized (FREE APIs)');
+    //console.log(`   Google News RSS: ${this.enableGoogleNews ? 'Enabled' : 'Disabled'}`);
+    //console.log(`   Yahoo Finance: ${this.enableYahooFinance ? 'Enabled' : 'Disabled'}`);
   }
 
   /**
@@ -32,32 +32,32 @@ class RealNewsSentimentService {
     const cleanSymbol = symbol.replace('.NS', ''); // Remove NSE suffix for search
     const companyName = this.getCompanyName(cleanSymbol);
     
-    console.log(`📰 Fetching real news for ${symbol} (${companyName})`);
+    //console.log(`📰 Fetching real news for ${symbol} (${companyName})`);
     
     const allArticles = [];
     
     try {
       // Method 1: Google News RSS (FREE)
       if (this.enableGoogleNews) {
-        console.log('   📡 Fetching from Google News RSS...');
+        //console.log('   📡 Fetching from Google News RSS...');
         const googleArticles = await this.fetchFromGoogleNewsRSS(companyName, cleanSymbol, options);
         allArticles.push(...googleArticles);
-        console.log(`   ✅ Google News: ${googleArticles.length} articles`);
+        //console.log(`   ✅ Google News: ${googleArticles.length} articles`);
       }
       
       // Method 2: Yahoo Finance News (FREE)
       if (this.enableYahooFinance) {
-        console.log('   📡 Fetching from Yahoo Finance...');
+        //console.log('   📡 Fetching from Yahoo Finance...');
         const yahooArticles = await this.fetchFromYahooFinance(cleanSymbol, options);
         allArticles.push(...yahooArticles);
-        console.log(`   ✅ Yahoo Finance: ${yahooArticles.length} articles`);
+        //console.log(`   ✅ Yahoo Finance: ${yahooArticles.length} articles`);
       }
       
       // Remove duplicates and limit results
       const uniqueArticles = this.removeDuplicateArticles(allArticles);
       const limitedArticles = uniqueArticles.slice(0, options.maxArticles || 20);
       
-      console.log(`   📊 Total unique articles: ${limitedArticles.length}`);
+      //console.log(`   📊 Total unique articles: ${limitedArticles.length}`);
       
       return limitedArticles;
       
@@ -117,7 +117,7 @@ class RealNewsSentimentService {
         await new Promise(resolve => setTimeout(resolve, 500));
         
       } catch (error) {
-        console.warn(`   ⚠️  Failed to fetch Google News for query "${query}":`, error.message);
+        // console.warn(`   ⚠️  Failed to fetch Google News for query "${query}":`, error.message);
       }
     }
     
@@ -159,7 +159,7 @@ class RealNewsSentimentService {
       }
       
     } catch (error) {
-      console.warn(`   ⚠️  Failed to fetch Yahoo Finance news for ${symbol}:`, error.message);
+      // console.warn(`   ⚠️  Failed to fetch Yahoo Finance news for ${symbol}:`, error.message);
       
       // Fallback: Try general Yahoo Finance search
       return await this.fetchYahooFinanceSearchFallback(symbol, options);
@@ -208,7 +208,7 @@ class RealNewsSentimentService {
       }
       
     } catch (error) {
-      console.warn(`   ⚠️  Yahoo Finance fallback failed for ${symbol}:`, error.message);
+      // console.warn(`   ⚠️  Yahoo Finance fallback failed for ${symbol}:`, error.message);
     }
     
     return [];
@@ -306,7 +306,7 @@ class RealNewsSentimentService {
       };
     }
 
-    console.log(`📊 Analyzing sentiment for ${articles.length} articles about ${symbol}`);
+    //console.log(`📊 Analyzing sentiment for ${articles.length} articles about ${symbol}`);
 
     let totalScore = 0;
     const allKeywords = [];
@@ -325,7 +325,7 @@ class RealNewsSentimentService {
       // Track sources
       sourceBreakdown[article.source] = (sourceBreakdown[article.source] || 0) + 1;
       
-      console.log(`   📄 "${article.title.substring(0, 60)}..." - Score: ${articleScore.toFixed(3)} (${article.source})`);
+      //console.log(`   📄 "${article.title.substring(0, 60)}..." - Score: ${articleScore.toFixed(3)} (${article.source})`);
     }
 
     const averageScore = totalScore / articles.length;
@@ -346,7 +346,7 @@ class RealNewsSentimentService {
       averageWordsPerArticle: Math.round(allKeywords.length / articles.length)
     };
 
-    console.log(`   📈 Final Sentiment: ${result.sentiment} (${result.score.toFixed(3)}) - Confidence: ${(result.confidence * 100).toFixed(1)}%`);
+    //console.log(`   📈 Final Sentiment: ${result.sentiment} (${result.score.toFixed(3)}) - Confidence: ${(result.confidence * 100).toFixed(1)}%`);
 
     return result;
   }

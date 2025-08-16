@@ -9,19 +9,19 @@ const {
   buildTechnicalFromOHLC 
 } = require('./index');
 
-console.log('📚 OHLC Fixture Usage Examples\n');
+//console.log('📚 OHLC Fixture Usage Examples\n');
 
 // Example 1: Load fixture with calculated technicals
-console.log('Example 1: Loading fixture with technicals');
+//console.log('Example 1: Loading fixture with technicals');
 const uptrendData = getFixtureWithTechnicals('uptrendHighvol');
-console.log(`✅ ${uptrendData.scenario}`);
-console.log(`   Bars: ${uptrendData.bars}`);
-console.log(`   Latest Price: $${uptrendData.technicals.latest.price.toFixed(2)}`);
-console.log(`   Above EMA200: ${uptrendData.technicals.latest.price > uptrendData.technicals.latest.ema200 ? 'Yes' : 'No'}`);
-console.log(`   RSI: ${uptrendData.technicals.latest.rsi.toFixed(1)} (${uptrendData.technicals.latest.rsi > 70 ? 'Overbought' : 'Normal'})\n`);
+//console.log(`✅ ${uptrendData.scenario}`);
+//console.log(`   Bars: ${uptrendData.bars}`);
+//console.log(`   Latest Price: $${uptrendData.technicals.latest.price.toFixed(2)}`);
+//console.log(`   Above EMA200: ${uptrendData.technicals.latest.price > uptrendData.technicals.latest.ema200 ? 'Yes' : 'No'}`);
+//console.log(`   RSI: ${uptrendData.technicals.latest.rsi.toFixed(1)} (${uptrendData.technicals.latest.rsi > 70 ? 'Overbought' : 'Normal'})\n`);
 
 // Example 2: Test different market scenarios
-console.log('Example 2: Testing different market scenarios');
+//console.log('Example 2: Testing different market scenarios');
 const scenarios = ['uptrendHighvol', 'downtrendBelow200', 'sidewaysChop'];
 
 scenarios.forEach(scenario => {
@@ -30,14 +30,14 @@ scenarios.forEach(scenario => {
   const rsiLevel = data.technicals.latest.rsi > 70 ? 'Overbought' : 
                    data.technicals.latest.rsi < 30 ? 'Oversold' : 'Normal';
   
-  console.log(`📈 ${scenario}: Price ${isUptrend ? 'above' : 'below'} EMA200, RSI ${rsiLevel}`);
+  //console.log(`📈 ${scenario}: Price ${isUptrend ? 'above' : 'below'} EMA200, RSI ${rsiLevel}`);
 });
 
-console.log('\nExample 3: Available fixtures');
-console.log('📋 All fixtures:', getFixtureNames().join(', '));
+//console.log('\nExample 3: Available fixtures');
+//console.log('📋 All fixtures:', getFixtureNames().join(', '));
 
-console.log('\nExample 4: Using in test assertions');
-console.log(`
+//console.log('\nExample 4: Using in test assertions');
+//console.log(`
 // Example Jest test
 test('should identify uptrend conditions', () => {
   const data = getFixtureWithTechnicals('uptrendHighvol');

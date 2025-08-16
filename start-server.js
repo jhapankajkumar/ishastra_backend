@@ -2,9 +2,9 @@
 const path = require('path');
 const express = require('express');
 
-console.log('Starting server...');
-console.log('Current directory:', process.cwd());
-console.log('Looking for server at:', path.join(__dirname, 'src', 'server.js'));
+//console.log('Starting server...');
+//console.log('Current directory:', process.cwd());
+//console.log('Looking for server at:', path.join(__dirname, 'src', 'server.js'));
 
 try {
   require('./src/server.js');

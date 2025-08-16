@@ -8,7 +8,7 @@
  * Identifies 5 distinct volatility regimes with adaptive position sizing
  */
 function detectVolatilityRegime(ohlcData, technicalIndicators) {
-  console.log(`📊 Volatility Regime Detection: Analyzing ${ohlcData.length} data points...`);
+  //console.log(`📊 Volatility Regime Detection: Analyzing ${ohlcData.length} data points...`);
   
   if (!ohlcData || ohlcData.length < 50) {
     return {
@@ -39,8 +39,8 @@ function detectVolatilityRegime(ohlcData, technicalIndicators) {
   // Calculate regime-specific adjustments
   const regimeAdjustments = calculateRegimeAdjustments(regime, volatilityMeasures);
   
-  console.log(`📈 Volatility Regime: ${regime.type} (${(regime.confidence * 100).toFixed(1)}% confidence)`);
-  console.log(`   ATR: ${atrPercent.toFixed(2)}% | Realized Vol: ${volatilityMeasures.realizedVolatility.toFixed(2)}%`);
+  //console.log(`📈 Volatility Regime: ${regime.type} (${(regime.confidence * 100).toFixed(1)}% confidence)`);
+  //console.log(`   ATR: ${atrPercent.toFixed(2)}% | Realized Vol: ${volatilityMeasures.realizedVolatility.toFixed(2)}%`);
   
   return {
     regime: regime.type,
@@ -64,7 +64,7 @@ function classifyVolatilityRegime(measures, ohlcData) {
   const atrAnnualized = atr * Math.sqrt(252);
   const avg = (atrAnnualized + realized) / 2;
   
-  console.log(`   🔍 Volatility Debug: ATR=${atr.toFixed(2)}% (daily) → ${atrAnnualized.toFixed(2)}% (annualized), Realized=${realized.toFixed(2)}% (annualized), Avg=${avg.toFixed(2)}%`);
+  //console.log(`   🔍 Volatility Debug: ATR=${atr.toFixed(2)}% (daily) → ${atrAnnualized.toFixed(2)}% (annualized), Realized=${realized.toFixed(2)}% (annualized), Avg=${avg.toFixed(2)}%`);
   
   // Historical volatility percentiles (based on 252-day rolling annualized)
   const historical = ohlcData.slice(-252).map((_, i, arr) => {

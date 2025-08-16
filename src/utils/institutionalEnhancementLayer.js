@@ -8,7 +8,7 @@
  * This replaces your existing generateExpertAIDecision function with top 1% capabilities
  */
 async function generateInstitutionalExpertDecision(analysisContext) {
-  console.log('🏆 Starting Institutional Expert AI Decision Engine...');
+  //console.log('🏆 Starting Institutional Expert AI Decision Engine...');
   
   try {
     const startTime = Date.now();
@@ -22,7 +22,7 @@ async function generateInstitutionalExpertDecision(analysisContext) {
     // ==============================================
     // PHASE 1: INSTITUTIONAL DATA ENRICHMENT
     // ==============================================
-    console.log('📊 Phase 1: Institutional Data Enrichment...');
+    //console.log('📊 Phase 1: Institutional Data Enrichment...');
     
     const [
       quantumMicroAnalysis,
@@ -72,12 +72,12 @@ async function generateInstitutionalExpertDecision(analysisContext) {
     const adaptiveReady = adaptiveAIEnhancement.status === 'fulfilled' ? 
       adaptiveAIEnhancement.value.ready : false;
 
-    console.log('✅ Institutional data enrichment completed');
+    //console.log('✅ Institutional data enrichment completed');
 
     // ==============================================
     // PHASE 2: ENHANCED SIGNAL PROCESSING
     // ==============================================
-    console.log('🎯 Phase 2: Enhanced Signal Processing...');
+    //console.log('🎯 Phase 2: Enhanced Signal Processing...');
     
     // Run your existing signal processing but with institutional enhancements
     const baseSignals = collectAllSignalsDeterministic(technical, backtest, sentiment);
@@ -99,7 +99,7 @@ async function generateInstitutionalExpertDecision(analysisContext) {
     // ==============================================
     // PHASE 3: INSTITUTIONAL RISK-REWARD OPTIMIZATION
     // ==============================================
-    console.log('⚖️ Phase 3: Institutional Risk-Reward Optimization...');
+    //console.log('⚖️ Phase 3: Institutional Risk-Reward Optimization...');
     
     // Enhanced risk-reward calculation with quantum risk metrics
     const enhancedRiskReward = calculateInstitutionalRiskReward(
@@ -120,7 +120,7 @@ async function generateInstitutionalExpertDecision(analysisContext) {
     // ==============================================
     // PHASE 4: ADAPTIVE AI DECISION ENHANCEMENT
     // ==============================================
-    console.log('🤖 Phase 4: Adaptive AI Decision Enhancement...');
+    //console.log('🤖 Phase 4: Adaptive AI Decision Enhancement...');
     
     // Generate base decision using your existing logic
     const baseDecision = generateBaseExpertDecision(
@@ -161,7 +161,7 @@ async function generateInstitutionalExpertDecision(analysisContext) {
     // ==============================================
     // PHASE 5: INSTITUTIONAL EXECUTION PLANNING
     // ==============================================
-    console.log('📋 Phase 5: Institutional Execution Planning...');
+    //console.log('📋 Phase 5: Institutional Execution Planning...');
     
     const institutionalExecutionPlan = generateInstitutionalExecutionPlan(
       finalDecision,
@@ -174,7 +174,7 @@ async function generateInstitutionalExpertDecision(analysisContext) {
     // ==============================================
     // PHASE 6: FINAL DECISION ASSEMBLY
     // ==============================================
-    console.log('🏁 Phase 6: Final Decision Assembly...');
+    //console.log('🏁 Phase 6: Final Decision Assembly...');
     
     const institutionalExpertDecision = {
       // Enhanced core decision
@@ -261,8 +261,8 @@ async function generateInstitutionalExpertDecision(analysisContext) {
     };
 
     const endTime = Date.now();
-    console.log(`🏆 Institutional Expert Decision completed in ${endTime - startTime}ms`);
-    console.log(`📊 Final Decision: ${institutionalExpertDecision.finalDecision.action} (Grade: ${institutionalExpertDecision.finalDecision.institutionalGrade})`);
+    //console.log(`🏆 Institutional Expert Decision completed in ${endTime - startTime}ms`);
+    //console.log(`📊 Final Decision: ${institutionalExpertDecision.finalDecision.action} (Grade: ${institutionalExpertDecision.finalDecision.institutionalGrade})`);
     
     return institutionalExpertDecision;
 

@@ -52,7 +52,7 @@ const updateInvestments = async () => {
     //         //     console.warn(`No existing record found for ${inv.ticker}, skipping...`);
     //         //     continue;
     //         // } else {
-    //         //     // console.log('investment record found:', record);
+    //         //     // //console.log('investment record found:', record);
     //         //     await prisma.investment.deleteMany({
     //         //         where: { id: record.id }
     //         //     });
@@ -78,14 +78,14 @@ const updateInvestments = async () => {
     //             }
     //         });
 
-    //         console.log(`Updated ${inv.ticker}: currentPrice=${inv.currentPrice}, marketCap=${inv.marketCap}, sector=${inv.sector}`);
+    //         //console.log(`Updated ${inv.ticker}: currentPrice=${inv.currentPrice}, marketCap=${inv.marketCap}, sector=${inv.sector}`);
     //     } catch (e) {
     //         console.warn(`Failed to update ${inv.ticker}:`, e.message);
     //     }
     // }
     // const outputPath = './updated_investments.json';
     // fs.writeFileSync(outputPath, JSON.stringify(investments, null, 2));
-    // console.log('✅ File updated:', outputPath);
+    // //console.log('✅ File updated:', outputPath);
 };
 
 async function main() {

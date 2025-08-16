@@ -1,7 +1,9 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
-console.log('✅ Prisma instance created:', !!prisma);
+//console.log('✅ Prisma instance created:', !!prisma);
 const TradeIdGenerator = require('../utils/tradeIdGenerator');
+const CapitalManager = require('../utils/capitalManager');
+const ImpulseExitAnalyzer = require('../services/exitStrategies/impulseExit');
 
 // Get all trades with related data
 exports.getAllTrades = async (req, res) => {
@@ -36,26 +38,59 @@ exports.getAllTrades = async (req, res) => {
 // Add Trade (Entry only)
 exports.createTrade = async (req, res) => {
   try {
-    console.log('🔍 Create Trade Request Body:', req.body);
-    console.log('📁 Create Trade Files:', req.files);
-    console.log('📅 Entry Date Value:', req.body.entryDate, typeof req.body.entryDate);
+    //console.log('🔍 Create Trade Request Body:', req.body);
+    //console.log('📁 Create Trade Files:', req.files);
+    //console.log('📅 Entry Date Value:', req.body.entryDate, typeof req.body.entryDate);
 
     const quantity = Number(req.body.entryFilledShares);
+    const entryPrice = Number(req.body.entryOrderPrice);
+    const currency = req.body.currency || "INR"; // Default to INR if not specified
 
-    // Generate professional trade ID
-    const professionalTradeId = await TradeIdGenerator.generateTradeId();
+    // Generate a unique professional trade ID
+    let professionalTradeId;
+    let isUnique = false;
+    let attempts = 0;
+    const maxAttempts = 10;
+    while (!isUnique && attempts < maxAttempts) {
+      professionalTradeId = await TradeIdGenerator.generateTradeId();
+      const existing = await prisma.trade.findUnique({ where: { tradeId: professionalTradeId } });
+      if (!existing) {
+        isUnique = true;
+      } else {
+        attempts++;
+      }
+    }
+    if (!isUnique) {
+      return res.status(500).json({ error: 'Failed to generate a unique tradeId after multiple attempts.' });
+    }
 
     // Validate and parse entry date (required field)
     if (!req.body.entryDate || req.body.entryDate === 'undefined' || req.body.entryDate.trim() === '') {
-      console.log('❌ Invalid entry date detected:', req.body.entryDate);
+      //console.log('❌ Invalid entry date detected:', req.body.entryDate);
       return res.status(400).json({ error: 'Entry date is required. Please provide a valid date in YYYY-MM-DD format.' });
     }
 
     const entryDate = new Date(req.body.entryDate);
     if (isNaN(entryDate.getTime())) {
-      console.log('❌ Date parsing failed for:', req.body.entryDate);
+      //console.log('❌ Date parsing failed for:', req.body.entryDate);
       return res.status(400).json({ error: 'Invalid entry date format. Please use YYYY-MM-DD format (e.g., 2025-07-26).' });
     }
+
+    // Calculate trade amount for capital allocation
+    const tradeAmount = CapitalManager.calculateTradeAmount(entryPrice, quantity);
+    //console.log(`💰 Trade amount calculated: ${tradeAmount} ${currency}`);
+
+    // Check if sufficient capital is available
+    const hasSufficientCapital = await CapitalManager.hasSufficientCapital(currency, tradeAmount);
+    if (!hasSufficientCapital) {
+      const capital = await CapitalManager.getCapital(currency);
+      return res.status(400).json({
+        error: `Insufficient capital to open trade. Required: ${tradeAmount} ${currency}, Available: ${capital ? capital.remaining : 0} ${currency}`
+      });
+    }
+
+    // Allocate capital before creating trade
+    await CapitalManager.allocateCapital(currency, tradeAmount);
 
     const trade = await prisma.trade.create({
       data: {
@@ -63,8 +98,9 @@ exports.createTrade = async (req, res) => {
         ticker: req.body.ticker,
         tickerName: req.body.tickerName,
         reasonForEntry: req.body.reasonForEntry,
+        currency: currency.toUpperCase(),
         entryDate: entryDate,
-        entryPrice: Number(req.body.entryOrderPrice),
+        entryPrice: entryPrice,
         quantity: quantity,
         remainingQuantity: quantity,
         direction: req.body.direction || "Long",
@@ -122,10 +158,28 @@ exports.createTrade = async (req, res) => {
       );
     }
 
-    res.status(201).json({ message: "Trade created successfully", trade });
+    //console.log(`✅ Trade created successfully with capital allocation: ${tradeAmount} ${currency}`);
+
+    res.status(201).json({ 
+      message: "Trade created successfully", 
+      trade,
+      capitalAllocated: {
+        amount: tradeAmount,
+        currency: currency.toUpperCase()
+      }
+    });
 
   } catch (error) {
     console.error('❌ Error creating trade:', error);
+    
+    // If it's a capital allocation error, provide specific message
+    if (error.message.includes('capital') || error.message.includes('Capital')) {
+      return res.status(400).json({ 
+        error: 'Capital allocation failed', 
+        details: error.message 
+      });
+    }
+
     res.status(500).json({ error: 'Failed to create trade', details: error.message });
   }
 };
@@ -155,6 +209,7 @@ exports.updateTradeExit = async (req, res) => {
 
     const exitQty = Number(exitQuantity) || currentTrade.remainingQuantity || currentTrade.quantity;
     const remainingAfterExit = (currentTrade.remainingQuantity || currentTrade.quantity) - exitQty;
+    const exitPrice = Number(exitOrderPrice);
 
     // Validate exit quantity
     if (exitQty <= 0) {
@@ -165,18 +220,25 @@ exports.updateTradeExit = async (req, res) => {
       return res.status(400).json({ error: "Cannot exit more shares than remaining" });
     }
 
+    // Calculate capital to release for this exit
+    const releaseAmount = CapitalManager.calculateTradeAmount(exitPrice, exitQty);
+    const currency = currentTrade.currency || 'USD';
+
     // Create transaction record
     await prisma.tradeTransaction.create({
       data: {
         tradeId: tradeId,
         transactionType: "Exit",
         quantity: exitQty,
-        price: Number(exitOrderPrice),
+        price: exitPrice,
         transactionDate: new Date(exitDate),
         reasonForExit: reasonForExit,
         exitTacticId: exitTactic ? Number(exitTactic) : null,
       }
     });
+
+    // Release capital for the exited position
+    await CapitalManager.releaseCapital(currency, releaseAmount);
 
     // Determine new status
     let newStatus = "Open";
@@ -197,7 +259,7 @@ exports.updateTradeExit = async (req, res) => {
     // If this is a complete exit, set exit fields
     if (remainingAfterExit === 0) {
       updateData.exitDate = new Date(exitDate);
-      updateData.exitPrice = Number(exitOrderPrice);
+      updateData.exitPrice = exitPrice;
     }
 
     const trade = await prisma.trade.update({
@@ -219,12 +281,27 @@ exports.updateTradeExit = async (req, res) => {
       );
     }
 
+    //console.log(`✅ Trade exit processed with capital release: ${releaseAmount} ${currency}`);
+
     res.json({
       ...trade,
-      message: remainingAfterExit === 0 ? "Trade completely exited" : "Partial exit recorded"
+      message: remainingAfterExit === 0 ? "Trade completely exited" : "Partial exit recorded",
+      capitalReleased: {
+        amount: releaseAmount,
+        currency: currency
+      }
     });
   } catch (err) {
     console.error('Error updating trade exit:', err);
+
+    // If it's a capital release error, provide specific message
+    if (err.message.includes('capital') || err.message.includes('Capital')) {
+      return res.status(400).json({ 
+        error: 'Capital release failed', 
+        details: err.message 
+      });
+    }
+
     res.status(500).json({ error: 'Failed to update trade exit', details: err.message });
   }
 };
@@ -243,6 +320,7 @@ exports.partialExitTrade = async (req, res) => {
 
     const tradeId = Number(id);
     const exitQty = Number(exitQuantity);
+    const exitPrice = Number(exitOrderPrice);
     
     // Get current trade to validate
     const currentTrade = await prisma.trade.findUnique({
@@ -265,18 +343,25 @@ exports.partialExitTrade = async (req, res) => {
       return res.status(400).json({ error: "Cannot exit more shares than remaining" });
     }
 
+    // Calculate capital to release for this exit
+    const releaseAmount = CapitalManager.calculateTradeAmount(exitPrice, exitQty);
+    const currency = currentTrade.currency || 'USD';
+
     // Create transaction record
     await prisma.tradeTransaction.create({
       data: {
         tradeId: tradeId,
         transactionType: "Exit",
         quantity: exitQty,
-        price: Number(exitOrderPrice),
+        price: exitPrice,
         transactionDate: new Date(exitDate),
         reasonForExit: reasonForExit,
         exitTacticId: exitTactic ? Number(exitTactic) : null,
       }
     });
+
+    // Release capital for the exited position
+    await CapitalManager.releaseCapital(currency, releaseAmount);
 
     // Determine new status
     let newStatus = "Open";
@@ -295,7 +380,7 @@ exports.partialExitTrade = async (req, res) => {
     // If this is a complete exit, set exit fields
     if (remainingAfterExit === 0) {
       updateData.exitDate = new Date(exitDate);
-      updateData.exitPrice = Number(exitOrderPrice);
+      updateData.exitPrice = exitPrice;
       updateData.reasonForExit = reasonForExit;
       updateData.exitTacticId = exitTactic ? Number(exitTactic) : null;
     }
@@ -319,12 +404,27 @@ exports.partialExitTrade = async (req, res) => {
       );
     }
 
+    //console.log(`✅ Partial trade exit processed with capital release: ${releaseAmount} ${currency}`);
+
     res.json({
       ...trade,
-      message: remainingAfterExit === 0 ? "Trade completely exited" : "Partial exit recorded successfully"
+      message: remainingAfterExit === 0 ? "Trade completely exited" : "Partial exit recorded successfully",
+      capitalReleased: {
+        amount: releaseAmount,
+        currency: currency
+      }
     });
   } catch (err) {
     console.error('Error processing partial exit:', err);
+
+    // If it's a capital release error, provide specific message
+    if (err.message.includes('capital') || err.message.includes('Capital')) {
+      return res.status(400).json({ 
+        error: 'Capital release failed', 
+        details: err.message 
+      });
+    }
+
     res.status(500).json({ error: 'Failed to process partial exit', details: err.message });
   }
 };
@@ -408,7 +508,7 @@ exports.getDashboardSummary = async (req, res) => {
   }
 };
 
-// Get a single trade by ID with related data
+// Get a single trade by ID with related data and Elder's Impulse analysis
 exports.getTradeById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -424,19 +524,57 @@ exports.getTradeById = async (req, res) => {
       return res.status(404).json({ error: "Trade not found" });
     }
 
-    const exitTactic = trade.exitTacticId
-
+    const exitTactic = trade.exitTacticId;
     const tradeImages = await prisma.tradeImage.findMany({ where: { tradeId: trade.id } });
-    const tradeSetup = trade.tradeSetupId
+    const tradeSetup = trade.tradeSetupId;
     const tradeFills = await prisma.tradeFill.findMany({ where: { tradeId: trade.id } });
 
-    res.json({
+    // Base response structure
+    let response = {
       ...trade,
       exitTactic: exitTactic,
       tradeImages,
       tradeSetup: tradeSetup,
       tradeFills: tradeFills
-    });
+    };
+
+    // Add Elder's Impulse analysis for open or partially closed trades
+    if (trade.status === 'Open' || trade.status === 'Partial Closed') {
+      //console.log(`🎯 [IMPULSE] Analyzing exit strategy for ${trade.ticker} (${trade.status})`);
+      
+      try {
+        // Initialize impulse analyzer
+        const impulseAnalyzer = new ImpulseExitAnalyzer();
+        
+        // Analyze impulse for this trade
+        const impulseAnalysis = await impulseAnalyzer.analyzeImpulse(
+          trade.ticker, 
+          trade.direction || 'Long'
+        );
+
+        // Add impulse analysis to response
+        response.impulseAnalysis = impulseAnalysis;
+
+        //console.log(`✅ [IMPULSE] ${trade.ticker}: ${impulseAnalysis.impulseColor} impulse, Exit recommended: ${impulseAnalysis.exitRecommended}`);
+
+      } catch (impulseError) {
+        console.error(`❌ [IMPULSE] Error analyzing ${trade.ticker}:`, impulseError.message);
+        
+        // Add empty impulse data on error
+        response.impulseAnalysis = {
+          impulseColor: null,
+          exitRecommended: false,
+          reasoning: [`Impulse analysis unavailable: ${impulseError.message}`],
+          lastUpdated: new Date().toISOString(),
+          technicalData: null
+        };
+      }
+    } else {
+      //console.log(`ℹ️  [IMPULSE] Trade ${trade.ticker} is ${trade.status} - skipping impulse analysis`);
+    }
+
+    res.json(response);
+
   } catch (error) {
     console.error('Error fetching trade by id:', error);
     res.status(500).json({ error: 'Failed to fetch trade', details: error.message });
@@ -463,6 +601,20 @@ exports.deleteTrade = async (req, res) => {
       return res.status(404).json({ error: 'Trade not found' });
     }
 
+    // Release allocated capital before deleting trade
+    const remainingQty = trade.remainingQuantity || trade.quantity;
+    if (remainingQty > 0) {
+      const releaseAmount = CapitalManager.calculateTradeAmount(trade.entryPrice, remainingQty);
+      const currency = trade.currency || 'USD';
+      
+      try {
+        await CapitalManager.releaseCapital(currency, releaseAmount);
+        //console.log(`💰 Released capital: ${releaseAmount} ${currency} for deleted trade ${trade.tradeId}`);
+      } catch (capitalError) {
+        console.error('⚠️  Warning: Failed to release capital during trade deletion:', capitalError.message);
+      }
+    }
+
     // Delete related data first (due to foreign key constraints)
     // Delete trade transactions
     await prisma.tradeTransaction.deleteMany({
@@ -484,7 +636,7 @@ exports.deleteTrade = async (req, res) => {
       where: { id: tradeId }
     });
 
-    console.log(`Trade with ID ${tradeId} and all related data deleted successfully`);
+    //console.log(`Trade with ID ${tradeId} and all related data deleted successfully`);
     res.status(204).send(); // No content response for successful deletion
   } catch (error) {
     console.error('Error deleting trade:', error);

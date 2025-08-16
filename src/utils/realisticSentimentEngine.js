@@ -37,7 +37,7 @@ class RealisticSentimentEngine {
   }
 
   async initializeRealisticAnalyzers() {
-    console.log('📰 Initializing Realistic Sentiment Engine...');
+    //console.log('📰 Initializing Realistic Sentiment Engine...');
     
     try {
       // Initialize basic sentiment analyzers
@@ -45,7 +45,7 @@ class RealisticSentimentEngine {
       this.socialSentimentAnalyzer = this.createSocialAnalyzer();
       this.insiderTradeAnalyzer = this.createInsiderAnalyzer();
       
-      console.log('✅ Realistic Sentiment Engine Ready');
+      //console.log('✅ Realistic Sentiment Engine Ready');
       
     } catch (error) {
       console.error('❌ Failed to initialize Sentiment Engine:', error.message);
@@ -205,7 +205,7 @@ class RealisticSentimentEngine {
    * Combines available sentiment sources with honest weighting
    */
   async analyzeSentimentFusion(symbol) {
-    console.log(`📰 Analyzing realistic sentiment for ${symbol}...`);
+    //console.log(`📰 Analyzing realistic sentiment for ${symbol}...`);
     
     const fusionResult = {
       overallSentiment: 'NEUTRAL',

@@ -19,7 +19,7 @@
  */
 function analyzeMarketMicrostructure(marketData, ohlcvData, bookData = null) {
   try {
-    console.log(`🔍 Market Microstructure: Analyzing order flow and liquidity patterns...`);
+    //console.log(`🔍 Market Microstructure: Analyzing order flow and liquidity patterns...`);
     
     if (!ohlcvData || ohlcvData.length < 20) {
       return createLowDataMicrostructureAssessment();
@@ -70,11 +70,11 @@ function analyzeMarketMicrostructure(marketData, ohlcvData, bookData = null) {
       priceImpact: priceImpact
     });
     
-    console.log(`🔍 Microstructure Analysis Complete:`);
-    console.log(`   📊 Order Flow: ${orderFlowAnalysis.dominantFlow} (${orderFlowAnalysis.strength}/100)`);
-    console.log(`   💧 Liquidity Quality: ${liquidityZones.overallQuality} (${liquidityZones.zones.length} zones)`);
-    console.log(`   🏛️ Institutional Activity: ${institutionalActivity.level} (${institutionalActivity.confidence}% confidence)`);
-    console.log(`   ⏰ Optimal Timing: ${timingRecommendations.recommendation}`);
+    //console.log(`🔍 Microstructure Analysis Complete:`);
+    //console.log(`   📊 Order Flow: ${orderFlowAnalysis.dominantFlow} (${orderFlowAnalysis.strength}/100)`);
+    //console.log(`   💧 Liquidity Quality: ${liquidityZones.overallQuality} (${liquidityZones.zones.length} zones)`);
+    //console.log(`   🏛️ Institutional Activity: ${institutionalActivity.level} (${institutionalActivity.confidence}% confidence)`);
+    //console.log(`   ⏰ Optimal Timing: ${timingRecommendations.recommendation}`);
     
     return {
       timestamp: new Date().toISOString(),

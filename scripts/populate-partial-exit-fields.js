@@ -3,7 +3,7 @@ const prisma = new PrismaClient();
 
 async function populatePartialExitFields() {
   try {
-    console.log('Starting to populate partial exit fields for existing trades...');
+    //console.log('Starting to populate partial exit fields for existing trades...');
     
     // Get all trades that don't have remaining_quantity set
     const trades = await prisma.trade.findMany({
@@ -12,7 +12,7 @@ async function populatePartialExitFields() {
       }
     });
 
-    console.log(`Found ${trades.length} trades to update`);
+    //console.log(`Found ${trades.length} trades to update`);
 
     for (const trade of trades) {
       let status = 'Open';
@@ -32,10 +32,10 @@ async function populatePartialExitFields() {
         }
       });
 
-      console.log(`Updated trade ${trade.id} (${trade.ticker}): status=${status}, remaining_quantity=${remaining_quantity}`);
+      //console.log(`Updated trade ${trade.id} (${trade.ticker}): status=${status}, remaining_quantity=${remaining_quantity}`);
     }
 
-    console.log('Successfully populated partial exit fields for all existing trades');
+    //console.log('Successfully populated partial exit fields for all existing trades');
   } catch (error) {
     console.error('Error populating partial exit fields:', error);
   } finally {

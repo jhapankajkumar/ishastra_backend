@@ -189,7 +189,7 @@ describe('Acceptance: Unified Analysis — Readiness & Gates', () => {
     expect(action).toBeDefined();
     expect(conf).toBeDefined();
     
-    console.log('✅ Trend gate evaluation - Action:', action, 'Confidence:', conf);
+    //console.log('✅ Trend gate evaluation - Action:', action, 'Confidence:', conf);
   });
 
   // 2) Volume breakout — lastVol = 0.9×20DMA → volume gate fails
@@ -211,7 +211,7 @@ describe('Acceptance: Unified Analysis — Readiness & Gates', () => {
     expect(status).toBeDefined();
     expect([true, false, null, undefined].includes(volPass)).toBe(true);
     
-    console.log('✅ Volume gate evaluation - Status:', status, 'Volume pass:', volPass);
+    //console.log('✅ Volume gate evaluation - Status:', status, 'Volume pass:', volPass);
   });
 
   // 3) RR floor — riskReward=1.4 → rr_min2 false; not BUY
@@ -263,7 +263,7 @@ describe('Acceptance: Unified Analysis — Readiness & Gates', () => {
     expect(codes).toBeDefined();
     expect(status).toBeDefined();
     
-    console.log('✅ Earnings evaluation - Codes:', codes.join('|'), 'Status:', status);
+    //console.log('✅ Earnings evaluation - Codes:', codes.join('|'), 'Status:', status);
   });
 
   // 5) 200-EMA reclaim rule — below 200EMA allowed only with reclaim + vol + RR≥3.0
@@ -297,7 +297,7 @@ describe('Acceptance: Unified Analysis — Readiness & Gates', () => {
     expect(action).toBeDefined();
     expect(confPct).toBeGreaterThanOrEqual(0);
     
-    console.log('✅ 200EMA reclaim evaluation - Action:', action, 'Confidence:', confPct);
+    //console.log('✅ 200EMA reclaim evaluation - Action:', action, 'Confidence:', confPct);
   });
 
   // 6) Downtrend cap — long-term downtrend caps confidence at 60%
@@ -348,7 +348,7 @@ describe('Acceptance: Unified Analysis — Readiness & Gates', () => {
     expect(action).toBeDefined();
     expect([true, false, null, undefined].includes(veto)).toBe(true);
     
-    console.log('✅ Veto rule evaluation - Action:', action, 'Veto triggered:', veto);
+    //console.log('✅ Veto rule evaluation - Action:', action, 'Veto triggered:', veto);
   });
 
   // 8) Positive smoke — healthy case should pass with READY or BUY/HOLD and RR ≥ 2.0
@@ -381,6 +381,6 @@ describe('Acceptance: Unified Analysis — Readiness & Gates', () => {
     expect(confPct).toBeGreaterThanOrEqual(0);
     expect(status).toBeDefined();
     
-    console.log('✅ Positive smoke evaluation - RR:', rr, 'Confidence:', confPct, 'Status:', status);
+    //console.log('✅ Positive smoke evaluation - RR:', rr, 'Confidence:', confPct, 'Status:', status);
   });
 });
