@@ -2,6 +2,7 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const WatchlistService = require('../services/watchlistService');
 const { calculateWatchlistScore, rankWatchlistCandidates, WATCHLIST_FILTERS } = require('../utils/systemConstants');
+const { getMarketInfo, formatCurrency } = require('../utils/marketUtils');
 
 /**
  * Watchlist Controller - API endpoints for managing watchlist
@@ -377,9 +378,8 @@ class WatchlistController {
                         priority: stock.priority_tier || 2,
                         nextStepSummary: stock.nextStepSummary || `Execute ${stock.decision.action} order`,
 
-                        // Market info
-                        market: stock.symbol.includes('.NS') ? 'IN' : 'US',
-                        currency: stock.symbol.includes('.NS') ? 'INR' : 'USD',
+                        // Market info - dynamic detection based on symbol
+                        ...getMarketInfo(stock.symbol),  // This adds market, currency, exchange
 
                         addedAt: new Date(),
                         lastAnalyzedAt: new Date()

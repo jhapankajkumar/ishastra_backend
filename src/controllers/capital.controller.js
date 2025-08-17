@@ -100,7 +100,7 @@ const updateCapital = async (req, res) => {
     const updatedCapital = await CapitalManager.resetCapital(
       currency, 
       parseFloat(total), 
-      adjustRemaining === true
+      adjustRemaining
     );
 
     const allocated = updatedCapital.total - updatedCapital.remaining;

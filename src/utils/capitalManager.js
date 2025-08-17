@@ -167,6 +167,7 @@ class CapitalManager {
         newRemaining = newTotal * (1 - usedRatio);
       }
 
+      console.log(`🔄 Resetting ${upperCurrency} capital. New Total: ${newTotal}, Adjust Remaining: ${adjustRemaining}, New Remaining: ${newRemaining}`);
       // Update capital
       const updatedCapital = await prisma.capital.update({
         where: { currency: upperCurrency },

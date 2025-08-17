@@ -7,7 +7,6 @@ const watchlistController = new WatchlistController();
 
 // GET Routes
 router.get('/', watchlistController.getWatchlist.bind(watchlistController));
-router.get('/stats', watchlistController.getWatchlistStats.bind(watchlistController));
 router.get('/by-grade', watchlistController.getWatchlistByGrade.bind(watchlistController));
 router.get('/:symbol', watchlistController.getWatchlistStock.bind(watchlistController));
 

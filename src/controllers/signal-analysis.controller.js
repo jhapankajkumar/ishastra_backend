@@ -17,6 +17,7 @@ const {
   prepareAnalysisContext
 } = require('./ai/stock.expert.controller');
 const CapitalManager = require('../utils/capitalManager');
+const { getMarketCapital, getMarketInfo, formatCurrency } = require('../utils/marketUtils');
 
 class TradingSystemController {
   constructor() {
@@ -56,27 +57,54 @@ class TradingSystemController {
         });
       }
 
-      // Fetch available capital from database (USD by default)
+      // Fetch available capital from database based on symbols' markets
       //console.log(`💰 Fetching available capital from database...`);
       let availableCapital = 100000; // Fallback default
+      let capitalCurrency = 'USD';
+      let capitalMarket = 'US';
+      
+      // Determine primary market/currency based on first symbol (or most common market in batch)
+      const firstSymbol = symbols[0];
+      const marketInfo = getMarketInfo(firstSymbol);
+      
       try {
-        const usdCapital = await CapitalManager.getCapital('USD');
-        if (usdCapital && usdCapital.remaining > 0) {
-          availableCapital = usdCapital.remaining;
-          const allocated = usdCapital.total - usdCapital.remaining;
-          const utilizationRate = (allocated / usdCapital.total) * 100;
+        const marketCapital = await getMarketCapital(firstSymbol, CapitalManager);
+        
+        if (marketCapital.success) {
+          availableCapital = marketCapital.remaining;
+          capitalCurrency = marketCapital.currency;
+          capitalMarket = marketCapital.market;
           
-          //console.log(`💰 USD Capital Status:`);
-          //console.log(`  • Total: $${usdCapital.total.toLocaleString()}`);
-          //console.log(`  • Available: $${usdCapital.remaining.toLocaleString()}`);
-          //console.log(`  • Allocated: $${allocated.toLocaleString()}`);
+          const allocated = marketCapital.total - marketCapital.remaining;
+          const utilizationRate = (allocated / marketCapital.total) * 100;
+          
+          //console.log(`💰 ${capitalCurrency} Capital Status (${capitalMarket} Market):`);
+          //console.log(`  • Total: ${formatCurrency(marketCapital.total, capitalCurrency)}`);
+          //console.log(`  • Available: ${formatCurrency(marketCapital.remaining, capitalCurrency)}`);
+          //console.log(`  • Allocated: ${formatCurrency(allocated, capitalCurrency)}`);
           //console.log(`  • Utilization: ${utilizationRate.toFixed(1)}%`);
         } else {
-          //console.log(`⚠️  No USD capital found in database, using default: $${availableCapital.toLocaleString()}`);
+          availableCapital = marketCapital.remaining;
+          capitalCurrency = marketCapital.currency;
+          capitalMarket = marketCapital.market;
+          
+          if (marketCapital.fallback) {
+            //console.log(`⚠️  No ${capitalCurrency} capital found in database, using default: ${formatCurrency(availableCapital, capitalCurrency)}`);
+          }
         }
       } catch (capitalError) {
-        console.error(`❌ Error fetching capital:`, capitalError.message);
-        //console.log(`⚠️  Using fallback capital: $${availableCapital.toLocaleString()}`);
+        console.error(`❌ Error fetching capital for ${marketInfo.currency}:`, capitalError.message);
+        // Use market-appropriate fallback
+        if (marketInfo.currency === 'INR') {
+          availableCapital = 2000000; // ₹20L
+          capitalCurrency = 'INR';
+          capitalMarket = 'IN';
+        } else {
+          availableCapital = 20000; // $20k
+          capitalCurrency = 'USD';
+          capitalMarket = 'US';
+        }
+        //console.log(`⚠️  Using fallback capital: ${formatCurrency(availableCapital, capitalCurrency)}`);
       }
 
       // Normalize and validate systems
@@ -116,10 +144,14 @@ class TradingSystemController {
         try {
           //console.log(`\n📈 Processing ${symbol}...`);
           
+          // Get symbol-specific capital for this analysis
+          const symbolMarketCapital = await getMarketCapital(symbol, CapitalManager);
+          const symbolAvailableCapital = symbolMarketCapital.remaining;
+          
           // OPTIMIZATION: Call data fetching with reduced timeframe
           //console.log(`  🔄 Fetching data for ${symbol} with optimized timeframe...`);
 
-          const { analysisContext} = await prepareAnalysisContext(symbol, defaultLookBackPeriod, availableCapital); // Uses capital from database
+          const { analysisContext} = await prepareAnalysisContext(symbol, defaultLookBackPeriod, symbolAvailableCapital); // Uses symbol-specific capital
 
         // Log any failures for debugging
         [
@@ -227,7 +259,7 @@ class TradingSystemController {
         const gateResult = finalResult.gateEngine || {};
         
         // Build enhanced analysis result with all trading information
-        const analysisResult = this.buildEnhancedTradingResponse({
+        const analysisResult = await this.buildEnhancedTradingResponse({
           symbol,
           technicalData,
           elderAnalysis,
@@ -1073,7 +1105,7 @@ class TradingSystemController {
 
   // NEW: Build enhanced trading response with all critical trading information
   // NEW: Build enhanced trading response with CLEAN single decision structure
-  buildEnhancedTradingResponse({
+  async buildEnhancedTradingResponse({
     symbol,
     technicalData,
     elderAnalysis,
@@ -1101,11 +1133,36 @@ class TradingSystemController {
     const targets = this.extractTargets(gateResult, currentPrice, signalAction, technicalData, systemResults);
     const riskReward = this.calculateRiskReward(currentPrice, stopLoss, targets[0]);
     
-    // Calculate proper position sizing based on available capital and risk management
+    // Get symbol-specific market capital for position sizing
+    const symbolMarketInfo = getMarketInfo(symbol);
+    let symbolMarketCapital;
+    
+    try {
+      // Import CapitalManager dynamically to avoid circular dependency
+      const CapitalManagerClass = require('../utils/capitalManager');
+      symbolMarketCapital = await getMarketCapital(symbol, CapitalManagerClass);
+    } catch (error) {
+      console.error(`❌ Error getting market capital for ${symbol}:`, error.message);
+      // Fallback to default capital based on market
+      const fallbackAmounts = {
+        'USD': 100000,  // $100k for US market  
+        'INR': 8000000  // ₹80L for Indian market
+      };
+      symbolMarketCapital = {
+        remaining: fallbackAmounts[symbolMarketInfo.currency],
+        currency: symbolMarketInfo.currency,
+        market: symbolMarketInfo.market
+      };
+    }
+    
+    // Calculate proper position sizing based on symbol-specific capital and risk management
     const positionSize = this.calculatePositionSizing({
       entryPrice: currentPrice,
       stopLoss: stopLoss,
-      availableCapital: analysisContext.capital?.availableCapital || 100000,
+      availableCapital: symbolMarketCapital.remaining,
+      symbol: symbol,
+      market: symbolMarketInfo.market,
+      currency: symbolMarketInfo.currency,
       signalAction: signalAction,
       confidence: unifiedConfidence,
       riskPerTrade: 0.02 // 2% risk per trade (professional standard)
@@ -1346,6 +1403,9 @@ class TradingSystemController {
       availableCapital,
       signalAction,
       confidence,
+      symbol,
+      market,
+      currency,
       riskPerTrade = 0.02 // Default 2% risk per trade
     } = params;
 
@@ -1409,7 +1469,9 @@ class TradingSystemController {
     return {
       shares: Math.max(0, finalShares),
       value: Math.round(finalValue),
-      riskPercentage: actualRiskPercentage
+      riskPercentage: actualRiskPercentage,
+      market: market || 'US',
+      currency: currency || 'USD'
     };
   }
 

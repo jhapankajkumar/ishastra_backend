@@ -1,0 +1,827 @@
+{
+  "info": {
+    "name": "Ishastra Backend API",
+    "description": "Comprehensive API collection for Ishastra Trading Backend with multi-system stock analysis, watchlist management, capital tracking, and portfolio management",
+    "version": "2.0.0",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8000",
+      "type": "string"
+    },
+    {
+      "key": "authToken",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Register User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"testuser\",\n  \"email\": \"test@example.com\",\n  \"password\": \"securePassword123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "register"]
+            }
+          }
+        },
+        {
+          "name": "Login User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"test@example.com\",\n  \"password\": \"securePassword123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('authToken', response.token);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Trading System Analysis",
+      "item": [
+        {
+          "name": "Multi-System Stock Analysis",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/trading/signal-analysis?symbols=AAPL,MSFT,GOOGL&systems=elder_triple_screen,sepa_method",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "trading", "signal-analysis"],
+              "query": [
+                {
+                  "key": "symbols",
+                  "value": "AAPL,MSFT,GOOGL",
+                  "description": "Comma-separated stock symbols"
+                },
+                {
+                  "key": "systems",
+                  "value": "elder_triple_screen,sepa_method",
+                  "description": "Trading systems to use (optional)"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Demo Analysis (Pre-selected Stocks)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/trading/demo?capital=100000",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "trading", "demo"],
+              "query": [
+                {
+                  "key": "capital",
+                  "value": "100000",
+                  "description": "Available capital (optional)"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Single Stock Analysis (US)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/trading/signal-analysis?symbols=AAPL",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "trading", "signal-analysis"],
+              "query": [
+                {
+                  "key": "symbols",
+                  "value": "AAPL"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Indian Stock Analysis",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/trading/signal-analysis?symbols=RELIANCE.NS,TCS.BO",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "trading", "signal-analysis"],
+              "query": [
+                {
+                  "key": "symbols",
+                  "value": "RELIANCE.NS,TCS.BO",
+                  "description": "Indian stocks with .NS (NSE) or .BO (BSE) suffix"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Watchlist Management",
+      "item": [
+        {
+          "name": "Get Watchlist",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/watchlist?action=BUY&grade=A&limit=20&offset=0",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "watchlist"],
+              "query": [
+                {
+                  "key": "action",
+                  "value": "BUY",
+                  "description": "Filter by action: BUY, WATCH, HOLD"
+                },
+                {
+                  "key": "grade",
+                  "value": "A",
+                  "description": "Filter by grade: A, B, C, D"
+                },
+                {
+                  "key": "market",
+                  "value": "US",
+                  "description": "Filter by market: US, IN",
+                  "disabled": true
+                },
+                {
+                  "key": "limit",
+                  "value": "20",
+                  "description": "Results per page"
+                },
+                {
+                  "key": "offset",
+                  "value": "0",
+                  "description": "Pagination offset"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Watchlist Stats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/watchlist/stats",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "watchlist", "stats"]
+            }
+          }
+        },
+        {
+          "name": "Get Watchlist by Grade",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/watchlist/by-grade",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "watchlist", "by-grade"]
+            }
+          }
+        },
+        {
+          "name": "Get Specific Stock from Watchlist",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/watchlist/AAPL",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "watchlist", "AAPL"]
+            }
+          }
+        },
+        {
+          "name": "Populate Watchlist (Standard)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"batchSize\": 20,\n  \"delayBetweenBatches\": 2000,\n  \"overwriteExisting\": false,\n  \"useProfessionalFiltering\": false\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/watchlist/populate",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "watchlist", "populate"]
+            }
+          }
+        },
+        {
+          "name": "Populate Watchlist (Professional Filtering)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"useProfessionalFiltering\": true,\n  \"maxWatchlistSize\": 15,\n  \"requireMinimumScore\": 100,\n  \"overwriteExisting\": true,\n  \"symbols\": [\"AAPL\", \"MSFT\", \"GOOGL\", \"AMZN\", \"TSLA\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/watchlist/populate",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "watchlist", "populate"]
+            }
+          }
+        },
+        {
+          "name": "Analyze and Add Stock to Watchlist",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"overwriteExisting\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/watchlist/analyze/AAPL",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "watchlist", "analyze", "AAPL"]
+            }
+          }
+        },
+        {
+          "name": "Update Watchlist Now (Manual Trigger)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/watchlist/update-now",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "watchlist", "update-now"]
+            }
+          }
+        },
+        {
+          "name": "Update Stock Status",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"EXECUTED\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/watchlist/AAPL/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "watchlist", "AAPL", "status"]
+            }
+          }
+        },
+        {
+          "name": "Remove Stock from Watchlist",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/watchlist/AAPL",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "watchlist", "AAPL"]
+            }
+          }
+        },
+        {
+          "name": "Cleanup Watchlist",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"daysOld\": 30,\n  \"removeExecuted\": true,\n  \"removeAvoid\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/watchlist/cleanup",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "watchlist", "cleanup"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Capital Management",
+      "item": [
+        {
+          "name": "Get All Capital",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/capital",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "capital"]
+            }
+          }
+        },
+        {
+          "name": "Get Capital Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/capital/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "capital", "status"]
+            }
+          }
+        },
+        {
+          "name": "Get USD Capital",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/capital/USD",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "capital", "USD"]
+            }
+          }
+        },
+        {
+          "name": "Get INR Capital",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/capital/INR",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "capital", "INR"]
+            }
+          }
+        },
+        {
+          "name": "Check Capital Availability",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/capital/check?currency=USD&amount=1000",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "capital", "check"],
+              "query": [
+                {
+                  "key": "currency",
+                  "value": "USD"
+                },
+                {
+                  "key": "amount",
+                  "value": "1000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Initialize Capital",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"initialCapitals\": [\n    {\n      \"currency\": \"USD\",\n      \"total\": 100000\n    },\n    {\n      \"currency\": \"INR\",\n      \"total\": 8000000\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/capital/initialize",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "capital", "initialize"]
+            }
+          }
+        },
+        {
+          "name": "Update USD Capital",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"total\": 150000,\n  \"adjustRemaining\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/capital/USD",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "capital", "USD"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Investments",
+      "item": [
+        {
+          "name": "Get All Investments",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/investments",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "investments"]
+            }
+          }
+        },
+        {
+          "name": "Get Investment Summary",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/investments/summary",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "investments", "summary"]
+            }
+          }
+        },
+        {
+          "name": "Get Investment by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/investments/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "investments", "1"]
+            }
+          }
+        },
+        {
+          "name": "Create Investment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"symbol\": \"AAPL\",\n  \"quantity\": 100,\n  \"averagePrice\": 150.00,\n  \"totalInvested\": 15000,\n  \"market\": \"US\",\n  \"currency\": \"USD\",\n  \"type\": \"STOCK\",\n  \"platform\": \"Robinhood\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/investments",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "investments"]
+            }
+          }
+        },
+        {
+          "name": "Update Investment",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"quantity\": 150,\n  \"averagePrice\": 145.00,\n  \"totalInvested\": 21750\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/investments/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "investments", "1"]
+            }
+          }
+        },
+        {
+          "name": "Close Investment",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"exitPrice\": 160.00,\n  \"exitDate\": \"2025-08-17\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/investments/1/close",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "investments", "1", "close"]
+            }
+          }
+        },
+        {
+          "name": "Delete Investment",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/investments/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "investments", "1"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Trades",
+      "item": [
+        {
+          "name": "Get All Trades",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/trades",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "trades"]
+            }
+          }
+        },
+        {
+          "name": "Get Dashboard Summary",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/trades/dashboard/summary",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "trades", "dashboard", "summary"]
+            }
+          }
+        },
+        {
+          "name": "Create Trade",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"symbol\": \"AAPL\",\n  \"quantity\": 100,\n  \"entryPrice\": 150.00,\n  \"entryDate\": \"2025-08-17\",\n  \"stopLoss\": 145.00,\n  \"target1\": 160.00,\n  \"target2\": 170.00,\n  \"strategy\": \"Elder Triple Screen\",\n  \"market\": \"US\",\n  \"currency\": \"USD\",\n  \"tradeType\": \"LONG\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/trades",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "trades"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Recommendations",
+      "item": [
+        {
+          "name": "Get All Recommendations",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/recommendations",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "recommendations"]
+            }
+          }
+        },
+        {
+          "name": "Get Recommendation by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/recommendations/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "recommendations", "1"]
+            }
+          }
+        },
+        {
+          "name": "Create Recommendation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"symbol\": \"AAPL\",\n  \"action\": \"BUY\",\n  \"targetPrice\": 160.00,\n  \"stopLoss\": 145.00,\n  \"confidence\": 85,\n  \"reasoning\": \"Strong technical setup with Elder Triple Screen confirmation\",\n  \"timeframe\": \"2-4 weeks\",\n  \"source\": \"System Analysis\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/recommendations",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "recommendations"]
+            }
+          }
+        },
+        {
+          "name": "Update Recommendation",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"confidence\": 90,\n  \"targetPrice\": 165.00\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/recommendations/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "recommendations", "1"]
+            }
+          }
+        },
+        {
+          "name": "Archive Recommendation",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/recommendations/1/archive",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "recommendations", "1", "archive"]
+            }
+          }
+        },
+        {
+          "name": "Delete Recommendation",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/recommendations/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "recommendations", "1"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Market Data",
+      "item": [
+        {
+          "name": "Get Market Indices",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/market/indices",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "market", "indices"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Yahoo Finance Utilities",
+      "item": [
+        {
+          "name": "Search Symbol",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/yahoo/search?q=AAPL",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "yahoo", "search"],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "AAPL",
+                  "description": "Symbol to search for"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Current Price",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/yahoo/price?symbol=AAPL",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "yahoo", "price"],
+              "query": [
+                {
+                  "key": "symbol",
+                  "value": "AAPL",
+                  "description": "Stock symbol"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Add common pre-request scripts here",
+          "console.log('Request to: ' + pm.request.url);"
+        ]
+      }
+    }
+  ]
+}
