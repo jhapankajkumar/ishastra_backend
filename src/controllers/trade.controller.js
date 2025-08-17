@@ -4,6 +4,7 @@ const prisma = new PrismaClient();
 const TradeIdGenerator = require('../utils/tradeIdGenerator');
 const CapitalManager = require('../utils/capitalManager');
 const ImpulseExitAnalyzer = require('../services/exitStrategies/impulseExit');
+const { getQuote } = require('../yahoo');
 
 // Get all trades with related data
 exports.getAllTrades = async (req, res) => {
@@ -675,5 +676,52 @@ exports.getTradeTransactions = async (req, res) => {
       error: 'Failed to fetch trade transactions', 
       details: error.message 
     });
+  }
+};
+
+
+// Refresh all trade prices (manual endpoint)
+exports.refreshAllTradePrices = async (req, res) => {
+  try {
+    const trades = await prisma.trade.findMany();
+    let updatedCount = 0;
+
+    const updates = trades.map(async (trade) => {
+      try {
+        const quote = await getQuote(trade.ticker);
+        const data = {};
+        if (quote?.regularMarketPrice != null) {
+          data.currentPrice = quote.regularMarketPrice;
+        }
+        if (data.currentPrice != null || data.lastDayPrice != null) {
+          await prisma.trade.update({
+            where: { id: trade.id },
+            data,
+          });
+          updatedCount++;
+        }
+      } catch (err) {
+        console.error(`[ERROR] Updating ${trade.ticker}:`, err.message);
+      }
+    });
+
+    await Promise.allSettled(updates);
+    //console.log(`[CRON] Updated ${updatedCount} investments`);
+
+
+    res.json({
+      success: true,
+      message: `Prices refreshed for ${updatedCount} trades.`
+    });
+  } catch (error) {
+    console.error('Error refreshing trade prices:', error);
+    if (res?.status) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to refresh trade prices',
+        error: error.message
+      });
+      return;
+    }
   }
 };

@@ -49,6 +49,7 @@ model Trade {
   target2            Float?
   target3            Float?
   quantity           Int?
+  currentPrice       Float?    // Latest fetched price
   
   entryCommission    Float?
   entryDate          DateTime?
