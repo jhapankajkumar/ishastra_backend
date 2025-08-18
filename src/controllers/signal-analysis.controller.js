@@ -1223,7 +1223,7 @@ class TradingSystemController {
       let systemPositionSize = {
         shares: Math.floor(baseCalculation.shares * positionMultiplier),
         value: Math.floor(baseCalculation.value * positionMultiplier),
-        risk: `${(1.5 * positionMultiplier).toFixed(1)}%`, // Scale risk percentage with position size
+        risk: baseCalculation.riskPercentage, // Use actual calculated risk percentage
         riskPerShare: riskPerShare
       };
       
@@ -1588,17 +1588,24 @@ class TradingSystemController {
     // Adjust risk based on signal confidence and action
     let adjustedRiskPerTrade = riskPerTrade;
     
-    // Reduce position size for lower confidence signals
-    if (confidence < 0.7) {
-      adjustedRiskPerTrade *= 0.5; // Half position for low confidence
-    } else if (confidence < 0.8) {
-      adjustedRiskPerTrade *= 0.75; // 75% position for medium confidence
+    console.log(`📊 Position sizing debug: Initial risk=${(riskPerTrade*100).toFixed(1)}%, Confidence=${(confidence*100).toFixed(1)}%, Action=${signalAction}`);
+    
+    // More reasonable confidence-based adjustments
+    if (confidence < 0.5) {
+      adjustedRiskPerTrade *= 0.6; // 60% position for very low confidence
+    } else if (confidence < 0.65) {
+      adjustedRiskPerTrade *= 0.8; // 80% position for low confidence
+    } else if (confidence < 0.75) {
+      adjustedRiskPerTrade *= 0.9; // 90% position for medium confidence
     }
+    // Above 75% confidence gets full position size
     
     // Reduce position size for WATCH signals vs BUY signals
     if (signalAction === 'WATCH') {
-      adjustedRiskPerTrade *= 0.6; // 60% of normal position for WATCH
+      adjustedRiskPerTrade *= 0.7; // 70% of normal position for WATCH
     }
+    
+    console.log(`📊 Adjusted risk after confidence: ${(adjustedRiskPerTrade*100).toFixed(1)}%`);
 
     // Calculate maximum position value based on risk tolerance
     const maxRiskAmount = availableCapital * adjustedRiskPerTrade;
