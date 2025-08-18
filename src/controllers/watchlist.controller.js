@@ -80,63 +80,6 @@ class WatchlistController {
             });
         }
     }
-
-    /**
-     * GET /api/watchlist/stats
-     * Get watchlist statistics and summary
-     */
-    async getWatchlistStats(req, res) {
-        try {
-            const stats = await this.watchlistService.getWatchlistStats();
-
-            // Get top performers (highest confidence + grade)
-            const topPerformers = await prisma.watchlistStock.findMany({
-                where: {
-                    status: 'ACTIVE',
-                    decisionAction: { in: ['BUY', 'WATCH'] }
-                },
-                orderBy: [
-                    { priority: 'desc' },
-                    { decisionConfidence: 'desc' }
-                ],
-                take: 10
-            });
-
-            // Get recent additions
-            const recentAdditions = await prisma.watchlistStock.findMany({
-                where: { status: 'ACTIVE' },
-                orderBy: { addedAt: 'desc' },
-                take: 5
-            });
-
-            res.json({
-                overview: stats,
-                topPerformers: topPerformers.map(stock => ({
-                    symbol: stock.symbol,
-                    currentPrice: stock.currentPrice,
-                    decisionAction: stock.decisionAction,
-                    decisionGrade: stock.decisionGrade,
-                    decisionConfidence: stock.decisionConfidence,
-                    priority: stock.priority,
-                    market: stock.market
-                })),
-                recentAdditions: recentAdditions.map(stock => ({
-                    symbol: stock.symbol,
-                    decisionAction: stock.decisionAction,
-                    decisionGrade: stock.decisionGrade,
-                    addedAt: stock.addedAt
-                }))
-            });
-
-        } catch (error) {
-            console.error('Error fetching watchlist stats:', error);
-            res.status(500).json({
-                error: 'Failed to fetch watchlist stats',
-                details: error.message
-            });
-        }
-    }
-
     /**
      * GET /api/watchlist/:symbol
      * Get detailed information for a specific watchlist stock

@@ -192,7 +192,7 @@ class TradingSystemController {
           //console.log(`    🔧 Analyzing with ${systemId}...`);
           
           try {
-            // Convert data to system-specific format
+            // Convert data to system-specific format and pass capital for position sizing
             let systemData;
             let systemAnalysis;
             
@@ -200,23 +200,41 @@ class TradingSystemController {
               //console.log(`📊 [SYSTEM] Loading Elder Triple Screen system for ${symbol}`);
               systemData = this.convertToElderFormat(analysisContext.technical);
               //console.log(`🔧 [SYSTEM] Elder format result has indicators:`, Object.keys(systemData.indicators.triple_screen || {}));
-              systemAnalysis = this.systems[systemId].analyze(systemData);
+              systemAnalysis = this.systems[systemId].analyze(systemData, { 
+                availableCapital: symbolAvailableCapital,
+                symbol: symbol 
+              });
             } else if (systemId === SYSTEM_IDS.MINERVINI_SEPA) {
               systemData = this.convertToSEPAFormat(analysisContext.technical);
-              systemAnalysis = this.systems[systemId].analyze(systemData);
+              systemAnalysis = this.systems[systemId].analyze(systemData, { 
+                availableCapital: symbolAvailableCapital,
+                symbol: symbol 
+              });
             } else if (systemId === SYSTEM_IDS.CAN_SLIM_CUP_HANDLE) {
               systemData = this.convertToCupHandleFormat(analysisContext.technical);
-              systemAnalysis = this.systems[systemId].analyze(systemData);
+              systemAnalysis = this.systems[systemId].analyze(systemData, { 
+                availableCapital: symbolAvailableCapital,
+                symbol: symbol 
+              });
             } else if (systemId === SYSTEM_IDS.RSI_MEAN_REVERSION) {
               systemData = this.convertToRSIMeanFormat(analysisContext.technical);
-              systemAnalysis = this.systems[systemId].analyze(systemData);
+              systemAnalysis = this.systems[systemId].analyze(systemData, { 
+                availableCapital: symbolAvailableCapital,
+                symbol: symbol 
+              });
             } else if (systemId === SYSTEM_IDS.MACD_DIVERGENCE) {
               systemData = this.convertToMACDDivergenceFormat(analysisContext.technical);
-              systemAnalysis = this.systems[systemId].analyze(systemData);
+              systemAnalysis = this.systems[systemId].analyze(systemData, { 
+                availableCapital: symbolAvailableCapital,
+                symbol: symbol 
+              });
             } else {
-              // Default: pass raw technical data
+              // Default: pass raw technical data with capital
               systemData = analysisContext.technical;
-              systemAnalysis = this.systems[systemId].analyze(systemData);
+              systemAnalysis = this.systems[systemId].analyze(systemData, { 
+                availableCapital: symbolAvailableCapital,
+                symbol: symbol 
+              });
             }
             
             // Run through gate engine for this system (with timeout)
@@ -1127,12 +1145,6 @@ class TradingSystemController {
     const unifiedConfidence = unifiedDecision.confidence || 0;
     const confidencePercent = Math.round(unifiedConfidence * 100);
     
-    // Extract execution details with proper position sizing
-    const entry = currentPrice;
-    const stopLoss = this.extractStopLoss(gateResult, currentPrice, signalAction);
-    const targets = this.extractTargets(gateResult, currentPrice, signalAction, technicalData, systemResults);
-    const riskReward = this.calculateRiskReward(currentPrice, stopLoss, targets[0]);
-    
     // Get symbol-specific market capital for position sizing
     const symbolMarketInfo = getMarketInfo(symbol);
     let symbolMarketCapital;
@@ -1155,18 +1167,129 @@ class TradingSystemController {
       };
     }
     
-    // Calculate proper position sizing based on symbol-specific capital and risk management
-    const positionSize = this.calculatePositionSizing({
-      entryPrice: currentPrice,
-      stopLoss: stopLoss,
-      availableCapital: symbolMarketCapital.remaining,
-      symbol: symbol,
-      market: symbolMarketInfo.market,
-      currency: symbolMarketInfo.currency,
-      signalAction: signalAction,
-      confidence: unifiedConfidence,
-      riskPerTrade: 0.02 // 2% risk per trade (professional standard)
-    });
+    // 🧠 ENHANCEMENT: Identify winning system for execution details extraction
+    const winningSystem = this.identifyWinningSystem(systemResults, unifiedDecision);
+    
+    // 🧠 TASK 2: Use winning system's execution values when action is BUY
+    let executionDetails;
+    
+    if (unifiedAction === 'BUY' && winningSystem && (winningSystem.entryPrice || winningSystem.currentPrice || winningSystem.executionPlan)) {
+      // Use winning system's complete execution package
+      console.log(`🎯 Using execution details from winning system: ${winningSystem.system || 'UNKNOWN'}`);
+      console.log(`🔍 Winning system fields:`, Object.keys(winningSystem));
+      
+      // Extract from executionPlan if available, otherwise from direct fields
+      const executionPlan = winningSystem.executionPlan || {};
+      const exitStrategy = executionPlan.exitStrategy || {};
+      const positionSizing = executionPlan.positionSizing || winningSystem.positionSizing || {};
+      
+      const systemEntryPrice = winningSystem.entryPrice || winningSystem.currentPrice || executionPlan.entryPrice || currentPrice;
+      const systemStopLoss = winningSystem.stopLoss || exitStrategy.stopLoss;
+      const systemTargets = winningSystem.targets || exitStrategy.targets || [];
+      const systemRiskReward = winningSystem.riskReward || executionPlan.riskReward;
+      
+      // Calculate position size based on the system's recommendation and HALF logic
+      const baseCalculation = this.calculatePositionSizing({
+        entryPrice: systemEntryPrice,
+        stopLoss: systemStopLoss,
+        availableCapital: symbolMarketCapital.remaining,
+        symbol: symbol,
+        market: symbolMarketInfo.market,
+        currency: symbolMarketInfo.currency,
+        signalAction: signalAction,
+        confidence: unifiedConfidence,
+        riskPerTrade: 0.015 // 1.5% flat risk as requested
+      });
+      
+      // 🧠 Apply system's recommendation multiplier (HALF, QUARTER, etc.)
+      let positionMultiplier = 1.0;
+      if (positionSizing.recommendation) {
+        const recommendation = positionSizing.recommendation.toUpperCase();
+        switch (recommendation) {
+          case 'FULL': positionMultiplier = 1.0; break;
+          case 'HALF': positionMultiplier = 0.5; break;
+          case 'QUARTER': positionMultiplier = 0.25; break;
+          case 'REDUCED': positionMultiplier = 0.75; break;
+          case 'CONSERVATIVE': positionMultiplier = 0.6; break;
+          case 'AGGRESSIVE': positionMultiplier = 1.25; break;
+          default: positionMultiplier = 1.0;
+        }
+        console.log(`🎯 Applying ${recommendation} recommendation: ${positionMultiplier}x multiplier`);
+      }
+      
+      // Calculate final position size with system recommendation applied
+      const riskPerShare = systemStopLoss ? Number(Math.abs(systemEntryPrice - systemStopLoss).toFixed(2)) : 0;
+      
+      let systemPositionSize = {
+        shares: Math.floor(baseCalculation.shares * positionMultiplier),
+        value: Math.floor(baseCalculation.value * positionMultiplier),
+        risk: `${(1.5 * positionMultiplier).toFixed(1)}%`, // Scale risk percentage with position size
+        riskPerShare: riskPerShare
+      };
+      
+      console.log(`📊 System values: Entry=${systemEntryPrice}, Stop=${systemStopLoss}, Targets=${systemTargets}, PositionSize=`, systemPositionSize);
+      console.log(`📋 ExecutionPlan:`, executionPlan);
+      
+      // Calculate proper numeric risk reward ratio
+      const calculatedRiskReward = this.calculateRiskReward(
+        systemEntryPrice, 
+        systemStopLoss, 
+        systemTargets[0]
+      );
+      
+      executionDetails = {
+        entry: Number((systemEntryPrice).toFixed(2)),
+        stop: systemStopLoss ? Number(systemStopLoss.toFixed(2)) : null,
+        target1: systemTargets[0] ? Number(systemTargets[0].toFixed(2)) : null,
+        target2: systemTargets[1] ? Number(systemTargets[1].toFixed(2)) : null,
+        riskReward: Number(calculatedRiskReward.toFixed(1)),
+        positionSize: systemPositionSize || {
+          shares: 0,
+          value: 0,
+          risk: "0%"
+        }
+      };
+      
+      console.log(`✅ Winning system execution: Entry=${executionDetails.entry}, Stop=${executionDetails.stop}, Target1=${executionDetails.target1}`);
+    } else {
+      // Fallback to generic calculation
+      console.log(`⚠️ Fallback to generic execution calculation (Action: ${unifiedAction}, WinningSystem: ${!!winningSystem}, HasEntryPrice: ${!!(winningSystem?.entryPrice || winningSystem?.currentPrice)})`);
+      if (winningSystem) {
+        console.log(`🔍 Winning system available fields:`, Object.keys(winningSystem));
+      }
+      
+      const entry = currentPrice;
+      const stopLoss = this.extractStopLoss(gateResult, currentPrice, signalAction);
+      const targets = this.extractTargets(gateResult, currentPrice, signalAction, technicalData, systemResults);
+      const riskReward = this.calculateRiskReward(currentPrice, stopLoss, targets[0]);
+      
+      // Calculate proper position sizing based on symbol-specific capital and risk management
+      const positionSize = this.calculatePositionSizing({
+        entryPrice: currentPrice,
+        stopLoss: stopLoss,
+        availableCapital: symbolMarketCapital.remaining,
+        symbol: symbol,
+        market: symbolMarketInfo.market,
+        currency: symbolMarketInfo.currency,
+        signalAction: signalAction,
+        confidence: unifiedConfidence,
+        riskPerTrade: 0.02 // 2% risk per trade (professional standard)
+      });
+      
+      executionDetails = {
+        entry: Number(entry.toFixed(2)),
+        stop: stopLoss ? Number(stopLoss.toFixed(2)) : null,
+        target1: targets[0] ? Number(targets[0].toFixed(2)) : null,
+        target2: targets[1] ? Number(targets[1].toFixed(2)) : null,
+        riskReward: Number(riskReward.toFixed(1)),
+        positionSize: {
+          shares: positionSize.shares,
+          value: positionSize.value,
+          risk: positionSize.riskPercentage,
+          riskPerShare: stopLoss ? Number(Math.abs(entry - stopLoss).toFixed(2)) : 0
+        }
+      };
+    }
     
     // Extract market context
     const trend = this.extractTrendContext(analysisContext);
@@ -1212,16 +1335,13 @@ class TradingSystemController {
       },
       
       execution: {
-        entry: Number(entry.toFixed(2)),
-        stop: stopLoss ? Number(stopLoss.toFixed(2)) : null,
-        riskReward: Number(riskReward.toFixed(2)),
-        target1: targets[0] ? Number(targets[0].toFixed(2)) : null,
-        target2: targets[1] ? Number(targets[1].toFixed(2)) : null,
-        positionSize: {
-          shares: positionSize.shares,
-          value: positionSize.value,
-          risk: positionSize.riskPercentage
-        }
+        entry: executionDetails.entry,
+        stopLoss: executionDetails.stop,
+        target1: executionDetails.target1,
+        target2: executionDetails.target2,
+        riskReward: typeof executionDetails.riskReward === 'number' ? executionDetails.riskReward : 0,
+        positionSize: executionDetails.positionSize,
+        exitStrategy: this.normalizeExitStrategy(winningSystem?.executionPlan?.exitStrategy)
       },
       
       context: {
@@ -1264,12 +1384,12 @@ class TradingSystemController {
       flipToReady: actionableIntelligence.flipToReady,
       
       // SIMPLIFIED SYSTEM DETAILS - Essential info only
-      systems: this.buildSystemsResponse(systemResults, supportedSystems)
+      systems: this.buildSystemsResponse(systemResults, supportedSystems, symbol, symbolMarketCapital, technicalData.currentPrice)
     };
   }
 
   // NEW: Build systems response dynamically for all analyzed systems
-  buildSystemsResponse(systemResults, supportedSystems) {
+  buildSystemsResponse(systemResults, supportedSystems, symbol, marketCapital, currentPrice) {
     const systems = {};
     
     // Map system IDs to display names
@@ -1287,7 +1407,7 @@ class TradingSystemController {
       const displayInfo = systemDisplayNames[systemId];
       
       if (systemResult && displayInfo) {
-        systems[displayInfo.key] = this.simplifySystemResponse(systemResult, displayInfo.name, systemId);
+        systems[displayInfo.key] = this.simplifySystemResponse(systemResult, displayInfo.name, systemId, symbol, marketCapital, currentPrice);
       }
     });
     
@@ -1295,22 +1415,21 @@ class TradingSystemController {
   }
 
   // NEW: Simplify system response to essential information only
-  simplifySystemResponse(analysis, systemName, systemId) {
+  simplifySystemResponse(analysis, systemName, systemId, symbol, marketCapital, currentPrice) {
     if (!analysis) return null;
     
-    const currentPrice = analysis.entryPrice || analysis.currentPrice || 0;
-    const stopLoss = analysis.stopLoss || null;
-    const target1 = analysis.targets?.[0] || null;
-    const target2 = analysis.targets?.[1] || null;
+    // Use passed currentPrice instead of defaulting to 0
+    const entryPrice = currentPrice;
+    const stopLoss = analysis.stopLoss || analysis.executionPlan?.exitStrategy?.stopLoss || null;
+    const target1 = analysis.targets?.[0] || analysis.executionPlan?.exitStrategy?.targets?.[0] || null;
+    const target2 = analysis.targets?.[1] || analysis.executionPlan?.exitStrategy?.targets?.[1] || null;
     
-    // Calculate risk/reward
+    // Calculate risk/reward as simple number
     let riskReward = 0;
-    let riskAmount = 0;
     if (stopLoss && target1) {
-      const risk = Math.abs(currentPrice - stopLoss);
-      const reward = Math.abs(target1 - currentPrice);
-      riskReward = risk > 0 ? reward / risk : 0;
-      riskAmount = risk;
+      const risk = Math.abs(entryPrice - stopLoss);
+      const reward = Math.abs(target1 - entryPrice);
+      riskReward = risk > 0 ? parseFloat((reward / risk).toFixed(1)) : 0;
     }
     
     // Determine grade from confidence
@@ -1321,22 +1440,49 @@ class TradingSystemController {
     else if (confidencePercent >= 70) grade = 'B';
     else if (confidencePercent >= 60) grade = 'C';
     else if (confidencePercent >= 50) grade = 'C-';
+
+    // Get recommendation and apply multiplier
+    const recommendation = analysis.recommendation || 'HOLD';
+    let multiplier = 1;
+    if (recommendation === 'HALF') {
+      multiplier = 0.5;
+    } else if (recommendation === 'QUARTER') {
+      multiplier = 0.25;
+    }
+
+    // Calculate position size with recommendation multiplier
+    const calculatedPositionSize = this.calculatePositionSizing({
+      entryPrice: entryPrice,
+      stopLoss: stopLoss,
+      availableCapital: marketCapital * multiplier,
+      symbol: symbol || 'DEFAULT',
+      market: 'IN',
+      currency: 'INR',
+      signalAction: 'BUY',
+      confidence: confidence,
+      riskPerTrade: analysis.riskPercentage || 0.016 // 1.6% default risk
+    });
     
+    // Clean response structure - no duplicated fields
     return {
       system: systemId,
       systemName: systemName,
       decision: analysis.decision || 'HOLD',
       confidence: confidence,
+      recommendation: recommendation,
       reasoning: Array.isArray(analysis.reasoning) ? analysis.reasoning : [analysis.reasoning || 'Analysis complete'],
-      riskReward: {
-        currentPrice: Number(currentPrice.toFixed(2)),
-        stopLoss: stopLoss ? Number(stopLoss.toFixed(2)) : null,
-        target1: target1 ? Number(target1.toFixed(2)) : null,
-        target2: target2 ? Number(target2.toFixed(2)) : null,
-        riskReward: Number(riskReward.toFixed(2)),
-        riskAmount: Number(riskAmount.toFixed(2))
+      entryPrice: parseFloat(entryPrice.toFixed(2)),
+      stopLoss: stopLoss ? parseFloat(stopLoss.toFixed(2)) : null,
+      targets: [target1, target2].filter(t => t !== null).map(t => parseFloat(t.toFixed(2))),
+      riskReward: riskReward, // Simple number, not object
+      executionPlan: {
+        entry: parseFloat(entryPrice.toFixed(2)),
+        stopLoss: stopLoss ? parseFloat(stopLoss.toFixed(2)) : null,
+        targets: [target1, target2].filter(t => t !== null).map(t => parseFloat(t.toFixed(2))),
+        shares: calculatedPositionSize.shares,
+        value: calculatedPositionSize.value,
+        riskAmount: calculatedPositionSize.riskAmount
       },
-      executionPlan: analysis.executionPlan || null,
       grade: grade
     };
   }
@@ -1411,6 +1557,7 @@ class TradingSystemController {
 
     // Don't calculate position sizing for HOLD/AVOID signals
     if (!signalAction || signalAction === 'HOLD' || signalAction === 'AVOID') {
+      console.log(`⚠️ No position sizing for signal action: ${signalAction}`);
       return {
         shares: 0,
         value: 0,
@@ -1420,6 +1567,7 @@ class TradingSystemController {
 
     // Must have valid entry and stop prices
     if (!entryPrice || !stopLoss || entryPrice <= 0) {
+      console.log(`⚠️ Invalid prices for position sizing: entry=${entryPrice}, stop=${stopLoss}`);
       return {
         shares: 0,
         value: 0,
@@ -1793,6 +1941,257 @@ class TradingSystemController {
         }
       }
     };
+  }
+
+  /**
+   * 🧠 Identify the winning system based on unified decision logic
+   * Returns the system that should provide the execution plan
+   */
+  identifyWinningSystem(systemResults, unifiedDecision) {
+    try {
+      // Convert systemResults to array format for processing
+      const resultsArray = Object.entries(systemResults).map(([systemId, result]) => ({
+        ...result,
+        systemId: systemId,
+        system: systemId
+      })).filter(result => {
+        return result && result.decision && result.decision !== 'AVOID' && result.decision !== 'ERROR';
+      });
+
+      if (resultsArray.length === 0) {
+        console.log(`⚠️ No valid systems found for winning system identification`);
+        return null;
+      }
+
+      // Logic 1: If unified decision matches a specific system with high confidence, use that system
+      const highConfidenceSystems = resultsArray.filter(result => 
+        result.confidence >= 0.75 && result.decision === unifiedDecision.action
+      );
+      
+      if (highConfidenceSystems.length === 1) {
+        console.log(`🎯 High confidence winner: ${highConfidenceSystems[0].systemId} (${(highConfidenceSystems[0].confidence * 100).toFixed(1)}%)`);
+        return highConfidenceSystems[0];
+      }
+
+      // Logic 2: If multiple high confidence systems, use the highest confidence one
+      if (highConfidenceSystems.length > 1) {
+        const winner = highConfidenceSystems.reduce((prev, current) => 
+          current.confidence > prev.confidence ? current : prev
+        );
+        console.log(`🎯 Highest confidence winner: ${winner.systemId} (${(winner.confidence * 100).toFixed(1)}%)`);
+        return winner;
+      }
+
+      // Logic 3: Use system with highest confidence that matches unified action
+      const matchingActionSystems = resultsArray.filter(result => 
+        result.decision === unifiedDecision.action
+      );
+      
+      if (matchingActionSystems.length > 0) {
+        const winner = matchingActionSystems.reduce((prev, current) => 
+          current.confidence > prev.confidence ? current : prev
+        );
+        console.log(`🎯 Action-matching winner: ${winner.systemId} (${(winner.confidence * 100).toFixed(1)}%)`);
+        return winner;
+      }
+
+      // Logic 4: Fallback to highest confidence system overall
+      const winner = resultsArray.reduce((prev, current) => 
+        current.confidence > prev.confidence ? current : prev
+      );
+      console.log(`🎯 Overall highest confidence winner: ${winner.systemId} (${(winner.confidence * 100).toFixed(1)}%)`);
+      return winner;
+
+    } catch (error) {
+      console.error(`❌ Error identifying winning system:`, error.message);
+      return null;
+    }
+  }
+
+  /**
+   * 🧠 Normalize position sizing from different system formats to standardized structure
+   * Handles various position sizing formats from different trading systems
+   */
+  normalizePositionSizing(systemPositionSizing, fallbackParams) {
+    try {
+      // Expected output structure
+      let normalizedSizing = {
+        shares: 0,
+        value: 0,
+        riskPercentage: '0%'
+      };
+
+      // Handle different position sizing formats from various systems
+      if (typeof systemPositionSizing === 'object' && systemPositionSizing !== null) {
+        
+        // Format 1: Direct shares/value/risk format
+        if (systemPositionSizing.shares !== undefined) {
+          normalizedSizing.shares = Number(systemPositionSizing.shares) || 0;
+          normalizedSizing.value = Number(systemPositionSizing.value) || 0;
+          normalizedSizing.riskPercentage = systemPositionSizing.risk || systemPositionSizing.riskPercentage || '0%';
+        }
+        // Format 2: Recommendation-based format (like "HALF", "QUARTER", etc.)
+        else if (systemPositionSizing.recommendation) {
+          const recommendation = systemPositionSizing.recommendation.toUpperCase();
+          let multiplier = 1.0;
+          
+          switch (recommendation) {
+            case 'FULL': multiplier = 1.0; break;
+            case 'HALF': multiplier = 0.5; break;
+            case 'QUARTER': multiplier = 0.25; break;
+            case 'REDUCED': multiplier = 0.75; break;
+            case 'CONSERVATIVE': multiplier = 0.6; break;
+            case 'AGGRESSIVE': multiplier = 1.25; break;
+            default: multiplier = 1.0;
+          }
+          
+          // Calculate based on fallback parameters and multiplier
+          const baseCalculation = this.calculatePositionSizing({
+            ...fallbackParams,
+            riskPerTrade: 0.02 * multiplier
+          });
+          
+          normalizedSizing = {
+            shares: Math.floor(baseCalculation.shares * multiplier),
+            value: Math.floor(baseCalculation.value * multiplier),
+            riskPercentage: `${(parseFloat(baseCalculation.riskPercentage) * multiplier).toFixed(1)}%`
+          };
+        }
+        // Format 3: Risk-based format (handle ranges like "1-2% of portfolio")
+        else if (systemPositionSizing.risk !== undefined) {
+          const riskString = systemPositionSizing.risk.toString();
+          let riskPercent;
+          
+          // Handle range format like "1-2% of portfolio at stop loss"
+          if (riskString.includes('-')) {
+            const rangeMatch = riskString.match(/(\d+(?:\.\d+)?)-(\d+(?:\.\d+)?)/);
+            if (rangeMatch) {
+              const minRisk = parseFloat(rangeMatch[1]);
+              const maxRisk = parseFloat(rangeMatch[2]);
+              riskPercent = (minRisk + maxRisk) / 2 / 100; // Use average, convert to decimal
+              console.log(`📊 Risk range detected: ${minRisk}%-${maxRisk}%, using average: ${(riskPercent * 100).toFixed(1)}%`);
+            } else {
+              riskPercent = 0.015; // Default 1.5%
+            }
+          } else {
+            riskPercent = parseFloat(riskString.replace(/[^\d.]/g, '')) / 100;
+          }
+          
+          const baseCalculation = this.calculatePositionSizing({
+            ...fallbackParams,
+            riskPerTrade: riskPercent
+          });
+          
+          normalizedSizing = baseCalculation;
+        }
+        // Format 4: Capital allocation format
+        else if (systemPositionSizing.capitalAllocation !== undefined) {
+          const allocation = parseFloat(systemPositionSizing.capitalAllocation) / 100;
+          const allocatedCapital = fallbackParams.availableCapital * allocation;
+          const shares = Math.floor(allocatedCapital / fallbackParams.entryPrice);
+          
+          normalizedSizing = {
+            shares: shares,
+            value: shares * fallbackParams.entryPrice,
+            riskPercentage: `${(allocation * 100).toFixed(1)}%`
+          };
+        }
+      }
+      
+      // Ensure we have valid numbers
+      if (normalizedSizing.shares <= 0 || normalizedSizing.value <= 0) {
+        console.log(`⚠️ Invalid position sizing from system, recalculating...`);
+        return this.calculatePositionSizing({
+          ...fallbackParams,
+          riskPerTrade: 0.02
+        });
+      }
+
+      console.log(`✅ Normalized position sizing: ${normalizedSizing.shares} shares, ${fallbackParams.currency} ${normalizedSizing.value.toLocaleString()}`);
+      return normalizedSizing;
+
+    } catch (error) {
+      console.error(`❌ Error normalizing position sizing:`, error.message);
+      // Fallback to standard calculation
+      return this.calculatePositionSizing({
+        ...fallbackParams,
+        riskPerTrade: 0.02
+      });
+    }
+  }
+
+  /**
+   * 🧠 Extract position sizing structure from winning system
+   */
+  extractPositionSizing(winningSystem) {
+    try {
+      if (winningSystem && winningSystem.executionPlan && winningSystem.executionPlan.positionSizing) {
+        // Return the raw positionSizing from the winning system to see what it contains
+        const rawPositionSizing = winningSystem.executionPlan.positionSizing;
+        console.log(`🔍 Raw positionSizing from ${winningSystem.system}:`, JSON.stringify(rawPositionSizing, null, 2));
+        return rawPositionSizing;
+      }
+      
+      return {
+        risk: "1.5% of portfolio at stop loss",
+        recommendation: "STANDARD",
+        source: "DEFAULT"
+      };
+    } catch (error) {
+      console.error(`❌ Error extracting position sizing:`, error.message);
+      return {
+        risk: "1.5% of portfolio at stop loss",
+        recommendation: "STANDARD", 
+        source: "ERROR_FALLBACK"
+      };
+    }
+  }
+
+  /**
+   * 🧠 Normalize exit strategy to have exitConditions array format
+   */
+  normalizeExitStrategy(rawExitStrategy) {
+    try {
+      if (!rawExitStrategy) {
+        return {
+          exitConditions: []
+        };
+      }
+
+      let exitConditions = [];
+
+      // Handle object format with multiple exit conditions
+      if (typeof rawExitStrategy === 'object') {
+        // Only include non-price exit conditions (timeStop, rsiExit, etc.)
+        // stopLoss and targets are already in execution section
+        if (rawExitStrategy.timeStop) {
+          exitConditions.push(rawExitStrategy.timeStop);
+        }
+        if (rawExitStrategy.rsiExit) {
+          exitConditions.push(rawExitStrategy.rsiExit);
+        }
+        
+        // Handle any other string-based exit conditions, but exclude price-related ones
+        Object.entries(rawExitStrategy).forEach(([key, value]) => {
+          if (typeof value === 'string' && !['stopLoss', 'targets', 'target1', 'target2', 'timeStop', 'rsiExit'].includes(key)) {
+            exitConditions.push(value);
+          }
+        });
+      }
+      // Handle string format
+      else if (typeof rawExitStrategy === 'string') {
+        exitConditions.push(rawExitStrategy);
+      }
+
+      return {
+        conditions: exitConditions
+      };
+    } catch (error) {
+      console.error(`❌ Error normalizing exit strategy:`, error.message);
+      return {
+        conditions: []
+      };
+    }
   }
 }
 

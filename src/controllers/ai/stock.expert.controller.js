@@ -5799,6 +5799,8 @@ async function getBacktestValidation(symbol, period, capital, technicalData) {
 
 async function getSentimentAnalysis(symbol) {
   try {
+    return null; // Temporarily disabled for performance optimization
+    
     const sentimentService = new FreeNewsSentimentService();
     const result = await sentimentService.getNewsSentiment(symbol); // Fixed method name
     // //console.log(`🔎 Sentiment raw result for ${symbol}:`, JSON.stringify(result, null, 2));
