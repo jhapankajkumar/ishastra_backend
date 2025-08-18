@@ -48,3 +48,6 @@ New crumb: Z9xs/GTARQx
 ⚠️ Invalid prices for position sizing: entry=537.7999877929688, stop=null
 ⚠️ Invalid prices for position sizing: entry=537.7999877929688, stop=null
   ✅ CONCOR.NS: AVOID (50.0%)
+[CRON] Price refresh (trades): { success: true, message: 'Prices refreshed for 4 trades.' }
+[CRON] Price refresh (investments): { success: true, message: 'Prices refreshed for 66 investments.' }
+[CRON] Price refresh (recommendations): { success: true, message: 'Prices refreshed for recommendations.' }
