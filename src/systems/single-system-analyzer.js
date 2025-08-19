@@ -290,15 +290,18 @@ class SingleSystemAnalyzer {
    * Helper: Map system analysis to position sizing recommendation
    */
   mapSystemToPositionSizing(systemAnalysis) {
-    if (!systemAnalysis.signalQuality) return 'NORMAL';
+    if (!systemAnalysis.signalQuality) return 'CONSERVATIVE'; // Default to minimal
     
     const grade = systemAnalysis.signalQuality.grade;
     const riskReward = systemAnalysis.riskReward?.riskReward || 0;
     
-    if (['A+', 'A'].includes(grade) && riskReward >= 2.5) return 'FULL';
-    if (['A-', 'B+'].includes(grade) && riskReward >= 2.0) return 'NORMAL';
-    if (riskReward < 1.5) return 'AVOID';
-    return 'HALF';
+    // Enhanced grade-based position sizing logic
+    if (['A+', 'A'].includes(grade) && riskReward >= 3.0) return 'AGGRESSIVE';   // Max conviction (125%)
+    if (['A+', 'A'].includes(grade) && riskReward >= 2.5) return 'FULL';         // Strong setup (100%)
+    if (['A-', 'B+'].includes(grade) && riskReward >= 2.0) return 'REDUCED';     // Still decent (75%)
+    if (['B', 'B-'].includes(grade) && riskReward >= 1.8) return 'HALF';         // Cautious (50%)
+    if (riskReward >= 1.5) return 'CONSERVATIVE';                                // Minimal entry (60%)
+    return 'QUARTER';                                                             // Very small position for poor setups (25%)
   }
 
   /**

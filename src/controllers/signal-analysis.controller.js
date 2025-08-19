@@ -1206,13 +1206,17 @@ class TradingSystemController {
       if (positionSizing.recommendation) {
         const recommendation = positionSizing.recommendation.toUpperCase();
         switch (recommendation) {
-          case 'FULL': positionMultiplier = 1.0; break;
-          case 'HALF': positionMultiplier = 0.5; break;
-          case 'QUARTER': positionMultiplier = 0.25; break;
-          case 'REDUCED': positionMultiplier = 0.75; break;
-          case 'CONSERVATIVE': positionMultiplier = 0.6; break;
-          case 'AGGRESSIVE': positionMultiplier = 1.25; break;
-          default: positionMultiplier = 1.0;
+          case 'AGGRESSIVE': positionMultiplier = 1.25; break; // 125% position
+          case 'FULL': positionMultiplier = 1.0; break;        // 100% position
+          case 'REDUCED': positionMultiplier = 0.75; break;    // 75% position
+          case 'CONSERVATIVE': positionMultiplier = 0.6; break; // 60% position
+          case 'HALF': positionMultiplier = 0.5; break;        // 50% position
+          case 'QUARTER': positionMultiplier = 0.25; break;    // 25% position
+          case 'AVOID': positionMultiplier = 0; break;         // No position for AVOID
+          case 'NORMAL': positionMultiplier = 1.0; break;      // Legacy support
+          default: 
+            console.log(`⚠️ Unknown recommendation: ${recommendation}, defaulting to CONSERVATIVE`);
+            positionMultiplier = 0.6; // Default to conservative
         }
         console.log(`🎯 Applying ${recommendation} recommendation: ${positionMultiplier}x multiplier`);
       }
@@ -1464,7 +1468,7 @@ class TradingSystemController {
     });
     
     // Clean response structure - no duplicated fields
-    return {
+    const response = {
       system: systemId,
       systemName: systemName,
       decision: analysis.decision || 'HOLD',
@@ -1485,6 +1489,13 @@ class TradingSystemController {
       },
       grade: grade
     };
+
+    // Add formation dates for MACD divergence system
+    if (systemId === 'divergence' && analysis.analysis?.divergence?.formationDates) {
+      response.formationDates = analysis.analysis.divergence.formationDates;
+    }
+
+    return response;
   }
 
   // Helper methods for extracting trading information

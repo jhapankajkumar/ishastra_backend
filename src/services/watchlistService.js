@@ -178,49 +178,86 @@ class WatchlistService {
   }
 
   /**
-   * Format signal analysis result for watchlist storage
+   * Format signal analysis result for watchlist storage with enhanced structure
    */
   formatForWatchlist(stockResult) {
-    const { symbol, decision, execution, systems } = stockResult;
+    const { symbol, currentPrice, decision, execution, systems, context, scenarios, risk, nextStepSummary, timestamp } = stockResult;
 
     // Determine market (US vs Indian) based on symbol
     const market = symbol.includes('.NS') || symbol.includes('.BO') ? 'IN' : 'US';
+    const currency = market === 'IN' ? 'INR' : 'USD';
 
     // Calculate priority based on confidence and grade
     let priority = 3; // Default to low priority
     if (decision.confidence >= 0.8) priority = 1; // High confidence
     else if (decision.confidence >= 0.6) priority = 2; // Medium confidence
 
+    // Enhanced execution data structure
+    const executionData = {
+      entry: execution?.entry || currentPrice,
+      stopLoss: execution?.stopLoss,
+      target1: execution?.target1,
+      target2: execution?.target2,
+      riskReward: execution?.riskReward || 0,
+      positionSize: execution?.positionSize || {
+        shares: 0,
+        value: 0,
+        risk: "0%",
+        riskPerShare: 0
+      },
+      exitStrategy: execution?.exitStrategy || {
+        exitConditions: []
+      }
+    };
+
+    // Enhanced systems data with formation dates and latest structure
+    const systemsData = {
+      // Include all systems with their enhanced data
+      systems: systems || {},
+      
+      // Add context information
+      context: context || {},
+      
+      // Add scenarios
+      scenarios: scenarios || {},
+      
+      // Add risk information
+      risk: risk || {},
+      
+      // Formation dates summary (extract from MACD if available)
+      formationDates: systems?.macdDivergence?.formationDates || null,
+      
+      // Analysis metadata
+      analysisTimestamp: timestamp,
+      systemsAnalyzed: decision.systemsAnalyzed || 0,
+      systemsAgreement: decision.systemsAgreement || 'UNKNOWN'
+    };
+
     return {
       symbol,
+      currentPrice: currentPrice || execution?.entry || 0,
+      currency,
       market,
+      
+      // Decision data with enhanced reasoning
       decisionAction: decision.action,
       decisionConfidence: decision.confidence,
       decisionGrade: decision.grade || 'C',
-      decisionReasoning: decision.reasoning || '', // Fixed field name
+      decisionReasoning: Array.isArray(decision.reasoning) 
+        ? decision.reasoning.join('; ') 
+        : (decision.reasoning || 'Analysis complete'),
+      systemsAgreement: decision.systemsAgreement || 'UNKNOWN',
+      systemsAnalyzed: decision.systemsAnalyzed || 0,
       
-      // Add required currentPrice field - extract from execution or use 0 as fallback
-      currentPrice: execution?.entryPrice || 0,
+      // Enhanced execution data with latest structure
+      executionData: JSON.stringify(executionData),
       
-      // Add additional decision fields that may be required
-      systemsAgreement: decision.systemsAgreement || null,
-      systemsAnalyzed: decision.systemsAnalyzed || null,
-      
-      // Execution data as JSON string
-      executionData: JSON.stringify({
-        entryPrice: execution?.entryPrice,
-        stopLoss: execution?.stopLoss,
-        takeProfit: execution?.takeProfit,
-        positionSize: execution?.positionSize,
-        maxRiskPercent: execution?.maxRiskPercent,
-        riskRewardRatio: execution?.riskRewardRatio
-      }),
-      
-      // Systems data as JSON string
-      systemsData: JSON.stringify(systems || {}),
+      // Enhanced systems data with formation dates and context
+      systemsData: JSON.stringify(systemsData),
       
       priority,
       status: 'ACTIVE',
+      nextStepSummary: nextStepSummary || `Execute ${decision.action} order`,
       addedAt: new Date(),
       lastAnalyzedAt: new Date()
     };

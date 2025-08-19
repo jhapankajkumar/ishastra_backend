@@ -89,6 +89,9 @@ class MACDDivergence {
                 confidence: finalDecision.confidence,
                 reasoning: [finalDecision.reasoning],
                 
+                // Position sizing recommendation at top level for controller
+                recommendation: finalDecision.executionPlan?.positionSizing?.recommendation || 'FULL',
+                
                 // Analysis breakdown
                 analysis: {
                     macd: macdAnalysis,
@@ -246,7 +249,7 @@ class MACDDivergence {
         const recentHistogram = macdAnalysis.macdHistogram.slice(-this.SWING_LOOKBACK);
         
         const priceSwings = this.findPriceSwings(recentData);
-        const macdSwings = this.findMACDSwings(recentHistogram);
+        const macdSwings = this.findMACDSwings(recentHistogram, recentData);
         
         //console.log(`  📊 Found ${priceSwings.highs.length} price highs, ${priceSwings.lows.length} price lows`);
         //console.log(`  📊 Found ${macdSwings.highs.length} MACD highs, ${macdSwings.lows.length} MACD lows`);
@@ -301,7 +304,7 @@ class MACDDivergence {
     /**
      * Find MACD histogram swing highs and lows
      */
-    findMACDSwings(histogramData) {
+    findMACDSwings(histogramData, dailyData = null) {
         const highs = [];
         const lows = [];
         
@@ -323,10 +326,17 @@ class MACDDivergence {
             const highMagnitude = Math.abs(current) > 0.1; // Minimum histogram value to avoid noise
             
             if (isSwingHigh && highMagnitude) {
-                highs.push({
+                const swingPoint = {
                     index: i,
                     value: current
-                });
+                };
+                
+                // Add date if daily data is available (for swing analysis within lookback window)
+                if (dailyData && dailyData[i]) {
+                    swingPoint.date = dailyData[i].date;
+                }
+                
+                highs.push(swingPoint);
             }
             
             // Swing low (require dominance over ±3 bars AND minimum magnitude)
@@ -335,10 +345,17 @@ class MACDDivergence {
             const lowMagnitude = Math.abs(current) > 0.1; // Minimum histogram value to avoid noise
             
             if (isSwingLow && lowMagnitude) {
-                lows.push({
+                const swingPoint = {
                     index: i,
                     value: current
-                });
+                };
+                
+                // Add date if daily data is available (for swing analysis within lookback window)
+                if (dailyData && dailyData[i]) {
+                    swingPoint.date = dailyData[i].date;
+                }
+                
+                lows.push(swingPoint);
             }
         }
         
@@ -392,6 +409,9 @@ class MACDDivergence {
         //console.log(`      Standard Bearish=${bearish.length}, Triple Bearish=${tripleBearish.length}, Continuation Bearish=${continuationBearish.length}`);
         //console.log(`      Type=${divergenceType}`);
 
+        // Create summary of formation dates for chart verification
+        const formationSummary = this.createFormationDateSummary(bullishSignals, bearishSignals, bestBullish, bestBearish);
+
         return {
             hasDivergence,
             divergenceType,
@@ -407,6 +427,8 @@ class MACDDivergence {
             _standardBearish: bearish,
             _tripleBearish: tripleBearish,
             _continuationBearish: continuationBearish,
+            // Formation dates for chart verification
+            formationDates: formationSummary,
             reason: hasDivergence ?
                 `${divergenceType.toLowerCase()} divergence detected (standard/triple/continuation)` :
                 'No valid divergences found'
@@ -450,13 +472,29 @@ class MACDDivergence {
                     
                     // We already calculated ageInBars above
                     
+                    // Calculate formation period dates
+                    const formationStartDate = previousPriceLow.date;
+                    const formationEndDate = recentPriceLow.date;
+                    const macdStartDate = previousMACDLow.date || formationStartDate;
+                    const macdEndDate = recentMACDLow.date || formationEndDate;
+                    
                     divergences.push({
                         type: 'BULLISH',
                         strength,
                         pricePoints: [previousPriceLow, recentPriceLow],
                         macdPoints: [previousMACDLow, recentMACDLow],
                         separation: Math.abs(recentPriceLow.index - previousPriceLow.index),
-                        ageInBars: ageInBars  // Add recency tracking
+                        ageInBars: ageInBars,  // Add recency tracking
+                        // Formation date ranges for chart verification
+                        formationDates: {
+                            start: formationStartDate,
+                            end: formationEndDate,
+                            priceStart: formationStartDate,
+                            priceEnd: formationEndDate,
+                            macdStart: macdStartDate,
+                            macdEnd: macdEndDate,
+                            durationDays: this.calculateDaysBetween(formationStartDate, formationEndDate)
+                        }
                     });
                 }
             }
@@ -553,13 +591,29 @@ class MACDDivergence {
                     
                     // We already calculated ageInBars above
                     
+                    // Calculate formation period dates
+                    const formationStartDate = previousPriceHigh.date;
+                    const formationEndDate = recentPriceHigh.date;
+                    const macdStartDate = previousMACDHigh.date || formationStartDate;
+                    const macdEndDate = recentMACDHigh.date || formationEndDate;
+                    
                     divergences.push({
                         type: 'BEARISH',
                         strength,
                         pricePoints: [previousPriceHigh, recentPriceHigh],
                         macdPoints: [previousMACDHigh, recentMACDHigh],
                         separation: Math.abs(recentPriceHigh.index - previousPriceHigh.index),
-                        ageInBars: ageInBars  // Add recency tracking
+                        ageInBars: ageInBars,  // Add recency tracking
+                        // Formation date ranges for chart verification
+                        formationDates: {
+                            start: formationStartDate,
+                            end: formationEndDate,
+                            priceStart: formationStartDate,
+                            priceEnd: formationEndDate,
+                            macdStart: macdStartDate,
+                            macdEnd: macdEndDate,
+                            durationDays: this.calculateDaysBetween(formationStartDate, formationEndDate)
+                        }
                     });
                 }
             }
@@ -1435,6 +1489,110 @@ class MACDDivergence {
  */
      isRecentDivergence(divergencePoint, candles, lookback = 10) {
         return divergencePoint && divergencePoint.index >= candles.length - lookback;
+    }
+
+    /**
+     * Create formation date summary for chart verification
+     */
+    createFormationDateSummary(bullishSignals, bearishSignals, bestBullish, bestBearish) {
+        const summary = {
+            hasDivergences: (bullishSignals.length > 0 || bearishSignals.length > 0),
+            totalBullish: bullishSignals.length,
+            totalBearish: bearishSignals.length,
+            bullishFormations: [],
+            bearishFormations: []
+        };
+
+        // Extract formation dates from bullish divergences
+        bullishSignals.forEach((divergence, index) => {
+            if (divergence.formationDates) {
+                summary.bullishFormations.push({
+                    index: index + 1,
+                    type: divergence.type || 'BULLISH',
+                    strength: divergence.strength,
+                    ageInBars: divergence.ageInBars,
+                    ...divergence.formationDates
+                });
+            } else if (divergence.pivots && divergence.pivots.length >= 2) {
+                // Handle advanced divergences (triple, continuation) that have pivots with dates
+                const start = divergence.pivots[0];
+                const end = divergence.pivots[divergence.pivots.length - 1];
+                summary.bullishFormations.push({
+                    index: index + 1,
+                    type: divergence.signal === 'BUY' ? 'BULLISH_CONTINUATION' : 'BULLISH_TRIPLE',
+                    confidence: divergence.confidence,
+                    ageInBars: divergence.ageInBars,
+                    start: start.date,
+                    end: end.date,
+                    priceStart: start.date,
+                    priceEnd: end.date,
+                    durationDays: this.calculateDaysBetween(start.date, end.date)
+                });
+            }
+        });
+
+        // Extract formation dates from bearish divergences
+        bearishSignals.forEach((divergence, index) => {
+            if (divergence.formationDates) {
+                summary.bearishFormations.push({
+                    index: index + 1,
+                    type: divergence.type || 'BEARISH',
+                    strength: divergence.strength,
+                    ageInBars: divergence.ageInBars,
+                    ...divergence.formationDates
+                });
+            } else if (divergence.pivots && divergence.pivots.length >= 2) {
+                // Handle advanced divergences (triple, continuation) that have pivots with dates
+                const start = divergence.pivots[0];
+                const end = divergence.pivots[divergence.pivots.length - 1];
+                summary.bearishFormations.push({
+                    index: index + 1,
+                    type: divergence.signal === 'SELL' ? 'BEARISH_CONTINUATION' : 'BEARISH_TRIPLE',
+                    confidence: divergence.confidence,
+                    ageInBars: divergence.ageInBars,
+                    start: start.date,
+                    end: end.date,
+                    priceStart: start.date,
+                    priceEnd: end.date,
+                    durationDays: this.calculateDaysBetween(start.date, end.date)
+                });
+            }
+        });
+
+        // Add best divergence summary
+        if (bestBullish && bestBullish.formationDates) {
+            summary.bestBullish = {
+                type: bestBullish.type,
+                strength: bestBullish.strength,
+                ageInBars: bestBullish.ageInBars,
+                ...bestBullish.formationDates
+            };
+        }
+
+        if (bestBearish && bestBearish.formationDates) {
+            summary.bestBearish = {
+                type: bestBearish.type,
+                strength: bestBearish.strength,
+                ageInBars: bestBearish.ageInBars,
+                ...bestBearish.formationDates
+            };
+        }
+
+        return summary;
+    }
+
+    /**
+     * Helper: Calculate days between two dates
+     */
+    calculateDaysBetween(startDate, endDate) {
+        if (!startDate || !endDate) return null;
+        
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        const diffTime = Math.abs(end - start);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        return diffDays;
     }
 }
 

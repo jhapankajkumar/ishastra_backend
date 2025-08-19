@@ -283,8 +283,8 @@ class WatchlistController {
 
         console.log(`🎯 Professional ranking complete: ${rankedWatchlist.length} stocks selected`);
 
-        // Step 4: Add to database using existing schema
-        console.log('💾 Phase 3: Adding to watchlist...');
+        // Step 4: Add to database with enhanced analysis structure
+        console.log('💾 Phase 3: Adding to watchlist with latest analysis structure...');
         const addedStocks = [];
 
         for (const stock of rankedWatchlist) {
@@ -292,29 +292,70 @@ class WatchlistController {
                 const confidenceDecimal = stock.decision.confidence > 1 ?
                     stock.decision.confidence / 100 : stock.decision.confidence;
 
+                // Enhanced execution data structure
+                const executionData = {
+                    entry: stock.execution?.entry || stock.currentPrice,
+                    stopLoss: stock.execution?.stopLoss,
+                    target1: stock.execution?.target1,
+                    target2: stock.execution?.target2,
+                    riskReward: stock.execution?.riskReward || 0,
+                    positionSize: stock.execution?.positionSize || {
+                        shares: 0,
+                        value: 0,
+                        risk: "0%",
+                        riskPerShare: 0
+                    },
+                    exitStrategy: stock.execution?.exitStrategy || {
+                        exitConditions: []
+                    }
+                };
+
+                // Enhanced systems data with formation dates and latest structure
+                const systemsData = {
+                    // Include all systems with their enhanced data
+                    systems: stock.systems || {},
+                    
+                    // Add context information
+                    context: stock.context || {},
+                    
+                    // Add scenarios
+                    scenarios: stock.scenarios || {},
+                    
+                    // Add risk information
+                    risk: stock.risk || {},
+                    
+                    // Formation dates summary (extract from MACD if available)
+                    formationDates: stock.systems?.macdDivergence?.formationDates || null,
+                    
+                    // Next step summary
+                    nextStepSummary: stock.nextStepSummary || `Execute ${stock.decision.action} order`,
+                    
+                    // Analysis metadata
+                    analysisTimestamp: stock.timestamp,
+                    systemsAnalyzed: stock.decision.systemsAnalyzed || 0,
+                    systemsAgreement: stock.decision.systemsAgreement || 'UNKNOWN'
+                };
+
                 const watchlistEntry = await prisma.watchlistStock.create({
                     data: {
                         symbol: stock.symbol,
                         currentPrice: stock.currentPrice,
+                        
+                        // Decision data with enhanced reasoning
                         decisionAction: stock.decision.action,
                         decisionConfidence: confidenceDecimal,
                         decisionGrade: stock.decision.grade,
-                        decisionReasoning: stock.decision.reasoning,
-                        systemsAgreement: stock.decision.systemsAgreement,
+                        decisionReasoning: Array.isArray(stock.decision.reasoning) 
+                            ? stock.decision.reasoning.join('; ') 
+                            : (stock.decision.reasoning || 'Analysis complete'),
+                        systemsAgreement: stock.decision.systemsAgreement || 'UNKNOWN',
                         systemsAnalyzed: stock.decision.systemsAnalyzed || 0,
 
-                        // Standard execution data
-                        executionData: JSON.stringify({
-                            entry: stock.execution.entry,
-                            stop: stock.execution.stop,
-                            riskReward: stock.execution.riskReward,
-                            target1: stock.execution.target1,
-                            target2: stock.execution.target2,
-                            positionSize: stock.execution.positionSize
-                        }),
+                        // Enhanced execution data with latest structure
+                        executionData: JSON.stringify(executionData),
 
-                        // Systems data
-                        systemsData: JSON.stringify(stock.systems),
+                        // Enhanced systems data with formation dates and context
+                        systemsData: JSON.stringify(systemsData),
 
                         // Status and priority using existing schema
                         status: 'ACTIVE',
@@ -333,7 +374,8 @@ class WatchlistController {
                     symbol: stock.symbol,
                     action: stock.decision.action,
                     confidence: stock.decision.confidence,
-                    tier: stock.priority_tier || 2
+                    tier: stock.priority_tier || 2,
+                    hasFormationDates: !!(stock.systems?.macdDivergence?.formationDates)
                 });
 
             } catch (dbError) {
@@ -341,7 +383,7 @@ class WatchlistController {
             }
         }
 
-        // Return summary
+        // Return enhanced summary with formation dates info
         return {
             analyzed: symbolsToAnalyze.length,
             valid_analyses: validAnalyses.length,
@@ -351,6 +393,13 @@ class WatchlistController {
             buy_signals: addedStocks.filter(s => s.action === 'BUY').length,
             watch_signals: addedStocks.filter(s => s.action === 'WATCH').length,
             tier_1_signals: addedStocks.filter(s => s.tier === 1).length,
+            stocks_with_formation_dates: addedStocks.filter(s => s.hasFormationDates).length,
+            analysis_enhancements: {
+                formation_dates_included: true,
+                enhanced_systems_data: true,
+                context_and_scenarios: true,
+                improved_recommendation_system: true
+            },
             added_stocks: addedStocks
         };
     }
