@@ -18,6 +18,7 @@ const {
 } = require('./ai/stock.expert.controller');
 const CapitalManager = require('../utils/capitalManager');
 const { getMarketCapital, getMarketInfo, formatCurrency } = require('../utils/marketUtils');
+const { get } = require('lodash');
 
 class TradingSystemController {
   constructor() {
@@ -32,6 +33,29 @@ class TradingSystemController {
     this.systemAnalyzer = new SingleSystemAnalyzer(generateExpertAIDecision);
   }
 
+  async analyzeSingleSystem(req, res) {
+    const { symbol, system } = req.body;
+
+    if (!symbol || !system) {
+      return res.status(400).json({
+        success: false,
+        error: 'Symbol and system are required'
+      });
+    }
+
+    try {
+      const response = await this.getStockAnalysis([system], [symbol]);
+      // console.log(`🔧 response`, response);
+      return res.status(200).json(response);
+    } catch (error) {
+      console.error(`❌ Single System Analysis Error:`, error);
+      return res.status(500).json({
+        success: false,
+        error: 'Internal server error'
+      });
+    }
+  }
+
   /**
    * POST /api/trading/stock-analysis
    * Analyze stocks using all available trading systems with REAL API data
@@ -43,9 +67,12 @@ class TradingSystemController {
     try {
       const { 
         symbols, 
-        systems = [SYSTEM_IDS.TRIPLE_SCREEN, SYSTEM_IDS.MINERVINI_SEPA, SYSTEM_IDS.CAN_SLIM_CUP_HANDLE, SYSTEM_IDS.RSI_MEAN_REVERSION, SYSTEM_IDS.MACD_DIVERGENCE] // Default to all systems
+        systems
       } = req.body;
-      
+      if (!Array.isArray(systems) || systems.length === 0) {
+        systems = [SYSTEM_IDS.TRIPLE_SCREEN, SYSTEM_IDS.MINERVINI_SEPA, SYSTEM_IDS.CAN_SLIM_CUP_HANDLE, SYSTEM_IDS.RSI_MEAN_REVERSION, SYSTEM_IDS.MACD_DIVERGENCE]; // Default to all systems
+      }
+
       if (!symbols || !Array.isArray(symbols) || symbols.length === 0) {
         return res.status(400).json({
           success: false,
@@ -57,101 +84,55 @@ class TradingSystemController {
         });
       }
 
-      // Fetch available capital from database based on symbols' markets
-      //console.log(`💰 Fetching available capital from database...`);
-      let availableCapital = 100000; // Fallback default
-      let capitalCurrency = 'USD';
-      let capitalMarket = 'US';
-      
-      // Determine primary market/currency based on first symbol (or most common market in batch)
-      const firstSymbol = symbols[0];
-      const marketInfo = getMarketInfo(firstSymbol);
-      
-      try {
-        const marketCapital = await getMarketCapital(firstSymbol, CapitalManager);
-        
-        if (marketCapital.success) {
-          availableCapital = marketCapital.remaining;
-          capitalCurrency = marketCapital.currency;
-          capitalMarket = marketCapital.market;
-          
-          const allocated = marketCapital.total - marketCapital.remaining;
-          const utilizationRate = (allocated / marketCapital.total) * 100;
-          
-          //console.log(`💰 ${capitalCurrency} Capital Status (${capitalMarket} Market):`);
-          //console.log(`  • Total: ${formatCurrency(marketCapital.total, capitalCurrency)}`);
-          //console.log(`  • Available: ${formatCurrency(marketCapital.remaining, capitalCurrency)}`);
-          //console.log(`  • Allocated: ${formatCurrency(allocated, capitalCurrency)}`);
-          //console.log(`  • Utilization: ${utilizationRate.toFixed(1)}%`);
-        } else {
-          availableCapital = marketCapital.remaining;
-          capitalCurrency = marketCapital.currency;
-          capitalMarket = marketCapital.market;
-          
-          if (marketCapital.fallback) {
-            //console.log(`⚠️  No ${capitalCurrency} capital found in database, using default: ${formatCurrency(availableCapital, capitalCurrency)}`);
-          }
-        }
-      } catch (capitalError) {
-        console.error(`❌ Error fetching capital for ${marketInfo.currency}:`, capitalError.message);
-        // Use market-appropriate fallback
-        if (marketInfo.currency === 'INR') {
-          availableCapital = 2000000; // ₹20L
-          capitalCurrency = 'INR';
-          capitalMarket = 'IN';
-        } else {
-          availableCapital = 20000; // $20k
-          capitalCurrency = 'USD';
-          capitalMarket = 'US';
-        }
-        //console.log(`⚠️  Using fallback capital: ${formatCurrency(availableCapital, capitalCurrency)}`);
-      }
+      const response = await this.getStockAnalysis(systems, symbols);
 
-      // Normalize and validate systems
+      res.json(response);
+
+    } catch (error) {
+      console.error('❌ Elder\'s Triple Screen API Error:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString(),
+        system: this.systems.join(', '),
+      });
+    }
+  }
+
+  async getStockAnalysis(systems, symbols) {
+    // console.log(`🔧 Supported systems:`, systems, symbols);
+    // Normalize and validate systems
       // //console.log(`🔧 Original systems:`, systems);
       const normalizedSystems = systems.map(sys => normalizeSystemKey(sys));
-      // //console.log(`🔧 Normalized systems:`, normalizedSystems);
-      // //console.log(`🔧 Available systems:`, Object.keys(this.systems));
+      // console.log(`🔧 Normalized systems:`, normalizedSystems);
+      // console.log(`🔧 Available systems:`, Object.keys(this.systems));
       const supportedSystems = normalizedSystems.filter(sys => this.systems[sys]);
-      // //console.log(`🔧 Supported systems:`, supportedSystems);
-      
+      // console.log(`🔧 Supported systems:`, supportedSystems);
+
       if (supportedSystems.length === 0) {
-        return res.status(400).json({
+        return {
           success: false,
           error: 'No supported systems specified',
           availableSystems: Object.keys(this.systems),
           received: normalizedSystems
-        });
+        };
       }
 
-      // //console.log(`🚀 Trading System Analysis Starting...`);
       console.log(`📊 Analyzing ${symbols.length} stocks: ${symbols.join(', ')}`);
-      // //console.log(`🔧 Systems: ${supportedSystems.join(', ')}`);
-      // //console.log(`💰 Available Capital: $${availableCapital.toLocaleString()}`);
 
       // PERFORMANCE OPTIMIZATION: Limit symbols and process in parallel
       const maxSymbols = 10; // Limit for performance
       const limitedSymbols = symbols.slice(0, maxSymbols);
-      
-      if (symbols.length > maxSymbols) {
-        // //console.log(`⚠️ Limited to ${maxSymbols} symbols for performance (requested ${symbols.length})`);
-      }
-
-      // //console.log(`🚀 OPTIMIZATION: Processing ${limitedSymbols.length} symbols in PARALLEL...`);
 
       // Process all symbols in parallel instead of sequential
       const symbolPromises = limitedSymbols.map(async (symbol) => {
         try {
-          //console.log(`\n📈 Processing ${symbol}...`);
-          
           // Get symbol-specific capital for this analysis
-          const symbolMarketCapital = await getMarketCapital(symbol, CapitalManager);
-          const symbolAvailableCapital = symbolMarketCapital.remaining;
-          
-          // OPTIMIZATION: Call data fetching with reduced timeframe
-          //console.log(`  🔄 Fetching data for ${symbol} with optimized timeframe...`);
+          const capitalInfo = await getMarketCapital(symbol, CapitalManager);
+          const remainingCapital = capitalInfo.remaining;
 
-          const { analysisContext} = await prepareAnalysisContext(symbol, defaultLookBackPeriod, symbolAvailableCapital); // Uses symbol-specific capital
+          //Prepare analysis context
+          const { analysisContext} = await prepareAnalysisContext(symbol, defaultLookBackPeriod, remainingCapital); // Uses symbol-specific capital
 
         // Log any failures for debugging
         [
@@ -163,7 +144,7 @@ class TradingSystemController {
           ['MonteCarlo', analysisContext.monteCarlo]
         ].forEach(([name, result]) => {
           if (result && result.status === 'rejected') {
-            //console.log(`    ⚠️ ${name} data failed: ${result.reason?.message || result.reason}`);
+            console.log(`    ⚠️ ${name} data failed: ${result.reason?.message || result.reason}`);
           } else {
             //console.log(`    ✅ ${name} data: SUCCESS`);
           }
@@ -172,15 +153,6 @@ class TradingSystemController {
         if (!analysisContext || !analysisContext.technical) {
           throw new Error(`Failed to fetch technical data for ${symbol}`);
         }
-
-        //console.log(`  📊 Data Summary: Technical=${!!analysisContext.technical}, Backtest=${!!analysisContext.backtest}, Sentiment=${!!analysisContext.sentiment}, TailRisk=${!!analysisContext.tailRisk}`);
-
-        // DEBUG: Log technical data structure
-        // //console.log(`  🔍 DEBUG: Technical data structure for ${symbol}:`);
-        // //console.log(`  • OHLC Length: ${analysisContext.technical.ohlcData?.length || 'N/A'}`);
-        // //console.log(`  • Historical Length: ${analysisContext.technical.historicalData?.length || 'N/A'}`);
-        // //console.log(`  • Indicators: ${Object.keys(analysisContext.technical.indicators || {}).join(', ') || 'None'}`);
-        // //console.log(`  • Tech Indicators: ${Object.keys(analysisContext.technical.technicalIndicators || {}).join(', ') || 'None'}`);
 
         // Phase 2: Run analysis for each requested system
         //console.log(`  🔍 Phase 2: Running ${supportedSystems.length} system(s) analysis for ${symbol}...`);
@@ -192,56 +164,34 @@ class TradingSystemController {
           //console.log(`    🔧 Analyzing with ${systemId}...`);
           
           try {
-            // Convert data to system-specific format and pass capital for position sizing
+            // Convert data to system-specific format for the SingleSystemAnalyzer
             let systemData;
-            let systemAnalysis;
-            
             if (systemId === SYSTEM_IDS.TRIPLE_SCREEN) {
               //console.log(`📊 [SYSTEM] Loading Elder Triple Screen system for ${symbol}`);
               systemData = this.convertToElderFormat(analysisContext.technical);
               //console.log(`🔧 [SYSTEM] Elder format result has indicators:`, Object.keys(systemData.indicators.triple_screen || {}));
-              systemAnalysis = this.systems[systemId].analyze(systemData, { 
-                availableCapital: symbolAvailableCapital,
-                symbol: symbol 
-              });
             } else if (systemId === SYSTEM_IDS.MINERVINI_SEPA) {
               systemData = this.convertToSEPAFormat(analysisContext.technical);
-              systemAnalysis = this.systems[systemId].analyze(systemData, { 
-                availableCapital: symbolAvailableCapital,
-                symbol: symbol 
-              });
             } else if (systemId === SYSTEM_IDS.CAN_SLIM_CUP_HANDLE) {
               systemData = this.convertToCupHandleFormat(analysisContext.technical);
-              systemAnalysis = this.systems[systemId].analyze(systemData, { 
-                availableCapital: symbolAvailableCapital,
-                symbol: symbol 
-              });
             } else if (systemId === SYSTEM_IDS.RSI_MEAN_REVERSION) {
               systemData = this.convertToRSIMeanFormat(analysisContext.technical);
-              systemAnalysis = this.systems[systemId].analyze(systemData, { 
-                availableCapital: symbolAvailableCapital,
-                symbol: symbol 
-              });
             } else if (systemId === SYSTEM_IDS.MACD_DIVERGENCE) {
               systemData = this.convertToMACDDivergenceFormat(analysisContext.technical);
-              systemAnalysis = this.systems[systemId].analyze(systemData, { 
-                availableCapital: symbolAvailableCapital,
-                symbol: symbol 
-              });
             } else {
-              // Default: pass raw technical data with capital
+              // Default: pass raw technical data
               systemData = analysisContext.technical;
-              systemAnalysis = this.systems[systemId].analyze(systemData, { 
-                availableCapital: symbolAvailableCapital,
-                symbol: symbol 
-              });
             }
+
             
-            // Run through gate engine for this system (with timeout)
+            // Run complete analysis through SingleSystemAnalyzer (includes system analysis + gate engine)
             const finalResult = await Promise.race([
               this.systemAnalyzer.analyzeSystem(systemId, systemData, analysisContext),
               new Promise((_, reject) => setTimeout(() => reject(new Error('Gate analysis timeout')), 15000))
             ]);
+            
+            // Extract system analysis from finalResult
+            const systemAnalysis = finalResult.system;
             
             systemResults[systemId] = systemAnalysis;
             systemFinalResults[systemId] = finalResult;
@@ -266,10 +216,6 @@ class TradingSystemController {
         // Phase 3: Combine results and create unified decision
         //console.log(`  🚪 Phase 3: Creating unified decision for ${symbol}...`);
         const unifiedDecision = this.createUnifiedDecision(systemResults, supportedSystems); // Use system analysis results, not gate engine
-
-        // Extract system-specific analyses
-        const elderAnalysis = systemResults[SYSTEM_IDS.TRIPLE_SCREEN];
-        const sepaAnalysis = systemResults[SYSTEM_IDS.MINERVINI_SEPA];
         const finalResult = systemFinalResults[supportedSystems[0]] || {}; // Use first system's gate engine result
 
         // Build comprehensive response using the fetched data
@@ -280,8 +226,6 @@ class TradingSystemController {
         const analysisResult = await this.buildEnhancedTradingResponse({
           symbol,
           technicalData,
-          elderAnalysis,
-          sepaAnalysis,
           systemResults,
           supportedSystems,
           gateResult,
@@ -289,8 +233,6 @@ class TradingSystemController {
           unifiedDecision,
           analysisContext
         });
-
-        console.log(`  ✅ ${symbol}: ${finalResult.finalDecision?.action || 'UNKNOWN'} (${((finalResult.finalDecision?.confidence || 0) * 100).toFixed(1)}%)`);
         return analysisResult;
 
         } catch (error) {
@@ -304,9 +246,10 @@ class TradingSystemController {
       
       const results = [];
       const errors = [];
-
+      
       symbolResults.forEach((result, index) => {
         if (result.status === 'fulfilled') {
+          console.log(`${result.value.symbol}: ${result.value.decision?.action || 'UNKNOWN'} (${((result.value.decision?.confidence || 0) * 100).toFixed(1)}%)`);
           results.push(result.value);
         } else {
           const symbol = limitedSymbols[index];
@@ -322,39 +265,11 @@ class TradingSystemController {
       const response = {
         success: true,
         timestamp: new Date().toISOString(),
-        // request: {
-        //   symbols,
-        //   availableCapital,
-        //   systems: supportedSystems,
-        //   analysisType: 'comprehensive'
-        // },
-        // summary: {
-        //   totalAnalyzed: results.length,
-        //   errors: errors.length,
-        //   decisions: this.summarizeDecisions(results),
-        //   averageConfidence: this.calculateAverageConfidence(results),
-        //   recommendedActions: this.getRecommendedActions(results)
-        // },
         results,
         errors: errors.length > 0 ? errors : undefined,
       };
 
-      //console.log(`\n🎉 Multi-System Trading Analysis Complete!`);
-      //console.log(`📊 Successfully analyzed: ${results.length}/${symbols.length} stocks`);
-      //console.log(`🔧 Systems used: ${supportedSystems.join(', ')}`);
-      // //console.log(`🎯 Recommended actions: ${response.summary.recommendedActions.length}`);
-
-      res.json(response);
-
-    } catch (error) {
-      console.error('❌ Elder\'s Triple Screen API Error:', error);
-      res.status(500).json({
-        success: false,
-        error: error.message,
-        timestamp: new Date().toISOString(),
-        system: 'elder_triple_screen'
-      });
-    }
+      return response
   }
 
   // OPTIMIZED: Convert technical data to Elder's format using existing data structure
@@ -388,12 +303,6 @@ class TradingSystemController {
     const dailyEMA10 = indicators.ema10 || technicalIndicators.ema10 || this.calculateEMA_OHLC(ohlcData, 10);
     const dailyForceIndex = this.calculateForceIndex(ohlcData);
     
-    //console.log(`  🔧 Calculated indicators:`);
-    //console.log(`    • RSI length: ${Array.isArray(dailyRSI) ? dailyRSI.length : 'single value'}`);
-    //console.log(`    • Stoch length: ${Array.isArray(dailyStoch) ? dailyStoch.length : 'single value'}`);
-    //console.log(`    • Weekly MACD values:`, weeklyMACD);
-    //console.log(`    • Weekly EMA10 value: ${weeklyEMA10}`);
-    //console.log(`    • Weekly EMA40 value: ${weeklyEMA40}`);
     
     // Prepare the data structure that matches what Elder system expects
     const elderData = {
@@ -670,88 +579,6 @@ class TradingSystemController {
     return ema.length > 0 ? ema[ema.length - 1] : closes[closes.length - 1];
   }
 
-  // OPTIMIZED: Simple price change calculation
-  calculatePriceChange(dailyData) {
-    if (!dailyData || dailyData.length < 2) return 0;
-    const current = dailyData[dailyData.length - 1].close;
-    const previous = dailyData[dailyData.length - 2].close;
-    return ((current - previous) / previous * 100);
-  }
-
-  // OPTIMIZED: Assess timeframe alignment
-  assessTimeframeAlignment(screens) {
-    const alignedScreens = Object.values(screens).filter(screen => 
-      screen.status === 'GO_LONG' || screen.status === 'GO_SHORT'
-    ).length;
-    
-    return {
-      aligned: alignedScreens,
-      total: 3,
-      strength: alignedScreens === 3 ? 'STRONG' : alignedScreens === 2 ? 'MODERATE' : 'WEAK'
-    };
-  }
-
-  // OPTIMIZED: Build entry strategy
-  buildEntryStrategy(elderAnalysis, finalResult) {
-    return {
-      method: 'LIMIT_ORDER',
-      entryPrice: elderAnalysis.entryPrice,
-      entryWindow: '2-3 trading sessions',
-      confirmationRequired: elderAnalysis.signalQuality?.grade <= 'B',
-      volumeRequirement: '1.2x average volume'
-    };
-  }
-
-  // OPTIMIZED: Build exit strategy
-  buildExitStrategy(elderAnalysis, finalResult) {
-    const targets = elderAnalysis.targets || [elderAnalysis.entryPrice * 1.05];
-    return {
-      stopLoss: {
-        price: elderAnalysis.stopLoss,
-        type: 'TRAILING_STOP',
-        trigger: '2 ATR below entry'
-      },
-      targets: targets.map((target, index) => ({
-        level: index + 1,
-        price: target,
-        allocation: index === 0 ? '50%' : index === 1 ? '30%' : '20%'
-      })),
-      timeStop: '30 trading days maximum hold'
-    };
-  }
-
-  // OPTIMIZED: Summary methods reusing existing logic
-  // UPDATED: Summary methods using new unified decision structure
-  summarizeDecisions(results) {
-    const decisions = { BUY: 0, SELL: 0, WATCH: 0, AVOID: 0, HOLD: 0 };
-    results.forEach(result => {
-      const action = result.decision?.action || 'HOLD';
-      decisions[action] = (decisions[action] || 0) + 1;
-    });
-    return decisions;
-  }
-
-  calculateAverageConfidence(results) {
-    if (results.length === 0) return 0;
-    const totalConfidence = results.reduce((sum, result) => sum + ((result.decision?.confidence || 0) / 100), 0);
-    return Math.round((totalConfidence / results.length) * 100) / 100;
-  }
-
-  getRecommendedActions(results) {
-    return results
-      .filter(result => {
-        const action = result.decision?.action;
-        return action === 'BUY' || action === 'SELL';
-      })
-      .sort((a, b) => (b.decision?.confidence || 0) - (a.decision?.confidence || 0))
-      .slice(0, 3)
-      .map(result => ({
-        symbol: result.symbol,
-        action: result.decision?.action || 'HOLD',
-        confidence: (result.decision?.confidence || 0) / 100,
-        reasoning: result.decision?.reasoning || 'Analysis complete'
-      }));
-  }
 
   // NEW: Convert technical data to SEPA format for Minervini analysis
   convertToSEPAFormat(technicalData) {
@@ -957,8 +784,8 @@ class TradingSystemController {
 
     // Add system-specific reasoning
     resultsArray.forEach(result => {
-      const systemName = result.system === 'TRIPLE_SCREEN' ? 'Elder Triple Screen' : 'Minervini SEPA';
-      reasoning.push(`${systemName}: ${result.action} (${(result.confidence * 100).toFixed(1)}%)`);
+      // const systemName = result.system === 'TRIPLE_SCREEN' ? 'Elder Triple Screen' : 'Minervini SEPA';
+      reasoning.push(`${result.system}: ${result.action} (${(result.confidence * 100).toFixed(1)}%)`);
     });
 
     const unifiedDecision = {
@@ -974,70 +801,6 @@ class TradingSystemController {
     //console.log(`  🎯 Unified Decision: ${unifiedAction} (${(unifiedConfidence * 100).toFixed(1)}% confidence, ${agreement} agreement)`);
     
     return unifiedDecision;
-  }
-
-  // NEW: Build unified entry strategy considering multiple systems
-  buildUnifiedEntryStrategy(elderAnalysis, sepaAnalysis, unifiedDecision) {
-    const strategies = [];
-    
-    if (elderAnalysis) {
-      strategies.push({
-        system: 'Elder Triple Screen',
-        method: 'LIMIT_ORDER',
-        entryPrice: elderAnalysis.entryPrice,
-        entryWindow: '2-3 trading sessions'
-      });
-    }
-    
-    if (sepaAnalysis) {
-      strategies.push({
-        system: 'Minervini SEPA',
-        method: 'MARKET_ORDER',
-        entryPrice: sepaAnalysis.entryPrice,
-        entryWindow: '1-2 trading sessions'
-      });
-    }
-
-    // Select best strategy based on agreement and confidence
-    const bestStrategy = strategies.length > 0 ? strategies[0] : {
-      method: 'LIMIT_ORDER',
-      entryPrice: 0,
-      entryWindow: 'TBD'
-    };
-
-    return {
-      ...bestStrategy,
-      unifiedApproach: unifiedDecision.systemsAgreement === 'FULL' ? 'AGGRESSIVE' : 'CONSERVATIVE',
-      confirmationRequired: unifiedDecision.confidence < 0.7,
-      volumeRequirement: '1.2x average volume',
-      systemsUsed: strategies.length
-    };
-  }
-
-  // NEW: Build unified exit strategy considering multiple systems
-  buildUnifiedExitStrategy(elderAnalysis, sepaAnalysis, unifiedDecision) {
-    const targets = [];
-    const stopLosses = [];
-    
-    if (elderAnalysis) {
-      targets.push(...(elderAnalysis.targets || []));
-      if (elderAnalysis.stopLoss) stopLosses.push(elderAnalysis.stopLoss);
-    }
-    
-    if (sepaAnalysis) {
-      targets.push(...(sepaAnalysis.targets || []));
-      if (sepaAnalysis.stopLoss) stopLosses.push(sepaAnalysis.stopLoss);
-    }
-
-    return {
-      targets: targets.length > 0 ? targets : [0],
-      stopLoss: stopLosses.length > 0 ? Math.max(...stopLosses) : 0, // Conservative stop
-      trailingStop: unifiedDecision.confidence > 0.8,
-      partialProfitTaking: targets.length > 1,
-      riskReward: targets.length > 0 && stopLosses.length > 0 ? 
-        (Math.min(...targets) / Math.max(...stopLosses)) : 1.0,
-      systemsAlignment: unifiedDecision.systemsAgreement
-    };
   }
 
   // Helper methods for SEPA calculations  
@@ -1126,12 +889,9 @@ class TradingSystemController {
   async buildEnhancedTradingResponse({
     symbol,
     technicalData,
-    elderAnalysis,
-    sepaAnalysis,
     systemResults,
     supportedSystems,
     gateResult,
-    finalResult,
     unifiedDecision,
     analysisContext
   }) {
@@ -1175,8 +935,8 @@ class TradingSystemController {
     
     if (unifiedAction === 'BUY' && winningSystem && (winningSystem.entryPrice || winningSystem.currentPrice || winningSystem.executionPlan)) {
       // Use winning system's complete execution package
-      console.log(`🎯 Using execution details from winning system: ${winningSystem.system || 'UNKNOWN'}`);
-      console.log(`🔍 Winning system fields:`, Object.keys(winningSystem));
+      // console.log(`🎯 Using execution details from winning system: ${winningSystem.system || 'UNKNOWN'}`);
+      // console.log(`🔍 Winning system fields:`, Object.keys(winningSystem));
       
       // Extract from executionPlan if available, otherwise from direct fields
       const executionPlan = winningSystem.executionPlan || {};
@@ -1218,7 +978,7 @@ class TradingSystemController {
             console.log(`⚠️ Unknown recommendation: ${recommendation}, defaulting to CONSERVATIVE`);
             positionMultiplier = 0.6; // Default to conservative
         }
-        console.log(`🎯 Applying ${recommendation} recommendation: ${positionMultiplier}x multiplier`);
+        // console.log(`🎯 Applying ${recommendation} recommendation: ${positionMultiplier}x multiplier`);
       }
       
       // Calculate final position size with system recommendation applied
@@ -1231,8 +991,8 @@ class TradingSystemController {
         riskPerShare: riskPerShare
       };
       
-      console.log(`📊 System values: Entry=${systemEntryPrice}, Stop=${systemStopLoss}, Targets=${systemTargets}, PositionSize=`, systemPositionSize);
-      console.log(`📋 ExecutionPlan:`, executionPlan);
+      // console.log(`📊 System values: Entry=${systemEntryPrice}, Stop=${systemStopLoss}, Targets=${systemTargets}, PositionSize=`, systemPositionSize);
+      // console.log(`📋 ExecutionPlan:`, executionPlan);
       
       // Calculate proper numeric risk reward ratio
       const calculatedRiskReward = this.calculateRiskReward(
@@ -1254,12 +1014,12 @@ class TradingSystemController {
         }
       };
       
-      console.log(`✅ Winning system execution: Entry=${executionDetails.entry}, Stop=${executionDetails.stop}, Target1=${executionDetails.target1}`);
+      // console.log(`✅ Winning system execution: Entry=${executionDetails.entry}, Stop=${executionDetails.stop}, Target1=${executionDetails.target1}`);
     } else {
       // Fallback to generic calculation
-      console.log(`⚠️ Fallback to generic execution calculation (Action: ${unifiedAction}, WinningSystem: ${!!winningSystem}, HasEntryPrice: ${!!(winningSystem?.entryPrice || winningSystem?.currentPrice)})`);
+      // console.log(`⚠️ Fallback to generic execution calculation (Action: ${unifiedAction}, WinningSystem: ${!!winningSystem}, HasEntryPrice: ${!!(winningSystem?.entryPrice || winningSystem?.currentPrice)})`);
       if (winningSystem) {
-        console.log(`🔍 Winning system available fields:`, Object.keys(winningSystem));
+        // console.log(`🔍 Winning system available fields:`, Object.keys(winningSystem));
       }
       
       const entry = currentPrice;
@@ -1317,8 +1077,6 @@ class TradingSystemController {
     // Build actionable intelligence
     const actionableIntelligence = this.buildActionableIntelligence(
       { status: unifiedAction, confidence: unifiedConfidence, grade }, 
-      elderAnalysis, 
-      sepaAnalysis, 
       analysisContext,
       currentPrice
     );
@@ -1364,18 +1122,18 @@ class TradingSystemController {
         }
       },
       
-      scenarios: {
-        breakout: {
-          trigger: scenarios.breakout.trigger ? Number(scenarios.breakout.trigger.toFixed(2)) : null,
-          probability: scenarios.breakout.probability,
-          target: scenarios.breakout.target ? Number(scenarios.breakout.target.toFixed(2)) : null
-        },
-        breakdown: {
-          trigger: scenarios.breakdown.trigger ? Number(scenarios.breakdown.trigger.toFixed(2)) : null,
-          probability: scenarios.breakdown.probability,
-          target: scenarios.breakdown.target ? Number(scenarios.breakdown.target.toFixed(2)) : null
-        }
-      },
+      // scenarios: {
+      //   breakout: {
+      //     trigger: scenarios.breakout.trigger ? Number(scenarios.breakout.trigger.toFixed(2)) : null,
+      //     probability: scenarios.breakout.probability,
+      //     target: scenarios.breakout.target ? Number(scenarios.breakout.target.toFixed(2)) : null
+      //   },
+      //   breakdown: {
+      //     trigger: scenarios.breakdown.trigger ? Number(scenarios.breakdown.trigger.toFixed(2)) : null,
+      //     probability: scenarios.breakdown.probability,
+      //     target: scenarios.breakdown.target ? Number(scenarios.breakdown.target.toFixed(2)) : null
+      //   }
+      // },
       
       risk: {
         level: risk.level,
@@ -1568,7 +1326,7 @@ class TradingSystemController {
 
     // Don't calculate position sizing for HOLD/AVOID signals
     if (!signalAction || signalAction === 'HOLD' || signalAction === 'AVOID') {
-      console.log(`⚠️ No position sizing for signal action: ${signalAction}`);
+      // console.log(`⚠️ No position sizing for signal action: ${signalAction}`);
       return {
         shares: 0,
         value: 0,
@@ -1578,7 +1336,7 @@ class TradingSystemController {
 
     // Must have valid entry and stop prices
     if (!entryPrice || !stopLoss || entryPrice <= 0) {
-      console.log(`⚠️ Invalid prices for position sizing: entry=${entryPrice}, stop=${stopLoss}`);
+      // console.log(`⚠️ Invalid prices for position sizing: entry=${entryPrice}, stop=${stopLoss}`);
       return {
         shares: 0,
         value: 0,
@@ -1599,7 +1357,7 @@ class TradingSystemController {
     // Adjust risk based on signal confidence and action
     let adjustedRiskPerTrade = riskPerTrade;
     
-    console.log(`📊 Position sizing debug: Initial risk=${(riskPerTrade*100).toFixed(1)}%, Confidence=${(confidence*100).toFixed(1)}%, Action=${signalAction}`);
+    // console.log(`📊 Position sizing debug: Initial risk=${(riskPerTrade*100).toFixed(1)}%, Confidence=${(confidence*100).toFixed(1)}%, Action=${signalAction}`);
     
     // More reasonable confidence-based adjustments
     if (confidence < 0.5) {
@@ -1616,7 +1374,7 @@ class TradingSystemController {
       adjustedRiskPerTrade *= 0.7; // 70% of normal position for WATCH
     }
     
-    console.log(`📊 Adjusted risk after confidence: ${(adjustedRiskPerTrade*100).toFixed(1)}%`);
+    // console.log(`📊 Adjusted risk after confidence: ${(adjustedRiskPerTrade*100).toFixed(1)}%`);
 
     // Calculate maximum position value based on risk tolerance
     const maxRiskAmount = availableCapital * adjustedRiskPerTrade;
@@ -1744,12 +1502,11 @@ class TradingSystemController {
     };
   }
 
-  buildActionableIntelligence(decision, elderAnalysis, sepaAnalysis, analysisContext, currentPrice) {
+  buildActionableIntelligence(decision, analysisContext, currentPrice) {
     const nextStep = this.buildNextStepSummary(decision, analysisContext, currentPrice);
-    const whyAvoid = this.buildWhyAvoidReasons(decision, elderAnalysis, sepaAnalysis);
     const flipToReady = this.buildFlipToReadyConditions(decision, analysisContext, currentPrice);
     
-    return { nextStep, whyAvoid, flipToReady };
+    return { nextStep, flipToReady };
   }
 
   // HELPER METHODS FOR TECHNICAL CALCULATIONS
@@ -1820,24 +1577,6 @@ class TradingSystemController {
     } else {
       return `Avoid entry - multiple system conflicts and poor setup quality`;
     }
-  }
-
-  buildWhyAvoidReasons(decision, elderAnalysis, sepaAnalysis) {
-    const reasons = [];
-    
-    if (decision.status === 'AVOID') {
-      if (elderAnalysis?.decision === 'AVOID') {
-        reasons.push("Elder Triple Screen: No setup - screens not aligned");
-      }
-      if (elderAnalysis?.signalQuality?.grade === 'D') {
-        reasons.push("Poor signal quality (Grade D)");
-      }
-      if (sepaAnalysis?.stage === 3) {
-        reasons.push("SEPA Stage 3: Distribution phase - potential topping");
-      }
-    }
-    
-    return reasons;
   }
 
   buildFlipToReadyConditions(decision, analysisContext, currentPrice) {
@@ -1987,7 +1726,7 @@ class TradingSystemController {
       );
       
       if (highConfidenceSystems.length === 1) {
-        console.log(`🎯 High confidence winner: ${highConfidenceSystems[0].systemId} (${(highConfidenceSystems[0].confidence * 100).toFixed(1)}%)`);
+        //console.log(`🎯 High confidence winner: ${highConfidenceSystems[0].systemId} (${(highConfidenceSystems[0].confidence * 100).toFixed(1)}%)`);
         return highConfidenceSystems[0];
       }
 
@@ -1996,7 +1735,7 @@ class TradingSystemController {
         const winner = highConfidenceSystems.reduce((prev, current) => 
           current.confidence > prev.confidence ? current : prev
         );
-        console.log(`🎯 Highest confidence winner: ${winner.systemId} (${(winner.confidence * 100).toFixed(1)}%)`);
+        // console.log(`🎯 Highest confidence winner: ${winner.systemId} (${(winner.confidence * 100).toFixed(1)}%)`);
         return winner;
       }
 
@@ -2009,7 +1748,7 @@ class TradingSystemController {
         const winner = matchingActionSystems.reduce((prev, current) => 
           current.confidence > prev.confidence ? current : prev
         );
-        console.log(`🎯 Action-matching winner: ${winner.systemId} (${(winner.confidence * 100).toFixed(1)}%)`);
+        // console.log(`🎯 Action-matching winner: ${winner.systemId} (${(winner.confidence * 100).toFixed(1)}%)`);
         return winner;
       }
 
@@ -2017,151 +1756,12 @@ class TradingSystemController {
       const winner = resultsArray.reduce((prev, current) => 
         current.confidence > prev.confidence ? current : prev
       );
-      console.log(`🎯 Overall highest confidence winner: ${winner.systemId} (${(winner.confidence * 100).toFixed(1)}%)`);
+      // console.log(`🎯 Overall highest confidence winner: ${winner.systemId} (${(winner.confidence * 100).toFixed(1)}%)`);
       return winner;
 
     } catch (error) {
       console.error(`❌ Error identifying winning system:`, error.message);
       return null;
-    }
-  }
-
-  /**
-   * 🧠 Normalize position sizing from different system formats to standardized structure
-   * Handles various position sizing formats from different trading systems
-   */
-  normalizePositionSizing(systemPositionSizing, fallbackParams) {
-    try {
-      // Expected output structure
-      let normalizedSizing = {
-        shares: 0,
-        value: 0,
-        riskPercentage: '0%'
-      };
-
-      // Handle different position sizing formats from various systems
-      if (typeof systemPositionSizing === 'object' && systemPositionSizing !== null) {
-        
-        // Format 1: Direct shares/value/risk format
-        if (systemPositionSizing.shares !== undefined) {
-          normalizedSizing.shares = Number(systemPositionSizing.shares) || 0;
-          normalizedSizing.value = Number(systemPositionSizing.value) || 0;
-          normalizedSizing.riskPercentage = systemPositionSizing.risk || systemPositionSizing.riskPercentage || '0%';
-        }
-        // Format 2: Recommendation-based format (like "HALF", "QUARTER", etc.)
-        else if (systemPositionSizing.recommendation) {
-          const recommendation = systemPositionSizing.recommendation.toUpperCase();
-          let multiplier = 1.0;
-          
-          switch (recommendation) {
-            case 'FULL': multiplier = 1.0; break;
-            case 'HALF': multiplier = 0.5; break;
-            case 'QUARTER': multiplier = 0.25; break;
-            case 'REDUCED': multiplier = 0.75; break;
-            case 'CONSERVATIVE': multiplier = 0.6; break;
-            case 'AGGRESSIVE': multiplier = 1.25; break;
-            default: multiplier = 1.0;
-          }
-          
-          // Calculate based on fallback parameters and multiplier
-          const baseCalculation = this.calculatePositionSizing({
-            ...fallbackParams,
-            riskPerTrade: 0.02 * multiplier
-          });
-          
-          normalizedSizing = {
-            shares: Math.floor(baseCalculation.shares * multiplier),
-            value: Math.floor(baseCalculation.value * multiplier),
-            riskPercentage: `${(parseFloat(baseCalculation.riskPercentage) * multiplier).toFixed(1)}%`
-          };
-        }
-        // Format 3: Risk-based format (handle ranges like "1-2% of portfolio")
-        else if (systemPositionSizing.risk !== undefined) {
-          const riskString = systemPositionSizing.risk.toString();
-          let riskPercent;
-          
-          // Handle range format like "1-2% of portfolio at stop loss"
-          if (riskString.includes('-')) {
-            const rangeMatch = riskString.match(/(\d+(?:\.\d+)?)-(\d+(?:\.\d+)?)/);
-            if (rangeMatch) {
-              const minRisk = parseFloat(rangeMatch[1]);
-              const maxRisk = parseFloat(rangeMatch[2]);
-              riskPercent = (minRisk + maxRisk) / 2 / 100; // Use average, convert to decimal
-              console.log(`📊 Risk range detected: ${minRisk}%-${maxRisk}%, using average: ${(riskPercent * 100).toFixed(1)}%`);
-            } else {
-              riskPercent = 0.015; // Default 1.5%
-            }
-          } else {
-            riskPercent = parseFloat(riskString.replace(/[^\d.]/g, '')) / 100;
-          }
-          
-          const baseCalculation = this.calculatePositionSizing({
-            ...fallbackParams,
-            riskPerTrade: riskPercent
-          });
-          
-          normalizedSizing = baseCalculation;
-        }
-        // Format 4: Capital allocation format
-        else if (systemPositionSizing.capitalAllocation !== undefined) {
-          const allocation = parseFloat(systemPositionSizing.capitalAllocation) / 100;
-          const allocatedCapital = fallbackParams.availableCapital * allocation;
-          const shares = Math.floor(allocatedCapital / fallbackParams.entryPrice);
-          
-          normalizedSizing = {
-            shares: shares,
-            value: shares * fallbackParams.entryPrice,
-            riskPercentage: `${(allocation * 100).toFixed(1)}%`
-          };
-        }
-      }
-      
-      // Ensure we have valid numbers
-      if (normalizedSizing.shares <= 0 || normalizedSizing.value <= 0) {
-        console.log(`⚠️ Invalid position sizing from system, recalculating...`);
-        return this.calculatePositionSizing({
-          ...fallbackParams,
-          riskPerTrade: 0.02
-        });
-      }
-
-      console.log(`✅ Normalized position sizing: ${normalizedSizing.shares} shares, ${fallbackParams.currency} ${normalizedSizing.value.toLocaleString()}`);
-      return normalizedSizing;
-
-    } catch (error) {
-      console.error(`❌ Error normalizing position sizing:`, error.message);
-      // Fallback to standard calculation
-      return this.calculatePositionSizing({
-        ...fallbackParams,
-        riskPerTrade: 0.02
-      });
-    }
-  }
-
-  /**
-   * 🧠 Extract position sizing structure from winning system
-   */
-  extractPositionSizing(winningSystem) {
-    try {
-      if (winningSystem && winningSystem.executionPlan && winningSystem.executionPlan.positionSizing) {
-        // Return the raw positionSizing from the winning system to see what it contains
-        const rawPositionSizing = winningSystem.executionPlan.positionSizing;
-        console.log(`🔍 Raw positionSizing from ${winningSystem.system}:`, JSON.stringify(rawPositionSizing, null, 2));
-        return rawPositionSizing;
-      }
-      
-      return {
-        risk: "1.5% of portfolio at stop loss",
-        recommendation: "STANDARD",
-        source: "DEFAULT"
-      };
-    } catch (error) {
-      console.error(`❌ Error extracting position sizing:`, error.message);
-      return {
-        risk: "1.5% of portfolio at stop loss",
-        recommendation: "STANDARD", 
-        source: "ERROR_FALLBACK"
-      };
     }
   }
 

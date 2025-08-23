@@ -44,9 +44,9 @@ class LeakFreeBacktestingEngine {
    * ✅ MAIN LEAK-FREE BACKTEST METHOD
    * Runs walk-forward analysis with proper out-of-sample validation
    */
-  async runLeakFreeBacktest(symbol, period = '2y', systems = ['sepa', 'tripleScreen'], historicalData) {
+  async runLeakFreeBacktest(symbol, historicalData) {
     // //console.log(`🎯 Starting Leak-Free Backtest for ${symbol}...`);
-    
+    const systems = ['sepa', 'tripleScreen']
     try {
       // Step 1: Get historical data
       if (!historicalData || historicalData.length < 100) { // Realistic minimum for Indian markets
@@ -79,7 +79,6 @@ class LeakFreeBacktestingEngine {
       
       return {
         symbol,
-        period,
         systems,
         walkForwardResults,
         monteCarloResults,
@@ -830,26 +829,6 @@ class LeakFreeBacktestingEngine {
       largestWin: Math.max(...winners.map(t => t.pnl || 0), 0),
       largestLoss: Math.min(...losers.map(t => t.pnl || 0), 0)
     };
-  }
-
-  /**
-   * ✅ UTILITY METHODS
-   */
-  async getHistoricalData(symbol, period) {
-    try {
-      const data = await yahoo.getHistorical(symbol, period);
-      return data.map(bar => ({
-        date: new Date(bar.date),
-        open: bar.open,
-        high: bar.high,
-        low: bar.low,
-        close: bar.close,
-        volume: bar.volume
-      })).sort((a, b) => a.date - b.date);
-    } catch (error) {
-      console.error(`❌ Failed to fetch data for ${symbol}: ${error.message}`);
-      throw error;
-    }
   }
 
   updateSystemPerformance(systemPerformance, windowResults) {

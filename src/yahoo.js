@@ -26,10 +26,10 @@ async function getQuote(symbol) {
 async function getHistoricalForTrade(symbol, period1 = '1d', period2) {
   if (period2) {
     // period1 and period2 are date strings
-    return await yahooFinance.historical(symbol, { period1, period2, interval: '1d' });
+    return await yahooFinance.chart()(symbol, { period1, period2, interval: '1d' });
   } else {
     // period1 is a duration string (e.g. '2mo')
-    return await yahooFinance.historical(symbol, { period1, interval: '1d' });
+    return await yahooFinance.chart()(symbol, { period1, interval: '1d' });
   }
 }
 

@@ -97,7 +97,7 @@ class ImpulseExitAnalyzer {
       startDate.setDate(startDate.getDate() - 100); // Get ~100 days of data
 
       //console.log(`📡 [IMPULSE] Fetching fresh data for ${ticker}`);
-      const result = await yahooFinance.historical(ticker, {
+      const result = await yahooFinance.chart(ticker, {
         period1: startDate,
         period2: endDate,
         interval: '1d'

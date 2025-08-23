@@ -26,7 +26,7 @@ class MultiTimeframeAnalysis {
         //console.log(`📊 Analyzing ${symbol} on ${timeframe} timeframe...`);
         
         const period = this.getPeriodForTimeframe(timeframe);
-        const historicalData = await yahooFinance.historical(symbol, {
+        const historicalData = await yahooFinance.chart(symbol, {
           period1: period.start,
           period2: period.end,
           interval: timeframe
