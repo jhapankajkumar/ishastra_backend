@@ -46,7 +46,7 @@ class SingleSystemAnalyzer {
 
       // Phase 2: Execute Trading System Analysis
       const systemAnalysis = system.analyze(systemData);
-      // console.log(`📊 ${systemId} Analysis Result:`, systemAnalysis);
+      console.log(`📊 ${systemId} Analysis Result:`, systemAnalysis.decision, systemAnalysis.confidence, systemAnalysis.reasoning);
       if (!systemAnalysis || systemAnalysis.decision === 'AVOID') {
         return this.createSystemBlockedResult(systemAnalysis, 'System analysis failed or returned AVOID');
       }
@@ -258,7 +258,7 @@ class SingleSystemAnalyzer {
         name: systemAnalysis?.systemName || 'Unknown System',
         decision: 'AVOID',
         confidence: 0.2,
-        reasoning: [reason],
+        reasoning: systemAnalysis.reasoning,
         signalQuality: { grade: 'F', percentage: 0 }
       },
 

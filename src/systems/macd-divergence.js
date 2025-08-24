@@ -76,8 +76,19 @@ class MACDDivergence {
             // Phase 5: Generate trading signals
             const signalAnalysis = this.generateSignals(divergenceAnalysis, candleAnalysis, latest);
             
+
+            if (signalAnalysis.signal === 'AVOID') {
+                return {
+                    system: this.systemId,
+                    systemName: this.name,
+                    decision: signalAnalysis.signal,
+                    confidence: 0,
+                    reasoning: [signalAnalysis.reasoning]
+                };
+            }
+
             // Phase 6: Calculate risk/reward
-            const riskReward = this.calculateRisk(signalAnalysis, swingAnalysis, latest);
+            const riskReward = this.calculateRisk(signalAnalysis, swingAnalysis, latest, series);
             
             // Phase 7: Final decision
             const finalDecision = this.makeFinalDecision(signalAnalysis, riskReward, divergenceAnalysis, candleAnalysis, swingAnalysis);
@@ -773,31 +784,21 @@ class MACDDivergence {
     generateSignals(divergenceAnalysis, candleAnalysis, latest) {
         //console.log(`  📊 Phase 5: Generating trading signals...`);
 
-        let signal = 'HOLD';
+        let signal = 'AVOID';
         let signalStrength = 0;
         let reasoning = [];
 
         // Use allBullish/allBearish (which includes standard, triple, continuation)
         const bullishSignals = divergenceAnalysis.allBullish || [];
         const bearishSignals = divergenceAnalysis.allBearish || [];
-
-        //console.log(`  🔍 SIGNAL ANALYSIS DEBUG:`);
-        //console.log(`     Bullish signals: ${bullishSignals.length}`);
-        //console.log(`     Bearish signals: ${bearishSignals.length}`);
-        //console.log(`     Candle analysis valid: ${candleAnalysis.isValid}`);
         
         if (bullishSignals.length > 0) {
             const bestSignal = bullishSignals[0];
-            //console.log(`     Best bullish signal age: ${bestSignal.ageInBars} bars`);
-            //console.log(`     Best bullish signal recent (≤15): ${bestSignal.ageInBars <= 15}`);
         }
 
         // Filter signals to only include recent ones (≤15 bars)
         const recentBullishSignals = bullishSignals.filter(s => s.ageInBars <= 15);
         const recentBearishSignals = bearishSignals.filter(s => s.ageInBars <= 15);
-        
-        //console.log(`     Recent bullish signals: ${recentBullishSignals.length}`);
-        //console.log(`     Recent bearish signals: ${recentBearishSignals.length}`);
 
         // Determine if any signals present and if candle confirmed
         if (recentBullishSignals.length > 0 && candleAnalysis.isValid) {
@@ -863,56 +864,57 @@ class MACDDivergence {
     /**
      * Phase 6: Calculate risk/reward metrics
      */
-    calculateRisk(signalAnalysis, swingAnalysis, latest) {
+    calculateRisk(signalAnalysis, swingAnalysis, latest, series) {
         //console.log(`  📊 Phase 6: Calculating risk/reward...`);
-        
         const entryPrice = signalAnalysis.entryPrice;
         let stopLoss = 0;
         let targets = [];
         let riskReward = 0;
-        
+
         if (signalAnalysis.signal === 'BUY') {
             // For bullish divergence: stop below recent swing low
             const recentLows = swingAnalysis.price.lows.slice(-2);
             const swingLowPrice = recentLows.length > 0 ? Math.min(...recentLows.map(l => l.value)) : entryPrice * 0.95;
-            
-            stopLoss = Math.min(swingLowPrice * 0.98, entryPrice * (1 - this.STOP_LOSS_PCT));
-            
+            const fallbackStop = entryPrice * (1 - this.STOP_LOSS_PCT);
+            const atr = this.calculateATR(series.daily.slice(-14));
+            stopLoss = Math.min(swingLowPrice - atr * 0.5, fallbackStop);
+
             // Targets: Next resistance levels or multiple R targets
             const risk = entryPrice - stopLoss;
             const target1 = entryPrice + (risk * this.TARGET_MULTIPLE);
             const target2 = entryPrice + (risk * this.TARGET_MULTIPLE * 1.5);
-            
             targets = [target1, target2];
+            // Recalculate riskReward cleanly after targets
             riskReward = risk > 0 ? (target1 - entryPrice) / risk : 0;
-            
+
         } else if (signalAnalysis.signal === 'SELL') {
             // For bearish divergence: stop above recent swing high
             const recentHighs = swingAnalysis.price.highs.slice(-2);
             const swingHighPrice = recentHighs.length > 0 ? Math.max(...recentHighs.map(h => h.value)) : entryPrice * 1.05;
-            
-            stopLoss = Math.max(swingHighPrice * 1.02, entryPrice * (1 + this.STOP_LOSS_PCT));
-            
+            const fallbackStop = entryPrice * (1 + this.STOP_LOSS_PCT);
+            const atr = this.calculateATR(series.daily.slice(-14));
+            stopLoss = Math.max(swingHighPrice + atr * 0.5, fallbackStop);
+
             // Targets: Next support levels or multiple R targets
             const risk = stopLoss - entryPrice;
             const target1 = entryPrice - (risk * this.TARGET_MULTIPLE);
             const target2 = entryPrice - (risk * this.TARGET_MULTIPLE * 1.5);
-            
             targets = [target1, target2];
+            // Recalculate riskReward cleanly after targets
             riskReward = risk > 0 ? (entryPrice - target1) / risk : 0;
-            
+
         } else if (signalAnalysis.signal === 'WATCH') {
             // Projected risk/reward for watch scenarios
-            const projectedStop = signalAnalysis.factors.divergenceType === 'BULLISH' ? 
+            const projectedStop = signalAnalysis.factors.divergenceType === 'BULLISH' ?
                 entryPrice * 0.95 : entryPrice * 1.05;
-            const projectedTarget = signalAnalysis.factors.divergenceType === 'BULLISH' ? 
+            const projectedTarget = signalAnalysis.factors.divergenceType === 'BULLISH' ?
                 entryPrice * 1.08 : entryPrice * 0.92;
-                
+
             stopLoss = projectedStop;
             targets = [projectedTarget];
             riskReward = Math.abs(projectedTarget - entryPrice) / Math.abs(entryPrice - projectedStop);
         }
-        
+
         return {
             stopLoss: Math.round(stopLoss * 100) / 100,
             targets: targets.map(t => Math.round(t * 100) / 100),
@@ -933,21 +935,6 @@ class MACDDivergence {
 
         // Add recency check for divergence signals
         const { bestBullish, bestBearish } = divergenceAnalysis;
-
-        // DEBUG
-        //console.log(`  🔍 FINAL DECISION DEBUG:`);
-        //console.log(`     Original signal: ${finalSignal}`);
-        //console.log(`     Has bullish divergence: ${!!bestBullish}`);
-        //console.log(`     Has bearish divergence: ${!!bestBearish}`);
-        if (bestBullish) {
-            //console.log(`     Bullish age: ${bestBullish.ageInBars} bars ago`);
-            //console.log(`     Bullish recent (≤15): ${bestBullish.ageInBars <= 15}`);
-        }
-        if (bestBearish) {
-            //console.log(`     Bearish age: ${bestBearish.ageInBars} bars ago`);
-            //console.log(`     Bearish recent (≤15): ${bestBearish.ageInBars <= 15}`);
-        }
-
         // For structured logic: Only allow BUY/SELL if has recent divergence and the divergence list is not empty
         // We need access to allBullish/allBearish arrays and candles
         // We'll try to get candles from riskReward or assume analyze() has candles in scope
@@ -1018,7 +1005,9 @@ class MACDDivergence {
                 confidence = Math.max(0.65, confidence - 0.1);
             }
         } else if (finalSignal === 'WATCH') {
-            confidence = signalAnalysis.signalStrength + 0.2; // Boost for having divergence
+            // Standardized WATCH confidence calculation
+            confidence = 0.40 + (signalAnalysis.signalStrength * 0.25); // Base 0.40 + bonus
+            confidence = Math.min(confidence, 0.70); // Cap WATCH signals at 70%
         } else {
             confidence = this.calculateMACDDivergenceConfidence(divergenceAnalysis, candleAnalysis, swingAnalysis); // Dynamic confidence for AVOID
         }
@@ -1593,6 +1582,25 @@ class MACDDivergence {
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         
         return diffDays;
+    }
+
+    calculateATR(data) {
+        if (!data || data.length < 2) return 0;
+
+        let atrSum = 0;
+        for (let i = 1; i < data.length; i++) {
+            if (!data[i] || !data[i-1]) continue;
+            if ([data[i].high, data[i].low, data[i-1].close].some(v => v === undefined)) continue;
+
+            const tr = Math.max(
+                data[i].high - data[i].low,
+                Math.abs(data[i].high - data[i - 1].close),
+                Math.abs(data[i].low - data[i - 1].close)
+            );
+            atrSum += tr;
+        }
+
+        return atrSum / (data.length - 1);
     }
 }
 

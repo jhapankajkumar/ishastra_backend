@@ -18,6 +18,7 @@
 class MinerviniSEPA {
     constructor() {
         this.name = 'Minervini SEPA';
+        this.systemId = 'sepa_method';
         this.description = 'Stage Analysis methodology for identifying market cycles';
         this.timeframes = ['daily', 'weekly'];
         this.signals = ['BUY', 'SELL', 'HOLD'];
@@ -51,6 +52,17 @@ class MinerviniSEPA {
             // Phase 3: Entry/Exit Signals
             //console.log(`  🎯 SEPA Phase 3: Generating entry/exit signals...`);
             const signalAnalysis = this.generateSignals(stageAnalysis, trendAnalysis, series);
+
+            if (signalAnalysis.signal === 'AVOID') {
+                return {
+                    system: this.systemId,
+                    systemName: this.name,
+                    decision: signalAnalysis.signal,
+                    confidence: 0,
+                    reasoning: [signalAnalysis.reasoning]
+                };
+            }
+
 
             // Phase 4: Risk Assessment
             //console.log(`  🎯 SEPA Phase 4: Assessing risk/reward...`);
@@ -100,11 +112,6 @@ class MinerviniSEPA {
                     factors: finalDecision.factors
                 },
                 riskReward: riskAssessment.riskReward,
-                meta: {
-                    ...meta,
-                    analysisTimestamp: new Date().toISOString(),
-                    systemVersion: this.version
-                }
             };
 
             //console.log(`  🎯 SEPA Result: ${result.decision} (Stage ${result.stage}, ${(result.confidence * 100).toFixed(1)}% confidence)`);
@@ -295,7 +302,7 @@ class MinerviniSEPA {
         const { alignment, strength } = trendAnalysis;
         const latest = series.daily[series.daily.length - 1];
 
-        let signal = 'HOLD';
+        let signal = 'AVOID';
         let entryPrice = latest.close;
         let signalStrength = 0;
         let reasoning = [];
@@ -365,6 +372,29 @@ class MinerviniSEPA {
             reasoning.push('Stage 1 to 2 transition, early markup opportunity');
             entryPrice = latest.close;
         }
+        // Stage 2 setup, bullish trend, but breakout not yet confirmed → WATCH
+        else if (
+            currentStage === 2 &&
+            alignment === 'BULLISH' &&
+            !isAbovePivot &&
+            trendAnalysis.strength >= 0.75
+        ) {
+            signal = 'WATCH';
+            signalStrength = this.calculateSEPAConfidence(stageAnalysis, trendAnalysis, series, signal);
+            reasoning.push('Stage 2 bullish setup forming, but breakout not yet triggered – watching closely');
+            entryPrice = latest.close;
+        }
+        // Stage 1 with volume + base building → early accumulation = WATCH
+        else if (
+            currentStage === 1 &&
+            stageAnalysis.stageIndicators.stage1.volumeAccumulation &&
+            trendAnalysis.strength >= 0.5
+        ) {
+            signal = 'WATCH';
+            signalStrength = this.calculateSEPAConfidence(stageAnalysis, trendAnalysis, series, signal);
+            reasoning.push('Stage 1 accumulation with rising volume – potential early setup');
+            entryPrice = latest.close;
+        }
         // Stage 3 or 4 with bearish alignment = SELL signal
         else if ((currentStage === 3 || currentStage === 4) && alignment === 'BEARISH') {
             signal = 'SELL';
@@ -372,9 +402,9 @@ class MinerviniSEPA {
             reasoning.push(`Stage ${currentStage} with bearish alignment, exit recommended`);
             entryPrice = latest.close * 0.99; // Slight discount for exit
         }
-        // All other cases = HOLD with dynamic confidence
+        // All other cases = AVOID with dynamic confidence
         else {
-            signal = 'HOLD';
+            signal = 'AVOID';
             signalStrength = this.calculateSEPAConfidence(stageAnalysis, trendAnalysis, series, signal);
             reasoning.push('Mixed signals or unclear stage, maintain current position');
         }

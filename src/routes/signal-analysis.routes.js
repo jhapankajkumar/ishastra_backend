@@ -46,6 +46,14 @@ router.get('/signal-analysis/single', async (req, res) => {
   await tradingController.analyzeSingleSystem(req, res);
 });
 
+router.get('/signal-analysis/system', async (req, res) => {
+  // Convert query parameters to req.body format for compatibility with existing controller
+  const system = req.query.system ? req.query.system.trim() : ['elder_triple_screen', 'sepa_method', 'cup_handle', 'rsi_mean', 'macd_divergence'];
+
+  req.body = { system };
+  await tradingController.testSystem(req, res);
+});
+
 /**
  * GET /api/trading/demo
  * Demo endpoint with pre-selected US stocks for quick testing

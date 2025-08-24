@@ -75,6 +75,16 @@ class CupWithHandle {
             // Phase 4: Generate trading signals
             const signalAnalysis = this.generateSignals(cupAnalysis, handleAnalysis, breakoutAnalysis, latest);
 
+            if (signalAnalysis.signal === 'AVOID') {
+                return {
+                    system: this.systemId,
+                    systemName: this.name,
+                    decision: signalAnalysis.signal,
+                    confidence: 0,
+                    reasoning: [signalAnalysis.reasoning]
+                };
+            }
+
             // Phase 5: Calculate risk/reward
             const riskReward = this.calculateRisk(signalAnalysis, cupAnalysis, handleAnalysis, latest);
 
@@ -860,15 +870,15 @@ class CupWithHandle {
     calculateCupHandleConfidence(cupAnalysis, handleAnalysis, breakoutAnalysis, signalAnalysis, signal) {
         let confidence = 0.3; // Base confidence
         
-        // Adjust base confidence by signal type
+        // Adjust base confidence by signal type - standardized across all systems
         if (signal === 'BUY') {
-            confidence = 0.65; // Higher base for BUY
+            confidence = 0.65; // Standard base for BUY signals
         } else if (signal === 'WATCH') {
-            confidence = 0.45; // Medium base for WATCH
+            confidence = 0.40; // Standardized base for WATCH signals
         } else if (signal === 'SELL') {
-            confidence = 0.55; // Higher base for SELL
+            confidence = 0.65; // Standard base for SELL signals
         } else {
-            confidence = 0.25; // Lower base for HOLD/AVOID
+            confidence = 0.25; // Standard base for HOLD/AVOID signals
         }
         
         // Cup structure quality
@@ -936,7 +946,16 @@ class CupWithHandle {
             confidence += 0.03;
         }
         
-        return Math.min(Math.max(confidence, 0.15), 0.85);
+        // Apply standardized confidence caps by signal type
+        if (signal === 'WATCH') {
+            confidence = Math.min(confidence, 0.70); // Cap WATCH signals at 70%
+        } else if (signal === 'BUY' || signal === 'SELL') {
+            confidence = Math.min(confidence, 0.90); // Cap action signals at 90%
+        } else if (signal === 'AVOID') {
+            confidence = Math.min(confidence, 0.45); // Cap AVOID signals at 45%
+        }
+        
+        return Math.min(Math.max(confidence, 0.15), 0.95);
     }
 }
 

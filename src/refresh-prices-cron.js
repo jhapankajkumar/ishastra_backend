@@ -38,6 +38,6 @@ cron.schedule('*/15 * * * *', () => {
 });
 
 // Optionally, run once on startup as well
-refreshAllInvestmentPrices({}, { json: (msg) => console.log(`[STARTUP] Price refresh (investments):`, msg) });
-refreshAllRecommendationPrices({}, { json: (msg) => console.log(`[STARTUP] Price refresh (recommendations):`, msg) });
-refreshAllTradePrices({}, { json: (msg) => console.log(`[STARTUP] Price refresh (trades):`, msg) });
+// refreshAllInvestmentPrices({}, { json: (msg) => console.log(`[STARTUP] Price refresh (investments):`, msg) });
+// refreshAllRecommendationPrices({}, { json: (msg) => console.log(`[STARTUP] Price refresh (recommendations):`, msg) });
+// refreshAllTradePrices({}, { json: (msg) => console.log(`[STARTUP] Price refresh (trades):`, msg) });

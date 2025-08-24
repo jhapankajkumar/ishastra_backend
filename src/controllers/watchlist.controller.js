@@ -246,7 +246,7 @@ class WatchlistController {
 
                 if (analysisResult.success && analysisResult.results?.[0]) {
                     const result = analysisResult.results[0];
-                    result.sector = this.getSectorFromSymbol(symbol);
+                    // result.sector = this.getSectorFromSymbol(symbol);
                     return result;
                 }
                 return null;

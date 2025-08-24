@@ -31,7 +31,7 @@ class ElderTripleScreen {
     try {
       const { indicators, series } = tickerData;
       //console.log(`🔍 [ELDER] Starting analysis for ${tickerData.meta?.symbol}`);
-      
+
       // Validate required data
       if (!this.validateData(indicators, series)) {
         //console.log('🔍 [ELDER] Data validation failed');
@@ -45,10 +45,20 @@ class ElderTripleScreen {
 
       // Combine screens for final signal
       const combinedAnalysis = this.combineScreens(screen1, screen2, screen3);
-      
+
+      // if (combinedAnalysis.overallSignal === 'AVOID') {
+      //   return {
+      //     system: this.systemId,
+      //     systemName: this.name,
+      //     decision: combinedAnalysis.overallSignal,
+      //     confidence: 0,
+      //     reasoning: combinedAnalysis.reasoning,
+      //   }
+      // }
+
       // Calculate risk/reward using current market data
       const riskReward = this.calculateRiskReward(series.daily, combinedAnalysis);
-      
+
       // Generate final decision with confidence
       const decision = this.generateDecision(combinedAnalysis, riskReward, indicators);
 
@@ -57,24 +67,24 @@ class ElderTripleScreen {
         systemName: this.name,
         decision: decision.action,
         confidence: decision.confidence,
-        reasoning: decision.reasoning,
-        
+        reasoning: combinedAnalysis.reasoning,
+
         // Detailed screen breakdown
         screens: {
           screen1: { ...screen1, description: 'Weekly Trend (MACD/EMA)' },
           screen2: { ...screen2, description: 'Daily Counter-trend (Stochastic)' },
           screen3: { ...screen3, description: 'Intraday Timing (Volume)' }
         },
-        
+
         // Risk management
         riskReward: riskReward,
-        
+
         // Execution details
         executionPlan: decision.executionPlan,
-        
+
         // Quality metrics for gate engine
         signalQuality: decision.signalQuality,
-        
+
         // System metadata
         timestamp: new Date().toISOString(),
         dataQuality: this.assessDataQuality(indicators, series)
@@ -91,7 +101,7 @@ class ElderTripleScreen {
    */
   executeScreen1(tripleScreenIndicators, weeklyData) {
     const { weeklyMACDHist, weeklyMACDHist_1, weeklyMACDHist_2, weeklyEMA10, weeklyEMA40 } = tripleScreenIndicators;
-    
+
     const screen1 = {
       timeframe: 'weekly',
       status: 'NEUTRAL',
@@ -156,6 +166,7 @@ class ElderTripleScreen {
       stochasticD: tripleScreenIndicators.dailyStochD ?? tripleScreenIndicators.dailyStoch, // fallback
       dailyForceIndex: tripleScreenIndicators.dailyForceIndex
     };
+    
     const screen2 = {
       timeframe: 'daily',
       status: 'NEUTRAL',
@@ -164,32 +175,80 @@ class ElderTripleScreen {
       components: {},
       reasoning: []
     };
-    // Pullback logic
-    const rsiPullback = rsi14 < 50;
+    
+    // More sophisticated pullback logic with stricter Elder criteria
+    const rsiOversold = rsi14 < 40;        // More strict: oversold territory
+    const rsiModeratelyLow = rsi14 < 50 && rsi14 >= 40;  // Moderately low
     const stochasticPullback = stochasticK < stochasticD;
-    const forceIndexPullback = dailyForceIndex < 0;
-    const pullbackConfirmed = rsiPullback || stochasticPullback || forceIndexPullback;
+    const stochasticOversold = stochasticK < 30;  // Oversold stochastic
+    const forceIndexNegative = dailyForceIndex < 0;
+    const forceIndexStronglyNegative = dailyForceIndex < -1000; // Strong negative force
+    
+    // Count different levels of pullback confirmation
+    let pullbackScore = 0;
+    const pullbackReasons = [];
+    
+    // RSI scoring
+    if (rsiOversold) {
+      pullbackScore += 2;
+      pullbackReasons.push('RSI oversold (<40)');
+    } else if (rsiModeratelyLow) {
+      pullbackScore += 1;
+      pullbackReasons.push('RSI below 50');
+    }
+    
+    // Stochastic scoring
+    if (stochasticOversold && stochasticPullback) {
+      pullbackScore += 2;
+      pullbackReasons.push('Stochastic oversold & declining');
+    } else if (stochasticPullback) {
+      pullbackScore += 1;
+      pullbackReasons.push('Stochastic declining');
+    }
+    
+    // Force Index scoring
+    if (forceIndexStronglyNegative) {
+      pullbackScore += 2;
+      pullbackReasons.push('Strong negative force index');
+    } else if (forceIndexNegative) {
+      pullbackScore += 1;
+      pullbackReasons.push('Negative force index');
+    }
+    
     screen2.components = {
       rsi14, stochasticK, stochasticD, dailyForceIndex,
-      rsiPullback, stochasticPullback, forceIndexPullback, pullbackConfirmed
+      rsiOversold, rsiModeratelyLow, stochasticPullback, stochasticOversold,
+      forceIndexNegative, forceIndexStronglyNegative, pullbackScore
     };
-    if (pullbackConfirmed) {
+    
+    // Determine signal based on pullback score with three tiers
+    if (pullbackScore >= 5) {
+      screen2.signal = 'STRONG_PULLBACK_CONFIRMED';
+      screen2.status = 'EXCEPTIONAL_PULLBACK';
+      screen2.strength = 98;
+      screen2.reasoning.push(`Exceptional pullback confirmed (score: ${pullbackScore}/6): ${pullbackReasons.join(', ')}`);
+    } else if (pullbackScore >= 3) {
       screen2.signal = 'PULLBACK_CONFIRMED';
+      screen2.status = 'STRONG_PULLBACK';
+      screen2.strength = 85 + (pullbackScore * 3); // 88-97 range
+      screen2.reasoning.push(`Strong pullback confirmed (score: ${pullbackScore}/6): ${pullbackReasons.join(', ')}`);
+    } else if (pullbackScore >= 2) {
+      screen2.signal = 'MODERATE_PULLBACK_CONFIRMED';
       screen2.status = 'PULLBACK';
-      screen2.strength = 80;
-      screen2.reasoning.push('Daily pullback confirmed by: ' +
-        [
-          rsiPullback ? 'RSI<50' : null,
-          stochasticPullback ? 'StochK<StochD' : null,
-          forceIndexPullback ? 'ForceIndex<0' : null
-        ].filter(Boolean).join(', ')
-      );
+      screen2.strength = 65 + (pullbackScore * 5); // 70-75 range
+      screen2.reasoning.push(`Moderate pullback confirmed (score: ${pullbackScore}/6): ${pullbackReasons.join(', ')}`);
+    } else if (pullbackScore >= 1) {
+      screen2.signal = 'WEAK_PULLBACK';
+      screen2.status = 'WEAK_PULLBACK';
+      screen2.strength = 40;
+      screen2.reasoning.push(`Weak pullback detected (score: ${pullbackScore}/6): ${pullbackReasons.join(', ')}`);
     } else {
       screen2.signal = 'NO_PULLBACK';
       screen2.status = 'NO_PULLBACK';
       screen2.strength = 0;
-      screen2.reasoning.push('No daily pullback detected');
+      screen2.reasoning.push('No significant pullback detected - oscillators not oversold');
     }
+    
     return screen2;
   }
 
@@ -240,35 +299,136 @@ class ElderTripleScreen {
    * Combine all three screens for final Elder's decision (strict method)
    */
   combineScreens(screen1, screen2, screen3) {
-    // Strict Elder: Only allow signal if all 3 screens align
-    let signal = 'HOLD';
+    // Determine supporting and conflicting screens
+    const supportingScreens = [];
+    const conflictingScreens = [];
+    
+    // Analyze screen relationships for three-tier watch system
+    if (screen1.signal === 'BULLISH') {
+      supportingScreens.push('Screen 1 (Weekly Bullish)');
+      if (screen2.signal === 'STRONG_PULLBACK_CONFIRMED') {
+        supportingScreens.push('Screen 2 (Exceptional Pullback)');
+      } else if (screen2.signal === 'PULLBACK_CONFIRMED') {
+        supportingScreens.push('Screen 2 (Strong Pullback)');
+      } else if (screen2.signal === 'MODERATE_PULLBACK_CONFIRMED') {
+        supportingScreens.push('Screen 2 (Moderate Pullback)');
+      } else if (screen2.signal === 'WEAK_PULLBACK') {
+        supportingScreens.push('Screen 2 (Weak Pullback)');
+      } else if (screen2.signal === 'NO_PULLBACK') {
+        conflictingScreens.push('Screen 2 (No Pullback Setup)');
+      }
+      
+      if (screen3.signal === 'TRIGGER_UP') {
+        supportingScreens.push('Screen 3 (Breakout Trigger)');
+      } else if (screen3.signal === 'TRIGGER_DOWN') {
+        conflictingScreens.push('Screen 3 (Conflicting Direction)');
+      }
+    } else if (screen1.signal === 'BEARISH') {
+      supportingScreens.push('Screen 1 (Weekly Bearish)');
+      if (screen2.signal === 'STRONG_PULLBACK_CONFIRMED') {
+        supportingScreens.push('Screen 2 (Exceptional Pullback)');
+      } else if (screen2.signal === 'PULLBACK_CONFIRMED') {
+        supportingScreens.push('Screen 2 (Strong Pullback)');
+      } else if (screen2.signal === 'MODERATE_PULLBACK_CONFIRMED') {
+        supportingScreens.push('Screen 2 (Moderate Pullback)');
+      } else if (screen2.signal === 'WEAK_PULLBACK') {
+        supportingScreens.push('Screen 2 (Weak Pullback)');
+      } else if (screen2.signal === 'NO_PULLBACK') {
+        conflictingScreens.push('Screen 2 (No Pullback Setup)');
+      }
+      
+      if (screen3.signal === 'TRIGGER_DOWN') {
+        supportingScreens.push('Screen 3 (Breakdown Trigger)');
+      } else if (screen3.signal === 'TRIGGER_UP') {
+        conflictingScreens.push('Screen 3 (Conflicting Direction)');
+      }
+    } else {
+      conflictingScreens.push('Screen 1 (No Clear Weekly Trend)');
+    }
+
+    // Strict Elder: Perfect alignment for BUY/SELL, three-tier WATCH system
+    let signal = 'AVOID';
+    
+    // Perfect BUY/SELL signals - all 3 screens must align perfectly
     if (
       screen1.signal === 'BULLISH' &&
-      screen2.signal === 'PULLBACK_CONFIRMED' &&
+      (screen2.signal === 'STRONG_PULLBACK_CONFIRMED' || screen2.signal === 'PULLBACK_CONFIRMED' || screen2.signal === 'MODERATE_PULLBACK_CONFIRMED') &&
       screen3.signal === 'TRIGGER_UP'
     ) {
       signal = 'BUY';
     } else if (
       screen1.signal === 'BEARISH' &&
-      screen2.signal === 'PULLBACK_CONFIRMED' &&
+      (screen2.signal === 'STRONG_PULLBACK_CONFIRMED' || screen2.signal === 'PULLBACK_CONFIRMED' || screen2.signal === 'MODERATE_PULLBACK_CONFIRMED') &&
       screen3.signal === 'TRIGGER_DOWN'
     ) {
       signal = 'SELL';
     }
+    // Three-tier WATCH system based on pullback strength
+    else if (
+      screen1.signal === 'BULLISH' &&
+      screen2.signal === 'STRONG_PULLBACK_CONFIRMED' &&
+      screen3.signal === 'NO_TRIGGER'
+    ) {
+      signal = 'STRONG_WATCH';
+    } else if (
+      screen1.signal === 'BEARISH' &&
+      screen2.signal === 'STRONG_PULLBACK_CONFIRMED' &&
+      screen3.signal === 'NO_TRIGGER'
+    ) {
+      signal = 'STRONG_WATCH';
+    } else if (
+      screen1.signal === 'BULLISH' &&
+      (screen2.signal === 'PULLBACK_CONFIRMED' || screen2.signal === 'MODERATE_PULLBACK_CONFIRMED') &&
+      screen3.signal === 'NO_TRIGGER'
+    ) {
+      signal = 'WATCH';
+    } else if (
+      screen1.signal === 'BEARISH' &&
+      (screen2.signal === 'PULLBACK_CONFIRMED' || screen2.signal === 'MODERATE_PULLBACK_CONFIRMED') &&
+      screen3.signal === 'NO_TRIGGER'
+    ) {
+      signal = 'WATCH';
+    } else if (
+      screen1.signal === 'BULLISH' &&
+      screen2.signal === 'WEAK_PULLBACK' &&
+      screen3.signal === 'NO_TRIGGER'
+    ) {
+      signal = 'WEAK_WATCH';
+    } else if (
+      screen1.signal === 'BEARISH' &&
+      screen2.signal === 'WEAK_PULLBACK' &&
+      screen3.signal === 'NO_TRIGGER'
+    ) {
+      signal = 'WEAK_WATCH';
+    }
+
     return {
       overallSignal: signal,
-      overallStrength: signal === 'BUY' || signal === 'SELL'
-        ? (screen1.strength + screen2.strength + screen3.strength) / 3
-        : 0,
+      overallStrength:
+        (signal === 'BUY' || signal === 'SELL')
+          ? (screen1.strength + screen2.strength + screen3.strength) / 3
+          : (signal === 'STRONG_WATCH')
+            ? (screen1.strength + screen2.strength) / 2 * 1.1  // 10% bonus for strong setup
+            : (signal === 'WATCH')
+              ? (screen1.strength + screen2.strength) / 2
+              : (signal === 'WEAK_WATCH')
+                ? (screen1.strength + screen2.strength) / 2 * 0.7  // 30% penalty for weak setup
+                : 0,
       screenAlignment: signal === 'BUY' || signal === 'SELL',
-      conflictingScreens: [],
-      supportingScreens: [],
+      conflictingScreens: conflictingScreens,
+      supportingScreens: supportingScreens,
       reasoning: [
         signal === 'BUY'
           ? 'Weekly MACD uptrend + daily pullback + EMA10 breakout trigger'
           : signal === 'SELL'
-          ? 'Weekly MACD downtrend + daily pullback + EMA10 breakdown trigger'
-          : 'Strict Elder alignment not met'
+            ? 'Weekly MACD downtrend + daily pullback + EMA10 breakdown trigger'
+            : signal === 'STRONG_WATCH'
+              ? 'Weekly trend + exceptional daily pullback, prime setup awaiting EMA10 trigger'
+              : signal === 'WATCH'
+                ? 'Weekly trend + daily pullback aligned, waiting for EMA10 trigger'
+                : signal === 'WEAK_WATCH'
+                  ? 'Weekly trend + weak daily pullback, waiting for stronger setup'
+                  : 'Strict Elder alignment not met'
       ]
     };
   }
@@ -295,6 +455,7 @@ class ElderTripleScreen {
     const atr = atrSum / atrPeriod;
     // ATR-based stop/targets per Elder
     let stopLoss = null, targets = null, riskReward = null;
+    const round2 = v => Math.round(v * 100) / 100;
     if (combinedAnalysis.overallSignal === 'BUY') {
       stopLoss = latest.low - atr * 1.5;
       targets = [latest.close + atr * 2, latest.close + atr * 3];
@@ -303,6 +464,14 @@ class ElderTripleScreen {
       stopLoss = latest.high + atr * 1.5;
       targets = [latest.close - atr * 2, latest.close - atr * 3];
       riskReward = (latest.close - targets[0]) / (stopLoss - latest.close);
+    } else if (combinedAnalysis.overallSignal === 'STRONG_WATCH' || combinedAnalysis.overallSignal === 'WATCH' || combinedAnalysis.overallSignal === 'WEAK_WATCH') {
+      return {
+        stopLoss: null,
+        targets: null,
+        riskReward: 0,
+        atr: round2(atr),
+        latestClose: round2(latest.close)
+      };
     } else {
       return {
         stopLoss: null,
@@ -312,7 +481,6 @@ class ElderTripleScreen {
         latestClose: latest.close
       };
     }
-    const round2 = v => Math.round(v * 100) / 100;
     return {
       stopLoss: round2(stopLoss),
       targets: targets.map(round2),
@@ -326,58 +494,108 @@ class ElderTripleScreen {
    * Generate final Elder's Triple Screen decision with confidence and strict result object
    */
   generateDecision(combinedAnalysis, riskReward, indicators) {
-    // Strict Elder result object
-    let signal = combinedAnalysis.overallSignal;
-    let confidence = this.calculateConfidence(combinedAnalysis, riskReward, signal); // Dynamic confidence!
-    let reason =
-      signal === 'BUY'
-        ? 'Weekly MACD uptrend + daily pullback + EMA10 breakout trigger'
-        : signal === 'SELL'
-        ? 'Weekly MACD downtrend + daily pullback + EMA10 breakdown trigger'
-        : 'Strict Elder alignment not met';
+    // Strict Elder result object with internal signal for confidence calculation
+    let internalSignal = combinedAnalysis.overallSignal;
+    let confidence = this.calculateConfidence(combinedAnalysis, riskReward, internalSignal);
+    let reason = combinedAnalysis.reasoning.join('; ');
+
+    // Map internal three-tier WATCH system to external WATCH signal
+    let externalSignal = internalSignal;
+    if (internalSignal === 'STRONG_WATCH' || internalSignal === 'WEAK_WATCH') {
+      externalSignal = 'WATCH';
+    }
+
+    // Calculate signal quality for this decision
+    const signalQuality = this.calculateSignalQuality(combinedAnalysis, riskReward);
+
+    // Create execution plan based on signal
+    let executionPlan = null;
+    if (internalSignal === 'BUY' || internalSignal === 'SELL' || internalSignal === 'STRONG_WATCH' || internalSignal === 'WATCH' || internalSignal === 'WEAK_WATCH') {
+      executionPlan = {
+        strategy: 'Elder Triple Screen',
+        timeframe: 'Multi-timeframe (Weekly/Daily/Intraday)',
+        exitStrategy: {
+          stopLoss: riskReward.stopLoss,
+          targets: riskReward.targets,
+          trailingStop: signal === 'BUY' || signal === 'SELL' ? true : false
+        },
+        positionSizing: {
+          recommendation: confidence >= 0.8 ? 'FULL' : 
+                        confidence >= 0.7 ? 'REDUCED' : 
+                        confidence >= 0.6 ? 'CONSERVATIVE' : 
+                        confidence >= 0.5 ? 'HALF' : 
+                        confidence >= 0.4 ? 'QUARTER' : 'AVOID',
+          rationale: `${(confidence * 100).toFixed(1)}% confidence with ${combinedAnalysis.supportingScreens.length}/3 screens supporting`
+        },
+        riskReward: riskReward.riskReward
+      };
+    }
+
     return {
-      action: signal,  // Changed from signal to action
+      action: externalSignal, // Use external mapped signal
       confidence,
-      strategy: 'Triple Screen',
+      strategy: 'Elder Triple Screen',
       reason,
       stopLoss: riskReward.stopLoss,
       targets: riskReward.targets,
-      riskReward: riskReward.riskReward
+      riskReward: riskReward.riskReward,
+      executionPlan: executionPlan,
+      signalQuality: signalQuality
     };
   }
 
   /**
    * Calculate confidence based on screen alignment and risk/reward
    */
-  calculateConfidence(combinedAnalysis, riskReward, direction) {
-    let confidence = 0.5; // Base confidence
+  calculateConfidence(combinedAnalysis, riskReward, signal) {
+    // Standardized base confidence for harmonized system competition
+    let confidence = (signal === 'BUY' || signal === 'SELL') ? 0.65 : 0.40;
 
-    // Screen alignment bonus
+    // Screen alignment bonus - optimized for 0.40 WATCH base
     if (combinedAnalysis.screenAlignment) {
-      confidence += 0.25; // Perfect alignment
+      confidence += 0.35; // Perfect alignment bonus
     } else if (combinedAnalysis.supportingScreens.length >= 2) {
-      confidence += 0.15; // Partial alignment
+      confidence += 0.12; // Partial alignment bonus
+    } else if (combinedAnalysis.supportingScreens.length === 1) {
+      confidence += 0.04; // Single screen bonus
     }
 
-    // Signal strength bonus
-    const strengthBonus = (combinedAnalysis.overallStrength / 100) * 0.2;
+    // Signal strength bonus - balanced for standardized base
+    const strengthWeight = (signal === 'WATCH' || signal === 'WEAK_WATCH' || signal === 'STRONG_WATCH') ? 0.12 : 0.16;
+    const strengthBonus = (combinedAnalysis.overallStrength / 100) * strengthWeight;
     confidence += strengthBonus;
 
-    // Risk/reward bonus
-    if (riskReward.riskReward >= 2.5) {
-      confidence += 0.1; // Excellent R/R
-    } else if (riskReward.riskReward >= 2.0) {
-      confidence += 0.05; // Good R/R
-    } else if (riskReward.riskReward < 1.5) {
-      confidence -= 0.1; // Poor R/R penalty
+    // Risk/reward bonus - only for executable signals
+    if (signal === 'BUY' || signal === 'SELL') {
+      if (riskReward.riskReward >= 2.5) confidence += 0.06;
+      else if (riskReward.riskReward >= 2.0) confidence += 0.04;
+      else if (riskReward.riskReward < 1.5) confidence -= 0.08;
     }
 
-    // Conflicts penalty
+    // Conflict penalty - standardized
     if (combinedAnalysis.conflictingScreens.length > 0) {
-      confidence -= 0.05 * combinedAnalysis.conflictingScreens.length;
+      confidence -= 0.06 * combinedAnalysis.conflictingScreens.length;
     }
 
-    return Math.max(0.3, Math.min(0.95, confidence));
+    // Elder's three-tier WATCH system with harmonized caps
+    if (signal === 'STRONG_WATCH') {
+      // STRONG_WATCH: exceptional Screen 2 + missing Screen 3 - minimal penalty
+      confidence *= 0.92; // 8% penalty for incomplete setup
+      confidence = Math.min(confidence, 0.75); // Cap at 75% for fair competition
+    } else if (signal === 'WATCH') {
+      // WATCH: missing the crucial Screen 3 trigger - moderate penalty
+      confidence *= 0.80; // 20% penalty for incomplete setup
+      confidence = Math.min(confidence, 0.65); // Cap at 65% for fair competition
+    } else if (signal === 'WEAK_WATCH') {
+      // WEAK_WATCH: weak Screen 2 + missing Screen 3 - heavy penalty
+      confidence *= 0.68; // 32% penalty for weak incomplete setup
+      confidence = Math.min(confidence, 0.55); // Cap at 55% for fair competition
+    } else if (signal === 'AVOID') {
+      // AVOID signals should have low confidence
+      confidence = Math.min(confidence, 0.45); // Cap at 45%
+    }
+
+    return Math.max(0.15, Math.min(0.95, confidence));
   }
 
   /**
@@ -410,7 +628,7 @@ class ElderTripleScreen {
     // Convert to grade
     const percentage = Math.max(0, Math.min(100, score));
     let grade = 'F';
-    
+
     if (percentage >= 90) grade = 'A+';
     else if (percentage >= 85) grade = 'A';
     else if (percentage >= 80) grade = 'A-';
@@ -433,10 +651,9 @@ class ElderTripleScreen {
   validateData(indicators, series) {
     // Check for required indicators
     if (!indicators?.triple_screen) return false;
-    if (!indicators.triple_screen.weeklyMACD) return false;
-    // Corrected: check base.rsi14, not triple_screen.dailyRSI
+    if (!indicators.triple_screen.weeklyMACD && !indicators.triple_screen.weeklyMACDHist) return false;
     if (!indicators.base?.rsi14) return false;
-    if (!indicators.triple_screen.dailyStoch) return false;
+    if (!indicators.triple_screen.dailyStoch && !indicators.triple_screen.dailyStochK) return false;
 
     // Check for required series data
     if (!series?.weekly || series.weekly.length < 10) return false;
@@ -459,11 +676,11 @@ class ElderTripleScreen {
     };
 
     // Determine overall quality
-    const scores = [quality.weekly, quality.daily, quality.intraday].map(q => 
+    const scores = [quality.weekly, quality.daily, quality.intraday].map(q =>
       q === 'EXCELLENT' ? 3 : q === 'GOOD' ? 2 : q === 'POOR' ? 1 : 0
     );
     const avgScore = scores.reduce((a, b) => a + b, 0) / scores.length;
-    
+
     if (avgScore >= 2.5) quality.overall = 'EXCELLENT';
     else if (avgScore >= 2.0) quality.overall = 'GOOD';
     else if (avgScore >= 1.5) quality.overall = 'FAIR';
@@ -473,8 +690,27 @@ class ElderTripleScreen {
   }
 
   /**
-   * Create an AVOID signal with specific reason
+   * Calculate ATR-based Force Index for Elder's Triple Screen
    */
+  calculateForceIndex(ohlcData) {
+    if (!ohlcData || ohlcData.length < 2) return [];
+    
+    const forceIndex = [];
+    
+    for (let i = 1; i < ohlcData.length; i++) {
+      const current = ohlcData[i];
+      const previous = ohlcData[i - 1];
+      
+      // Force Index = (Close - Previous Close) * Volume
+      const priceChange = current.close - previous.close;
+      const volume = current.volume || 1; // Fallback to 1 if volume is missing
+      const force = priceChange * volume;
+      
+      forceIndex.push(force);
+    }
+    
+    return forceIndex;
+  }
   createAvoidSignal(reasonCode, message) {
     return {
       system: this.systemId,
@@ -482,17 +718,17 @@ class ElderTripleScreen {
       decision: 'AVOID',
       confidence: 0.2,
       reasoning: [message],
-      
+
       screens: {
         screen1: { status: 'ERROR', reasoning: [reasonCode] },
         screen2: { status: 'ERROR', reasoning: [reasonCode] },
         screen3: { status: 'ERROR', reasoning: [reasonCode] }
       },
-      
+
       riskReward: { riskReward: 0 },
       signalQuality: { grade: 'F', percentage: 0 },
       executionPlan: null,
-      
+
       error: reasonCode,
       timestamp: new Date().toISOString()
     };
