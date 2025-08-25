@@ -449,6 +449,230 @@ function applySectorDiversification(rankedStocks, maxSize) {
   return selected;
 }
 
+/**
+ * PHASE 2: Normalize all signals to BUY/WATCH/AVOID standard
+ * Centralizes signal normalization logic for all trading systems
+ * @param {string} internalSignal - The internal signal from trading system
+ * @returns {string} Standardized signal (BUY/WATCH/AVOID)
+ */
+function normalizeSignal(internalSignal) {
+  switch (internalSignal) {
+    case 'BUY':
+    case 'STRONG_BUY':
+    case 'LONG':
+      return 'BUY';
+    
+    case 'WATCH':
+    case 'STRONG_WATCH':
+    case 'WEAK_WATCH':
+      return 'WATCH';
+    
+    case 'SELL':
+    case 'STRONG_SELL':
+    case 'SHORT':
+    case 'AVOID':
+    case 'NO_TRADE':
+    case 'HOLD':
+    default:
+      return 'AVOID';
+  }
+}
+
+/**
+ * PHASE 3: Unified Execution Plan Builder
+ * Creates standardized execution plans while preserving system-specific logic
+ * @param {Object} params - Execution plan parameters
+ * @returns {Object} Unified execution plan structure
+ */
+function buildUnifiedExecutionPlan(params) {
+  const {
+    signal,
+    systemId,
+    systemName,
+    timeframe,
+    entryPrice,
+    stopLoss,
+    stopMethod,
+    targets,
+    riskReward,
+    confidence,
+    entryStrategy,
+    systemSpecificExit,
+    timeStop,
+    trailingStop,
+    volumeRequirements,
+    entryConditions,
+    entryTiming,
+    systemMetadata
+  } = params;
+
+  // Calculate standardized risk metrics
+  const riskPercentage = stopLoss && entryPrice ? 
+    Math.abs((entryPrice - stopLoss) / entryPrice) : 0;
+
+  // Unified position sizing logic
+  const positionSizing = calculateUnifiedPositionSizing({
+    signal,
+    confidence,
+    riskReward,
+    riskPercentage,
+    systemId
+  });
+
+  // Build unified structure
+  const executionPlan = {
+    // Core execution data
+    signal: normalizeSignal(signal),
+    action: normalizeSignal(signal), // Same as signal for consistency
+    
+    // Entry strategy
+    entryStrategy: {
+      type: entryStrategy?.type || `${systemName.toUpperCase()}_ENTRY`,
+      method: entryStrategy?.method || 'Market order on signal confirmation',
+      conditions: entryConditions || entryStrategy?.conditions || [],
+      timing: entryTiming || 'Immediate on confirmation',
+      volumeRequirements: volumeRequirements || null
+    },
+    
+    // Exit strategy
+    exitStrategy: {
+      stopLoss: stopLoss ? Math.round(stopLoss * 100) / 100 : null,
+      stopMethod: stopMethod || 'System-specific calculation',
+      targets: (targets || []).map(t => Math.round(t * 100) / 100),
+      timeStop: timeStop || null,
+      systemExit: systemSpecificExit || null,
+      trailingStop: trailingStop || false
+    },
+    
+    // Position sizing
+    positionSizing,
+    
+    // Risk metrics
+    riskReward: riskReward ? Math.round(riskReward * 100) / 100 : 0,
+    riskPercentage: Math.round(riskPercentage * 10000) / 100, // Convert to percentage
+    
+    // System metadata
+    system: systemId,
+    strategy: systemName,
+    timeframe: timeframe || 'Daily',
+    metadata: systemMetadata || null
+  };
+
+  // Remove null values for cleaner output
+  return cleanExecutionPlan(executionPlan);
+}
+
+/**
+ * Calculate unified position sizing while preserving system-specific logic
+ * @param {Object} params - Position sizing parameters
+ * @returns {Object} Position sizing recommendation
+ */
+function calculateUnifiedPositionSizing(params) {
+  const { signal, confidence, riskReward, riskPercentage, systemId } = params;
+
+  let recommendation = 'AVOID';
+  let riskPercent = 0;
+  let rationale = '';
+  let maxPosition = 0;
+
+  if (signal === 'BUY') {
+    // System-specific position sizing logic
+    if (systemId === 'elder_triple_screen') {
+      // Elder's confidence-based 6-tier system
+      if (confidence >= 0.8) {
+        recommendation = 'FULL';
+        riskPercent = 2.0;
+        maxPosition = 0.10; // 10% max position
+      } else if (confidence >= 0.7) {
+        recommendation = 'REDUCED';
+        riskPercent = 1.5;
+        maxPosition = 0.08;
+      } else if (confidence >= 0.6) {
+        recommendation = 'CONSERVATIVE';
+        riskPercent = 1.2;
+        maxPosition = 0.06;
+      } else if (confidence >= 0.5) {
+        recommendation = 'HALF';
+        riskPercent = 1.0;
+        maxPosition = 0.05;
+      } else if (confidence >= 0.4) {
+        recommendation = 'QUARTER';
+        riskPercent = 0.5;
+        maxPosition = 0.025;
+      }
+      rationale = `${(confidence * 100).toFixed(1)}% confidence with multi-timeframe confirmation`;
+    } else {
+      // Standard risk/reward-based sizing for other systems
+      if (riskReward >= 3.0) {
+        recommendation = 'FULL';
+        riskPercent = 2.0;
+        maxPosition = 0.10;
+      } else if (riskReward >= 2.5) {
+        recommendation = 'FULL';
+        riskPercent = 1.8;
+        maxPosition = 0.09;
+      } else if (riskReward >= 2.0) {
+        recommendation = 'REDUCED';
+        riskPercent = 1.5;
+        maxPosition = 0.075;
+      } else if (riskReward >= 1.5) {
+        recommendation = 'HALF';
+        riskPercent = 1.0;
+        maxPosition = 0.05;
+      } else {
+        recommendation = 'CONSERVATIVE';
+        riskPercent = 0.5;
+        maxPosition = 0.025;
+      }
+      rationale = `${riskReward.toFixed(1)}:1 risk/reward ratio`;
+    }
+  } else if (signal === 'WATCH') {
+    recommendation = 'WATCH';
+    riskPercent = 0;
+    maxPosition = 0;
+    rationale = 'Position sizing pending signal confirmation';
+  } else {
+    recommendation = 'AVOID';
+    riskPercent = 0;
+    maxPosition = 0;
+    rationale = 'No position recommended';
+  }
+
+  return {
+    recommendation,
+    riskPercent,
+    rationale,
+    maxPosition,
+    riskAmount: riskPercent > 0 ? `${riskPercent}% of portfolio at stop loss` : null
+  };
+}
+
+/**
+ * Clean execution plan by removing null/undefined values
+ * @param {Object} plan - Execution plan object
+ * @returns {Object} Cleaned execution plan
+ */
+function cleanExecutionPlan(plan) {
+  const cleaned = {};
+  
+  for (const [key, value] of Object.entries(plan)) {
+    if (value !== null && value !== undefined) {
+      if (typeof value === 'object' && !Array.isArray(value)) {
+        const cleanedSubObject = cleanExecutionPlan(value);
+        if (Object.keys(cleanedSubObject).length > 0) {
+          cleaned[key] = cleanedSubObject;
+        }
+      } else if (Array.isArray(value) && value.length > 0) {
+        cleaned[key] = value;
+      } else if (typeof value !== 'object') {
+        cleaned[key] = value;
+      }
+    }
+  }
+  
+  return cleaned;
+}
+
 module.exports = {
   SYSTEM_IDS,
   SYSTEM_TIERS,
@@ -463,5 +687,9 @@ module.exports = {
   calculateWatchlistScore,
   rankWatchlistCandidates,
   applySectorDiversification,
+  normalizeSignal,
+  buildUnifiedExecutionPlan,
+  calculateUnifiedPositionSizing,
+  cleanExecutionPlan,
   defaultLookBackPeriod
 };

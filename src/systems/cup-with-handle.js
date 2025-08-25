@@ -85,11 +85,39 @@ class CupWithHandle {
                 };
             }
 
-            // Phase 5: Calculate risk/reward
-            const riskReward = this.calculateRisk(signalAnalysis, cupAnalysis, handleAnalysis, latest);
+            // Phase 5: Assess risk
+            const riskAssessment = this.assessRisk(signalAnalysis, cupAnalysis, handleAnalysis, latest);
 
-            // Phase 6: Final decision
-            const finalDecision = this.makeFinalDecision(signalAnalysis, riskReward, cupAnalysis, handleAnalysis, breakoutAnalysis);
+            // Phase 6: Make final decision  
+            const finalDecision = this.makeFinalDecision(signalAnalysis, riskAssessment, cupAnalysis, handleAnalysis, breakoutAnalysis);
+
+            // Extract capital and pricing information from options
+            const { capital, symbol, currentPrice } = options;
+            const entryPrice = currentPrice || latest.close;
+
+            // Phase 7: Calculate risk/reward with confidence-adjusted parameters
+            const riskReward = this.calculateRiskReward(finalDecision, riskAssessment, cupAnalysis, handleAnalysis, latest);
+
+            // Create execution plan with capital-aware position sizing (matching Elder format)
+            let execution = null;
+            if (finalDecision.signal === 'BUY' || finalDecision.signal === 'SELL' || finalDecision.signal === 'WATCH') {
+                // Build entry strategy first to get anticipatedEntry for WATCH signals
+                const entryStrategy = this.buildPreciseCupHandleEntryStrategy(riskAssessment, cupAnalysis, handleAnalysis, finalDecision.signal, latest);
+                
+                // Create enhanced risk reward data including anticipated entry for position sizing
+                const enhancedRiskReward = {
+                    ...riskReward,
+                    anticipatedEntry: entryStrategy.anticipatedEntry
+                };
+                
+                // Calculate position sizing based on available capital and confidence
+                const positionSizing = this.calculateCupHandlePositionSizing(finalDecision.confidence, { capital, symbol, entryPrice }, enhancedRiskReward, cupAnalysis);
+                execution = {
+                    entry: entryStrategy,
+                    exit: this.buildPreciseCupHandleExitStrategy(riskAssessment, cupAnalysis, handleAnalysis, finalDecision.signal, latest),
+                    position: positionSizing,
+                };
+            }
 
             return {
                 system: this.systemId,
@@ -98,26 +126,14 @@ class CupWithHandle {
                 confidence: finalDecision.confidence,
                 reasoning: [finalDecision.reasoning], // Wrap in array for consistency
                 
-                // Pattern breakdown
-                pattern: {
-                    cup: cupAnalysis,
-                    handle: handleAnalysis,
-                    breakout: breakoutAnalysis
-                },
-                
-                // Risk management
+                // Risk management (matching Elder format - only riskReward, no riskAssessment)
                 riskReward: riskReward,
                 
-                // Execution details
-                executionPlan: finalDecision.executionPlan,
+                // Execution details (matching Elder format with position sizing)
+                execution: execution,
                 
                 // Quality metrics
                 signalQuality: this.calculateSignalQuality(finalDecision, cupAnalysis, handleAnalysis),
-                
-                // System metadata
-                timestamp: new Date().toISOString(),
-                systemVersion: this.version,
-                dataQuality: this.assessDataQuality(dailyData, indicators)
             };
 
         } catch (error) {
@@ -564,15 +580,14 @@ class CupWithHandle {
     }
 
     /**
-     * Phase 5: Calculate risk/reward metrics
+     * Phase 5: Assess risk metrics
      */
-    calculateRisk(signalAnalysis, cupAnalysis, handleAnalysis, latest) {
-        //console.log(`  🏆 Phase 5: Calculating risk/reward...`);
+    assessRisk(signalAnalysis, cupAnalysis, handleAnalysis, latest) {
+        //console.log(`  🏆 Phase 5: Assessing risk...`);
         
         const entryPrice = signalAnalysis.entryPrice;
         let stopLoss = 0;
         let targets = [];
-        let riskReward = 0;
         
         if (signalAnalysis.signal === 'BUY') {
             // Stop loss: 7% below breakout or below handle low
@@ -590,10 +605,6 @@ class CupWithHandle {
                 measuredMove       // Measured move target
             ];
             
-            const risk = entryPrice - stopLoss;
-            const reward = targets[0] - entryPrice;
-            riskReward = risk > 0 ? reward / risk : 0;
-            
         } else if (signalAnalysis.signal === 'WATCH') {
             // Projected risk/reward for watch scenarios
             const projectedEntry = latest.close * 1.02; // Assume 2% breakout
@@ -602,21 +613,57 @@ class CupWithHandle {
             
             stopLoss = projectedStop;
             targets = [projectedTarget];
-            riskReward = (projectedTarget - projectedEntry) / (projectedEntry - projectedStop);
+        }
+        
+        return {
+            stopLoss: Math.round(stopLoss * 100) / 100,
+            targets: targets.map(t => Math.round(t * 100) / 100),
+            entryPrice: Math.round(entryPrice * 100) / 100,
+            assessmentType: 'CUP_HANDLE_BREAKOUT'
+        };
+    }
+
+    /**
+     * Phase 5: Calculate risk/reward metrics (renamed from calculateRisk)
+     */
+    calculateRiskReward(finalDecision, riskAssessment, cupAnalysis, handleAnalysis, latest) {
+        //console.log(`  🏆 Phase 7: Calculating confidence-adjusted risk/reward...`);
+        
+        // Use base risk assessment but adjust based on final confidence
+        let stopLoss = riskAssessment.stopLoss;
+        let targets = [...riskAssessment.targets];
+        let riskReward = 0;
+        
+        // Confidence-based adjustments
+        if (finalDecision.confidence >= 0.8) {
+            // High confidence: slightly tighter stop, extended targets
+            stopLoss = stopLoss * 1.02; // 2% tighter stop
+            targets = targets.map(t => t * 1.05); // 5% higher targets
+        } else if (finalDecision.confidence <= 0.5) {
+            // Lower confidence: wider stop, conservative targets
+            stopLoss = stopLoss * 0.98; // 2% wider stop
+            targets = targets.map(t => t * 0.97); // 3% lower targets
+        }
+        
+        if (finalDecision.signal === 'BUY' || finalDecision.signal === 'WATCH') {
+            const risk = riskAssessment.entryPrice - stopLoss;
+            const reward = targets[0] - riskAssessment.entryPrice;
+            riskReward = risk > 0 ? reward / risk : 0;
         }
         
         return {
             stopLoss: Math.round(stopLoss * 100) / 100,
             targets: targets.map(t => Math.round(t * 100) / 100),
             riskReward: Math.round(riskReward * 100) / 100,
-            entryPrice: Math.round(entryPrice * 100) / 100
+            entryPrice: riskAssessment.entryPrice,
+            confidenceAdjusted: true
         };
     }
 
     /**
      * Phase 6: Make final trading decision (with volume dry-up, earnings, and enhanced logs)
      */
-    makeFinalDecision(signalAnalysis, riskReward, cupAnalysis, handleAnalysis, breakoutAnalysis, options = {}) {
+    makeFinalDecision(signalAnalysis, riskAssessment, cupAnalysis, handleAnalysis, breakoutAnalysis, options = {}) {
         //console.log(`  🏆 Phase 6: Making final decision...`);
         // --- Begin Insert: Volume Dry-Up and Earnings Checks ---
         // volume array and latest daily data
@@ -711,7 +758,7 @@ class CupWithHandle {
         }
         // --- End Insert ---
         // Build execution plan
-        const executionPlan = this.buildExecutionPlan(finalSignal, riskReward, cupAnalysis, handleAnalysis);
+        const executionPlan = this.buildExecutionPlan(finalSignal, riskAssessment, cupAnalysis, handleAnalysis);
         return {
             signal: finalSignal,
             confidence: Math.round(confidence * 100) / 100,
@@ -723,7 +770,7 @@ class CupWithHandle {
     /**
      * Build execution plan based on signal
      */
-    buildExecutionPlan(signal, riskReward, cupAnalysis, handleAnalysis) {
+    buildExecutionPlan(signal, riskAssessment, cupAnalysis, handleAnalysis) {
         const plan = {
             action: signal,
             entryStrategy: null,
@@ -739,15 +786,20 @@ class CupWithHandle {
             };
             
             plan.exitStrategy = {
-                stopLoss: riskReward.stopLoss,
-                targets: riskReward.targets,
+                stopLoss: riskAssessment.stopLoss,
+                targets: riskAssessment.targets,
                 trailingStop: 'Consider trailing stop after 15% gain',
                 timeStop: 'Review if no progress after 4-6 weeks'
             };
             
+            // Calculate risk/reward for position sizing
+            const risk = riskAssessment.entryPrice - riskAssessment.stopLoss;
+            const reward = riskAssessment.targets[0] - riskAssessment.entryPrice;
+            const riskRewardRatio = risk > 0 ? reward / risk : 0;
+            
             plan.positionSizing = {
                 risk: '1-2% of portfolio at stop loss',
-                recommendation: riskReward.riskReward >= 2.5 ? 'FULL' : 'HALF'
+                recommendation: riskRewardRatio >= 2.5 ? 'FULL' : 'HALF'
             };
             
         } else if (signal === 'WATCH') {
@@ -759,6 +811,105 @@ class CupWithHandle {
         }
         
         return plan;
+    }
+
+    /**
+     * Build standardized Cup-with-Handle entry strategy matching Elder format
+     */
+    buildPreciseCupHandleEntryStrategy(riskAssessment, cupAnalysis, handleAnalysis, signal, latest) {
+        const strategy = {
+            conditions: [],
+            timing: null,
+            readiness: null,
+            urgency: null,
+            entryType: null,
+            anticipatedEntry: null,
+            triggerLevel: null
+        };
+
+        if (signal === 'BUY') {
+            strategy.conditions = [
+                'Valid Cup-with-Handle pattern confirmed',
+                'Volume breakout ≥40% above 50-day average',
+                'Price closing above handle resistance',
+                'Close in top 25% of daily range'
+            ];
+            
+            const resistance = handleAnalysis?.resistance || cupAnalysis?.pivot || latest.close;
+            const cupDepth = cupAnalysis?.depth ? (cupAnalysis.depth * 100).toFixed(1) : '20';
+            const handleDepth = handleAnalysis?.depth ? (handleAnalysis.depth * 100).toFixed(1) : '8';
+            
+            strategy.timing = `Immediate entry on breakout above $${resistance.toFixed(2)} with volume confirmation`;
+            strategy.readiness = 'Pattern complete - ready for breakout entry';
+            strategy.urgency = 'HIGH - cup base formed, handle tight, breakout imminent';
+            strategy.entryType = 'BREAKOUT_MOMENTUM';
+            strategy.anticipatedEntry = riskAssessment.entryPrice;
+            strategy.triggerLevel = resistance;
+            
+            // Add pattern-specific context
+            strategy.patternContext = `${cupAnalysis?.duration || 0}-day cup (${cupDepth}% depth), ${handleAnalysis?.duration || 0}-day handle (${handleDepth}% depth)`;
+            
+        } else if (signal === 'WATCH') {
+            strategy.conditions = [
+                cupAnalysis?.isValid ? 'Cup pattern detected' : 'Monitoring for cup formation',
+                handleAnalysis?.isValid ? 'Handle formation confirmed' : 'Waiting for handle development',
+                'Monitoring for volume breakout trigger',
+                'Waiting for price breakout above resistance'
+            ];
+            
+            strategy.timing = 'Setup developing - monitor for breakout trigger';
+            strategy.readiness = handleAnalysis?.isValid ? 'Pattern 80% complete - handle formed' : 'Pattern 50% complete - cup only';
+            strategy.urgency = 'MEDIUM - pattern developing, prepare for potential breakout';
+            strategy.entryType = 'BREAKOUT_PENDING';
+            
+            const projectedBreakout = latest.close * 1.02;
+            strategy.anticipatedEntry = projectedBreakout;
+            strategy.triggerLevel = handleAnalysis?.resistance || cupAnalysis?.pivot || projectedBreakout;
+        }
+
+        return strategy;
+    }
+
+    /**
+     * Build standardized Cup-with-Handle exit strategy matching Elder format
+     */
+    buildPreciseCupHandleExitStrategy(riskAssessment, cupAnalysis, handleAnalysis, signal, latest) {
+        const strategy = {
+            stopLoss: riskAssessment.stopLoss,
+            targets: riskAssessment.targets,
+            timeStop: null,
+            systemExit: null,
+            trailingStop: false
+        };
+
+        if (signal === 'BUY') {
+            strategy.timeStop = 'Monitor for 4-6 weeks maximum for measured move completion';
+            strategy.systemExit = 'Exit if pattern fails or volume dries up significantly';
+            strategy.trailingStop = 'Implement 1.5x ATR trailing stop after 15% gain';
+            
+            const cupDepth = cupAnalysis?.depth ? (cupAnalysis.depth * 100).toFixed(1) : '20';
+            const measuredMove = riskAssessment.targets[riskAssessment.targets.length - 1];
+            
+            strategy.patternExit = `Target measured move to $${measuredMove.toFixed(2)} (${cupDepth}% cup projection)`;
+            
+        } else if (signal === 'WATCH') {
+            strategy.timeStop = 'Cancel setup if no breakout within 2-3 weeks';
+            strategy.systemExit = 'Abandon if cup base deteriorates or handle becomes too deep (>12%)';
+            strategy.triggerRequired = 'Volume breakout above resistance required for entry';
+            strategy.trailingStop = 'Plan 1.5x ATR trailing stop after breakout entry';
+        }
+
+        // Add handle-specific exit conditions
+        if (handleAnalysis?.handleLow) {
+            const handleLow = handleAnalysis.handleLow.toFixed(2);
+            if (signal === 'BUY') {
+                strategy.systemExit = `${strategy.systemExit} | Critical: Exit if breaks below handle low $${handleLow}`;
+            } else if (signal === 'WATCH') {
+                strategy.systemExit = `${strategy.systemExit} | Cancel if breaks handle low $${handleLow}`;
+            }
+        }
+
+        return strategy;
     }
 
     /**
@@ -956,6 +1107,87 @@ class CupWithHandle {
         }
         
         return Math.min(Math.max(confidence, 0.15), 0.95);
+    }
+
+    /**
+     * Calculate Cup-with-Handle confidence-based position sizing with available capital
+     * CAN SLIM approach: Higher confidence = larger position, with risk management
+     */
+    calculateCupHandlePositionSizing(confidence, capitalInfo = {}, riskReward = {}, cupAnalysis = {}) {
+        const { capital = 100000, entryPrice = 100 } = capitalInfo;
+        const { stopLoss = 0, riskReward: rrRatio = 1, anticipatedEntry } = riskReward;
+        
+        // Use anticipated entry for WATCH signals, actual entry for BUY/SELL
+        const effectiveEntryPrice = anticipatedEntry || entryPrice;
+        
+        // Cup-with-Handle 6-tier confidence-based position sizing
+        let recommendation = 'AVOID';
+        let maxPosition = 0;
+        let riskPercent = 0;
+        
+        if (confidence >= 0.85) {
+            recommendation = 'AGGRESSIVE'; // Perfect cup-handle + strong breakout
+            maxPosition = 0.10; // 10% of portfolio max
+            riskPercent = 2.5; // 2.5% risk per trade
+        } else if (confidence >= 0.75) {
+            recommendation = 'FULL'; // Strong cup-handle pattern
+            maxPosition = 0.08; // 8% of portfolio
+            riskPercent = 2.0; // 2% risk per trade
+        } else if (confidence >= 0.65) {
+            recommendation = 'REDUCED'; // Good cup-handle setup
+            maxPosition = 0.06; // 6% of portfolio
+            riskPercent = 1.5; // 1.5% risk per trade
+        } else if (confidence >= 0.55) {
+            recommendation = 'SMALL'; // Decent pattern
+            maxPosition = 0.04; // 4% of portfolio
+            riskPercent = 1.0; // 1% risk per trade
+        } else if (confidence >= 0.45) {
+            recommendation = 'MINIMAL'; // Weak pattern
+            maxPosition = 0.02; // 2% of portfolio
+            riskPercent = 0.5; // 0.5% risk per trade
+        } else {
+            recommendation = 'AVOID';
+            maxPosition = 0;
+            riskPercent = 0;
+        }
+
+        // Calculate actual position sizing
+        let shares = 0;
+        let positionValue = 0;
+        let riskAmount = 0;
+        
+        if (recommendation !== 'AVOID' && effectiveEntryPrice > 0) {
+            // Calculate based on risk amount first
+            riskAmount = capital * (riskPercent / 100);
+            
+            if (stopLoss > 0) {
+                const riskPerShare = Math.abs(effectiveEntryPrice - stopLoss);
+                shares = Math.floor(riskAmount / riskPerShare);
+            }
+            
+            // Ensure position doesn't exceed max portfolio percentage
+            const maxPositionValue = capital * maxPosition;
+            const calculatedPositionValue = shares * effectiveEntryPrice;
+            
+            if (calculatedPositionValue > maxPositionValue) {
+                shares = Math.floor(maxPositionValue / effectiveEntryPrice);
+            }
+            
+            positionValue = shares * effectiveEntryPrice;
+        }
+
+        return {
+            recommendation,
+            riskPercent,
+            maxPosition,
+            shares: Math.max(0, shares),
+            positionValue: positionValue,
+            riskAmount: riskAmount,
+            riskPerShare: Math.round((Math.abs(effectiveEntryPrice - stopLoss)) * 100) / 100,
+            stopDistance: stopLoss > 0 ? Math.round(((effectiveEntryPrice - stopLoss) / effectiveEntryPrice) * 10000) / 100 : 0,
+            entryType: anticipatedEntry ? 'CONDITIONAL' : 'IMMEDIATE',
+            effectiveEntry: Math.round(effectiveEntryPrice * 100) / 100
+        };
     }
 }
 

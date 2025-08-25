@@ -34,7 +34,7 @@ class TradingSystemController {
   }
 
   async testSystem(req, res) {
-    const { system } = req.body;
+    const { system, stockSize } = req.body;
 
     if (!system) {
       return res.status(400).json({
@@ -46,7 +46,7 @@ class TradingSystemController {
     try {
 
       const { getAllStocks, getStockBatch } = require('../utils/stockList');
-      const symbolsToAnalyze = getStockBatch(); // Gets all 500 stocks
+      const symbolsToAnalyze = getStockBatch(stockSize ? stockSize : 50); // Gets all 500 stocks
       console.log(`${symbolsToAnalyze.length} stocks from master list for system ${system}`);
 
       // Step 1: Analyze all symbols in parallel
@@ -101,10 +101,12 @@ class TradingSystemController {
       });
 
       const allAnalyses = await Promise.all(analysisPromises);
-      const validAnalyses = allAnalyses.filter(analysis => analysis !== null);
-
+      const validAnalyses = allAnalyses.filter(analysis => analysis !== null && (analysis.decision.action === 'BUY' || analysis.decision.action === 'WATCH'));
+      validAnalyses.forEach(analysis => {
+        console.log(`✅ Analysis result for ${analysis.symbol}:`, analysis.decision.action);
+      });
       console.log(`✅ Analysis complete: ${validAnalyses.length}/${symbolsToAnalyze.length} successful`);
-      return res.status(200).json("success");
+      return res.status(200).json(validAnalyses);
     } catch (error) {
       console.error(`❌ Single System Analysis Error:`, error);
       return res.status(500).json({
@@ -115,7 +117,7 @@ class TradingSystemController {
   }
 
   async analyzeSingleSystem(req, res) {
-    const { symbol, system } = req.body;
+    const { symbol, systems } = req.body;
 
     if (!symbol || !system) {
       return res.status(400).json({
@@ -125,7 +127,7 @@ class TradingSystemController {
     }
 
     try {
-      const response = await this.getStockAnalysis([system], [symbol]);
+      const response = await this.getStockAnalysis(systems, [symbol]);
       // console.log(`🔧 response`, response);
       return res.status(200).json(response);
     } catch (error) {

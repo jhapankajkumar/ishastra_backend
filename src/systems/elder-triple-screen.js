@@ -24,7 +24,7 @@ class ElderTripleScreen {
   /**
    * Analyze ticker using Elder's Triple Screen methodology
    * @param {Object} tickerData - Pre-computed indicators from MultiSystemDataGenerator
-   * @param {Object} options - Analysis options
+   * @param {Object} options - Analysis options including capital, symbol, currentPrice
    * @returns {Object} Complete Elder's analysis with BUY/SELL/WATCH/AVOID + confidence
    */
   analyze(tickerData, options = {}) {
@@ -56,11 +56,19 @@ class ElderTripleScreen {
       //   }
       // }
 
+      // Extract capital and pricing information from options
+      const { capital, symbol, currentPrice } = options;
+      const entryPrice = currentPrice || series.daily[series.daily.length - 1]?.close || 0;
+
       // Calculate risk/reward using current market data
       const riskReward = this.calculateRiskReward(series.daily, combinedAnalysis);
 
-      // Generate final decision with confidence
-      const decision = this.generateDecision(combinedAnalysis, riskReward, indicators);
+      // Generate final decision with confidence and capital-aware position sizing
+      const decision = this.generateDecision(combinedAnalysis, riskReward, indicators, {
+        capital,
+        symbol,
+        entryPrice
+      });
 
       return {
         system: this.systemId,
@@ -68,26 +76,22 @@ class ElderTripleScreen {
         decision: decision.action,
         confidence: decision.confidence,
         reasoning: combinedAnalysis.reasoning,
-
         // Detailed screen breakdown
-        screens: {
-          screen1: { ...screen1, description: 'Weekly Trend (MACD/EMA)' },
-          screen2: { ...screen2, description: 'Daily Counter-trend (Stochastic)' },
-          screen3: { ...screen3, description: 'Intraday Timing (Volume)' }
-        },
+        // screens: {
+        //   screen1: { ...screen1, description: 'Weekly Trend (MACD/EMA)' },
+        //   screen2: { ...screen2, description: 'Daily Counter-trend (Stochastic)' },
+        //   screen3: { ...screen3, description: 'Intraday Timing (Volume)' }
+        // },
 
         // Risk management
         riskReward: riskReward,
-
         // Execution details
-        executionPlan: decision.executionPlan,
-
+        execution: decision.execution,
         // Quality metrics for gate engine
         signalQuality: decision.signalQuality,
-
         // System metadata
-        timestamp: new Date().toISOString(),
-        dataQuality: this.assessDataQuality(indicators, series)
+        // timestamp: new Date().toISOString(),
+        // dataQuality: this.assessDataQuality(indicators, series)
       };
 
     } catch (error) {
@@ -456,6 +460,7 @@ class ElderTripleScreen {
     // ATR-based stop/targets per Elder
     let stopLoss = null, targets = null, riskReward = null;
     const round2 = v => Math.round(v * 100) / 100;
+    
     if (combinedAnalysis.overallSignal === 'BUY') {
       stopLoss = latest.low - atr * 1.5;
       targets = [latest.close + atr * 2, latest.close + atr * 3];
@@ -465,12 +470,43 @@ class ElderTripleScreen {
       targets = [latest.close - atr * 2, latest.close - atr * 3];
       riskReward = (latest.close - targets[0]) / (stopLoss - latest.close);
     } else if (combinedAnalysis.overallSignal === 'STRONG_WATCH' || combinedAnalysis.overallSignal === 'WATCH' || combinedAnalysis.overallSignal === 'WEAK_WATCH') {
+      // For WATCH signals, calculate conditional risk/reward based on anticipated EMA10 breakout entry
+      const anticipatedEntry = latest.ema10 || latest.EMA10 || latest.close * 1.002; // EMA10 or slight premium
+      
+      // Determine direction based on Screen 1 (weekly trend)
+      const isLongWatch = combinedAnalysis.supportingScreens.some(screen => screen.includes('Weekly Bullish'));
+      const isShortWatch = combinedAnalysis.supportingScreens.some(screen => screen.includes('Weekly Bearish'));
+      
+      if (isLongWatch) {
+        // Long WATCH: stop below recent low, targets above anticipated entry
+        stopLoss = latest.low - atr * 1.5;
+        targets = [anticipatedEntry + atr * 2, anticipatedEntry + atr * 3];
+        riskReward = (targets[0] - anticipatedEntry) / (anticipatedEntry - stopLoss);
+      } else if (isShortWatch) {
+        // Short WATCH: stop above recent high, targets below anticipated entry
+        stopLoss = latest.high + atr * 1.5;
+        targets = [anticipatedEntry - atr * 2, anticipatedEntry - atr * 3];
+        riskReward = (anticipatedEntry - targets[0]) / (stopLoss - anticipatedEntry);
+      } else {
+        // Neutral WATCH (shouldn't happen, but fallback)
+        return {
+          stopLoss: null,
+          targets: null,
+          riskReward: 0,
+          atr: round2(atr),
+          latestClose: round2(latest.close),
+          anticipatedEntry: round2(anticipatedEntry)
+        };
+      }
+      
       return {
-        stopLoss: null,
-        targets: null,
-        riskReward: 0,
+        stopLoss: round2(stopLoss),
+        targets: targets.map(round2),
+        riskReward: round2(riskReward),
         atr: round2(atr),
-        latestClose: round2(latest.close)
+        latestClose: round2(latest.close),
+        anticipatedEntry: round2(anticipatedEntry),
+        watchType: isLongWatch ? 'LONG_WATCH' : 'SHORT_WATCH'
       };
     } else {
       return {
@@ -491,9 +527,13 @@ class ElderTripleScreen {
   }
 
   /**
-   * Generate final Elder's Triple Screen decision with confidence and strict result object
+   * Generate final Elder's Triple Screen decision with confidence and capital-aware position sizing
+   * @param {Object} combinedAnalysis - Combined screen analysis
+   * @param {Object} riskReward - Risk/reward calculations
+   * @param {Object} indicators - Technical indicators
+   * @param {Object} capitalInfo - Capital and pricing information
    */
-  generateDecision(combinedAnalysis, riskReward, indicators) {
+  generateDecision(combinedAnalysis, riskReward, indicators, capitalInfo = {}) {
     // Strict Elder result object with internal signal for confidence calculation
     let internalSignal = combinedAnalysis.overallSignal;
     let confidence = this.calculateConfidence(combinedAnalysis, riskReward, internalSignal);
@@ -508,38 +548,26 @@ class ElderTripleScreen {
     // Calculate signal quality for this decision
     const signalQuality = this.calculateSignalQuality(combinedAnalysis, riskReward);
 
-    // Create execution plan based on signal
-    let executionPlan = null;
+    // Create execution plan with capital-aware position sizing
+    let execution = null;
     if (internalSignal === 'BUY' || internalSignal === 'SELL' || internalSignal === 'STRONG_WATCH' || internalSignal === 'WATCH' || internalSignal === 'WEAK_WATCH') {
-      executionPlan = {
-        strategy: 'Elder Triple Screen',
-        timeframe: 'Multi-timeframe (Weekly/Daily/Intraday)',
-        exitStrategy: {
-          stopLoss: riskReward.stopLoss,
-          targets: riskReward.targets,
-          trailingStop: signal === 'BUY' || signal === 'SELL' ? true : false
-        },
-        positionSizing: {
-          recommendation: confidence >= 0.8 ? 'FULL' : 
-                        confidence >= 0.7 ? 'REDUCED' : 
-                        confidence >= 0.6 ? 'CONSERVATIVE' : 
-                        confidence >= 0.5 ? 'HALF' : 
-                        confidence >= 0.4 ? 'QUARTER' : 'AVOID',
-          rationale: `${(confidence * 100).toFixed(1)}% confidence with ${combinedAnalysis.supportingScreens.length}/3 screens supporting`
-        },
-        riskReward: riskReward.riskReward
+      // Calculate position sizing based on available capital and Elder's confidence tiers
+      const positionSizing = this.calculateElderPositionSizing(confidence, capitalInfo, riskReward, combinedAnalysis);
+      execution = {
+        entry: this.buildPreciseEntryStrategy(combinedAnalysis, externalSignal, riskReward),
+        exit: this.buildPreciseExitStrategy(riskReward, combinedAnalysis, externalSignal),
+        position: positionSizing,
       };
     }
 
     return {
       action: externalSignal, // Use external mapped signal
       confidence,
-      strategy: 'Elder Triple Screen',
       reason,
       stopLoss: riskReward.stopLoss,
       targets: riskReward.targets,
       riskReward: riskReward.riskReward,
-      executionPlan: executionPlan,
+      execution: execution,
       signalQuality: signalQuality
     };
   }
@@ -711,6 +739,178 @@ class ElderTripleScreen {
     
     return forceIndex;
   }
+  /**
+   * Build precise entry strategy based on actual screen analysis
+   */
+  buildPreciseEntryStrategy(combinedAnalysis, signal, riskReward = {}) {
+    const strategy = {
+      conditions: [],
+      timing: 'Immediate on confirmation',
+      readiness: combinedAnalysis.overallSignal
+    };
+
+    // Build precise conditions based on actual screen results
+    combinedAnalysis.supportingScreens.forEach(screen => {
+      strategy.conditions.push(screen);
+    });
+
+    if (combinedAnalysis.conflictingScreens.length > 0) {
+      strategy.conflicts = combinedAnalysis.conflictingScreens;
+    }
+
+    // Set precise timing and entry details based on signal type
+    if (signal === 'BUY' || signal === 'SELL') {
+      strategy.timing = 'Execute immediately - all 3 screens aligned';
+      strategy.urgency = 'HIGH';
+      strategy.entryType = 'IMMEDIATE';
+      if (riskReward.latestClose) {
+        strategy.entryPrice = riskReward.latestClose;
+      }
+    } else if (signal === 'WATCH') {
+      if (combinedAnalysis.overallSignal === 'STRONG_WATCH') {
+        strategy.timing = 'Prime setup - await EMA10 breakout trigger';
+        strategy.urgency = 'MEDIUM';
+        strategy.nextTrigger = 'EMA10 breakout confirmation';
+      } else {
+        strategy.timing = 'Setup developing - await EMA10 breakout trigger';
+        strategy.urgency = 'LOW';
+        strategy.nextTrigger = 'EMA10 breakout confirmation';
+      }
+      
+      // Add anticipated entry details for WATCH signals
+      strategy.entryType = 'CONDITIONAL';
+      if (riskReward.anticipatedEntry) {
+        strategy.anticipatedEntry = riskReward.anticipatedEntry;
+        strategy.currentPrice = riskReward.latestClose;
+        strategy.triggerLevel = `EMA10 breakout at $${riskReward.anticipatedEntry}`;
+      }
+    } else {
+      strategy.timing = 'Hold - insufficient screen alignment';
+      strategy.urgency = 'NONE';
+      strategy.entryType = 'NONE';
+    }
+
+    return strategy;
+  }
+
+  /**
+   * Build precise exit strategy based on actual risk/reward and screen analysis
+   */
+  buildPreciseExitStrategy(riskReward, combinedAnalysis, signal) {
+    const strategy = {
+      stopLoss: riskReward.stopLoss,
+      targets: riskReward.targets,
+      timeStop: null,
+      systemExit: null,
+      trailingStop: false
+    };
+
+    // Set precise time stop based on screen analysis
+    if (combinedAnalysis.overallSignal === 'BUY' || combinedAnalysis.overallSignal === 'SELL') {
+      strategy.timeStop = 'Monitor weekly MACD histogram for trend reversal';
+      strategy.systemExit = 'Exit when weekly MACD histogram slope changes direction';
+    } else if (signal === 'WATCH') {
+      strategy.timeStop = 'Monitor for 5-10 trading days maximum';
+      strategy.systemExit = 'Cancel setup if weekly trend deteriorates or no EMA10 trigger';
+      strategy.triggerRequired = 'EMA10 breakout confirmation required before position establishment';
+    }
+
+    // Set trailing stop based on signal strength
+    if (signal === 'BUY' || signal === 'SELL') {
+      if (combinedAnalysis.overallStrength >= 85) {
+        strategy.trailingStop = 'Implement 1.5x ATR trailing stop after 2x ATR profit';
+      } else {
+        strategy.trailingStop = 'Consider trailing stop after initial target hit';
+      }
+    } else if (signal === 'WATCH') {
+      strategy.trailingStop = 'Plan 1.5x ATR trailing stop after entry and initial move';
+    }
+
+    return strategy;
+  }
+
+  /**
+   * Calculate Elder's confidence-based position sizing with available capital
+   * Elder's approach: Higher confidence = larger position, with risk management
+   */
+  calculateElderPositionSizing(confidence, capitalInfo = {}, riskReward = {}, combinedAnalysis = {}) {
+    const { capital = 100000, entryPrice = 100 } = capitalInfo;
+    const { stopLoss = 0, riskReward: rrRatio = 1, anticipatedEntry } = riskReward;
+    
+    // Use anticipated entry for WATCH signals, actual entry for BUY/SELL
+    const effectiveEntryPrice = anticipatedEntry || entryPrice;
+    
+    // Elder's 6-tier confidence-based position sizing
+    let recommendation = 'AVOID';
+    let maxPosition = 0;
+    let riskPercent = 0;
+    
+    if (confidence >= 0.85) {
+      recommendation = 'FULL';
+      maxPosition = 0.10; // 10% of portfolio max
+      riskPercent = 2.0;  // 2% risk for highest confidence
+    } else if (confidence >= 0.75) {
+      recommendation = 'REDUCED';
+      maxPosition = 0.075; // 7.5% of portfolio
+      riskPercent = 1.8;
+    } else if (confidence >= 0.65) {
+      recommendation = 'CONSERVATIVE'; 
+      maxPosition = 0.06; // 6% of portfolio
+      riskPercent = 1.5;
+    } else if (confidence >= 0.55) {
+      recommendation = 'HALF';
+      maxPosition = 0.05; // 5% of portfolio
+      riskPercent = 1.2;
+    } else if (confidence >= 0.45) {
+      recommendation = 'QUARTER';
+      maxPosition = 0.03; // 3% of portfolio
+      riskPercent = 1.0;
+    } else {
+      recommendation = 'AVOID';
+      maxPosition = 0;
+      riskPercent = 0;
+    }
+
+    // Calculate actual position sizing
+    let shares = 0;
+    let positionValue = 0;
+    let riskAmount = 0;
+    
+    if (recommendation !== 'AVOID' && effectiveEntryPrice > 0) {
+      // Calculate risk-based position size (Elder's method)
+      const riskPerShare = Math.abs(effectiveEntryPrice - stopLoss);
+      if (riskPerShare > 0) {
+        riskAmount = capital * (riskPercent / 100);
+        shares = Math.floor(riskAmount / riskPerShare);
+        positionValue = shares * effectiveEntryPrice;
+        
+        // Apply maximum position limit
+        const maxPositionValue = capital * maxPosition;
+        if (positionValue > maxPositionValue) {
+          positionValue = maxPositionValue;
+          shares = Math.floor(maxPositionValue / effectiveEntryPrice);
+          riskAmount = shares * riskPerShare;
+        }
+      }
+    }
+
+    return {
+      recommendation,
+      riskPercent,
+      maxPosition,
+      shares: Math.max(0, shares),
+      positionValue: positionValue,
+      riskAmount: riskAmount,
+      riskPerShare: Math.round((Math.abs(effectiveEntryPrice - stopLoss)) * 100) / 100,
+      stopDistance: stopLoss > 0 ? Math.round(((effectiveEntryPrice - stopLoss) / effectiveEntryPrice) * 10000) / 100 : 0, // Percentage with 2 decimals
+      entryType: anticipatedEntry ? 'CONDITIONAL' : 'IMMEDIATE',
+      effectiveEntry: Math.round(effectiveEntryPrice * 100) / 100
+    };
+  }
+
+  /**
+   * Create avoid signal for error conditions
+   */
   createAvoidSignal(reasonCode, message) {
     return {
       system: this.systemId,

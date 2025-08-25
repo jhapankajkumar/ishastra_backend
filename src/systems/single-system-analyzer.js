@@ -44,9 +44,15 @@ class SingleSystemAnalyzer {
         throw new Error(`Unknown trading system: ${systemId}`);
       }
 
-      // Phase 2: Execute Trading System Analysis
-      const systemAnalysis = system.analyze(systemData);
-      console.log(`📊 ${systemId} Analysis Result:`, systemAnalysis.decision, systemAnalysis.confidence, systemAnalysis.reasoning);
+      // Phase 2: Execute Trading System Analysis with capital information
+      const systemAnalysisOptions = {
+        capital: analysisContext.capital,
+        symbol: analysisContext.symbol,
+        currentPrice: analysisContext.technical?.currentPrice || analysisContext.technical?.latestPrice
+      };
+      const systemAnalysis = system.analyze(systemData, systemAnalysisOptions);
+      console.log(`📊 ${systemId} Analysis Result:`, analysisContext.symbol, systemAnalysis.decision, systemAnalysis.confidence, systemAnalysis.reasoning);
+      console.log(`📊 ${systemId} Analysis:`, systemAnalysis);
       if (!systemAnalysis || systemAnalysis.decision === 'AVOID') {
         return this.createSystemBlockedResult(systemAnalysis, 'System analysis failed or returned AVOID');
       }
@@ -61,6 +67,7 @@ class SingleSystemAnalyzer {
 
       // Phase 4: Execute Gate Engine Analysis
       const gateEngineResult = await this.executeGateEngine(analysisContext);
+      // console.log(`🤖 Gate Engine Result:`, gateEngineResult);
 
       // Phase 5: Combine System + Gate Results
       const finalResult = this.combineFinalResult(systemAnalysis, gateEngineResult, systemData);
@@ -177,7 +184,6 @@ class SingleSystemAnalyzer {
         reasoning: systemAnalysis.reasoning,
         signalQuality: systemAnalysis.signalQuality,
         riskReward: systemAnalysis.riskReward,
-        screens: systemAnalysis.screens,
         executionPlan: systemAnalysis.executionPlan
       },
 

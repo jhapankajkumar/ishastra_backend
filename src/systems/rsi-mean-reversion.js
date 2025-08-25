@@ -38,7 +38,7 @@ class RSIMeanReversion {
     /**
      * Main analysis method for RSI mean reversion detection
      * @param {Object} data - Technical data with OHLCV and indicators
-     * @param {Object} options - Analysis options
+     * @param {Object} options - Analysis options including capital, symbol, currentPrice
      * @returns {Object} - Complete RSI mean reversion analysis result
      */
     analyze(data, options = {}) {
@@ -50,6 +50,10 @@ class RSIMeanReversion {
             if (!this.validateData(series, indicators)) {
                 return this.createAvoidSignal('INSUFFICIENT_DATA', 'Missing required OHLCV data or RSI indicator');
             }
+
+            // Extract capital and pricing information from options
+            const { capital, symbol, currentPrice } = options;
+            const entryPrice = currentPrice || series.daily[series.daily.length - 1]?.close || 0;
 
             const dailyData = series.daily;
             const latest = dailyData[dailyData.length - 1];
@@ -69,51 +73,40 @@ class RSIMeanReversion {
             // Phase 4: Generate trading signals
             const signalAnalysis = this.generateSignals(rsiAnalysis, supportAnalysis, candleAnalysis, latest);
 
-            if (signalAnalysis.signal === 'AVOID') {
-                return {
-                    system: this.systemId,
-                    systemName: this.name,
-                    decision: signalAnalysis.signal,
-                    confidence: 0,
-                    reasoning: [signalAnalysis.reasoning]
-                }
-            }
-
             // Phase 5: Calculate risk/reward
-            const riskReward = this.calculateRisk(signalAnalysis, supportAnalysis, latest);
-            console.log(`  📊 Phase 5: Risk/Reward analysis complete:`, riskReward);
+            const riskAssessment = this.calculateRisk(signalAnalysis, supportAnalysis, latest);
 
             // Phase 6: Final decision
-            const finalDecision = this.makeFinalDecision(signalAnalysis, riskReward, rsiAnalysis, supportAnalysis, candleAnalysis);
+            const finalDecision = this.makeFinalDecision(signalAnalysis, riskAssessment, rsiAnalysis, supportAnalysis, candleAnalysis);
 
+            // Calculate enhanced risk/reward with conditional calculations for WATCH signals
+            const enhancedRiskReward = this.calculateRiskReward(riskAssessment, signalAnalysis, finalDecision.signal, series, currentPrice);
+
+            // Create execution plan with capital-aware position sizing
+            let execution = null;
+            if (finalDecision.signal !== 'AVOID') {
+                execution = this.createExecutionPlan(finalDecision, rsiAnalysis, supportAnalysis, candleAnalysis, riskAssessment, signalAnalysis, series, options);
+            }
+
+            // Calculate signal quality grade
+            const signalQuality = this.calculateSignalQuality(finalDecision, rsiAnalysis, supportAnalysis);
+
+            // Build reasoning array from final decision
+            const reasoning = Array.isArray(finalDecision.reasoning) ? finalDecision.reasoning : [finalDecision.reasoning];
+
+            // Return standardized response structure matching Elder Triple Screen
             return {
                 system: this.systemId,
                 systemName: this.name,
                 decision: finalDecision.signal,
                 confidence: finalDecision.confidence,
-                reasoning: [finalDecision.reasoning],
-
-                // Analysis breakdown
-                analysis: {
-                    rsi: rsiAnalysis,
-                    support: supportAnalysis,
-                    candle: candleAnalysis,
-                    signal: signalAnalysis
-                },
-
-                // Risk management
-                riskReward: riskReward,
-
-                // Execution details
-                executionPlan: finalDecision.executionPlan,
-
-                // Quality metrics
-                signalQuality: this.calculateSignalQuality(finalDecision, rsiAnalysis, supportAnalysis),
-
-                // System metadata
-                timestamp: new Date().toISOString(),
-                systemVersion: this.version,
-                dataQuality: this.assessDataQuality(dailyData, indicators)
+                reasoning: reasoning,
+                // Risk management (standardized with Elder)
+                riskReward: enhancedRiskReward,
+                // Quality metrics for gate engine (standardized with Elder)
+                signalQuality: signalQuality,
+                // Execution details (standardized with Elder)
+                execution: execution
             };
 
         } catch (error) {
@@ -456,9 +449,7 @@ class RSIMeanReversion {
             stopLoss = projectedStop;
             targets = [projectedTarget];
             riskReward = (projectedTarget - projectedEntry) / (projectedEntry - projectedStop);
-        } else {
-            entryPrice = 0;
-        }
+        } 
 
         return {
             stopLoss: Math.round(stopLoss * 100) / 100,
@@ -472,70 +463,343 @@ class RSIMeanReversion {
     /**
      * Phase 6: Make final trading decision
      */
-    makeFinalDecision(signalAnalysis, riskReward, rsiAnalysis, supportAnalysis, candleAnalysis) {
+    makeFinalDecision(signalAnalysis, riskAssessment, rsiAnalysis, supportAnalysis, candleAnalysis) {
         //console.log(`  📈 Phase 6: Making final decision...`);
 
         let finalSignal = signalAnalysis.signal;
         let confidence = 0.5;
         let reasoning = [signalAnalysis.reasoning];
+        const { riskReward } = riskAssessment;
 
         // Use dynamic confidence for ALL signal types
         confidence = this.calculateRSIMeanConfidence(rsiAnalysis, supportAnalysis, candleAnalysis, signalAnalysis, finalSignal);
 
+        // Adjust confidence based on risk/reward (consistent with other systems)
+        if (riskReward < 1.5 && finalSignal !== 'AVOID') {
+            confidence *= 0.7; // Reduce confidence for poor risk/reward
+            reasoning.push('Poor risk/reward ratio reduces confidence');
+        } else if (riskReward > 2.5) {
+            confidence = Math.min(confidence * 1.2, 1.0); // Boost confidence for excellent risk/reward
+            reasoning.push('Excellent risk/reward ratio');
+        }
+
         if (finalSignal === 'AVOID') {
-            confidence = 0;
+            confidence = 0.2;
             reasoning.push('Avoiding trade due to unfavorable conditions');
         }
-        // Build execution plan
-        const executionPlan = this.buildExecutionPlan(finalSignal, riskReward, rsiAnalysis, supportAnalysis);
 
         return {
             signal: finalSignal,
-            confidence: Math.round(confidence * 100) / 100,
-            reasoning: reasoning.join('; '),
-            executionPlan
+            confidence: Math.round(confidence * 10000) / 10000, // 4 decimal precision
+            reasoning: reasoning.join('; ')
         };
     }
 
     /**
-     * Build execution plan based on signal
+     * Calculate enhanced risk/reward with conditional calculations for WATCH signals
      */
-    buildExecutionPlan(signal, riskReward, rsiAnalysis, supportAnalysis) {
-        const plan = {
-            action: signal,
-            entryStrategy: null,
-            exitStrategy: null,
-            positionSizing: null
-        };
+    calculateRiskReward(riskAssessment, signalAnalysis, signal, series, currentPrice) {
+        const latest = series.daily[series.daily.length - 1];
+        const latestClose = currentPrice || latest.close;
+        
+        let entryPrice = signalAnalysis.entryPrice;
+        let stopLoss = riskAssessment.stopLoss;
+        let targets = riskAssessment.targets;
+        let riskReward = riskAssessment.riskReward;
 
-        if (signal === 'BUY') {
-            plan.entryStrategy = {
-                type: 'MEAN_REVERSION',
-                method: 'Market order on oversold bounce confirmation',
-                conditions: ['RSI oversold and rising', 'Price near support', 'Bullish candle structure']
-            };
-
-            plan.exitStrategy = {
-                stopLoss: riskReward.stopLoss,
-                targets: riskReward.targets,
-                timeStop: 'Review if no bounce within 3-5 days',
-                rsiExit: 'Consider partial exit when RSI reaches 50-60'
-            };
-
-            plan.positionSizing = {
-                risk: '1-2% of portfolio at stop loss',
-                recommendation: riskReward.riskReward >= 2.5 ? 'FULL' : 'HALF'
-            };
-
-        } else if (signal === 'WATCH') {
-            plan.entryStrategy = {
-                type: 'PENDING_CONFIRMATION',
-                method: 'Wait for all conditions to align',
-                conditions: ['Monitor RSI for oversold + rising', 'Watch for support test', 'Confirm bullish candle']
+        // For WATCH signals, use conditional calculations with anticipated entry
+        if (signal === 'WATCH') {
+            // Anticipated entry when RSI reversal conditions are met
+            const anticipatedEntry = latestClose * 1.005; // Slight premium for entry confirmation
+            
+            return {
+                latestClose,
+                entryPrice: null, // No immediate entry for WATCH
+                anticipatedEntry: anticipatedEntry,
+                stopLoss,
+                targets,
+                riskReward: Math.round(riskReward * 100) / 100,
+                riskAmount: anticipatedEntry > stopLoss ? anticipatedEntry - stopLoss : 0,
+                potentialGain: targets.length > 0 ? targets[0] - anticipatedEntry : 0,
+                watchType: 'OVERSOLD_BOUNCE_WATCH'
             };
         }
 
-        return plan;
+        // For immediate BUY/SELL signals
+        return {
+            latestClose,
+            entryPrice,
+            anticipatedEntry: null,
+            stopLoss,
+            targets,
+            riskReward: Math.round(riskReward * 100) / 100,
+            riskAmount: entryPrice > stopLoss ? entryPrice - stopLoss : 0,
+            potentialGain: targets.length > 0 ? targets[0] - entryPrice : 0
+        };
+    }
+
+    /**
+     * Create comprehensive execution plan with capital-aware position sizing
+     */
+    createExecutionPlan(finalDecision, rsiAnalysis, supportAnalysis, candleAnalysis, riskAssessment, signalAnalysis, series, options) {
+        const { capital, symbol, currentPrice } = options;
+        const signal = finalDecision.signal;
+        
+        // Calculate position sizing
+        const positionSizing = this.calculateRSIMeanPositionSizing(
+            finalDecision.confidence,
+            rsiAnalysis,
+            supportAnalysis,
+            riskAssessment,
+            capital,
+            currentPrice,
+            signal
+        );
+
+        // Build dynamic entry strategy
+        const entryStrategy = this.buildPreciseRSIEntryStrategy(rsiAnalysis, supportAnalysis, candleAnalysis, signalAnalysis, signal);
+
+        // Build dynamic exit strategy  
+        const exitStrategy = this.buildPreciseRSIExitStrategy(riskAssessment, rsiAnalysis, supportAnalysis, signal, series);
+
+        return {
+            entry: entryStrategy,
+            exit: exitStrategy,
+            position: positionSizing,
+            riskManagement: {
+                maxRisk: positionSizing.riskAmount,
+                stopLossLevel: riskAssessment.stopLoss,
+                targetLevels: riskAssessment.targets,
+                riskRewardRatio: riskAssessment.riskReward
+            },
+            executionNotes: this.generateRSIExecutionNotes(rsiAnalysis, supportAnalysis, signal)
+        };
+    }
+
+    /**
+     * Calculate RSI Mean confidence-based position sizing with available capital
+     */
+    calculateRSIMeanPositionSizing(confidence, rsiAnalysis, supportAnalysis, riskAssessment, capital, currentPrice, signal) {
+        if (!capital || !currentPrice || !riskAssessment.stopLoss) {
+            return {
+                recommendation: 'AVOID',
+                riskPercent: 0,
+                maxPosition: 0,
+                shares: 0,
+                positionValue: 0,
+                riskAmount: 0,
+                riskPerShare: 0,
+                stopDistance: 0,
+                entryType: 'NONE',
+                effectiveEntry: 0
+            };
+        }
+
+        const rsi14 = rsiAnalysis.currentRSI || 50;
+        const stopLoss = riskAssessment.stopLoss;
+        
+        // Determine effective entry price (conditional vs immediate)
+        const isConditional = signal === 'WATCH';
+        let effectiveEntryPrice = currentPrice;
+        
+        if (isConditional) {
+            // Use anticipated entry for WATCH signals
+            effectiveEntryPrice = currentPrice * 1.005; // Slight premium for confirmation
+        }
+
+        // RSI Mean 6-tier confidence-based position sizing
+        let recommendation, maxPosition, riskPercent;
+
+        if (confidence >= 0.85 && rsi14 <= 20) {
+            // Extremely oversold with high confidence
+            recommendation = 'FULL';
+            maxPosition = 0.08; // 8% of portfolio max
+            riskPercent = 2.0;  // 2% risk for highest confidence
+        } else if (confidence >= 0.75 && rsi14 <= 25) {
+            // Very oversold with high confidence
+            recommendation = 'LARGE';
+            maxPosition = 0.06;
+            riskPercent = 1.5;
+        } else if (confidence >= 0.65 && rsi14 <= 30) {
+            // Oversold with good confidence
+            recommendation = 'MODERATE';
+            maxPosition = 0.04;
+            riskPercent = 1.2;
+        } else if (confidence >= 0.55) {
+            // Moderate setup
+            recommendation = 'SMALL';
+            maxPosition = 0.03;
+            riskPercent = 1.0;
+        } else if (confidence >= 0.45) {
+            // Weak setup
+            recommendation = 'MINIMAL';
+            maxPosition = 0.02;
+            riskPercent = 0.8;
+        } else {
+            recommendation = 'AVOID';
+            maxPosition = 0;
+            riskPercent = 0;
+        }
+
+        // Calculate actual position sizing
+        let shares = 0;
+        let positionValue = 0;
+        let riskAmount = 0;
+        
+        if (recommendation !== 'AVOID' && effectiveEntryPrice > 0 && stopLoss > 0) {
+            // Calculate risk-based position size
+            const riskPerShare = Math.abs(effectiveEntryPrice - stopLoss);
+            if (riskPerShare > 0) {
+                const targetRiskAmount = capital * (riskPercent / 100);
+                shares = Math.floor(targetRiskAmount / riskPerShare);
+                
+                // Apply max position limit
+                const maxShares = Math.floor((capital * maxPosition) / effectiveEntryPrice);
+                shares = Math.min(shares, maxShares);
+                
+                positionValue = shares * effectiveEntryPrice;
+                riskAmount = shares * riskPerShare;
+            }
+        }
+
+        return {
+            recommendation,
+            riskPercent,
+            maxPosition,
+            shares: Math.max(0, shares),
+            positionValue: Math.round(positionValue * 100) / 100,
+            riskAmount: Math.round(riskAmount * 100) / 100,
+            riskPerShare: Math.round((Math.abs(effectiveEntryPrice - stopLoss)) * 100) / 100,
+            stopDistance: stopLoss > 0 ? Math.round(((effectiveEntryPrice - stopLoss) / effectiveEntryPrice) * 10000) / 100 : 0,
+            entryType: isConditional ? 'CONDITIONAL' : 'IMMEDIATE',
+            effectiveEntry: Math.round(effectiveEntryPrice * 100) / 100
+        };
+    }
+
+    /**
+     * Build precise entry strategy based on RSI mean reversion analysis
+     */
+    buildPreciseRSIEntryStrategy(rsiAnalysis, supportAnalysis, candleAnalysis, signalAnalysis, signal) {
+        const strategy = {
+            conditions: [],
+            timing: 'Immediate on confirmation',
+            readiness: signal
+        };
+
+        // Build precise conditions based on actual analysis results
+        if (rsiAnalysis.isValid) {
+            strategy.conditions.push(`RSI oversold (${rsiAnalysis.currentRSI.toFixed(1)}) and rising from previous period`);
+        }
+        
+        if (supportAnalysis.hasNearbySupport && supportAnalysis.bestSupport) {
+            strategy.conditions.push(`Price near ${supportAnalysis.bestSupport.type} support at $${supportAnalysis.bestSupport.level.toFixed(2)}`);
+        }
+        
+        if (candleAnalysis.isValid) {
+            strategy.conditions.push(`Bullish candle with strong close (${(candleAnalysis.closePosition * 100).toFixed(0)}% of range)`);
+        }
+
+        // Add volume confirmation if available
+        if (candleAnalysis.hasVolumeIncrease) {
+            strategy.conditions.push('Volume increase supporting bounce setup');
+        }
+
+        // Set precise timing and entry details based on signal type
+        if (signal === 'BUY') {
+            strategy.timing = 'Execute immediately - all oversold bounce conditions confirmed';
+            strategy.urgency = 'HIGH';
+            strategy.entryType = 'IMMEDIATE';
+            if (signalAnalysis.entryPrice) {
+                strategy.entryPrice = signalAnalysis.entryPrice;
+            }
+        } else if (signal === 'WATCH') {
+            strategy.timing = 'Setup developing - await final bounce confirmation';
+            strategy.urgency = 'MEDIUM';
+            strategy.entryType = 'CONDITIONAL';
+            strategy.nextTrigger = 'Bullish candle confirmation with RSI rising from oversold';
+            
+            if (signalAnalysis.entryPrice) {
+                strategy.anticipatedEntry = signalAnalysis.entryPrice * 1.005; // Small premium for confirmation
+                strategy.currentPrice = signalAnalysis.entryPrice;
+                strategy.triggerLevel = `Oversold bounce confirmation at $${(signalAnalysis.entryPrice * 1.005).toFixed(2)}`;
+            }
+        } else {
+            strategy.timing = 'Hold - RSI mean reversion conditions not satisfied';
+            strategy.urgency = 'NONE';
+            strategy.entryType = 'NONE';
+        }
+
+        return strategy;
+    }
+
+    /**
+     * Build precise exit strategy based on RSI mean reversion risk assessment
+     */
+    buildPreciseRSIExitStrategy(riskAssessment, rsiAnalysis, supportAnalysis, signal, series) {
+        const strategy = {
+            stopLoss: riskAssessment.stopLoss,
+            targets: riskAssessment.targets,
+            timeStop: null,
+            systemExit: null,
+            trailingStop: false
+        };
+
+        // Set precise time stop based on mean reversion nature
+        if (signal === 'BUY') {
+            strategy.timeStop = 'Monitor for 3-7 trading days maximum for mean reversion completion';
+            strategy.systemExit = 'Exit when RSI reaches 50-60 range (mean reversion complete) or support breaks';
+            strategy.trailingStop = 'Consider 1.5x ATR trailing stop after initial target hit';
+        } else if (signal === 'WATCH') {
+            strategy.timeStop = 'Monitor for 3-5 trading days for oversold bounce setup confirmation';
+            strategy.systemExit = 'Cancel setup if RSI moves above 40 without bounce or support breaks';
+            strategy.triggerRequired = 'Oversold bounce confirmation with bullish candle required';
+            strategy.trailingStop = 'Plan 1.5x ATR trailing stop after bounce confirmation entry';
+        }
+
+        // Add RSI-specific exit conditions for additional clarity
+        if (rsiAnalysis.currentRSI < 25) {
+            // Deep oversold - expect stronger bounce
+            strategy.timeStop = `${strategy.timeStop} (Deep oversold RSI: ${rsiAnalysis.currentRSI.toFixed(1)})`;
+            if (signal === 'BUY') {
+                strategy.trailingStop = 'Implement aggressive 1x ATR trailing stop - strong bounce expected';
+            }
+        }
+
+        // Support-specific exit conditions
+        if (supportAnalysis.bestSupport) {
+            const supportLevel = supportAnalysis.bestSupport.level.toFixed(2);
+            const supportType = supportAnalysis.bestSupport.type;
+            
+            if (signal === 'BUY') {
+                strategy.systemExit = `${strategy.systemExit} | Critical: Exit if ${supportType} support at $${supportLevel} breaks`;
+            } else if (signal === 'WATCH') {
+                strategy.systemExit = `${strategy.systemExit} | Cancel if ${supportType} support at $${supportLevel} fails`;
+            }
+        }
+
+        return strategy;
+    }
+
+    /**
+     * Generate execution notes specific to RSI mean reversion methodology
+     */
+    generateRSIExecutionNotes(rsiAnalysis, supportAnalysis, signal) {
+        const notes = [];
+
+        if (signal === 'BUY') {
+            notes.push('Mean reversion trade - expect quick bounce from oversold levels');
+            notes.push(`RSI at ${rsiAnalysis.currentRSI.toFixed(1)} suggests strong oversold condition`);
+            if (supportAnalysis.bestSupport) {
+                notes.push(`Support at ${supportAnalysis.bestSupport.type} ($${supportAnalysis.bestSupport.level.toFixed(2)}) provides downside protection`);
+            }
+            notes.push('Monitor RSI for exit signals as it approaches 50-60 range');
+        } else if (signal === 'WATCH') {
+            notes.push('RSI oversold setup developing - await confirmation');
+            notes.push('Mean reversion trades typically develop quickly once triggered');
+            notes.push('High probability setup if all conditions align');
+        }
+
+        return notes;
     }
 
     /**
@@ -616,11 +880,11 @@ class RSIMeanReversion {
     }
 
     /**
-     * Create AVOID signal with dynamic confidence
+     * Create AVOID signal with standardized structure (matching Elder)
      */
     createAvoidSignal(code, message, analysisData = null) {
         // Use dynamic confidence even for AVOID signals
-        let confidence = 0.25; // Base for AVOID
+        let confidence = 0.2; // Base for AVOID
 
         // If we have analysis data, use dynamic confidence
         if (analysisData) {
@@ -639,15 +903,11 @@ class RSIMeanReversion {
             decision: 'AVOID',
             confidence: confidence,
             reasoning: [message],
-
-            analysis: null,
-            riskReward: null,
-            executionPlan: null,
+            riskReward: { riskReward: 0 },
             signalQuality: { grade: 'F', percentage: Math.round(confidence * 100) },
-
-            timestamp: new Date().toISOString(),
-            systemVersion: this.version,
-            errorCode: code
+            execution: null,
+            error: code,
+            timestamp: new Date().toISOString()
         };
     }
 

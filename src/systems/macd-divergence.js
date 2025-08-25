@@ -87,11 +87,39 @@ class MACDDivergence {
                 };
             }
 
-            // Phase 6: Calculate risk/reward
-            const riskReward = this.calculateRisk(signalAnalysis, swingAnalysis, latest, series);
+            // Phase 6: Assess risk
+            const riskAssessment = this.assessRisk(signalAnalysis, swingAnalysis, latest, series);
             
-            // Phase 7: Final decision
-            const finalDecision = this.makeFinalDecision(signalAnalysis, riskReward, divergenceAnalysis, candleAnalysis, swingAnalysis);
+            // Phase 7: Make final decision
+            const finalDecision = this.makeFinalDecision(signalAnalysis, riskAssessment, divergenceAnalysis, candleAnalysis, swingAnalysis);
+
+            // Extract capital and pricing information from options
+            const { capital, symbol, currentPrice } = options;
+            const entryPrice = currentPrice || latest.close;
+
+            // Phase 8: Calculate risk/reward with confidence-adjusted parameters
+            const riskReward = this.calculateRiskReward(finalDecision, riskAssessment, divergenceAnalysis, swingAnalysis, latest);
+
+            // Create execution plan with capital-aware position sizing (matching Elder format)
+            let execution = null;
+            if (finalDecision.signal === 'BUY' || finalDecision.signal === 'SELL' || finalDecision.signal === 'WATCH') {
+                // Build entry strategy first to get anticipatedEntry for WATCH signals
+                const entryStrategy = this.buildPreciseMACDEntryStrategy(riskAssessment, divergenceAnalysis, candleAnalysis, finalDecision.signal, latest);
+                
+                // Create enhanced risk reward data including anticipated entry for position sizing
+                const enhancedRiskReward = {
+                    ...riskReward,
+                    anticipatedEntry: entryStrategy.anticipatedEntry
+                };
+                
+                // Calculate position sizing based on available capital and confidence
+                const positionSizing = this.calculateMACDPositionSizing(finalDecision.confidence, { capital, symbol, entryPrice }, enhancedRiskReward, divergenceAnalysis);
+                execution = {
+                    entry: entryStrategy,
+                    exit: this.buildPreciseMACDExitStrategy(riskAssessment, divergenceAnalysis, candleAnalysis, finalDecision.signal, latest),
+                    position: positionSizing,
+                };
+            }
 
             return {
                 system: this.systemId,
@@ -100,31 +128,14 @@ class MACDDivergence {
                 confidence: finalDecision.confidence,
                 reasoning: [finalDecision.reasoning],
                 
-                // Position sizing recommendation at top level for controller
-                recommendation: finalDecision.executionPlan?.positionSizing?.recommendation || 'FULL',
-                
-                // Analysis breakdown
-                analysis: {
-                    macd: macdAnalysis,
-                    swings: swingAnalysis,
-                    divergence: divergenceAnalysis,
-                    candle: candleAnalysis,
-                    signal: signalAnalysis
-                },
-                
-                // Risk management
+                // Risk management (matching Elder format - only riskReward, no riskAssessment)
                 riskReward: riskReward,
                 
-                // Execution details
-                executionPlan: finalDecision.executionPlan,
+                // Execution details (matching Elder format with position sizing)
+                execution: execution,
                 
                 // Quality metrics
                 signalQuality: this.calculateSignalQuality(finalDecision, divergenceAnalysis),
-                
-                // System metadata
-                timestamp: new Date().toISOString(),
-                systemVersion: this.version,
-                dataQuality: this.assessDataQuality(dailyData, indicators)
             };
 
         } catch (error) {
@@ -862,71 +873,112 @@ class MACDDivergence {
     }
 
     /**
-     * Phase 6: Calculate risk/reward metrics
+     * Phase 6: Assess risk metrics
      */
-    calculateRisk(signalAnalysis, swingAnalysis, latest, series) {
-        //console.log(`  📊 Phase 6: Calculating risk/reward...`);
+    assessRisk(signalAnalysis, swingAnalysis, latest, series) {
+        //console.log(`  📊 Phase 6: Assessing risk...`);
         const entryPrice = signalAnalysis.entryPrice;
         let stopLoss = 0;
         let targets = [];
-        let riskReward = 0;
-
+        
         if (signalAnalysis.signal === 'BUY') {
-            // For bullish divergence: stop below recent swing low
-            const recentLows = swingAnalysis.price.lows.slice(-2);
-            const swingLowPrice = recentLows.length > 0 ? Math.min(...recentLows.map(l => l.value)) : entryPrice * 0.95;
-            const fallbackStop = entryPrice * (1 - this.STOP_LOSS_PCT);
+            // Stop loss: below recent low or percentage-based
+            const recentLow = Math.min(...series.daily.slice(-10).map(d => d.low));
+            const percentageStop = entryPrice * (1 - this.STOP_LOSS_PCT);
+            stopLoss = Math.min(recentLow * 0.98, percentageStop); // 2% below recent low or 5% stop
+            
+            // Targets based on divergence strength and ATR
             const atr = this.calculateATR(series.daily.slice(-14));
-            stopLoss = Math.min(swingLowPrice - atr * 0.5, fallbackStop);
-
-            // Targets: Next resistance levels or multiple R targets
-            const risk = entryPrice - stopLoss;
-            const target1 = entryPrice + (risk * this.TARGET_MULTIPLE);
-            const target2 = entryPrice + (risk * this.TARGET_MULTIPLE * 1.5);
-            targets = [target1, target2];
-            // Recalculate riskReward cleanly after targets
-            riskReward = risk > 0 ? (target1 - entryPrice) / risk : 0;
-
+            targets = [
+                entryPrice + (atr * 2), // First target: 2x ATR
+                entryPrice + (atr * 3), // Second target: 3x ATR
+                entryPrice + (atr * 4)  // Third target: 4x ATR
+            ];
+            
         } else if (signalAnalysis.signal === 'SELL') {
-            // For bearish divergence: stop above recent swing high
-            const recentHighs = swingAnalysis.price.highs.slice(-2);
-            const swingHighPrice = recentHighs.length > 0 ? Math.max(...recentHighs.map(h => h.value)) : entryPrice * 1.05;
-            const fallbackStop = entryPrice * (1 + this.STOP_LOSS_PCT);
+            // Stop loss: above recent high or percentage-based
+            const recentHigh = Math.max(...series.daily.slice(-10).map(d => d.high));
+            const percentageStop = entryPrice * (1 + this.STOP_LOSS_PCT);
+            stopLoss = Math.max(recentHigh * 1.02, percentageStop); // 2% above recent high or 5% stop
+            
+            // Targets based on divergence strength and ATR
             const atr = this.calculateATR(series.daily.slice(-14));
-            stopLoss = Math.max(swingHighPrice + atr * 0.5, fallbackStop);
-
-            // Targets: Next support levels or multiple R targets
-            const risk = stopLoss - entryPrice;
-            const target1 = entryPrice - (risk * this.TARGET_MULTIPLE);
-            const target2 = entryPrice - (risk * this.TARGET_MULTIPLE * 1.5);
-            targets = [target1, target2];
-            // Recalculate riskReward cleanly after targets
-            riskReward = risk > 0 ? (entryPrice - target1) / risk : 0;
-
+            targets = [
+                entryPrice - (atr * 2), // First target: 2x ATR
+                entryPrice - (atr * 3), // Second target: 3x ATR
+                entryPrice - (atr * 4)  // Third target: 4x ATR
+            ];
+            
         } else if (signalAnalysis.signal === 'WATCH') {
             // Projected risk/reward for watch scenarios
-            const projectedStop = signalAnalysis.factors.divergenceType === 'BULLISH' ?
-                entryPrice * 0.95 : entryPrice * 1.05;
-            const projectedTarget = signalAnalysis.factors.divergenceType === 'BULLISH' ?
-                entryPrice * 1.08 : entryPrice * 0.92;
-
-            stopLoss = projectedStop;
-            targets = [projectedTarget];
-            riskReward = Math.abs(projectedTarget - entryPrice) / Math.abs(entryPrice - projectedStop);
+            const projectedEntry = signalAnalysis.signal === 'BUY' ? latest.close * 1.02 : latest.close * 0.98;
+            const atr = this.calculateATR(series.daily.slice(-14));
+            
+            if (signalAnalysis.factors.divergenceType === 'BULLISH') {
+                stopLoss = projectedEntry * (1 - this.STOP_LOSS_PCT);
+                targets = [projectedEntry + (atr * 2)];
+            } else {
+                stopLoss = projectedEntry * (1 + this.STOP_LOSS_PCT);
+                targets = [projectedEntry - (atr * 2)];
+            }
         }
+        
+        return {
+            stopLoss: Math.round(stopLoss * 100) / 100,
+            targets: targets.map(t => Math.round(t * 100) / 100),
+            entryPrice: Math.round(entryPrice * 100) / 100,
+            assessmentType: 'MACD_DIVERGENCE'
+        };
+    }
 
+    /**
+     * Phase 8: Calculate risk/reward metrics (renamed from calculateRisk)
+     */
+    calculateRiskReward(finalDecision, riskAssessment, divergenceAnalysis, swingAnalysis, latest) {
+        //console.log(`  📊 Phase 8: Calculating confidence-adjusted risk/reward...`);
+        
+        // Use base risk assessment but adjust based on final confidence
+        let stopLoss = riskAssessment.stopLoss;
+        let targets = [...riskAssessment.targets];
+        let riskReward = 0;
+        
+        // Confidence-based adjustments
+        if (finalDecision.confidence >= 0.8) {
+            // High confidence: slightly tighter stop, extended targets
+            stopLoss = finalDecision.signal === 'BUY' ? stopLoss * 1.02 : stopLoss * 0.98;
+            targets = targets.map(t => finalDecision.signal === 'BUY' ? t * 1.05 : t * 0.95);
+        } else if (finalDecision.confidence <= 0.5) {
+            // Lower confidence: wider stop, conservative targets
+            stopLoss = finalDecision.signal === 'BUY' ? stopLoss * 0.98 : stopLoss * 1.02;
+            targets = targets.map(t => finalDecision.signal === 'BUY' ? t * 0.97 : t * 1.03);
+        }
+        
+        // Calculate risk/reward ratio
+        if (finalDecision.signal === 'BUY' || finalDecision.signal === 'SELL') {
+            const risk = Math.abs(riskAssessment.entryPrice - stopLoss);
+            const reward = Math.abs(targets[0] - riskAssessment.entryPrice);
+            riskReward = risk > 0 ? reward / risk : 0;
+        } else if (finalDecision.signal === 'WATCH') {
+            // For WATCH signals, calculate projected risk/reward
+            const projectedEntry = latest.close;
+            const risk = Math.abs(projectedEntry - stopLoss);
+            const reward = targets.length > 0 ? Math.abs(targets[0] - projectedEntry) : 0;
+            riskReward = risk > 0 ? reward / risk : 0;
+        }
+        
         return {
             stopLoss: Math.round(stopLoss * 100) / 100,
             targets: targets.map(t => Math.round(t * 100) / 100),
             riskReward: Math.round(riskReward * 100) / 100,
-            entryPrice: Math.round(entryPrice * 100) / 100
+            entryPrice: riskAssessment.entryPrice,
+            confidenceAdjusted: true
         };
     }
 
     /**
      * Phase 7: Make final trading decision
      */
-    makeFinalDecision(signalAnalysis, riskReward, divergenceAnalysis, candleAnalysis, swingAnalysis) {
+    makeFinalDecision(signalAnalysis, riskAssessment, divergenceAnalysis, candleAnalysis, swingAnalysis) {
         //console.log(`  📊 Phase 7: Making final decision...`);
 
         let finalSignal = signalAnalysis.signal;
@@ -1013,7 +1065,7 @@ class MACDDivergence {
         }
 
         // Build execution plan
-        const executionPlan = this.buildExecutionPlan(finalSignal, riskReward, divergenceAnalysis);
+        const executionPlan = this.buildExecutionPlan(finalSignal, riskAssessment, divergenceAnalysis);
 
         return {
             signal: finalSignal,
@@ -1026,7 +1078,7 @@ class MACDDivergence {
     /**
      * Build execution plan based on signal
      */
-    buildExecutionPlan(signal, riskReward, divergenceAnalysis) {
+    buildExecutionPlan(signal, riskAssessment, divergenceAnalysis) {
         const plan = {
             action: signal,
             entryStrategy: null,
@@ -1044,15 +1096,20 @@ class MACDDivergence {
             };
             
             plan.exitStrategy = {
-                stopLoss: riskReward.stopLoss,
-                targets: riskReward.targets,
+                stopLoss: riskAssessment.stopLoss,
+                targets: riskAssessment.targets,
                 timeStop: 'Review if no follow-through within 5-7 days',
                 macdExit: signal === 'BUY' ? 'Consider exit when MACD turns negative' : 'Consider exit when MACD turns positive'
             };
             
+            // Calculate risk/reward for position sizing
+            const risk = Math.abs(riskAssessment.entryPrice - riskAssessment.stopLoss);
+            const reward = riskAssessment.targets.length > 0 ? Math.abs(riskAssessment.targets[0] - riskAssessment.entryPrice) : 0;
+            const riskRewardRatio = risk > 0 ? reward / risk : 0;
+            
             plan.positionSizing = {
                 risk: '1-2% of portfolio at stop loss',
-                recommendation: riskReward.riskReward >= 2.5 ? 'FULL' : 'HALF'
+                recommendation: riskRewardRatio >= 2.5 ? 'FULL' : 'HALF'
             };
             
         } else if (signal === 'WATCH') {
@@ -1064,6 +1121,144 @@ class MACDDivergence {
         }
         
         return plan;
+    }
+
+    /**
+     * Build standardized MACD Divergence entry strategy matching Elder format
+     */
+    buildPreciseMACDEntryStrategy(riskAssessment, divergenceAnalysis, candleAnalysis, signal, latest) {
+        const strategy = {
+            conditions: [],
+            timing: null,
+            readiness: null,
+            urgency: null,
+            entryType: null,
+            anticipatedEntry: null,
+            triggerLevel: null
+        };
+
+        if (signal === 'BUY') {
+            strategy.conditions = [
+                'Bullish MACD divergence confirmed',
+                'Price making lower low, MACD making higher low',
+                'Reversal candle structure present',
+                'Entry on break above recent resistance'
+            ];
+            
+            const divergenceStrength = divergenceAnalysis.bestBullish?.strength || 0;
+            const divergenceType = divergenceAnalysis.divergenceType;
+            
+            strategy.timing = `Immediate entry on bullish confirmation above ${latest.close.toFixed(2)}`;
+            strategy.readiness = 'Divergence confirmed - ready for reversal entry';
+            strategy.urgency = divergenceStrength > 0.8 ? 'HIGH - strong divergence signal' : 'MEDIUM - moderate divergence signal';
+            strategy.entryType = 'REVERSAL_MOMENTUM';
+            strategy.anticipatedEntry = riskAssessment.entryPrice;
+            strategy.triggerLevel = latest.close;
+            
+            // Add divergence-specific context
+            if (divergenceAnalysis.bestBullish) {
+                const divInfo = divergenceAnalysis.bestBullish;
+                strategy.divergenceContext = `${divInfo.separation}-day divergence span, strength: ${(divInfo.strength * 100).toFixed(0)}%`;
+            }
+            
+        } else if (signal === 'SELL') {
+            strategy.conditions = [
+                'Bearish MACD divergence confirmed',
+                'Price making higher high, MACD making lower high',
+                'Reversal candle structure present',
+                'Entry on break below recent support'
+            ];
+            
+            const divergenceStrength = divergenceAnalysis.bestBearish?.strength || 0;
+            
+            strategy.timing = `Immediate entry on bearish confirmation below ${latest.close.toFixed(2)}`;
+            strategy.readiness = 'Divergence confirmed - ready for reversal entry';
+            strategy.urgency = divergenceStrength > 0.8 ? 'HIGH - strong divergence signal' : 'MEDIUM - moderate divergence signal';
+            strategy.entryType = 'REVERSAL_MOMENTUM';
+            strategy.anticipatedEntry = riskAssessment.entryPrice;
+            strategy.triggerLevel = latest.close;
+            
+            // Add divergence-specific context
+            if (divergenceAnalysis.bestBearish) {
+                const divInfo = divergenceAnalysis.bestBearish;
+                strategy.divergenceContext = `${divInfo.separation}-day divergence span, strength: ${(divInfo.strength * 100).toFixed(0)}%`;
+            }
+            
+        } else if (signal === 'WATCH') {
+            const divType = divergenceAnalysis.divergenceType.toLowerCase();
+            
+            strategy.conditions = [
+                `${divergenceAnalysis.divergenceType} divergence pattern developing`,
+                'Awaiting stronger candle confirmation',
+                'Monitoring for volume expansion',
+                'Watching for trend reversal signals'
+            ];
+            
+            strategy.timing = 'Setup developing - monitor for confirmation trigger';
+            strategy.readiness = 'Divergence detected - waiting for confirmation';
+            strategy.urgency = 'MEDIUM - pattern developing, prepare for potential reversal';
+            strategy.entryType = 'REVERSAL_PENDING';
+            
+            const projectedEntry = divType === 'bullish' ? latest.close * 1.02 : latest.close * 0.98;
+            strategy.anticipatedEntry = projectedEntry;
+            strategy.triggerLevel = latest.close;
+        }
+
+        return strategy;
+    }
+
+    /**
+     * Build standardized MACD Divergence exit strategy matching Elder format
+     */
+    buildPreciseMACDExitStrategy(riskAssessment, divergenceAnalysis, candleAnalysis, signal, latest) {
+        const strategy = {
+            stopLoss: riskAssessment.stopLoss,
+            targets: riskAssessment.targets,
+            timeStop: null,
+            systemExit: null,
+            trailingStop: false
+        };
+
+        if (signal === 'BUY') {
+            strategy.timeStop = 'Monitor for 5-10 trading days for reversal completion';
+            strategy.systemExit = 'Exit if MACD turns negative or divergence pattern fails';
+            strategy.trailingStop = 'Consider 1x ATR trailing stop after 50% target hit';
+            
+            const divergenceStrength = divergenceAnalysis.bestBullish?.strength || 0;
+            
+            if (divergenceStrength > 0.8) {
+                strategy.timeStop = 'Extended holding period - strong divergence allows 2-3 week reversal';
+                strategy.trailingStop = 'Implement aggressive 0.5x ATR trailing stop - strong signal';
+            }
+            
+        } else if (signal === 'SELL') {
+            strategy.timeStop = 'Monitor for 5-10 trading days for reversal completion';
+            strategy.systemExit = 'Exit if MACD turns positive or divergence pattern fails';
+            strategy.trailingStop = 'Consider 1x ATR trailing stop after 50% target hit';
+            
+            const divergenceStrength = divergenceAnalysis.bestBearish?.strength || 0;
+            
+            if (divergenceStrength > 0.8) {
+                strategy.timeStop = 'Extended holding period - strong divergence allows 2-3 week reversal';
+                strategy.trailingStop = 'Implement aggressive 0.5x ATR trailing stop - strong signal';
+            }
+            
+        } else if (signal === 'WATCH') {
+            strategy.timeStop = 'Cancel setup if no confirmation within 3-5 trading days';
+            strategy.systemExit = 'Abandon if divergence pattern deteriorates or MACD alignment reverses';
+            strategy.triggerRequired = 'Strong reversal candle with volume confirmation required';
+            strategy.trailingStop = 'Plan 1x ATR trailing stop after confirmation entry';
+        }
+
+        // Add divergence-specific exit conditions
+        const hasActiveDivergence = divergenceAnalysis.bestBullish || divergenceAnalysis.bestBearish;
+        
+        if (hasActiveDivergence && (signal === 'BUY' || signal === 'SELL')) {
+            const divType = signal === 'BUY' ? 'bullish' : 'bearish';
+            strategy.systemExit = `${strategy.systemExit} | Critical: Exit if ${divType} divergence pattern breaks down`;
+        }
+
+        return strategy;
     }
 
     /**
@@ -1601,6 +1796,87 @@ class MACDDivergence {
         }
 
         return atrSum / (data.length - 1);
+    }
+
+    /**
+     * Calculate MACD Divergence confidence-based position sizing with available capital
+     * Divergence approach: Higher confidence = larger position, with risk management
+     */
+    calculateMACDPositionSizing(confidence, capitalInfo = {}, riskReward = {}, divergenceAnalysis = {}) {
+        const { capital = 100000, entryPrice = 100 } = capitalInfo;
+        const { stopLoss = 0, riskReward: rrRatio = 1, anticipatedEntry } = riskReward;
+        
+        // Use anticipated entry for WATCH signals, actual entry for BUY/SELL
+        const effectiveEntryPrice = anticipatedEntry || entryPrice;
+        
+        // MACD Divergence 6-tier confidence-based position sizing
+        let recommendation = 'AVOID';
+        let maxPosition = 0;
+        let riskPercent = 0;
+        
+        if (confidence >= 0.85) {
+            recommendation = 'AGGRESSIVE'; // Strong divergence + confirmation
+            maxPosition = 0.08; // 8% of portfolio max
+            riskPercent = 2.0; // 2% risk per trade
+        } else if (confidence >= 0.75) {
+            recommendation = 'FULL'; // Good divergence + confirmation
+            maxPosition = 0.06; // 6% of portfolio
+            riskPercent = 1.5; // 1.5% risk per trade
+        } else if (confidence >= 0.65) {
+            recommendation = 'REDUCED'; // Decent divergence setup
+            maxPosition = 0.05; // 5% of portfolio
+            riskPercent = 1.0; // 1% risk per trade
+        } else if (confidence >= 0.55) {
+            recommendation = 'SMALL'; // Weak divergence
+            maxPosition = 0.03; // 3% of portfolio
+            riskPercent = 0.75; // 0.75% risk per trade
+        } else if (confidence >= 0.45) {
+            recommendation = 'MINIMAL'; // Very weak setup
+            maxPosition = 0.02; // 2% of portfolio
+            riskPercent = 0.5; // 0.5% risk per trade
+        } else {
+            recommendation = 'AVOID';
+            maxPosition = 0;
+            riskPercent = 0;
+        }
+
+        // Calculate actual position sizing
+        let shares = 0;
+        let positionValue = 0;
+        let riskAmount = 0;
+        
+        if (recommendation !== 'AVOID' && effectiveEntryPrice > 0) {
+            // Calculate based on risk amount first
+            riskAmount = capital * (riskPercent / 100);
+            
+            if (stopLoss > 0) {
+                const riskPerShare = Math.abs(effectiveEntryPrice - stopLoss);
+                shares = Math.floor(riskAmount / riskPerShare);
+            }
+            
+            // Ensure position doesn't exceed max portfolio percentage
+            const maxPositionValue = capital * maxPosition;
+            const calculatedPositionValue = shares * effectiveEntryPrice;
+            
+            if (calculatedPositionValue > maxPositionValue) {
+                shares = Math.floor(maxPositionValue / effectiveEntryPrice);
+            }
+            
+            positionValue = shares * effectiveEntryPrice;
+        }
+
+        return {
+            recommendation,
+            riskPercent,
+            maxPosition,
+            shares: Math.max(0, shares),
+            positionValue: positionValue,
+            riskAmount: riskAmount,
+            riskPerShare: Math.round((Math.abs(effectiveEntryPrice - stopLoss)) * 100) / 100,
+            stopDistance: stopLoss > 0 ? Math.round(((effectiveEntryPrice - stopLoss) / effectiveEntryPrice) * 10000) / 100 : 0,
+            entryType: anticipatedEntry ? 'CONDITIONAL' : 'IMMEDIATE',
+            effectiveEntry: Math.round(effectiveEntryPrice * 100) / 100
+        };
     }
 }
 
