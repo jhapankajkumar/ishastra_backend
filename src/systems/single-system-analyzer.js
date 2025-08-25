@@ -184,7 +184,7 @@ class SingleSystemAnalyzer {
         reasoning: systemAnalysis.reasoning,
         signalQuality: systemAnalysis.signalQuality,
         riskReward: systemAnalysis.riskReward,
-        executionPlan: systemAnalysis.executionPlan
+        execution: systemAnalysis.execution
       },
 
       // Gate engine results (Phase 3-4)
