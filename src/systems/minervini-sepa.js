@@ -155,24 +155,23 @@ class MinerviniSEPA {
             baseStructureScore = this.scoreBaseStructure(priceData);
         }
 
-        // Stage 2 (Markup) - Most bullish - SIMPLIFIED LOGIC
+        // Stage 2 (Markup) - Most bullish - STRICT MINERVINI LOGIC
         if (currentPrice > sma150Current &&
             currentPrice > sma200Current &&
-            sma150Current > sma200Current) {
+            sma150.length >= 6 &&
+            sma200.length >= 6 &&
+            sma150Current > sma200Current &&
+            sma150Current > Math.min(...sma150.slice(-5)) &&
+            sma200Current > Math.min(...sma200.slice(-5)) &&
+            this.isPriceAboveEMAs(currentPrice, ema10, ema21)) {
 
             currentStage = 2;
-            reasoning = 'Price above key MAs with upward sloping trend';
-            confidence = 0.7;
+            reasoning = 'Price above all key MAs with upward sloping trend, volume supporting';
+            confidence = 0.8;
 
             if (volumeIncrease) {
-                confidence = 0.8;
-                reasoning += ', volume supporting';
-            }
-            
-            // Additional Stage 2 confirmation
-            if (sma150.length >= 3 && sma150Current > sma150[sma150.length - 3]) {
-                confidence = Math.min(confidence + 0.1, 0.9);
-                reasoning += ', MA trending up';
+                confidence = 0.9;
+                reasoning += ', strong volume confirmation';
             }
         }
         // Stage 1 (Accumulation) - Base building with additional checks
@@ -238,50 +237,35 @@ class MinerviniSEPA {
     }
 
     /**
-     * Analyze trends alignment across different timeframes - SIMPLIFIED
+     * Analyze trends alignment across different timeframes - STRICT MINERVINI LOGIC
      */
     analyzeTrends(series, indicators) {
         const daily = series.daily;
         const weekly = series.weekly || [];
-        const latest = daily[daily.length - 1];
 
-        // Simplified trend analysis - price vs key MAs
+        // Moving average stack (bullish: ema10 > ema20 > ema50 > sma150)
+        const ema10 = indicators.sepa_specific?.ema10 || [];
+        const ema20 = indicators.sepa_specific?.ema20 || [];
+        const ema50 = indicators.sepa_specific?.ema50 || [];
         const sma150 = indicators.base?.sma150 || [];
-        const sma200 = indicators.base?.sma200 || [];
-        
-        let alignment = 'MIXED';
-        let strength = 0.5;
+        const stackedMA = (
+            ema10[ema10.length - 1] > ema20[ema20.length - 1] &&
+            ema20[ema20.length - 1] > ema50[ema50.length - 1] &&
+            ema50[ema50.length - 1] > sma150[sma150.length - 1]
+        );
+        // Multi-Timeframe Confirmation: Weekly stacked
+        const weeklyStacked = weekly.length >= 10 &&
+            weekly[weekly.length - 1].close > weekly[weekly.length - 2].close &&
+            weekly[weekly.length - 1].close > weekly[weekly.length - 5].close;
 
-        if (sma150.length > 0 && sma200.length > 0) {
-            const sma150Current = sma150[sma150.length - 1];
-            const sma200Current = sma200[sma200.length - 1];
-            
-            // Bullish: Price above both key MAs and MAs trending up
-            if (latest.close > sma150Current && latest.close > sma200Current && sma150Current > sma200Current) {
-                alignment = 'BULLISH';
-                strength = 0.8;
-                
-                // Extra strength if weekly also trending up
-                if (weekly.length >= 10) {
-                    const weeklyUptrend = weekly[weekly.length - 1].close > weekly[weekly.length - 5].close;
-                    if (weeklyUptrend) {
-                        strength = 0.9;
-                    }
-                }
-            }
-            // Bearish: Price below key MAs
-            else if (latest.close < sma200Current) {
-                alignment = 'BEARISH';
-                strength = 0.3;
-            }
-        }
+        let alignment = stackedMA && weeklyStacked ? 'BULLISH' : 'MIXED';
+        let strength = alignment === 'BULLISH' ? 0.9 : 0.5;
 
         return {
             alignment,
             strength,
             trends: {
-                priceAboveMA150: latest.close > (sma150[sma150.length - 1] || 0),
-                priceAboveMA200: latest.close > (sma200[sma200.length - 1] || 0)
+                stackedMA: stackedMA
             },
             score: strength
         };
@@ -300,81 +284,97 @@ class MinerviniSEPA {
         let signalStrength = 0;
         let reasoning = [];
 
-        // Breakout confirmation: volume and close in top 25% of candle
+        // Breakout confirmation: volume and close in top 25% of candle - STRICT CRITERIA
         const recentVolume = series.daily.slice(-5).reduce((sum, d) => sum + d.volume, 0) / 5;
         const avgVolume = this.calculateAverageVolume(series.daily.slice(-20));
-        const isVolumeBreakout = recentVolume > avgVolume * 1.2; // Less strict volume requirement
+        const isVolumeBreakout = recentVolume > avgVolume * 1.3; // STRICT: 1.3x volume
         const closesStrong = (latest.high - latest.low) > 0 ?
-            (latest.close - latest.low) / (latest.high - latest.low) > 0.5 : false; // Less strict
+            (latest.close - latest.low) / (latest.high - latest.low) > 0.65 : false; // STRICT: 65%
 
-        // --- Anchor Conditions Before Breakout ---
-        const breakoutPivot = Math.max(...series.daily.slice(-20).map(d => d.high));
-        const isAbovePivot = latest.close > breakoutPivot * 0.99; // Less strict pivot requirement
+        // --- Anchor Conditions Before Breakout - STRICT CRITERIA ---
+        const breakoutPivot = Math.max(...series.daily.slice(-30).map(d => d.high)); // 30-day pivot
+        const isAbovePivot = latest.close > breakoutPivot; // STRICT: Must exceed pivot
         
-        // Simplified RSI lookup
+        // Simplified RSI lookup with STRICT threshold
         let rsi14 = null;
         if (series.indicators?.base?.rsi14) {
             rsi14 = series.indicators.base.rsi14.slice(-1)[0];
         }
-        const rsiStrong = rsi14 !== null && rsi14 > 55; // Less strict RSI
+        const rsiStrong = rsi14 !== null && rsi14 > 55; // RSI > 55
 
-        // --- Less Strict Candle Strength Filter ---
+        // --- STRICT Candle Strength Filter ---
         const candleBody = Math.abs(latest.close - latest.open);
         const candleRange = latest.high - latest.low;
-        const candleStrength = candleRange > 0 ? (candleBody / candleRange) > 0.4 : true; // Less strict
+        const candleStrength = candleRange > 0 ? (candleBody / candleRange) > 0.6 : false; // STRICT: 60% body
 
-        // Stage 2 with bullish alignment and some breakout confirmation = BUY signal
+        // STRICT BUY signal - Requires ALL conditions (Minervini's way)
         if (
             currentStage === 2 &&
             alignment === 'BULLISH' &&
-            (isVolumeBreakout || closesStrong || isAbovePivot) // Any one of these conditions
+            isVolumeBreakout &&        // MUST have volume
+            closesStrong &&           // MUST close strong
+            isAbovePivot &&           // MUST break pivot
+            rsiStrong &&              // MUST have RSI strength
+            candleStrength            // MUST have candle strength
         ) {
             signal = 'BUY';
             signalStrength = this.calculateSEPAConfidence(stageAnalysis, trendAnalysis, series, signal);
-            reasoning.push('Stage 2 markup phase with bullish trend alignment and breakout confirmation');
-            entryPrice = latest.close;
+            reasoning.push('Stage 2 markup phase with bullish trend alignment and ALL breakout confirmations');
+            entryPrice = latest.close * 1.01; // Slight premium for entry
+
+            // --- Breakout Failure Watch (Early Exit Flag) ---
+            const nextCandles = series.daily.slice(-3);
+            const breakoutWeak = nextCandles.some(c => c.close < breakoutPivot || c.volume < avgVolume * 0.8);
+            if (breakoutWeak) {
+                reasoning.push('⚠️ Weak post-breakout behavior');
+                signalStrength *= 0.85;
+            }
         }
-        // Stage 1 transitioning to Stage 2 = Early BUY (tighter conditions)
-        else if (stageAnalysis.stageTransition === 'ADVANCING' && alignment === 'BULLISH' && trendAnalysis.strength >= 0.5) {
+        // STRICT Stage 1 to 2 transition BUY - tighter conditions
+        else if (stageAnalysis.stageTransition === 'ADVANCING' && alignment === 'BULLISH' && trendAnalysis.strength >= 0.75) {
             signal = 'BUY';
             signalStrength = this.calculateSEPAConfidence(stageAnalysis, trendAnalysis, series, signal);
             reasoning.push('Stage 1 to 2 transition, early markup opportunity');
             entryPrice = latest.close;
         }
-        // Stage 2 setup forming → WATCH
+        // STRICT Stage 2 WATCH - Must have strong foundation before watching
         else if (
             currentStage === 2 &&
             alignment === 'BULLISH' &&
-            trendAnalysis.strength >= 0.5
+            trendAnalysis.strength >= 0.7 &&           // STRICT: 70% strength minimum
+            (isVolumeBreakout || closesStrong) &&      // STRICT: Some breakout evidence
+            latest.close > latest.open                 // STRICT: Must close green
         ) {
             signal = 'WATCH';
             signalStrength = this.calculateSEPAConfidence(stageAnalysis, trendAnalysis, series, signal);
-            reasoning.push('Stage 2 bullish setup forming – watching for optimal entry');
+            reasoning.push('Stage 2 strong setup forming – quality watch candidate');
             entryPrice = latest.close;
         }
-        // Stage 1 with volume + base building → early accumulation = WATCH
+        // STRICT Stage 1 to 2 transition WATCH - High-quality base completion
         else if (
             currentStage === 1 &&
             stageAnalysis.stageIndicators.stage1.volumeAccumulation &&
-            trendAnalysis.strength >= 0.4
+            trendAnalysis.strength >= 0.65 &&          // STRICT: 65% strength minimum
+            stageAnalysis.stageTransition === 'ADVANCING' && // STRICT: Must be advancing
+            latest.close > latest.open                 // STRICT: Green candle required
         ) {
             signal = 'WATCH';
             signalStrength = this.calculateSEPAConfidence(stageAnalysis, trendAnalysis, series, signal);
-            reasoning.push('Stage 1 accumulation with rising volume – potential early setup');
+            reasoning.push('Stage 1 late-stage accumulation – base completion watch');
             entryPrice = latest.close;
         }
-        // Stage 3 or 4 with bearish alignment = SELL signal
+        // STRICT SELL signal - Stage 3 or 4 with bearish alignment
         else if ((currentStage === 3 || currentStage === 4) && alignment === 'BEARISH') {
             signal = 'SELL';
             signalStrength = this.calculateSEPAConfidence(stageAnalysis, trendAnalysis, series, signal);
             reasoning.push(`Stage ${currentStage} with bearish alignment, exit recommended`);
             entryPrice = latest.close * 0.99; // Slight discount for exit
         }
-        // Default case with reasonable signal
-        else if (currentStage === 1 || currentStage === 2) {
-            signal = 'WATCH';
+        // Conservative default - only HOLD for unclear but potentially bullish situations
+        else if ((currentStage === 1 || currentStage === 2) && alignment !== 'BEARISH') {
+            signal = 'HOLD';
             signalStrength = this.calculateSEPAConfidence(stageAnalysis, trendAnalysis, series, signal);
-            reasoning.push('Setup developing - monitoring for entry conditions');
+            reasoning.push('Setup developing but lacks conviction - maintain position');
             entryPrice = latest.close;
         }
         // All other cases = AVOID with dynamic confidence

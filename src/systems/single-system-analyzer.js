@@ -51,8 +51,8 @@ class SingleSystemAnalyzer {
         currentPrice: analysisContext.technical?.currentPrice || analysisContext.technical?.latestPrice
       };
       const systemAnalysis = system.analyze(systemData, systemAnalysisOptions);
-      console.log(`📊 ${systemId} Analysis Result:`, analysisContext.symbol, systemAnalysis.decision, systemAnalysis.confidence, systemAnalysis.reasoning);
-      console.log(`📊 ${systemId} Analysis:`, systemAnalysis);
+      // console.log(`📊 ${systemId} Analysis Result:`, analysisContext.symbol, systemAnalysis.decision, systemAnalysis.confidence, systemAnalysis.reasoning);
+      // console.log(`📊 ${systemId} Analysis:`, systemAnalysis);
       if (!systemAnalysis || systemAnalysis.decision === 'AVOID') {
         return this.createSystemBlockedResult(systemAnalysis, 'System analysis failed or returned AVOID');
       }

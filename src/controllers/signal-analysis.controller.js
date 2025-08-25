@@ -821,7 +821,7 @@ class TradingSystemController {
     }).map(result => ({
       action: result.decision,
       confidence: result.confidence || 0,
-      system: result.system || 'UNKNOWN'
+      system: result.name || 'UNKNOWN'
     }));
 
     if (resultsArray.length === 0) {
@@ -900,7 +900,7 @@ class TradingSystemController {
         const systemType = systemConfig ? systemConfig.type : 'UNKNOWN_SYSTEM';
         const systemName = systemConfig ? systemConfig.name : strongestSignal.system.toUpperCase();
 
-        reasoning.push(`HIGH CONVICTION ${systemType}: ${systemName} at ${(strongestSignal.confidence * 100).toFixed(1)}% confidence overrides consensus`);
+        reasoning.push(`HIGH CONVICTION ${systemName} at ${(strongestSignal.confidence * 100).toFixed(1)}% confidence overrides consensus`);
         reasoning.push(`Position sizing: ${isCompleteSystem(strongestSignal.system) ? '75%' : '60%'} due to system classification`);
 
       } else if (buyWeight > sellWeight && buyWeight > totalWeight * dynamicThreshold) {
@@ -1076,15 +1076,24 @@ class TradingSystemController {
 
     // 🚀 OPTIMIZED: Identify winning system and use its execution data directly
     const winningSystem = this.identifyWinningSystem(systemResults, unifiedDecision);
-    let execution
-    let riskReward
+    let execution = {};
+    let riskReward = {};
 
     if (winningSystem && (unifiedAction === 'BUY' || unifiedAction === 'SELL' || unifiedAction === 'WATCH')) {
-      execution =  winningSystem.execution || {};
-      riskReward = winningSystem.riskReward || {};
-    } else {
+      // ✅ FIXED: Safe access with null checks
       execution = winningSystem.execution || {};
       riskReward = winningSystem.riskReward || {};
+      console.log(`🎯 Using winning system: ${winningSystem.systemId} for ${unifiedAction}`);
+    } else if (winningSystem) {
+      // ✅ FIXED: Safe fallback when winningSystem exists but action doesn't match
+      execution = winningSystem.execution || {};
+      riskReward = winningSystem.riskReward || {};
+      console.log(`⚠️ Using winning system: ${winningSystem.systemId} as fallback for ${unifiedAction}`);
+    } else {
+      // ✅ FIXED: Safe fallback when no winning system found
+      console.log(`⚠️ No winning system found for ${symbol}, using default execution/riskReward`);
+      execution = null;
+      riskReward = null;
     }
 
     // Extract market context
@@ -1237,6 +1246,18 @@ class TradingSystemController {
     const risk = Math.abs(entry - stop);
     const reward = Math.abs(target - entry);
     return risk > 0 ? reward / risk : 0;
+  }
+
+  // ✅ HELPER: Get system display name for error handling
+  getSystemDisplayName(systemId) {
+    const systemDisplayNames = {
+      [SYSTEM_IDS.TRIPLE_SCREEN]: 'Elder\'s Triple Screen',
+      [SYSTEM_IDS.MINERVINI_SEPA]: 'Minervini SEPA',
+      [SYSTEM_IDS.CAN_SLIM_CUP_HANDLE]: 'Cup-with-Handle',
+      [SYSTEM_IDS.RSI_MEAN_REVERSION]: 'RSI Mean Reversion',
+      [SYSTEM_IDS.MACD_DIVERGENCE]: 'MACD Divergence'
+    };
+    return systemDisplayNames[systemId] || systemId;
   }
 
   extractTrendContext(analysisContext) {
