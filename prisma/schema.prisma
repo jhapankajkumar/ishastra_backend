@@ -83,6 +83,7 @@ model Trade {
   tradeFills         TradeFill[]
   tradeImages        TradeImage[]
   tradeTransactions  TradeTransaction[]
+  tradeAlerts        TradeAlert[]
 }
 
 model TradeTransaction {
@@ -226,4 +227,25 @@ model WatchlistStock {
   @@index([priority])
   @@index([market])
   @@index([status])
+}
+
+model TradeAlert {
+  id          Int      @id @default(autoincrement())
+  tradeId     Int
+  alertType   String   // 'EXIT_WARNING', 'STOP_BREACH', 'TARGET_APPROACH', 'VOLUME_SPIKE', 'TREND_BREAK'
+  priority    String   // 'LOW', 'MEDIUM', 'HIGH', 'CRITICAL'
+  message     String
+  isRead      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  expiresAt   DateTime? // Auto-cleanup old alerts
+  
+  // Additional context data (JSON as string)
+  contextData String?  // JSON: { currentPrice, triggerPrice, riskLevel, etc. }
+  
+  trade       Trade    @relation(fields: [tradeId], references: [id], onDelete: Cascade)
+  
+  @@index([tradeId])
+  @@index([priority])
+  @@index([isRead])
+  @@index([createdAt])
 }

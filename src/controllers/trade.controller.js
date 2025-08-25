@@ -5,6 +5,7 @@ const TradeIdGenerator = require('../utils/tradeIdGenerator');
 const CapitalManager = require('../utils/capitalManager');
 const ImpulseExitAnalyzer = require('../services/exitStrategies/impulseExit');
 const { getQuote } = require('../yahoo');
+const TradeHealthAnalyzer = require('../services/TradeHealthAnalyzer');
 
 // Get all trades with related data
 exports.getAllTrades = async (req, res) => {
@@ -541,33 +542,62 @@ exports.getTradeById = async (req, res) => {
 
     // Add Elder's Impulse analysis for open or partially closed trades
     if (trade.status === 'Open' || trade.status === 'Partial Closed') {
-      //console.log(`🎯 [IMPULSE] Analyzing exit strategy for ${trade.ticker} (${trade.status})`);
+      // Add comprehensive trade health analysis using AI infrastructure
+      //console.log(`🎯 [TRADE-HEALTH] Analyzing comprehensive health for ${trade.ticker}`);
       
       try {
-        // Initialize impulse analyzer
-        const impulseAnalyzer = new ImpulseExitAnalyzer();
+        // Initialize trade health analyzer
+        const healthAnalyzer = new TradeHealthAnalyzer();
         
-        // Analyze impulse for this trade
-        const impulseAnalysis = await impulseAnalyzer.analyzeImpulse(
-          trade.ticker, 
-          trade.direction || 'Long'
-        );
-
-        // Add impulse analysis to response
-        response.impulseAnalysis = impulseAnalysis;
-
-        //console.log(`✅ [IMPULSE] ${trade.ticker}: ${impulseAnalysis.impulseColor} impulse, Exit recommended: ${impulseAnalysis.exitRecommended}`);
-
-      } catch (impulseError) {
-        console.error(`❌ [IMPULSE] Error analyzing ${trade.ticker}:`, impulseError.message);
+        // Get comprehensive trade health analysis
+        const tradeHealth = await healthAnalyzer.analyzeTradeHealth(trade);
         
-        // Add empty impulse data on error
-        response.impulseAnalysis = {
-          impulseColor: null,
-          exitRecommended: false,
-          reasoning: [`Impulse analysis unavailable: ${impulseError.message}`],
-          lastUpdated: new Date().toISOString(),
-          technicalData: null
+        // Add health analysis to response
+        // response.exitAnalysis = tradeHealth.exitAnalysis;
+        // response.tradeHealth = tradeHealth.healthMetrics;
+        // response.riskAssessment = tradeHealth.riskAssessment;
+        // response.tradeMetrics = tradeHealth.tradeMetrics;
+        
+        // 🐦 FIXED: Include Bird's Eye View in API response
+        response.analysis = tradeHealth.birdEyeView;
+        
+        //console.log(`✅ [TRADE-HEALTH] ${trade.ticker}: ${tradeHealth.exitAnalysis.recommendation} recommendation, Health: ${tradeHealth.healthMetrics.healthScore}`);
+
+      } catch (healthError) {
+        console.error(`❌ [TRADE-HEALTH] Error analyzing ${trade.ticker}:`, healthError.message);
+        
+        // Add fallback health data on error
+        response.exitAnalysis = {
+          recommendation: 'HOLD',
+          confidence: 0.5,
+          riskLevel: 'MEDIUM',
+          timeframe: 'Unknown',
+          reasoning: [`Health analysis unavailable: ${healthError.message}`],
+          triggers: {
+            stopLoss: trade.stopLoss,
+            target1: trade.target1,
+            target2: trade.target2
+          }
+        };
+        response.tradeHealth = {
+          healthScore: 0.5,
+          stageAnalysis: 'Analysis unavailable',
+          momentumStatus: 'Unknown',
+          volumeHealth: 'Unknown',
+          trendIntegrity: 'Unknown',
+          keyLevels: { support: [], resistance: [] }
+        };
+        response.riskAssessment = {
+          currentRisk: 0,
+          riskLevel: 'MEDIUM',
+          stopDistance: null,
+          recommendations: ['Manual analysis required']
+        };
+        response.tradeMetrics = {
+          unrealizedPnL: { amount: 0, percentage: 0 },
+          riskReward: 0,
+          daysHeld: 0,
+          priceChange: 0
         };
       }
     } else {
