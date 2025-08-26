@@ -24,12 +24,33 @@ async function getQuote(symbol) {
 // Always use interval: '1d'.
 // If period1 and period2 are both dates (YYYY-MM-DD), use them as range; else, treat period1 as duration string
 async function getHistoricalForTrade(symbol, period1 = '1d', period2) {
-  if (period2) {
-    // period1 and period2 are date strings
-    return await yahooFinance.chart()(symbol, { period1, period2, interval: '1d' });
-  } else {
-    // period1 is a duration string (e.g. '2mo')
-    return await yahooFinance.chart()(symbol, { period1, interval: '1d' });
+  try {
+    let result;
+    if (period2) {
+      // period1 and period2 are date strings
+      result = await yahooFinance.chart(symbol, { period1, period2, interval: '1d' });
+    } else {
+      // period1 is a duration string (e.g. '2mo')
+      result = await yahooFinance.chart(symbol, { period1, interval: '1d' });
+    }
+    
+    // Return the quotes array for consistency with other functions
+    if (result && result.quotes) {
+      return result.quotes.map(quote => ({
+        date: quote.date,
+        open: quote.open,
+        high: quote.high,
+        low: quote.low,
+        close: quote.close,
+        volume: quote.volume,
+        adjClose: quote.adjclose || quote.close
+      }));
+    }
+    
+    return [];
+  } catch (error) {
+    console.error(`Error fetching historical data for trade (${symbol}):`, error.message);
+    throw error;
   }
 }
 

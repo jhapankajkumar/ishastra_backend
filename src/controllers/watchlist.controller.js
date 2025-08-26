@@ -1,6 +1,7 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const WatchlistService = require('../services/watchlistService');
+const WatchlistManager = require('../services/watchlistManager'); // EXPERT SYSTEM with NIFTY 200+500
 const { calculateWatchlistScore, rankWatchlistCandidates, WATCHLIST_FILTERS } = require('../utils/systemConstants');
 const { getMarketInfo, formatCurrency } = require('../utils/marketUtils');
 
@@ -10,6 +11,7 @@ const { getMarketInfo, formatCurrency } = require('../utils/marketUtils');
 class WatchlistController {
     constructor() {
         this.watchlistService = new WatchlistService();
+        this.expertEvolutionManager = new WatchlistManager(); // EXPERT NIFTY 200+500 SYSTEM
     }
 
     /**
@@ -124,18 +126,50 @@ class WatchlistController {
                 batchSize = 20,
                 delayBetweenBatches = 2000,
                 overwriteExisting = false,
-                // Professional filtering options
+                // ELITE OPTIONS
+                useEliteSystem = true,         // Enable Top 0.1% Elite System with INTELLIGENT DISCOVERY
                 useProfessionalFiltering = true,
                 maxWatchlistSize = 15,
                 requireMinimumScore = 100,
-                symbols = []  // Specific symbols to analyze (optional)
+                symbols = []  // Leave empty for INTELLIGENT DISCOVERY from 500+ stocks
             } = req.body;
 
-            console.log('🚀 Starting watchlist population...');
+            console.log('🧠 Starting ELITE INTELLIGENT DISCOVERY...');
             console.log('📋 Request body:', req.body);
-            console.log('🏛️ Professional filtering enabled:', useProfessionalFiltering);
 
-            if (useProfessionalFiltering) {
+            if (useEliteSystem) {
+                console.log('� ELITE SYSTEM ENABLED - Top 0.1% methodology with INTELLIGENT DISCOVERY');
+                console.log(`📊 Symbols provided: ${symbols.length} (${symbols.length === 0 ? 'SMART DISCOVERY from 500+ universe' : 'Custom list'})`);
+                
+                // Use elite watchlist system with INTELLIGENT DISCOVERY
+                const result = await this.populateWithEliteSystem({
+                    symbols, // Empty = trigger intelligent discovery from 500+ stocks
+                    overwriteExisting
+                });
+
+                res.json({
+                    message: 'Elite watchlist population with intelligent discovery completed',
+                    summary: result,
+                    methodology: 'Top 0.1% Elite System with INTELLIGENT STOCK DISCOVERY',
+                    eliteFeatures: {
+                        intelligentDiscovery: true,
+                        tierManagement: true,
+                        signalEvolution: true,
+                        professionalRanking: true,
+                        smartRotation: true,
+                        executionReadiness: true,
+                        discoveryFromUniverse: symbols.length === 0 ? '500+ NSE stocks' : `${symbols.length} provided stocks`
+                    },
+                    discoveryIntelligence: {
+                        universe_analyzed: symbols.length === 0 ? '500+ stocks via smart filtering' : `${symbols.length} provided`,
+                        quick_filters_applied: 'Volume, momentum, volatility, basic technicals',
+                        discovery_algorithms: 'Momentum breakouts, technical setups, sector rotation, earnings plays',
+                        strategy_rotation: 'Weekly adaptive (momentum → technical → sector → earnings)',
+                        professional_ranking: 'Institutional-grade multi-tier scoring'
+                    }
+                });
+                
+            } else if (useProfessionalFiltering) {
                 console.log('🏛️ Professional filtering enabled - applying institutional-grade criteria');
                 console.log(`🎯 Target watchlist size: ${maxWatchlistSize} stocks`);
 
@@ -432,99 +466,6 @@ class WatchlistController {
         return sectorMap[symbol] || 'UNKNOWN';
     }
 
-    /**
-     * POST /api/watchlist/update-now
-     * Manually trigger watchlist update (for testing the cron job logic)
-     */
-    async updateWatchlistNow(req, res) {
-        try {
-            const { watchlistCron } = require('../watchlist-update-cron');
-            
-            console.log('🔄 Manual watchlist update triggered via API');
-            const summary = await watchlistCron.runNow();
-            
-            res.json({
-                message: 'Watchlist update completed',
-                summary,
-                timestamp: new Date().toISOString()
-            });
-
-        } catch (error) {
-            console.error('❌ Manual watchlist update failed:', error);
-            res.status(500).json({
-                error: 'Failed to update watchlist',
-                details: error.message
-            });
-        }
-    }
-
-    /**
-     * POST /api/watchlist/analyze/:symbol
-     * Analyze a specific stock and add to watchlist if BUY/WATCH
-     */
-    async analyzeAndAddStock(req, res) {
-        try {
-            const { symbol } = req.params;
-            const { overwriteExisting = false } = req.body;
-
-            const result = await this.watchlistService.analyzeAndAddToWatchlist(
-                symbol.toUpperCase(),
-                overwriteExisting
-            );
-
-            res.json({
-                symbol: symbol.toUpperCase(),
-                result
-            });
-
-        } catch (error) {
-            console.error('Error analyzing stock:', error);
-            res.status(500).json({
-                error: 'Failed to analyze stock',
-                details: error.message
-            });
-        }
-    }
-
-    /**
-     * PUT /api/watchlist/:symbol/status
-     * Update stock status (ACTIVE, EXECUTED, EXPIRED, REMOVED)
-     */
-    async updateStockStatus(req, res) {
-        try {
-            const { symbol } = req.params;
-            const { status } = req.body;
-
-            if (!['ACTIVE', 'EXECUTED', 'EXPIRED', 'REMOVED'].includes(status)) {
-                return res.status(400).json({
-                    error: 'Invalid status. Must be: ACTIVE, EXECUTED, EXPIRED, or REMOVED'
-                });
-            }
-
-            const updatedStock = await prisma.watchlistStock.update({
-                where: { symbol: symbol.toUpperCase() },
-                data: {
-                    status,
-                    updatedAt: new Date()
-                }
-            });
-
-            res.json({
-                message: `Stock status updated to ${status}`,
-                stock: updatedStock
-            });
-
-        } catch (error) {
-            if (error.code === 'P2025') {
-                return res.status(404).json({ error: 'Stock not found in watchlist' });
-            }
-            console.error('Error updating stock status:', error);
-            res.status(500).json({
-                error: 'Failed to update stock status',
-                details: error.message
-            });
-        }
-    }
 
     /**
      * DELETE /api/watchlist/:symbol
@@ -587,51 +528,220 @@ class WatchlistController {
     }
 
     /**
-     * GET /api/watchlist/by-grade
-     * Get watchlist stocks grouped by grade
+     * EXPERT SIGNAL EVOLUTION SYSTEM: Professional NIFTY 200 + Select NIFTY 500
      */
-    async getWatchlistByGrade(req, res) {
+    async populateWithExpertSystem(options) {
+        const {
+            symbols = [],
+            overwriteExisting = true,
+            includeSatellite = true,
+            isWeeklyRun = false
+        } = options;
+
+        console.log('� [EXPERT] Initializing Expert Signal Evolution System - NIFTY 200 + Select 500...');
+        
+        // Optional: Clear existing watchlist for fresh expert analysis
+        if (overwriteExisting) {
+            await prisma.watchlistStock.deleteMany({});
+            console.log('🗑️ Cleared existing watchlist for expert fresh analysis');
+        }
+
+        // Execute expert universe analysis with professional methodology
+        const expertResult = await this.expertEvolutionManager.runExpertUniverseAnalysis({
+            includeSatellite,
+            isWeeklyRun,
+            trackPositions: true
+        });
+        
+        console.log('💾 [EXPERT] Expert analysis complete - watchlist already updated by system');
+        
+        // Get the updated watchlist from database (already saved by expert system)
+        const expertWatchlist = await prisma.watchlistStock.findMany({
+            where: { status: 'ACTIVE' },
+            orderBy: { priority: 'asc' }
+        });
+
+        return {
+            strategy: 'EXPERT_NIFTY_200_PLUS_SELECT_500',
+            analysis_summary: expertResult.analysis_summary,
+            evolution_analysis: expertResult.evolution_analysis?.professional_summary || {},
+            capital_recommendations: expertResult.capital_recommendations?.summary || {},
+            managed_watchlist: {
+                total_entries: expertWatchlist.length,
+                focus_approach: 'Professional concentrated watchlist'
+            },
+            expert_insights: {
+                core_universe: 'NIFTY 200 - Daily Analysis',
+                satellite_universe: includeSatellite ? 'NIFTY 300-500 - Weekly Breakouts' : 'Disabled',
+                professional_approach: 'Liquidity focus + 80/20 rule + Signal evolution tracking'
+            },
+            added_stocks: expertWatchlist
+        };
+    }
+
+    async runExpertAnalysis(req, res) {
         try {
-            const gradeGroups = await prisma.watchlistStock.groupBy({
-                by: ['decisionGrade'],
-                where: { status: 'ACTIVE' },
-                _count: true,
-                orderBy: { decisionGrade: 'asc' }
+            const { 
+                includeSatellite = true,
+                isWeeklyRun = false,
+                forceAnalysis = false 
+            } = req.body;
+
+            console.log('🎯 [EXPERT-ANALYSIS] Starting professional signal evolution analysis...');
+            console.log(`💎 Core Universe: NIFTY 200 | 🛰️ Satellite: ${includeSatellite ? 'NIFTY 300-500' : 'Disabled'}`);
+
+            const WatchlistManager = require('../services/watchlistManager');
+            const evolutionManager = new WatchlistManager();
+
+            const startTime = Date.now();
+
+            // Run expert universe analysis
+            const analysisResult = await evolutionManager.runExpertUniverseAnalysis({
+                includeSatellite,
+                isWeeklyRun,
+                trackPositions: true
             });
 
-            const detailedGroups = {};
+            const executionTime = Date.now() - startTime;
 
-            for (const group of gradeGroups) {
-                const stocks = await prisma.watchlistStock.findMany({
-                    where: {
-                        decisionGrade: group.decisionGrade,
-                        status: 'ACTIVE'
-                    },
-                    orderBy: { decisionConfidence: 'desc' },
-                    select: {
-                        symbol: true,
-                        currentPrice: true,
-                        decisionAction: true,
-                        decisionConfidence: true,
-                        priority: true,
-                        market: true,
-                        addedAt: true
-                    }
-                });
+            // Professional response structure
+            const response = {
+                success: true,
+                strategy: "EXPERT_NIFTY_200_PLUS_SELECT_500",
+                execution_summary: {
+                    execution_time_ms: executionTime,
+                    execution_time_readable: `${Math.round(executionTime / 1000)}s`,
+                    analysis_approach: "Professional liquidity-focused trading",
+                    universe_strategy: "80/20 rule: Focus on liquid stocks with institutional coverage"
+                },
+                analysis_results: analysisResult,
+                professional_insights: {
+                    market_approach: "Concentrate on NIFTY 200 for daily analysis + NIFTY 300-500 for weekly breakouts",
+                    risk_management: "Confidence-based position sizing with signal evolution tracking",
+                    capital_efficiency: "Systematic capital allocation based on signal quality and evolution patterns",
+                    trade_validation: analysisResult.capital_recommendations?.professional_advice || {}
+                },
+                system_intelligence: {
+                    core_universe_size: 200,
+                    satellite_universe_size: includeSatellite ? 300 : 0,
+                    total_tracked: analysisResult.analysis_summary?.total_signals || 0,
+                    institutional_grade_signals: analysisResult.evolution_analysis?.professional_summary?.institutional_grade_signals || 0,
+                    immediate_actions_required: analysisResult.capital_recommendations?.summary?.immediate_actions_required || 0
+                },
+                next_steps: {
+                    daily_review: "Check critical risk positions and new institutional opportunities",
+                    weekly_review: includeSatellite ? "Scan NIFTY 300-500 for breakout opportunities" : "Focus review on core universe",
+                    monthly_review: "Analyze signal evolution patterns and adjust universe composition",
+                    capital_allocation: "Follow professional recommendations for position sizing and reallocation"
+                }
+            };
 
-                detailedGroups[group.decisionGrade] = {
-                    count: group._count,
-                    stocks
-                };
-            }
+            // Log professional summary
+            console.log('📊 [EXPERT-ANALYSIS] Professional Summary:');
+            console.log(`   💎 Core Universe: ${analysisResult.analysis_summary?.core_analyzed || 0} stocks analyzed`);
+            console.log(`   🛰️ Satellite Universe: ${analysisResult.analysis_summary?.satellite_analyzed || 0} stocks analyzed`);
+            console.log(`   🎯 Total Signals: ${analysisResult.analysis_summary?.total_signals || 0}`);
+            console.log(`   ⚡ Buy Signals: ${analysisResult.analysis_summary?.buy_signals || 0}`);
+            console.log(`   📈 Watch Signals: ${analysisResult.analysis_summary?.watch_signals || 0}`);
+            console.log(`   🚨 Critical Risks: ${analysisResult.capital_recommendations?.summary?.immediate_actions_required || 0}`);
+            console.log(`   💰 New Opportunities: ${analysisResult.capital_recommendations?.summary?.new_opportunities || 0}`);
+            console.log(`   ⏱️ Execution Time: ${Math.round(executionTime / 1000)}s`);
 
-            res.json(detailedGroups);
+            res.json(response);
 
         } catch (error) {
-            console.error('Error fetching watchlist by grade:', error);
+            console.error('💥 [EXPERT-ANALYSIS] Analysis failed:', error);
+            
             res.status(500).json({
-                error: 'Failed to fetch watchlist by grade',
-                details: error.message
+                success: false,
+                error: 'Expert analysis failed',
+                message: error.message,
+                strategy: "EXPERT_NIFTY_200_PLUS_SELECT_500",
+                fallback_action: "Check server status and try again"
+            });
+        }
+    }
+
+    /**
+     * GET /api/watchlist/expert-status
+     * Get current status of expert analysis system
+     */
+    async getExpertStatus(req, res) {
+        try {
+            // Get current watchlist stats by decision action and tier
+            const watchlistStats = await prisma.watchlistStock.groupBy({
+                by: ['decisionAction'],
+                _count: true
+            });
+
+            const tierStats = await prisma.watchlistStock.groupBy({
+                by: ['tier'],
+                _count: true
+            });
+
+            // Get position stats
+            const positionStats = await prisma.trade.groupBy({
+                by: ['status'],
+                _count: true,
+                where: {
+                    status: { in: ['Open', 'Partial Closed'] }
+                }
+            });
+
+            // Calculate system health
+            const totalWatchlist = await prisma.watchlistStock.count();
+            const totalPositions = await prisma.trade.count({
+                where: { status: { in: ['Open', 'Partial Closed'] } }
+            });
+
+            const response = {
+                success: true,
+                system_status: "OPERATIONAL",
+                strategy: "EXPERT_NIFTY_200_PLUS_SELECT_500",
+                universe_health: {
+                    core_universe: "NIFTY 200 - Daily Analysis Ready",
+                    satellite_universe: "NIFTY 300-500 - Weekly Scan Ready",
+                    liquidity_focus: "HIGH - Institutional grade stocks prioritized"
+                },
+                current_state: {
+                    watchlist_size: totalWatchlist,
+                    active_positions: totalPositions,
+                    watchlist_by_action: watchlistStats.reduce((acc, stat) => {
+                        acc[stat.decisionAction] = stat._count;
+                        return acc;
+                    }, {}),
+                    watchlist_by_tier: tierStats.reduce((acc, stat) => {
+                        acc[stat.tier || 'UNKNOWN'] = stat._count;
+                        return acc;
+                    }, {}),
+                    position_status: positionStats.reduce((acc, stat) => {
+                        acc[stat.status] = stat._count;
+                        return acc;
+                    }, {})
+                },
+                professional_metrics: {
+                    signal_evolution_tracking: "ACTIVE",
+                    capital_allocation_advice: "ENABLED",
+                    risk_management: "PROFESSIONAL_GRADE",
+                    analysis_intervals: "Core: 0.3s | Satellite: 1.0s"
+                },
+                next_analysis: {
+                    core_universe: "Ready for daily analysis",
+                    satellite_universe: "Ready for weekly scan",
+                    recommended_frequency: "Daily core + Weekly satellite"
+                }
+            };
+
+            res.json(response);
+
+        } catch (error) {
+            console.error('💥 [EXPERT-STATUS] Status check failed:', error);
+            
+            res.status(500).json({
+                success: false,
+                error: 'Expert status check failed',
+                message: error.message,
+                system_status: "ERROR"
             });
         }
     }

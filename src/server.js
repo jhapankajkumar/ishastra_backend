@@ -1,5 +1,9 @@
 // Start price refresh cron job (runs at midnight and on startup)
-require('./refresh-prices-cron');
+try {
+  require('./refresh-prices-cron');
+} catch (error) {
+  console.error('❌ Failed to start price refresh cron job:', error.message);
+}
 
 // Start watchlist update cron job (runs Tuesday-Saturday at 9 AM Singapore Time)
 try {
@@ -8,6 +12,16 @@ try {
   console.log('✅ Watchlist cron job started successfully');
 } catch (error) {
   console.error('❌ Failed to start watchlist cron job:', error.message);
+}
+
+// Start Expert Analysis cron job (NIFTY 200 Core + Satellite)
+try {
+  const ExpertAnalysisCron = require('./cron/expert-analysis.cron');
+  const expertCron = new ExpertAnalysisCron();
+  expertCron.start();
+  console.log('✅ Expert Analysis cron jobs started successfully');
+} catch (error) {
+  console.error('❌ Failed to start expert analysis cron jobs:', error.message);
 }
 
 const express = require('express');
@@ -30,8 +44,7 @@ const auth = jwt({ secret: process.env.JWT_SECRET || 'dev_secret', algorithms: [
 
 app.use('/api/trades', require('./routes/trade.routes'));
 app.use('/api/journal', require('./routes/chart.routes'));
-// Authentication routes
-app.use('/api/auth', require('./routes/auth.routes'));
+
 
 // Investment & Recommendation routes
 app.use('/api/recommendations', require('./routes/recommendation.routes'));
@@ -48,7 +61,7 @@ app.use('/api/trading', require('./routes/signal-analysis.routes'));
 app.use('/api/capital', require('./routes/capital.routes'));
 
 // Watchlist routes
-app.use('/api/watchlist', require('./routes/watchlist'));
+app.use('/api/watchlist', require('./routes/watchlist.routes'));
 
 // Yahoo Finance API endpoints
 app.get('/api/yahoo/search', async (req, res) => {
@@ -128,12 +141,19 @@ app.get('/api/yahoo/indicator', async (req, res) => {
     const period2 = Math.floor(Date.now() / 1000); // now
     const { symbol } = req.query;
     if (!symbol) return res.status(400).json({ error: 'Missing symbol' });
+    
     let hist;
     if (period1 && period2) {
       hist = await yahoo.getHistoricalForTrade(symbol, period1, period2);
     } else {
       hist = await yahoo.getHistoricalForTrade(symbol, '3mo'); // Increased from 2mo to 3mo
     }
+    
+    // Validate that hist is an array and has data
+    if (!Array.isArray(hist) || hist.length === 0) {
+      return res.status(404).json({ error: 'No historical data found for symbol' });
+    }
+    
     // Debug: log last date in historical data
     if (hist && hist.length > 0) {
       //console.log(`Indicator data for ${symbol}: last date =`, hist[hist.length - 1].date);

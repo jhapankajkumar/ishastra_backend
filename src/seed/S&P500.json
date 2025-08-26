@@ -1,0 +1,52 @@
+[
+  {
+    "rank": 1,
+    "company": "Nvidia",
+    "symbol": "NVDA"
+  },
+  {
+    "rank": 2,
+    "company": "Microsoft",
+    "symbol": "MSFT"
+  },
+  {
+    "rank": 3,
+    "company": "Apple Inc.",
+    "symbol": "AAPL"
+  },
+  {
+    "rank": 4,
+    "company": "Amazon",
+    "symbol": "AMZN"
+  },
+  {
+    "rank": 5,
+    "company": "Meta Platforms",
+    "symbol": "META"
+  },
+  {
+    "rank": 6,
+    "company": "Broadcom",
+    "symbol": "AVGO"
+  },
+  {
+    "rank": 7,
+    "company": "Alphabet Inc. (Class A)",
+    "symbol": "GOOGL"
+  },
+  {
+    "rank": 8,
+    "company": "Alphabet Inc. (Class C)",
+    "symbol": "GOOG"
+  },
+  {
+    "rank": 9,
+    "company": "Tesla, Inc.",
+    "symbol": "TSLA"
+  },
+  {
+    "rank": 10,
+    "company": "Berkshire Hathaway",
+    "symbol": "BRK.B"
+  }
+]

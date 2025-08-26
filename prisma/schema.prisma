@@ -206,11 +206,26 @@ model WatchlistStock {
   systemsAgreement   String?  // "FULL", "PARTIAL", "NONE"
   systemsAnalyzed    Int?     // Number of systems analyzed
   
+  // ===== ELITE SYSTEM FIELDS (Top 1% Trader Features) =====
+  tier               String?  // "HOT_BUY", "STRONG_WATCH", "DEVELOPING", "COOLING", "ARCHIVE"
+  signalEvolution    String?  // "IMPROVING", "DETERIORATING", "STABLE_STRONG", "NEW_BREAKOUT", "STABLE_WEAK"
+  daysInTier         Int?     @default(0) // Days in current tier
+  historicalGrades   String?  // JSON: Array of historical grades for trend analysis
+  tierHistory        String?  // JSON: Array of tier changes with timestamps
+  strengthTrend      String?  // "STRENGTHENING", "WEAKENING", "STABLE", "UNKNOWN"
+  momentumMultiplier Float?   @default(1.0) // Elite momentum calculation
+  elitePriority      Int?     @default(1000) // Elite ranking priority
+  
   // Execution Information (JSON stored as String)
   executionData   String?  // JSON: { entry, stop, targets, riskReward, positionSize }
   
   // System Results Summary (JSON stored as String) 
   systemsData     String?  // JSON: Simplified systems results
+  
+  // Market Classification (for elite system)
+  sector          String?  @default("Unknown")
+  country         String?  @default("US")
+  exchange        String?  // NYSE, NASDAQ, etc.
   
   // Status and Metadata
   status          String   @default("ACTIVE") // "ACTIVE", "EXECUTED", "EXPIRED", "REMOVED"
@@ -227,6 +242,9 @@ model WatchlistStock {
   @@index([priority])
   @@index([market])
   @@index([status])
+  @@index([tier])              // Elite index
+  @@index([signalEvolution])   // Elite index
+  @@index([elitePriority])     // Elite index
 }
 
 model TradeAlert {
