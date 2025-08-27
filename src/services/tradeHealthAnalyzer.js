@@ -13,16 +13,33 @@ class TradeHealthAnalyzer {
   }
 
   /**
+   * Clear cache for a specific ticker (useful for partial trades)
+   */
+  clearCacheForTicker(ticker) {
+    const keysToDelete = [];
+    for (const key of this.analysisCache.keys()) {
+      if (key.startsWith(ticker)) {
+        keysToDelete.push(key);
+      }
+    }
+    keysToDelete.forEach(key => this.analysisCache.delete(key));
+    console.log(`🗑️ Cleared ${keysToDelete.length} cache entries for ${ticker}`);
+  }
+
+  /**
    * Main method: Analyze trade health using real AI infrastructure
    */
   async analyzeTradeHealth(trade) {
     try {
       console.log(`🔍 [TRADE-HEALTH] Analyzing health for ${trade.ticker} (${trade.tradeId}) with REAL AI`);
       
-      // Check cache first
-      const cacheKey = `${trade.ticker}_${Date.now() - (Date.now() % this.cacheTimeout)}`;
+      // Check cache first - include quantity for partial trades
+      const isPartialTrade = trade.originalQuantity && trade.quantity !== trade.originalQuantity;
+      const quantityKey = isPartialTrade ? `_qty${trade.quantity}` : '';
+      const cacheKey = `${trade.ticker}${quantityKey}_${Date.now() - (Date.now() % this.cacheTimeout)}`;
+      console.log(`🔧 Cache key for ${trade.ticker}: "${cacheKey}" (Original: ${trade.originalQuantity}, Current: ${trade.quantity}, Partial: ${isPartialTrade})`);
       if (this.analysisCache.has(cacheKey)) {
-        console.log(`📊 [TRADE-HEALTH] Using cached analysis for ${trade.ticker}`);
+        console.log(`📊 [TRADE-HEALTH] Using cached analysis for ${trade.ticker}${quantityKey}`);
         const cachedData = this.analysisCache.get(cacheKey);
         return this.transformToTradeHealth(cachedData, trade);
       }
@@ -918,6 +935,8 @@ class TradeHealthAnalyzer {
     const profitPercent = Math.abs(parseFloat(priceChange));
     const currentPrice = trade.currentPrice || 0;
     
+    console.log(`🎯 [NEXT-ACTION] ${trade.ticker}: recommendation=${recommendation}, isProfit=${isProfit}, profitPercent=${profitPercent}%`);
+    
     if (recommendation === 'EXIT') {
       const limitPrice = currentPrice * (isProfit ? 0.98 : 1.02); // 2% buffer
       return {
@@ -928,12 +947,27 @@ class TradeHealthAnalyzer {
     }
     
     if (recommendation === 'REDUCE' || (isProfit && profitPercent >= 8)) {
+      console.log(`🎯 [NEXT-ACTION] ${trade.ticker}: REDUCE/PARTIAL path triggered`);
       const sellData = this.calculateSharesToSell(trade, 'PARTIAL', unrealizedPnL);
-      return {
-        action: 'PARTIAL_SELL',
-        urgency: 'Today',
-        details: `Sell ${sellData.shares} shares (${sellData.percent}%) to lock in $${sellData.profitLocked.toLocaleString()} profit. Keep ${sellData.remainingShares} shares`
-      };
+      
+      // Smart recommendation based on transaction history
+      if (sellData.hasPartialSales && sellData.percentSoldPreviously >= 25) {
+        // If significant portion already sold, recommend holding
+        console.log(`🎯 [NEXT-ACTION] ${trade.ticker}: Already sold enough, recommending HOLD`);
+        return {
+          action: 'HOLD_MONITOR',
+          urgency: 'Daily check',
+          details: `Already sold ${sellData.totalSoldPreviously} shares (${sellData.percentSoldPreviously.toFixed(0)}%). Hold remaining ${trade.quantity} shares and monitor`
+        };
+      } else {
+        // Normal partial sell recommendation
+        console.log(`🎯 [NEXT-ACTION] ${trade.ticker}: Recommending PARTIAL_SELL, remaining: ${sellData.remainingShares}`);
+        return {
+          action: 'PARTIAL_SELL',
+          urgency: 'Today',
+          details: `Sell ${sellData.shares} shares (${sellData.percent}%) to lock in $${sellData.profitLocked.toLocaleString()} profit. Keep ${sellData.remainingShares} shares`
+        };
+      }
     }
     
     if (positionRisk === 'HIGH' && !isProfit) {
@@ -953,30 +987,75 @@ class TradeHealthAnalyzer {
         details: `Position healthy with ${trade.quantity} shares. Monitor for AI grade changes or 5%+ price moves`
       };
     }
+
+    // 🚀 Enhanced: Calculate shares to monitor considering potential sell recommendation
+    let sharesToMonitor = trade.quantity;
+    
+    // Check if there's a pending sell recommendation for partial profits
+    console.log(`🎯 [NEXT-ACTION] ${trade.ticker}: Default MONITOR path, checking for profit-taking opportunity`);
+    if (isProfit && profitPercent >= 5) {
+      const sellData = this.calculateSharesToSell(trade, 'PARTIAL', unrealizedPnL);
+      
+      // Always consider sell recommendation from main action logic
+      // If main action would sell shares, nextAction should show remaining shares
+      if (sellData.shares > 0) {
+        sharesToMonitor = sellData.remainingShares;
+        console.log(`📊 [NEXT-ACTION] ${trade.ticker}: Main action recommends selling ${sellData.shares} shares, will monitor ${sharesToMonitor} remaining`);
+      } else {
+        console.log(`📊 [NEXT-ACTION] ${trade.ticker}: No selling recommended, monitoring all ${sharesToMonitor} shares`);
+      }
+    }
     
     return {
       action: 'MONITOR',
       urgency: '2x daily',
-      details: `Watch ${trade.quantity} shares closely. Set alerts at ${(currentPrice * 1.05).toFixed(2)} (upside) and ${(currentPrice * 0.95).toFixed(2)} (downside)`
+      details: `Watch ${sharesToMonitor} shares closely. Set alerts at ${(currentPrice * 1.05).toFixed(2)} (upside) and ${(currentPrice * 0.95).toFixed(2)} (downside)`
     };
   }
 
   /**
    * Calculate exact number of shares to sell for profit taking or risk reduction
+   * Now considers transaction history for smarter recommendations
    */
   calculateSharesToSell(trade, actionType, unrealizedPnL) {
-    const totalShares = trade.quantity || 0;
+    const totalShares = trade.quantity || 0; // This is now the current/remaining quantity
+    const originalShares = trade.originalQuantity || totalShares;
+    const hasTransactions = trade.tradeTransactions && trade.tradeTransactions.length > 0;
+    
+    // Calculate how much has already been sold
+    const totalSold = hasTransactions ? 
+      trade.tradeTransactions
+        .filter(t => t.transactionType === 'Exit')
+        .reduce((sum, t) => sum + (t.quantity || 0), 0) : 0;
+    const percentAlreadySold = originalShares > 0 ? (totalSold / originalShares) * 100 : 0;
+    
+    console.log(`🔢 [SELL-CALC] ${trade.ticker}: Total: ${totalShares}, Original: ${originalShares}, Already sold: ${totalSold} (${percentAlreadySold.toFixed(1)}%)`);
+    
     let percentToSell = 0;
     
     // Determine percentage based on action type and profit/loss situation
     if (actionType === 'PARTIAL') {
-      // For profit taking
+      // For profit taking - adjust based on what's already been sold
       if (unrealizedPnL > 0) {
         const profitPercent = Math.abs(parseFloat(((trade.currentPrice - trade.entryPrice) / trade.entryPrice * 100).toFixed(2)));
+        
+        // Base percentage recommendation
         if (profitPercent >= 15) percentToSell = 50; // Take 50% at 15%+ gains
         else if (profitPercent >= 10) percentToSell = 40; // Take 40% at 10%+ gains
         else if (profitPercent >= 7) percentToSell = 30; // Take 30% at 7%+ gains
         else percentToSell = 25; // Take 25% at 5%+ gains
+        
+        // 🚀 Smart adjustment: If we've already sold some, reduce further selling
+        if (percentAlreadySold >= 30) {
+          percentToSell = Math.max(10, percentToSell - 15); // Much more conservative
+          console.log(`🧠 [SELL-CALC] ${trade.ticker}: Already sold ${percentAlreadySold.toFixed(1)}%, reducing recommendation to ${percentToSell}%`);
+        } else if (percentAlreadySold >= 20) {
+          percentToSell = Math.max(15, percentToSell - 10); // More conservative
+          console.log(`🧠 [SELL-CALC] ${trade.ticker}: Already sold ${percentAlreadySold.toFixed(1)}%, reducing recommendation to ${percentToSell}%`);
+        } else if (percentAlreadySold >= 10) {
+          percentToSell = Math.max(20, percentToSell - 5); // Slightly more conservative
+          console.log(`🧠 [SELL-CALC] ${trade.ticker}: Already sold ${percentAlreadySold.toFixed(1)}%, reducing recommendation to ${percentToSell}%`);
+        }
       } else {
         percentToSell = 30; // Reduce by 30% if losing but need to reduce
       }
@@ -991,13 +1070,20 @@ class TradeHealthAnalyzer {
     
     const sharesToSell = Math.floor(totalShares * (percentToSell / 100));
     const profitLocked = unrealizedPnL * (percentToSell / 100);
+    const remainingAfterSale = totalShares - sharesToSell;
+    
+    console.log(`📊 [SELL-CALC] ${trade.ticker}: Recommending ${sharesToSell} shares (${percentToSell}%), leaving ${remainingAfterSale} shares`);
     
     return {
       shares: sharesToSell,
       percent: percentToSell,
       profitLocked: Math.abs(profitLocked),
-      remainingShares: totalShares - sharesToSell,
-      remainingValue: (totalShares - sharesToSell) * (trade.currentPrice || 0)
+      remainingShares: remainingAfterSale,
+      remainingValue: remainingAfterSale * (trade.currentPrice || 0),
+      // Add context for next action
+      hasPartialSales: hasTransactions,
+      totalSoldPreviously: totalSold,
+      percentSoldPreviously: percentAlreadySold
     };
   }
 

@@ -90,8 +90,11 @@ class MACDDivergence {
             // Phase 6: Assess risk
             const riskAssessment = this.assessRisk(signalAnalysis, swingAnalysis, latest, series);
             
+            // Phase 6.5: Calculate preliminary risk/reward for confidence adjustment
+            const preliminaryRiskReward = this.calculatePreliminaryRiskReward(signalAnalysis, riskAssessment, divergenceAnalysis, swingAnalysis, latest);
+            
             // Phase 7: Make final decision
-            const finalDecision = this.makeFinalDecision(signalAnalysis, riskAssessment, divergenceAnalysis, candleAnalysis, swingAnalysis);
+            const finalDecision = this.makeFinalDecision(signalAnalysis, riskAssessment, divergenceAnalysis, candleAnalysis, swingAnalysis, preliminaryRiskReward);
 
             // Extract capital and pricing information from options
             const { capital, symbol, currentPrice } = options;
@@ -934,6 +937,38 @@ class MACDDivergence {
     /**
      * Phase 8: Calculate risk/reward metrics (renamed from calculateRisk)
      */
+    /**
+     * Calculate preliminary risk/reward for confidence adjustment in makeFinalDecision
+     * This is a simplified version that doesn't depend on finalDecision
+     */
+    calculatePreliminaryRiskReward(signalAnalysis, riskAssessment, divergenceAnalysis, swingAnalysis, latest) {
+        // Use base risk assessment for preliminary calculation
+        const stopLoss = riskAssessment.stopLoss;
+        const targets = riskAssessment.targets;
+        
+        // Calculate basic risk/reward ratio based on signal type
+        let riskReward = 0;
+        
+        if (signalAnalysis.signal === 'BUY' || signalAnalysis.signal === 'SELL') {
+            const risk = Math.abs(riskAssessment.entryPrice - stopLoss);
+            const reward = targets.length > 0 ? Math.abs(targets[0] - riskAssessment.entryPrice) : 0;
+            riskReward = risk > 0 ? reward / risk : 0;
+        } else if (signalAnalysis.signal === 'WATCH') {
+            // For WATCH signals, calculate projected risk/reward
+            const projectedEntry = latest.close;
+            const risk = Math.abs(projectedEntry - stopLoss);
+            const reward = targets.length > 0 ? Math.abs(targets[0] - projectedEntry) : 0;
+            riskReward = risk > 0 ? reward / risk : 0;
+        }
+        
+        return {
+            stopLoss,
+            targets,
+            riskReward,
+            entryPrice: riskAssessment.entryPrice || latest.close
+        };
+    }
+
     calculateRiskReward(finalDecision, riskAssessment, divergenceAnalysis, swingAnalysis, latest) {
         //console.log(`  📊 Phase 8: Calculating confidence-adjusted risk/reward...`);
         
@@ -978,7 +1013,7 @@ class MACDDivergence {
     /**
      * Phase 7: Make final trading decision
      */
-    makeFinalDecision(signalAnalysis, riskAssessment, divergenceAnalysis, candleAnalysis, swingAnalysis) {
+    makeFinalDecision(signalAnalysis, riskAssessment, divergenceAnalysis, candleAnalysis, swingAnalysis, riskReward = null) {
         //console.log(`  📊 Phase 7: Making final decision...`);
 
         let finalSignal = signalAnalysis.signal;
@@ -1049,7 +1084,7 @@ class MACDDivergence {
                 confidence = Math.min(0.92, confidence + 0.08);
             }
             // Good risk/reward bonus
-            if (riskReward.riskReward >= 2.5) {
+            if (riskReward && riskReward.riskReward >= 2.5) {
                 confidence = Math.min(0.95, confidence + 0.05);
             }
             // Reduce confidence for weak signals

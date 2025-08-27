@@ -37,21 +37,7 @@ const SP500_CORE = [
 
 // S&P 500 SATELLITE Universe (Remaining S&P 500 for Weekly Breakout Scans)
 const SP500_SATELLITE = [
-    // Mid-Large Cap Opportunities (Weekly Breakout Analysis)
-    "CME", "TFC", "EOG", "GM", "MSI", "CSX", "NXPI", "PNC", "ORLY", "HCA",
-    "ABNB", "APH", "CARR", "ECL", "AJG", "TDG", "PCAR", "AZO", "SLB", "PSA",
-    "ADSK", "NSC", "FTNT", "ROP", "SNPS", "TT", "OKE", "CCI", "EL", "MCK",
-    "PSX", "O", "SPG", "CHTR", "PAYX", "KMI", "ROST", "HLT", "JCI", "WELL",
-    "CTAS", "FAST", "EA", "BDX", "EXC", "A", "VRSK", "GWW", "OTIS", "KR",
-    "AMT", "F", "CMI", "ODFL", "FANG", "CPRT", "IDXX", "GIS", "DXCM", "HSY",
-    "ACGL", "CTSH", "MLM", "IQV", "ALL", "VMC", "YUM", "HIG", "PRU", "MSCI",
-    "MNST", "PH", "DELL", "PWR", "AFL", "BIIB", "AEP", "XYL", "TRV", "MCHP",
-    "HPQ", "TEL", "MET", "STZ", "AIG", "TROW", "CL", "RMD", "CMG", "FICO",
-    "FIS", "NUE", "GEHC", "DD", "ON", "EFX", "LULU", "SBUX", "WBD", "KMB",
-    
-    // Additional S&P 500 companies for comprehensive coverage
-    "TPG", "GLW", "URI", "NEM", "CTVA", "LYB", "DVN", "DAL", "GRMN", "ADM",
-    "AVB", "EQR", "SMCI", "NDAQ", "ANSS", "KEYS", "ROK", "MPWR", "CSGP", "AMP",
+    // Mid-Large Cap Opportunities (Weekly Breakout Analysis) - No duplicates from CORE
     "WTW", "MTD", "WAB", "TMUS", "DOW", "COO", "TSCO", "SYY", "PPG", "RSG",
     "ANET", "BK", "FTV", "TYL", "CBOE", "KHC", "EIX", "PEG", "AME", "WY",
     "MTB", "HUBB", "CDW", "STT", "WEC", "ALGN", "AWK", "NTRS", "BR", "GPN",
@@ -60,6 +46,10 @@ const SP500_SATELLITE = [
     "ARE", "K", "FE", "POOL", "EXPE", "NTAP", "J", "WRB", "EXPD", "JBHT",
     "LUV", "SYF", "JKHY", "DFS", "STLD", "SWKS", "CLX", "CFG", "KEY", "EPAM",
     "TDY", "IEX", "VLTO", "PFG", "LNT", "CINF", "CAG", "LVS", "AKAM", "MAS",
+    
+    // Additional S&P 500 companies for comprehensive coverage  
+    "TPG", "GLW", "URI", "NEM", "CTVA", "LYB", "DVN", "DAL", "GRMN", "ADM",
+    "AVB", "EQR", "SMCI", "NDAQ", "ANSS", "KEYS", "ROK", "MPWR", "CSGP", "AMP",
     
     // Smaller S&P 500 components for complete universe coverage
     "PODD", "CHRW", "TECH", "PAYC", "HOLX", "TXT", "ENPH", "SBAC", "NDSN", "MKC",
@@ -312,9 +302,9 @@ class WatchlistManager {
             trackPositions = true,
             isWeeklyRun = false,
             fallbackOptions = {
-                minBuySignals: 3,
-                minInstitutionalGrade: 1,
-                minWatchSignals: 5
+                minBuySignals: 1,        // Reduced from 3 to 1 - more aggressive
+                minInstitutionalGrade: 0, // Reduced from 1 to 0 - include all grades
+                minWatchSignals: 3       // Reduced from 5 to 3 - more lenient
             }
         } = options;
 
@@ -636,9 +626,9 @@ class WatchlistManager {
      */
     assessFallbackStrategy(coreResults, options = {}) {
         const {
-            minBuySignals = 3,
-            minInstitutionalGrade = 1,
-            minWatchSignals = 5,
+            minBuySignals = 1,        // More aggressive - was 3
+            minInstitutionalGrade = 0, // More aggressive - was 1
+            minWatchSignals = 3,      // More aggressive - was 5
             marketConditionWeight = 1.0
         } = options;
 

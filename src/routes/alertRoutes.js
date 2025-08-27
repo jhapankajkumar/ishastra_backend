@@ -1,92 +1,48 @@
 /**
- * ALERT SERVICE API ROUTES
- * Separate endpoints for different alert types
+ * SIMPLIFIED ALERT ROUTES - Only 2 Endpoints You Actually Need
+ * Based on real trading workflow: Position management + Watchlist opportunities
  */
 
 const express = require('express');
 const AlertService = require('../services/alertService');
+const AutomatedAlertController = require('../controllers/automatedAlert.controller');
 
 const router = express.Router();
 const alertService = new AlertService();
+const automatedAlerts = new AutomatedAlertController();
 
 /**
- * 🚨 CRITICAL ALERTS - Position Risk & Signal Breakdowns
- * POST /api/alerts/critical
+ * 📊 POSITION ALERTS - For Stocks You Own
+ * GET /api/alerts/positions
+ * 
+ * Returns alerts for your open trades:
+ * - 🚨 "AAPL changed from BUY → WATCH" (signal breakdowns)
+ * - 📊 "TSLA up 22% - consider profit" (major gains/losses) 
+ * - 📈 "MSFT confidence: 75% → 85%" (signal strengthening on owned stocks)
  */
-router.post('/critical', async (req, res) => {
-    await alertService.getCriticalAlerts(req, res);
-});
-
-/**
- * ⚡ URGENT ALERTS - Institutional Opportunities  
- * POST /api/alerts/urgent
- */
-router.post('/urgent', async (req, res) => {
-    await alertService.getUrgentAlerts(req, res);
-});
-
-/**
- * 📈 IMPORTANT ALERTS - Signal Evolution
- * POST /api/alerts/important  
- */
-router.post('/important', async (req, res) => {
-    await alertService.getImportantAlerts(req, res);
-});
-
-/**
- * 📊 TRADE MONITORING ALERTS - Open/Partial Positions
- * GET /api/alerts/trades/monitor
- */
-router.get('/trades/monitor', async (req, res) => {
-    await alertService.getTradeAlerts(req, res);
-});
-
-/**
- * 💰 CAPITAL ALLOCATION RECOMMENDATION
- * POST /api/alerts/capital-allocation
- */
-router.post('/capital-allocation', async (req, res) => {
+router.get('/positions', async (req, res) => {
     try {
-        const { opportunity, portfolio } = req.body;
+        // Get alerts for stocks you actually own
+        const tradeAlerts = await alertService.checkOpenTradeAlerts();
         
-        const recommendation = alertService.generateCapitalAllocationRecommendation(
-            opportunity, 
-            portfolio
-        );
+        // Get signal changes for owned stocks only  
+        const positionSignalAlerts = await automatedAlerts.getPositionSignalAlerts();
+        
+        const allPositionAlerts = [
+            ...tradeAlerts,
+            ...positionSignalAlerts
+        ];
         
         res.json({
             success: true,
-            ticker: opportunity.ticker,
-            recommendation: recommendation
-        });
-    } catch (error) {
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-/**
- * 📋 ALL ALERTS SUMMARY
- * GET /api/alerts/summary
- */
-router.get('/summary', async (req, res) => {
-    try {
-        // Get all alert types in parallel
-        const [tradeAlerts] = await Promise.all([
-            alertService.checkOpenTradeAlerts()
-        ]);
-        
-        res.json({
-            success: true,
+            alertType: 'POSITION_ALERTS',
+            count: allPositionAlerts.length,
+            alerts: allPositionAlerts,
             summary: {
-                trade_alerts: {
-                    count: tradeAlerts.length,
-                    major_gains: tradeAlerts.filter(a => a.category === 'MAJOR_GAIN').length,
-                    major_losses: tradeAlerts.filter(a => a.category === 'MAJOR_LOSS').length,
-                    stale_positions: tradeAlerts.filter(a => a.category === 'STALE_POSITION').length
-                }
-            },
-            alerts: {
-                trades: tradeAlerts
+                signal_breakdowns: positionSignalAlerts.filter(a => a.category === 'SIGNAL_BREAKDOWN').length,
+                major_gains: tradeAlerts.filter(a => a.category === 'MAJOR_GAIN').length,
+                major_losses: tradeAlerts.filter(a => a.category === 'MAJOR_LOSS').length,
+                signal_strengthening: positionSignalAlerts.filter(a => a.category === 'SIGNAL_STRENGTHENING').length
             }
         });
     } catch (error) {
@@ -95,15 +51,36 @@ router.get('/summary', async (req, res) => {
 });
 
 /**
- * 🔌 WEBSOCKET SUBSCRIPTION for CRITICAL alerts
- * GET /api/alerts/subscribe (WebSocket upgrade)
+ * 🎯 WATCHLIST ALERTS - For Stocks You're Tracking  
+ * GET /api/alerts/watchlist
+ * 
+ * Returns alerts for your watchlist stocks:
+ * - ⚡ "NVDA new BUY signal (A+ grade)" (new opportunities)
+ * - 📈 "MSFT confidence: 75% → 85%" (signal strengthening on watchlist)
+ * - 💰 Only shows opportunities you can afford
  */
-router.get('/subscribe', (req, res) => {
-    res.json({
-        message: 'WebSocket endpoint for critical alerts',
-        endpoint: 'ws://localhost:8000/alerts/ws',
-        usage: 'Connect to receive real-time critical alerts'
-    });
+router.get('/watchlist', async (req, res) => {
+    try {
+        const { availableCapital = 50000 } = req.query;
+        
+        // Get alerts for watchlist stocks only
+        const watchlistAlerts = await automatedAlerts.getWatchlistAlerts(availableCapital);
+        
+        res.json({
+            success: true,
+            alertType: 'WATCHLIST_ALERTS', 
+            count: watchlistAlerts.length,
+            alerts: watchlistAlerts,
+            availableCapital: availableCapital,
+            summary: {
+                new_opportunities: watchlistAlerts.filter(a => a.category === 'NEW_OPPORTUNITY').length,
+                signal_strengthening: watchlistAlerts.filter(a => a.category === 'SIGNAL_STRENGTHENING').length,
+                affordable_count: watchlistAlerts.filter(a => a.affordable).length
+            }
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
 });
 
 module.exports = router;

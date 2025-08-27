@@ -518,7 +518,8 @@ exports.getTradeById = async (req, res) => {
       where: { id: Number(id) },
       include: {
         tradeFills: true,
-        tradeImages: true
+        tradeImages: true,
+        tradeTransactions: true  // 🔧 Include transaction history for partial trades
       }
     });
 
@@ -541,27 +542,53 @@ exports.getTradeById = async (req, res) => {
     };
 
     // Add Elder's Impulse analysis for open or partially closed trades
+    console.log(`🎯 [TRADE-DETAIL] Checking analysis conditions for ${trade.ticker}: status='${trade.status}'`);
     if (trade.status === 'Open' || trade.status === 'Partial Closed') {
       // Add comprehensive trade health analysis using AI infrastructure
-      //console.log(`🎯 [TRADE-HEALTH] Analyzing comprehensive health for ${trade.ticker}`);
+      console.log(`🎯 [TRADE-DETAIL] Analyzing health for ${trade.ticker} (${trade.status})`);
       
       try {
         // Initialize trade health analyzer
         const healthAnalyzer = new TradeHealthAnalyzer();
         
-        // Get comprehensive trade health analysis
-        const tradeHealth = await healthAnalyzer.analyzeTradeHealth(trade);
+        // � Enhanced approach: Send complete trade with transactions to health analyzer
+        const isPartialTrade = trade.status === 'Partial Closed' && trade.remainingQuantity !== trade.quantity;
         
-        // Add health analysis to response
-        // response.exitAnalysis = tradeHealth.exitAnalysis;
-        // response.tradeHealth = tradeHealth.healthMetrics;
-        // response.riskAssessment = tradeHealth.riskAssessment;
-        // response.tradeMetrics = tradeHealth.tradeMetrics;
+        // Create comprehensive trade object with full transaction history
+        const completeTradeForAnalysis = {
+          ...trade,
+          // Override quantity with current remaining quantity for analysis
+          quantity: trade.remainingQuantity || trade.quantity,
+          // Keep original quantity for reference
+          originalQuantity: trade.quantity,
+          // Add transaction context
+          tradeTransactions: trade.tradeTransactions || [],
+          isPartialTrade: isPartialTrade,
+          currentQuantity: trade.remainingQuantity || trade.quantity,
+          transactionHistory: (trade.tradeTransactions || []).map(t => ({
+            type: t.transactionType,
+            quantity: t.quantity,
+            price: t.price,
+            date: t.transactionDate,
+            reason: t.reasonForExit
+          }))
+        };
         
-        // 🐦 FIXED: Include Bird's Eye View in API response
+        console.log(`🔧 [TRADE-DETAIL] ${trade.ticker} - Status: ${trade.status}, Original: ${trade.quantity}, Current: ${completeTradeForAnalysis.currentQuantity}, Transactions: ${completeTradeForAnalysis.tradeTransactions.length}`);
+        
+        // Clear cache for partial trades to ensure fresh analysis with transaction context
+        if (isPartialTrade) {
+          console.log(`🔧 [TRADE-DETAIL] Clearing cache for partial trade ${trade.ticker} with ${completeTradeForAnalysis.tradeTransactions.length} transactions`);
+          healthAnalyzer.clearCacheForTicker(trade.ticker);
+        }
+        
+        // Get comprehensive trade health analysis with full trade context
+        const tradeHealth = await healthAnalyzer.analyzeTradeHealth(completeTradeForAnalysis);
+        
+        // Use the analysis directly since it now has full transaction context
         response.analysis = tradeHealth.birdEyeView;
         
-        //console.log(`✅ [TRADE-HEALTH] ${trade.ticker}: ${tradeHealth.exitAnalysis.recommendation} recommendation, Health: ${tradeHealth.healthMetrics.healthScore}`);
+        console.log(`✅ [TRADE-DETAIL] ${trade.ticker}: ${tradeHealth.birdEyeView.status} (${tradeHealth.birdEyeView.aiGrade}) - Analysis with ${completeTradeForAnalysis.tradeTransactions.length} transactions`);
 
       } catch (healthError) {
         console.error(`❌ [TRADE-HEALTH] Error analyzing ${trade.ticker}:`, healthError.message);

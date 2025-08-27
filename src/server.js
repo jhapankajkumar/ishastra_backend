@@ -6,6 +6,8 @@ try {
 }
 
 // Start watchlist update cron job (runs Tuesday-Saturday at 9 AM Singapore Time)
+// NOTE: Temporarily disabled - watchlist-update-cron file not found
+/*
 try {
   const { watchlistCron } = require('./watchlist-update-cron');
   watchlistCron.start();
@@ -13,6 +15,7 @@ try {
 } catch (error) {
   console.error('❌ Failed to start watchlist cron job:', error.message);
 }
+*/
 
 // Start Expert Analysis cron job (NIFTY 200 Core + Satellite)
 try {
@@ -62,6 +65,9 @@ app.use('/api/capital', require('./routes/capital.routes'));
 
 // Watchlist routes
 app.use('/api/watchlist', require('./routes/watchlist.routes'));
+
+// Alert routes
+app.use('/api/alerts', require('./routes/alertRoutes'));
 
 // Yahoo Finance API endpoints
 app.get('/api/yahoo/search', async (req, res) => {

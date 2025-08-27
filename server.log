@@ -1,0 +1,409 @@
+📈 Setting up price refresh cron jobs...
+✅ Price refresh cron jobs scheduled successfully
+🚀 Starting Expert Analysis Cron Jobs...
+📅 Scheduled NIFTY 200 CORE: Tuesday-Friday 9:00 AM SG Time
+📅 Scheduled NIFTY SATELLITE: Saturday 9:00 AM SG Time
+✅ Expert Analysis cron jobs started successfully
+🚀 Server running at http://localhost:8000
+🔄 Running startup price refresh...
+Please consider completing the survey at https://bit.ly/yahoo-finance-api-feedback if you haven't already; for more info see https://github.com/gadicc/node-yahoo-finance2/issues/764#issuecomment-2056623851.  This will only be shown once, but you can suppress this message in future with `yahooFinance.suppressNotices(['yahooSurvey'])`.
+Fetching crumb and cookies from https://finance.yahoo.com/quote/AAPL...
+We expected a redirect to guce.yahoo.com, but got https://finance.yahoo.com/quote/AAPL/
+We'll try to continue anyway - you can safely ignore this if the request succeeds
+Success. Cookie expires on Thu Aug 27 2026 20:31:48 GMT+0800 (Singapore Standard Time)
+fetch https://query1.finance.yahoo.com/v1/test/getcrumb
+New crumb: H7ypKk/ScYO
+[STARTUP] Price refresh (investments): Prices refreshed for 66 investments.
+🎯 [TRADE-DETAIL] Checking analysis conditions for COFORGE.NS: status='Partial Closed'
+🎯 [TRADE-DETAIL] Analyzing health for COFORGE.NS (Partial Closed)
+🔧 [TRADE-DETAIL] COFORGE.NS - Status: Partial Closed, Original: 12, Current: 9, Transactions: 1
+🔧 [TRADE-DETAIL] Clearing cache for partial trade COFORGE.NS with 1 transactions
+🗑️ Cleared 0 cache entries for COFORGE.NS
+🔍 [TRADE-HEALTH] Analyzing health for COFORGE.NS (ISH-2025-000005-7DRD4) with REAL AI
+🔧 Cache key for COFORGE.NS: "COFORGE.NS_qty9_1756276200000" (Original: 12, Current: 9, Partial: true)
+🧠 [TRADE-HEALTH] Getting REAL AI analysis for COFORGE.NS using generateExpertAIDecision
+[Deprecated] historical() relies on an API that Yahoo have removed.  We'll map this request to chart() for convenience, but, please consider using chart() directly instead; for more info see https://github.com/gadicc/node-yahoo-finance2/issues/795.  This will only be shown once, but you can suppress this message in future with `yahooFinance.suppressNotices(['ripHistorical'])`.
+✅ [TRADE-HEALTH] REAL AI Analysis complete for COFORGE.NS:
+   🎯 AI Decision: HOLD (Grade: C+)
+   📊 AI Confidence: 55%
+   ⚖️ Risk/Reward: 2.05x
+   🏛️ Market Regime: NORMAL_HIGH (70%)
+   🔧 Trade Readiness: READY
+🔢 [SELL-CALC] COFORGE.NS: Total: 9, Original: 12, Already sold: 3 (25.0%)
+🧠 [SELL-CALC] COFORGE.NS: Already sold 25.0%, reducing recommendation to 15%
+📊 [SELL-CALC] COFORGE.NS: Recommending 1 shares (15%), leaving 8 shares
+🎯 [NEXT-ACTION] COFORGE.NS: recommendation=HOLD, isProfit=true, profitPercent=5.17%
+🎯 [NEXT-ACTION] COFORGE.NS: Default MONITOR path, checking for profit-taking opportunity
+🔢 [SELL-CALC] COFORGE.NS: Total: 9, Original: 12, Already sold: 3 (25.0%)
+🧠 [SELL-CALC] COFORGE.NS: Already sold 25.0%, reducing recommendation to 15%
+📊 [SELL-CALC] COFORGE.NS: Recommending 1 shares (15%), leaving 8 shares
+📊 [NEXT-ACTION] COFORGE.NS: Main action recommends selling 1 shares, will monitor 8 remaining
+✅ [TRADE-HEALTH] REAL AI analysis complete for COFORGE.NS: HOLD
+   🧠 AI Decision: HOLD (C+)
+   📊 AI Confidence: 55%
+   🏛️ Market Regime: NORMAL_HIGH
+✅ [TRADE-DETAIL] COFORGE.NS: TAKE PROFITS (C+) - Analysis with 1 transactions
+🎯 [TRADE-DETAIL] Checking analysis conditions for COFORGE.NS: status='Partial Closed'
+🎯 [TRADE-DETAIL] Analyzing health for COFORGE.NS (Partial Closed)
+🔧 [TRADE-DETAIL] COFORGE.NS - Status: Partial Closed, Original: 12, Current: 9, Transactions: 1
+🔧 [TRADE-DETAIL] Clearing cache for partial trade COFORGE.NS with 1 transactions
+🗑️ Cleared 0 cache entries for COFORGE.NS
+🔍 [TRADE-HEALTH] Analyzing health for COFORGE.NS (ISH-2025-000005-7DRD4) with REAL AI
+🔧 Cache key for COFORGE.NS: "COFORGE.NS_qty9_1756276200000" (Original: 12, Current: 9, Partial: true)
+🧠 [TRADE-HEALTH] Getting REAL AI analysis for COFORGE.NS using generateExpertAIDecision
+✅ [TRADE-HEALTH] REAL AI Analysis complete for COFORGE.NS:
+   🎯 AI Decision: HOLD (Grade: C+)
+   📊 AI Confidence: 55%
+   ⚖️ Risk/Reward: 2.05x
+   🏛️ Market Regime: NORMAL_HIGH (70%)
+   🔧 Trade Readiness: READY
+🔢 [SELL-CALC] COFORGE.NS: Total: 9, Original: 12, Already sold: 3 (25.0%)
+🧠 [SELL-CALC] COFORGE.NS: Already sold 25.0%, reducing recommendation to 15%
+📊 [SELL-CALC] COFORGE.NS: Recommending 1 shares (15%), leaving 8 shares
+🎯 [NEXT-ACTION] COFORGE.NS: recommendation=HOLD, isProfit=true, profitPercent=5.17%
+🎯 [NEXT-ACTION] COFORGE.NS: Default MONITOR path, checking for profit-taking opportunity
+🔢 [SELL-CALC] COFORGE.NS: Total: 9, Original: 12, Already sold: 3 (25.0%)
+🧠 [SELL-CALC] COFORGE.NS: Already sold 25.0%, reducing recommendation to 15%
+📊 [SELL-CALC] COFORGE.NS: Recommending 1 shares (15%), leaving 8 shares
+📊 [NEXT-ACTION] COFORGE.NS: Main action recommends selling 1 shares, will monitor 8 remaining
+✅ [TRADE-HEALTH] REAL AI analysis complete for COFORGE.NS: HOLD
+   🧠 AI Decision: HOLD (C+)
+   📊 AI Confidence: 55%
+   🏛️ Market Regime: NORMAL_HIGH
+✅ [TRADE-DETAIL] COFORGE.NS: TAKE PROFITS (C+) - Analysis with 1 transactions
+🎯 [TRADE-DETAIL] Checking analysis conditions for COFORGE.NS: status='Partial Closed'
+🎯 [TRADE-DETAIL] Analyzing health for COFORGE.NS (Partial Closed)
+🔧 [TRADE-DETAIL] COFORGE.NS - Status: Partial Closed, Original: 12, Current: 9, Transactions: 1
+🔧 [TRADE-DETAIL] Clearing cache for partial trade COFORGE.NS with 1 transactions
+🗑️ Cleared 0 cache entries for COFORGE.NS
+🔍 [TRADE-HEALTH] Analyzing health for COFORGE.NS (ISH-2025-000005-7DRD4) with REAL AI
+🔧 Cache key for COFORGE.NS: "COFORGE.NS_qty9_1756276500000" (Original: 12, Current: 9, Partial: true)
+🧠 [TRADE-HEALTH] Getting REAL AI analysis for COFORGE.NS using generateExpertAIDecision
+✅ [TRADE-HEALTH] REAL AI Analysis complete for COFORGE.NS:
+   🎯 AI Decision: HOLD (Grade: C+)
+   📊 AI Confidence: 55%
+   ⚖️ Risk/Reward: 2.05x
+   🏛️ Market Regime: NORMAL_HIGH (70%)
+   🔧 Trade Readiness: READY
+🔢 [SELL-CALC] COFORGE.NS: Total: 9, Original: 12, Already sold: 3 (25.0%)
+🧠 [SELL-CALC] COFORGE.NS: Already sold 25.0%, reducing recommendation to 15%
+📊 [SELL-CALC] COFORGE.NS: Recommending 1 shares (15%), leaving 8 shares
+🎯 [NEXT-ACTION] COFORGE.NS: recommendation=HOLD, isProfit=true, profitPercent=5.17%
+🎯 [NEXT-ACTION] COFORGE.NS: Default MONITOR path, checking for profit-taking opportunity
+🔢 [SELL-CALC] COFORGE.NS: Total: 9, Original: 12, Already sold: 3 (25.0%)
+🧠 [SELL-CALC] COFORGE.NS: Already sold 25.0%, reducing recommendation to 15%
+📊 [SELL-CALC] COFORGE.NS: Recommending 1 shares (15%), leaving 8 shares
+📊 [NEXT-ACTION] COFORGE.NS: Main action recommends selling 1 shares, will monitor 8 remaining
+✅ [TRADE-HEALTH] REAL AI analysis complete for COFORGE.NS: HOLD
+   🧠 AI Decision: HOLD (C+)
+   📊 AI Confidence: 55%
+   🏛️ Market Regime: NORMAL_HIGH
+✅ [TRADE-DETAIL] COFORGE.NS: TAKE PROFITS (C+) - Analysis with 1 transactions
+🎯 [TRADE-DETAIL] Checking analysis conditions for COFORGE.NS: status='Partial Closed'
+🎯 [TRADE-DETAIL] Analyzing health for COFORGE.NS (Partial Closed)
+🔧 [TRADE-DETAIL] COFORGE.NS - Status: Partial Closed, Original: 12, Current: 9, Transactions: 1
+🔧 [TRADE-DETAIL] Clearing cache for partial trade COFORGE.NS with 1 transactions
+🗑️ Cleared 0 cache entries for COFORGE.NS
+🔍 [TRADE-HEALTH] Analyzing health for COFORGE.NS (ISH-2025-000005-7DRD4) with REAL AI
+🔧 Cache key for COFORGE.NS: "COFORGE.NS_qty9_1756276500000" (Original: 12, Current: 9, Partial: true)
+🧠 [TRADE-HEALTH] Getting REAL AI analysis for COFORGE.NS using generateExpertAIDecision
+✅ [TRADE-HEALTH] REAL AI Analysis complete for COFORGE.NS:
+   🎯 AI Decision: HOLD (Grade: C+)
+   📊 AI Confidence: 55%
+   ⚖️ Risk/Reward: 2.05x
+   🏛️ Market Regime: NORMAL_HIGH (70%)
+   🔧 Trade Readiness: READY
+🔢 [SELL-CALC] COFORGE.NS: Total: 9, Original: 12, Already sold: 3 (25.0%)
+🧠 [SELL-CALC] COFORGE.NS: Already sold 25.0%, reducing recommendation to 15%
+📊 [SELL-CALC] COFORGE.NS: Recommending 1 shares (15%), leaving 8 shares
+🎯 [NEXT-ACTION] COFORGE.NS: recommendation=HOLD, isProfit=true, profitPercent=5.17%
+🎯 [NEXT-ACTION] COFORGE.NS: Default MONITOR path, checking for profit-taking opportunity
+🔢 [SELL-CALC] COFORGE.NS: Total: 9, Original: 12, Already sold: 3 (25.0%)
+🧠 [SELL-CALC] COFORGE.NS: Already sold 25.0%, reducing recommendation to 15%
+📊 [SELL-CALC] COFORGE.NS: Recommending 1 shares (15%), leaving 8 shares
+📊 [NEXT-ACTION] COFORGE.NS: Main action recommends selling 1 shares, will monitor 8 remaining
+✅ [TRADE-HEALTH] REAL AI analysis complete for COFORGE.NS: HOLD
+   🧠 AI Decision: HOLD (C+)
+   📊 AI Confidence: 55%
+   🏛️ Market Regime: NORMAL_HIGH
+✅ [TRADE-DETAIL] COFORGE.NS: TAKE PROFITS (C+) - Analysis with 1 transactions
+🎯 [TRADE-DETAIL] Checking analysis conditions for COFORGE.NS: status='Partial Closed'
+🎯 [TRADE-DETAIL] Analyzing health for COFORGE.NS (Partial Closed)
+🔧 [TRADE-DETAIL] COFORGE.NS - Status: Partial Closed, Original: 12, Current: 9, Transactions: 1
+🔧 [TRADE-DETAIL] Clearing cache for partial trade COFORGE.NS with 1 transactions
+🗑️ Cleared 0 cache entries for COFORGE.NS
+🔍 [TRADE-HEALTH] Analyzing health for COFORGE.NS (ISH-2025-000005-7DRD4) with REAL AI
+🔧 Cache key for COFORGE.NS: "COFORGE.NS_qty9_1756276500000" (Original: 12, Current: 9, Partial: true)
+🧠 [TRADE-HEALTH] Getting REAL AI analysis for COFORGE.NS using generateExpertAIDecision
+✅ [TRADE-HEALTH] REAL AI Analysis complete for COFORGE.NS:
+   🎯 AI Decision: HOLD (Grade: C+)
+   📊 AI Confidence: 55%
+   ⚖️ Risk/Reward: 2.05x
+   🏛️ Market Regime: NORMAL_HIGH (70%)
+   🔧 Trade Readiness: READY
+🔢 [SELL-CALC] COFORGE.NS: Total: 9, Original: 12, Already sold: 3 (25.0%)
+🧠 [SELL-CALC] COFORGE.NS: Already sold 25.0%, reducing recommendation to 15%
+📊 [SELL-CALC] COFORGE.NS: Recommending 1 shares (15%), leaving 8 shares
+🎯 [NEXT-ACTION] COFORGE.NS: recommendation=HOLD, isProfit=true, profitPercent=5.17%
+🎯 [NEXT-ACTION] COFORGE.NS: Default MONITOR path, checking for profit-taking opportunity
+🔢 [SELL-CALC] COFORGE.NS: Total: 9, Original: 12, Already sold: 3 (25.0%)
+🧠 [SELL-CALC] COFORGE.NS: Already sold 25.0%, reducing recommendation to 15%
+📊 [SELL-CALC] COFORGE.NS: Recommending 1 shares (15%), leaving 8 shares
+📊 [NEXT-ACTION] COFORGE.NS: Main action recommends selling 1 shares, will monitor 8 remaining
+✅ [TRADE-HEALTH] REAL AI analysis complete for COFORGE.NS: HOLD
+   🧠 AI Decision: HOLD (C+)
+   📊 AI Confidence: 55%
+   🏛️ Market Regime: NORMAL_HIGH
+✅ [TRADE-DETAIL] COFORGE.NS: TAKE PROFITS (C+) - Analysis with 1 transactions
+🎯 [TRADE-DETAIL] Checking analysis conditions for COFORGE.NS: status='Partial Closed'
+🎯 [TRADE-DETAIL] Analyzing health for COFORGE.NS (Partial Closed)
+🔧 [TRADE-DETAIL] COFORGE.NS - Status: Partial Closed, Original: 12, Current: 9, Transactions: 1
+🔧 [TRADE-DETAIL] Clearing cache for partial trade COFORGE.NS with 1 transactions
+🗑️ Cleared 0 cache entries for COFORGE.NS
+🔍 [TRADE-HEALTH] Analyzing health for COFORGE.NS (ISH-2025-000005-7DRD4) with REAL AI
+🔧 Cache key for COFORGE.NS: "COFORGE.NS_qty9_1756276500000" (Original: 12, Current: 9, Partial: true)
+🧠 [TRADE-HEALTH] Getting REAL AI analysis for COFORGE.NS using generateExpertAIDecision
+✅ [TRADE-HEALTH] REAL AI Analysis complete for COFORGE.NS:
+   🎯 AI Decision: HOLD (Grade: C+)
+   📊 AI Confidence: 55%
+   ⚖️ Risk/Reward: 2.05x
+   🏛️ Market Regime: NORMAL_HIGH (70%)
+   🔧 Trade Readiness: READY
+🔢 [SELL-CALC] COFORGE.NS: Total: 9, Original: 12, Already sold: 3 (25.0%)
+🧠 [SELL-CALC] COFORGE.NS: Already sold 25.0%, reducing recommendation to 15%
+📊 [SELL-CALC] COFORGE.NS: Recommending 1 shares (15%), leaving 8 shares
+🎯 [NEXT-ACTION] COFORGE.NS: recommendation=HOLD, isProfit=true, profitPercent=5.17%
+🎯 [NEXT-ACTION] COFORGE.NS: Default MONITOR path, checking for profit-taking opportunity
+🔢 [SELL-CALC] COFORGE.NS: Total: 9, Original: 12, Already sold: 3 (25.0%)
+🧠 [SELL-CALC] COFORGE.NS: Already sold 25.0%, reducing recommendation to 15%
+📊 [SELL-CALC] COFORGE.NS: Recommending 1 shares (15%), leaving 8 shares
+📊 [NEXT-ACTION] COFORGE.NS: Main action recommends selling 1 shares, will monitor 8 remaining
+✅ [TRADE-HEALTH] REAL AI analysis complete for COFORGE.NS: HOLD
+   🧠 AI Decision: HOLD (C+)
+   📊 AI Confidence: 55%
+   🏛️ Market Regime: NORMAL_HIGH
+✅ [TRADE-DETAIL] COFORGE.NS: TAKE PROFITS (C+) - Analysis with 1 transactions
+🎯 [TRADE-DETAIL] Checking analysis conditions for COFORGE.NS: status='Partial Closed'
+🎯 [TRADE-DETAIL] Analyzing health for COFORGE.NS (Partial Closed)
+🔧 [TRADE-DETAIL] COFORGE.NS - Status: Partial Closed, Original: 12, Current: 9, Transactions: 1
+🔧 [TRADE-DETAIL] Clearing cache for partial trade COFORGE.NS with 1 transactions
+🗑️ Cleared 0 cache entries for COFORGE.NS
+🔍 [TRADE-HEALTH] Analyzing health for COFORGE.NS (ISH-2025-000005-7DRD4) with REAL AI
+🔧 Cache key for COFORGE.NS: "COFORGE.NS_qty9_1756276800000" (Original: 12, Current: 9, Partial: true)
+🧠 [TRADE-HEALTH] Getting REAL AI analysis for COFORGE.NS using generateExpertAIDecision
+✅ [TRADE-HEALTH] REAL AI Analysis complete for COFORGE.NS:
+   🎯 AI Decision: HOLD (Grade: C+)
+   📊 AI Confidence: 55%
+   ⚖️ Risk/Reward: 2.05x
+   🏛️ Market Regime: NORMAL_HIGH (70%)
+   🔧 Trade Readiness: READY
+🔢 [SELL-CALC] COFORGE.NS: Total: 9, Original: 12, Already sold: 3 (25.0%)
+🧠 [SELL-CALC] COFORGE.NS: Already sold 25.0%, reducing recommendation to 15%
+📊 [SELL-CALC] COFORGE.NS: Recommending 1 shares (15%), leaving 8 shares
+🎯 [NEXT-ACTION] COFORGE.NS: recommendation=HOLD, isProfit=true, profitPercent=5.17%
+🎯 [NEXT-ACTION] COFORGE.NS: Default MONITOR path, checking for profit-taking opportunity
+🔢 [SELL-CALC] COFORGE.NS: Total: 9, Original: 12, Already sold: 3 (25.0%)
+🧠 [SELL-CALC] COFORGE.NS: Already sold 25.0%, reducing recommendation to 15%
+📊 [SELL-CALC] COFORGE.NS: Recommending 1 shares (15%), leaving 8 shares
+📊 [NEXT-ACTION] COFORGE.NS: Main action recommends selling 1 shares, will monitor 8 remaining
+✅ [TRADE-HEALTH] REAL AI analysis complete for COFORGE.NS: HOLD
+   🧠 AI Decision: HOLD (C+)
+   📊 AI Confidence: 55%
+   🏛️ Market Regime: NORMAL_HIGH
+✅ [TRADE-DETAIL] COFORGE.NS: TAKE PROFITS (C+) - Analysis with 1 transactions
+🎯 [TRADE-DETAIL] Checking analysis conditions for COFORGE.NS: status='Partial Closed'
+🎯 [TRADE-DETAIL] Analyzing health for COFORGE.NS (Partial Closed)
+🔧 [TRADE-DETAIL] COFORGE.NS - Status: Partial Closed, Original: 12, Current: 9, Transactions: 1
+🔧 [TRADE-DETAIL] Clearing cache for partial trade COFORGE.NS with 1 transactions
+🗑️ Cleared 0 cache entries for COFORGE.NS
+🔍 [TRADE-HEALTH] Analyzing health for COFORGE.NS (ISH-2025-000005-7DRD4) with REAL AI
+🔧 Cache key for COFORGE.NS: "COFORGE.NS_qty9_1756276800000" (Original: 12, Current: 9, Partial: true)
+🧠 [TRADE-HEALTH] Getting REAL AI analysis for COFORGE.NS using generateExpertAIDecision
+✅ [TRADE-HEALTH] REAL AI Analysis complete for COFORGE.NS:
+   🎯 AI Decision: HOLD (Grade: C+)
+   📊 AI Confidence: 55%
+   ⚖️ Risk/Reward: 2.05x
+   🏛️ Market Regime: NORMAL_HIGH (70%)
+   🔧 Trade Readiness: READY
+🔢 [SELL-CALC] COFORGE.NS: Total: 9, Original: 12, Already sold: 3 (25.0%)
+🧠 [SELL-CALC] COFORGE.NS: Already sold 25.0%, reducing recommendation to 15%
+📊 [SELL-CALC] COFORGE.NS: Recommending 1 shares (15%), leaving 8 shares
+🎯 [NEXT-ACTION] COFORGE.NS: recommendation=HOLD, isProfit=true, profitPercent=5.17%
+🎯 [NEXT-ACTION] COFORGE.NS: Default MONITOR path, checking for profit-taking opportunity
+🔢 [SELL-CALC] COFORGE.NS: Total: 9, Original: 12, Already sold: 3 (25.0%)
+🧠 [SELL-CALC] COFORGE.NS: Already sold 25.0%, reducing recommendation to 15%
+📊 [SELL-CALC] COFORGE.NS: Recommending 1 shares (15%), leaving 8 shares
+📊 [NEXT-ACTION] COFORGE.NS: Main action recommends selling 1 shares, will monitor 8 remaining
+✅ [TRADE-HEALTH] REAL AI analysis complete for COFORGE.NS: HOLD
+   🧠 AI Decision: HOLD (C+)
+   📊 AI Confidence: 55%
+   🏛️ Market Regime: NORMAL_HIGH
+✅ [TRADE-DETAIL] COFORGE.NS: TAKE PROFITS (C+) - Analysis with 1 transactions
+🎯 [TRADE-DETAIL] Checking analysis conditions for COFORGE.NS: status='Partial Closed'
+🎯 [TRADE-DETAIL] Analyzing health for COFORGE.NS (Partial Closed)
+🔧 [TRADE-DETAIL] COFORGE.NS - Status: Partial Closed, Original: 12, Current: 8, Transactions: 2
+🔧 [TRADE-DETAIL] Clearing cache for partial trade COFORGE.NS with 2 transactions
+🗑️ Cleared 0 cache entries for COFORGE.NS
+🔍 [TRADE-HEALTH] Analyzing health for COFORGE.NS (ISH-2025-000005-7DRD4) with REAL AI
+🔧 Cache key for COFORGE.NS: "COFORGE.NS_qty8_1756276800000" (Original: 12, Current: 8, Partial: true)
+🧠 [TRADE-HEALTH] Getting REAL AI analysis for COFORGE.NS using generateExpertAIDecision
+✅ [TRADE-HEALTH] REAL AI Analysis complete for COFORGE.NS:
+   🎯 AI Decision: HOLD (Grade: C+)
+   📊 AI Confidence: 55%
+   ⚖️ Risk/Reward: 2.05x
+   🏛️ Market Regime: NORMAL_HIGH (70%)
+   🔧 Trade Readiness: READY
+🔢 [SELL-CALC] COFORGE.NS: Total: 8, Original: 12, Already sold: 4 (33.3%)
+🧠 [SELL-CALC] COFORGE.NS: Already sold 33.3%, reducing recommendation to 10%
+📊 [SELL-CALC] COFORGE.NS: Recommending 0 shares (10%), leaving 8 shares
+🎯 [NEXT-ACTION] COFORGE.NS: recommendation=HOLD, isProfit=true, profitPercent=5.17%
+🎯 [NEXT-ACTION] COFORGE.NS: Default MONITOR path, checking for profit-taking opportunity
+🔢 [SELL-CALC] COFORGE.NS: Total: 8, Original: 12, Already sold: 4 (33.3%)
+🧠 [SELL-CALC] COFORGE.NS: Already sold 33.3%, reducing recommendation to 10%
+📊 [SELL-CALC] COFORGE.NS: Recommending 0 shares (10%), leaving 8 shares
+📊 [NEXT-ACTION] COFORGE.NS: No selling recommended, monitoring all 8 shares
+✅ [TRADE-HEALTH] REAL AI analysis complete for COFORGE.NS: HOLD
+   🧠 AI Decision: HOLD (C+)
+   📊 AI Confidence: 55%
+   🏛️ Market Regime: NORMAL_HIGH
+✅ [TRADE-DETAIL] COFORGE.NS: TAKE PROFITS (C+) - Analysis with 2 transactions
+🎯 [TRADE-DETAIL] Checking analysis conditions for COFORGE.NS: status='Partial Closed'
+🎯 [TRADE-DETAIL] Analyzing health for COFORGE.NS (Partial Closed)
+🔧 [TRADE-DETAIL] COFORGE.NS - Status: Partial Closed, Original: 12, Current: 8, Transactions: 2
+🔧 [TRADE-DETAIL] Clearing cache for partial trade COFORGE.NS with 2 transactions
+🗑️ Cleared 0 cache entries for COFORGE.NS
+🔍 [TRADE-HEALTH] Analyzing health for COFORGE.NS (ISH-2025-000005-7DRD4) with REAL AI
+🔧 Cache key for COFORGE.NS: "COFORGE.NS_qty8_1756276800000" (Original: 12, Current: 8, Partial: true)
+🧠 [TRADE-HEALTH] Getting REAL AI analysis for COFORGE.NS using generateExpertAIDecision
+✅ [TRADE-HEALTH] REAL AI Analysis complete for COFORGE.NS:
+   🎯 AI Decision: HOLD (Grade: C+)
+   📊 AI Confidence: 55%
+   ⚖️ Risk/Reward: 2.05x
+   🏛️ Market Regime: NORMAL_HIGH (70%)
+   🔧 Trade Readiness: READY
+🔢 [SELL-CALC] COFORGE.NS: Total: 8, Original: 12, Already sold: 4 (33.3%)
+🧠 [SELL-CALC] COFORGE.NS: Already sold 33.3%, reducing recommendation to 10%
+📊 [SELL-CALC] COFORGE.NS: Recommending 0 shares (10%), leaving 8 shares
+🎯 [NEXT-ACTION] COFORGE.NS: recommendation=HOLD, isProfit=true, profitPercent=5.17%
+🎯 [NEXT-ACTION] COFORGE.NS: Default MONITOR path, checking for profit-taking opportunity
+🔢 [SELL-CALC] COFORGE.NS: Total: 8, Original: 12, Already sold: 4 (33.3%)
+🧠 [SELL-CALC] COFORGE.NS: Already sold 33.3%, reducing recommendation to 10%
+📊 [SELL-CALC] COFORGE.NS: Recommending 0 shares (10%), leaving 8 shares
+📊 [NEXT-ACTION] COFORGE.NS: No selling recommended, monitoring all 8 shares
+✅ [TRADE-HEALTH] REAL AI analysis complete for COFORGE.NS: HOLD
+   🧠 AI Decision: HOLD (C+)
+   📊 AI Confidence: 55%
+   🏛️ Market Regime: NORMAL_HIGH
+✅ [TRADE-DETAIL] COFORGE.NS: TAKE PROFITS (C+) - Analysis with 2 transactions
+🎯 [TRADE-DETAIL] Checking analysis conditions for COFORGE.NS: status='Partial Closed'
+🎯 [TRADE-DETAIL] Analyzing health for COFORGE.NS (Partial Closed)
+🔧 [TRADE-DETAIL] COFORGE.NS - Status: Partial Closed, Original: 12, Current: 8, Transactions: 2
+🔧 [TRADE-DETAIL] Clearing cache for partial trade COFORGE.NS with 2 transactions
+🗑️ Cleared 0 cache entries for COFORGE.NS
+🔍 [TRADE-HEALTH] Analyzing health for COFORGE.NS (ISH-2025-000005-7DRD4) with REAL AI
+🔧 Cache key for COFORGE.NS: "COFORGE.NS_qty8_1756276800000" (Original: 12, Current: 8, Partial: true)
+🧠 [TRADE-HEALTH] Getting REAL AI analysis for COFORGE.NS using generateExpertAIDecision
+✅ [TRADE-HEALTH] REAL AI Analysis complete for COFORGE.NS:
+   🎯 AI Decision: HOLD (Grade: C+)
+   📊 AI Confidence: 55%
+   ⚖️ Risk/Reward: 2.05x
+   🏛️ Market Regime: NORMAL_HIGH (70%)
+   🔧 Trade Readiness: READY
+🔢 [SELL-CALC] COFORGE.NS: Total: 8, Original: 12, Already sold: 4 (33.3%)
+🧠 [SELL-CALC] COFORGE.NS: Already sold 33.3%, reducing recommendation to 10%
+📊 [SELL-CALC] COFORGE.NS: Recommending 0 shares (10%), leaving 8 shares
+🎯 [NEXT-ACTION] COFORGE.NS: recommendation=HOLD, isProfit=true, profitPercent=5.17%
+🎯 [NEXT-ACTION] COFORGE.NS: Default MONITOR path, checking for profit-taking opportunity
+🔢 [SELL-CALC] COFORGE.NS: Total: 8, Original: 12, Already sold: 4 (33.3%)
+🧠 [SELL-CALC] COFORGE.NS: Already sold 33.3%, reducing recommendation to 10%
+📊 [SELL-CALC] COFORGE.NS: Recommending 0 shares (10%), leaving 8 shares
+📊 [NEXT-ACTION] COFORGE.NS: No selling recommended, monitoring all 8 shares
+✅ [TRADE-HEALTH] REAL AI analysis complete for COFORGE.NS: HOLD
+   🧠 AI Decision: HOLD (C+)
+   📊 AI Confidence: 55%
+   🏛️ Market Regime: NORMAL_HIGH
+✅ [TRADE-DETAIL] COFORGE.NS: TAKE PROFITS (C+) - Analysis with 2 transactions
+🎯 [TRADE-DETAIL] Checking analysis conditions for COFORGE.NS: status='Partial Closed'
+🎯 [TRADE-DETAIL] Analyzing health for COFORGE.NS (Partial Closed)
+🔧 [TRADE-DETAIL] COFORGE.NS - Status: Partial Closed, Original: 12, Current: 8, Transactions: 2
+🔧 [TRADE-DETAIL] Clearing cache for partial trade COFORGE.NS with 2 transactions
+🗑️ Cleared 0 cache entries for COFORGE.NS
+🔍 [TRADE-HEALTH] Analyzing health for COFORGE.NS (ISH-2025-000005-7DRD4) with REAL AI
+🔧 Cache key for COFORGE.NS: "COFORGE.NS_qty8_1756276800000" (Original: 12, Current: 8, Partial: true)
+🧠 [TRADE-HEALTH] Getting REAL AI analysis for COFORGE.NS using generateExpertAIDecision
+✅ [TRADE-HEALTH] REAL AI Analysis complete for COFORGE.NS:
+   🎯 AI Decision: HOLD (Grade: C+)
+   📊 AI Confidence: 55%
+   ⚖️ Risk/Reward: 2.05x
+   🏛️ Market Regime: NORMAL_HIGH (70%)
+   🔧 Trade Readiness: READY
+🔢 [SELL-CALC] COFORGE.NS: Total: 8, Original: 12, Already sold: 4 (33.3%)
+🧠 [SELL-CALC] COFORGE.NS: Already sold 33.3%, reducing recommendation to 10%
+📊 [SELL-CALC] COFORGE.NS: Recommending 0 shares (10%), leaving 8 shares
+🎯 [NEXT-ACTION] COFORGE.NS: recommendation=HOLD, isProfit=true, profitPercent=5.17%
+🎯 [NEXT-ACTION] COFORGE.NS: Default MONITOR path, checking for profit-taking opportunity
+🔢 [SELL-CALC] COFORGE.NS: Total: 8, Original: 12, Already sold: 4 (33.3%)
+🧠 [SELL-CALC] COFORGE.NS: Already sold 33.3%, reducing recommendation to 10%
+📊 [SELL-CALC] COFORGE.NS: Recommending 0 shares (10%), leaving 8 shares
+📊 [NEXT-ACTION] COFORGE.NS: No selling recommended, monitoring all 8 shares
+✅ [TRADE-HEALTH] REAL AI analysis complete for COFORGE.NS: HOLD
+   🧠 AI Decision: HOLD (C+)
+   📊 AI Confidence: 55%
+   🏛️ Market Regime: NORMAL_HIGH
+✅ [TRADE-DETAIL] COFORGE.NS: TAKE PROFITS (C+) - Analysis with 2 transactions
+🎯 [TRADE-DETAIL] Checking analysis conditions for COFORGE.NS: status='Partial Closed'
+🎯 [TRADE-DETAIL] Analyzing health for COFORGE.NS (Partial Closed)
+🔧 [TRADE-DETAIL] COFORGE.NS - Status: Partial Closed, Original: 12, Current: 8, Transactions: 2
+🔧 [TRADE-DETAIL] Clearing cache for partial trade COFORGE.NS with 2 transactions
+🗑️ Cleared 0 cache entries for COFORGE.NS
+🔍 [TRADE-HEALTH] Analyzing health for COFORGE.NS (ISH-2025-000005-7DRD4) with REAL AI
+🔧 Cache key for COFORGE.NS: "COFORGE.NS_qty8_1756276800000" (Original: 12, Current: 8, Partial: true)
+🧠 [TRADE-HEALTH] Getting REAL AI analysis for COFORGE.NS using generateExpertAIDecision
+✅ [TRADE-HEALTH] REAL AI Analysis complete for COFORGE.NS:
+   🎯 AI Decision: HOLD (Grade: C+)
+   📊 AI Confidence: 55%
+   ⚖️ Risk/Reward: 2.05x
+   🏛️ Market Regime: NORMAL_HIGH (70%)
+   🔧 Trade Readiness: READY
+🔢 [SELL-CALC] COFORGE.NS: Total: 8, Original: 12, Already sold: 4 (33.3%)
+🧠 [SELL-CALC] COFORGE.NS: Already sold 33.3%, reducing recommendation to 10%
+📊 [SELL-CALC] COFORGE.NS: Recommending 0 shares (10%), leaving 8 shares
+🎯 [NEXT-ACTION] COFORGE.NS: recommendation=HOLD, isProfit=true, profitPercent=5.17%
+🎯 [NEXT-ACTION] COFORGE.NS: Default MONITOR path, checking for profit-taking opportunity
+🔢 [SELL-CALC] COFORGE.NS: Total: 8, Original: 12, Already sold: 4 (33.3%)
+🧠 [SELL-CALC] COFORGE.NS: Already sold 33.3%, reducing recommendation to 10%
+📊 [SELL-CALC] COFORGE.NS: Recommending 0 shares (10%), leaving 8 shares
+📊 [NEXT-ACTION] COFORGE.NS: No selling recommended, monitoring all 8 shares
+✅ [TRADE-HEALTH] REAL AI analysis complete for COFORGE.NS: HOLD
+   🧠 AI Decision: HOLD (C+)
+   📊 AI Confidence: 55%
+   🏛️ Market Regime: NORMAL_HIGH
+✅ [TRADE-DETAIL] COFORGE.NS: TAKE PROFITS (C+) - Analysis with 2 transactions
+🎯 [TRADE-DETAIL] Checking analysis conditions for COFORGE.NS: status='Partial Closed'
+🎯 [TRADE-DETAIL] Analyzing health for COFORGE.NS (Partial Closed)
+🔧 [TRADE-DETAIL] COFORGE.NS - Status: Partial Closed, Original: 12, Current: 8, Transactions: 2
+🔧 [TRADE-DETAIL] Clearing cache for partial trade COFORGE.NS with 2 transactions
+🗑️ Cleared 0 cache entries for COFORGE.NS
+🔍 [TRADE-HEALTH] Analyzing health for COFORGE.NS (ISH-2025-000005-7DRD4) with REAL AI
+🔧 Cache key for COFORGE.NS: "COFORGE.NS_qty8_1756276800000" (Original: 12, Current: 8, Partial: true)
+🧠 [TRADE-HEALTH] Getting REAL AI analysis for COFORGE.NS using generateExpertAIDecision
+✅ [TRADE-HEALTH] REAL AI Analysis complete for COFORGE.NS:
+   🎯 AI Decision: HOLD (Grade: C+)
+   📊 AI Confidence: 55%
+   ⚖️ Risk/Reward: 2.05x
+   🏛️ Market Regime: NORMAL_HIGH (70%)
+   🔧 Trade Readiness: READY
+🔢 [SELL-CALC] COFORGE.NS: Total: 8, Original: 12, Already sold: 4 (33.3%)
+🧠 [SELL-CALC] COFORGE.NS: Already sold 33.3%, reducing recommendation to 10%
+📊 [SELL-CALC] COFORGE.NS: Recommending 0 shares (10%), leaving 8 shares
+🎯 [NEXT-ACTION] COFORGE.NS: recommendation=HOLD, isProfit=true, profitPercent=5.17%
+🎯 [NEXT-ACTION] COFORGE.NS: Default MONITOR path, checking for profit-taking opportunity
+🔢 [SELL-CALC] COFORGE.NS: Total: 8, Original: 12, Already sold: 4 (33.3%)
+🧠 [SELL-CALC] COFORGE.NS: Already sold 33.3%, reducing recommendation to 10%
+📊 [SELL-CALC] COFORGE.NS: Recommending 0 shares (10%), leaving 8 shares
+📊 [NEXT-ACTION] COFORGE.NS: No selling recommended, monitoring all 8 shares
+✅ [TRADE-HEALTH] REAL AI analysis complete for COFORGE.NS: HOLD
+   🧠 AI Decision: HOLD (C+)
+   📊 AI Confidence: 55%
+   🏛️ Market Regime: NORMAL_HIGH
+✅ [TRADE-DETAIL] COFORGE.NS: TAKE PROFITS (C+) - Analysis with 2 transactions

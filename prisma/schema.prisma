@@ -267,3 +267,33 @@ model TradeAlert {
   @@index([isRead])
   @@index([createdAt])
 }
+
+// Signal History Table for Alert System
+model SignalHistory {
+  id                String   @id @default(cuid())
+  symbol            String
+  action            String   // BUY, WATCH, AVOID, SELL, etc.
+  confidence        Float
+  grade             String   // A+, A, B+, etc.
+  signalQuality     String   // INSTITUTIONAL_GRADE, STANDARD, etc.
+  universe          String   // SP500_CORE, SATELLITE, etc.
+  analysisTimestamp DateTime @default(now())
+  metadata          String?  // JSON string with additional analysis data
+  
+  @@index([symbol, analysisTimestamp])
+  @@index([analysisTimestamp])
+}
+
+// Alert History Table (Optional - to track sent alerts)
+model AlertHistory {
+  id          String   @id @default(cuid())
+  type        String   // CRITICAL, URGENT, IMPORTANT
+  category    String   // SIGNAL_BREAKDOWN, NEW_OPPORTUNITY, etc.
+  symbol      String
+  message     String
+  sentAt      DateTime @default(now())
+  acknowledged Boolean @default(false)
+  
+  @@index([symbol, sentAt])
+  @@index([type, sentAt])
+}
