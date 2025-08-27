@@ -21,18 +21,19 @@ const prisma = new PrismaClient();
 // Expert-recommended S&P 500 CORE Universe (Top 100 by Market Cap - Highest Liquidity)
 const SP500_CORE = [
     // Top 50 - Mega Cap Tech & Growth Leaders (Highest Priority - Daily Analysis)
-    "NVDA", "MSFT", "AAPL", "AMZN", "META", "AVGO", "GOOGL", "GOOG", "TSLA", "BRK.B",
-    "LLY", "JPM", "UNH", "V", "XOM", "MA", "PG", "COST", "HD", "JNJ",
-    "NFLX", "ABBV", "BAC", "CRM", "CVX", "KO", "AMD", "PEP", "TMO", "WMT",
-    "CSCO", "ACN", "LIN", "ABT", "MRK", "ADBE", "IBM", "TXN", "PM", "CAT",
-    "DHR", "ISRG", "GE", "QCOM", "NOW", "VZ", "UBER", "INTU", "COP", "RTX",
+    // "NVDA", "MSFT", "AAPL", "AMZN", "META", "AVGO", "GOOGL", "GOOG", "TSLA", "BRK.B",
+    // "LLY", "JPM", "UNH", "V", "XOM", "MA", "PG", "COST", "HD", "JNJ",
+    // "NFLX", "ABBV", "BAC", "CRM", "CVX", "KO", "AMD", "PEP", "TMO", "WMT",
+    // "CSCO", "ACN", "LIN", "ABT", "MRK", "ADBE", "IBM", "TXN", "PM", "CAT",
+    // "DHR", "ISRG", "GE", "QCOM", "NOW", "VZ", "UBER", "INTU", "COP", "RTX",
     
     // Next 50 - Large Cap Value & Diversified (High Priority - Daily Analysis)
     "AMGN", "AMAT", "HON", "PFE", "BKNG", "NEE", "T", "LOW", "SPGI", "BSX",
     "AXP", "SYK", "PGR", "TJX", "C", "LRCX", "BLK", "VRTX", "MS", "MDT",
     "ETN", "CB", "REGN", "ADI", "SCHW", "MU", "FI", "KKR", "GILD", "AON",
-    "PANW", "CMG", "SO", "ICE", "APD", "DUK", "PLD", "MMC", "KLAC", "PYPL",
-    "USB", "SHW", "ZTS", "ITW", "MCO", "WM", "EMR", "CDNS", "FCX", "MAR"
+    // "PANW", "CMG", "SO", "ICE", "APD", "DUK", "PLD", "MMC", "KLAC", "PYPL",
+    // "USB", "SHW", "ZTS", "ITW", "MCO", "WM", "EMR", "CDNS", "FCX", "MAR",
+
 ];
 
 // S&P 500 SATELLITE Universe (Remaining S&P 500 for Weekly Breakout Scans)
@@ -1444,6 +1445,24 @@ class WatchlistManager {
     async updateExpertWatchlist(evolutionAnalysis) {
         console.log('💎 Updating watchlist with expert prioritization...');
         
+        // Debug logging
+        console.log('🔍 DEBUG - Evolution Analysis Structure:');
+        console.log('- position_impact.new_opportunities:', evolutionAnalysis.position_impact?.new_opportunities?.length || 0);
+        console.log('- evolution_patterns.stable BUY:', evolutionAnalysis.evolution_patterns?.stable?.filter(item => item.current_action === 'BUY')?.length || 0);
+        console.log('- evolution_patterns.new_entries BUY:', evolutionAnalysis.evolution_patterns?.new_entries?.filter(item => item.action === 'BUY')?.length || 0);
+        console.log('- evolution_patterns.strengthening:', evolutionAnalysis.evolution_patterns?.strengthening?.length || 0);
+
+        // Log all BUY signals for debugging
+        if (evolutionAnalysis.evolution_patterns?.stable) {
+            const stableBuys = evolutionAnalysis.evolution_patterns.stable.filter(item => item.current_action === 'BUY');
+            console.log('🔍 Stable BUY signals:', stableBuys.map(item => `${item.symbol} (${item.current_grade})`));
+        }
+        
+        if (evolutionAnalysis.evolution_patterns?.new_entries) {
+            const newBuys = evolutionAnalysis.evolution_patterns.new_entries.filter(item => item.action === 'BUY');
+            console.log('🔍 New BUY signals:', newBuys.map(item => `${item.symbol} (${item.grade})`));
+        }
+        
         // Clear existing watchlist
         await prisma.watchlistStock.deleteMany({});
         
@@ -1451,40 +1470,265 @@ class WatchlistManager {
         const watchlistEntries = [];
 
         // Priority 1: Critical risk positions requiring immediate attention
-        position_impact.critical_risk.forEach(item => {
-            watchlistEntries.push(this.createExpertWatchlistEntry(item, 'CRITICAL_RISK', 1));
-        });
+        if (position_impact?.critical_risk) {
+            position_impact.critical_risk.forEach(item => {
+                watchlistEntries.push(this.createExpertWatchlistEntry(item, 'CRITICAL_RISK', 1));
+            });
+            console.log(`🚨 Added ${position_impact.critical_risk.length} critical risk entries`);
+        }
 
-        // Priority 2: Institutional grade new opportunities
-        position_impact.new_opportunities
-            .filter(item => item.opportunity_type === 'INSTITUTIONAL_GRADE')
-            .forEach(item => {
+        // Priority 2: Institutional grade new opportunities (RELAXED FILTER)
+        if (position_impact?.new_opportunities) {
+            const institutionalOpps = position_impact.new_opportunities.filter(item => 
+                item.opportunity_type === 'INSTITUTIONAL_GRADE' || 
+                item.current_action === 'BUY' ||
+                (item.confidence && item.confidence > 0.8)
+            );
+            institutionalOpps.forEach(item => {
                 watchlistEntries.push(this.createExpertWatchlistEntry(item, 'INSTITUTIONAL_OPPORTUNITY', 2));
             });
+            console.log(`💎 Added ${institutionalOpps.length} institutional opportunities (${position_impact.new_opportunities.length} total available)`);
+        }
 
         // Priority 3: Strengthening signals with positions
-        evolution_patterns.strengthening
-            .filter(item => item.has_position)
-            .forEach(item => {
+        if (evolution_patterns?.strengthening) {
+            const strengtheningWithPos = evolution_patterns.strengthening.filter(item => item.has_position);
+            strengtheningWithPos.forEach(item => {
                 watchlistEntries.push(this.createExpertWatchlistEntry(item, 'STRENGTHENING_POSITION', 3));
             });
+            console.log(`📈 Added ${strengtheningWithPos.length} strengthening positions (${evolution_patterns.strengthening.length} total strengthening)`);
+        }
 
-        // Priority 4: Core universe stable BUY signals
-        evolution_patterns.stable
-            .filter(item => item.current_action === 'BUY' && item.universe === 'CORE')
-            .forEach(item => {
+        // Priority 4: Core universe stable BUY signals (RELAXED FILTER)
+        if (evolution_patterns?.stable) {
+            const coreStableBuys = evolution_patterns.stable.filter(item => 
+                item.current_action === 'BUY' && 
+                (item.universe === 'CORE' || item.universe === 'SATELLITE' || !item.universe)
+            );
+            coreStableBuys.forEach(item => {
                 watchlistEntries.push(this.createExpertWatchlistEntry(item, 'CORE_STABLE_BUY', 4));
             });
+            console.log(`🎯 Added ${coreStableBuys.length} core stable BUY signals (${evolution_patterns.stable.filter(item => item.current_action === 'BUY').length} total BUY in stable)`);
+        }
 
-        // Sort by priority and limit to top 30 for focus
+        // Priority 5: NEW BUY signals from new_entries
+        if (evolution_patterns?.new_entries) {
+            const newBuySignals = evolution_patterns.new_entries.filter(item => 
+                item.action === 'BUY' &&
+                (item.universe === 'CORE' || item.universe === 'SATELLITE' || !item.universe)
+            );
+            newBuySignals.forEach(item => {
+                // Convert new_entries format to stable format for consistency
+                const normalizedItem = {
+                    symbol: item.symbol,
+                    current_action: item.action,
+                    current_grade: item.grade,
+                    confidence: item.confidence / 100, // Convert percentage to decimal
+                    signal_quality: item.signal_quality,
+                    universe: item.universe,
+                    has_position: item.has_position || false
+                };
+                watchlistEntries.push(this.createExpertWatchlistEntry(normalizedItem, 'NEW_BUY_SIGNAL', 5));
+            });
+            console.log(`🚀 Added ${newBuySignals.length} new BUY signals (${evolution_patterns.new_entries.filter(item => item.action === 'BUY').length} total BUY in new_entries)`);
+        }
+
+        // Priority 6: HIGH-QUALITY WATCH SIGNALS (Top 10 Watch Opportunities)
+        const allWatchSignals = [];
+
+        // Collect WATCH signals from stable patterns
+        if (evolution_patterns?.stable) {
+            const stableWatchSignals = evolution_patterns.stable.filter(item => 
+                item.current_action === 'WATCH' &&
+                (item.universe === 'CORE' || item.universe === 'SATELLITE' || !item.universe)
+            );
+            allWatchSignals.push(...stableWatchSignals.map(item => ({ ...item, source: 'stable' })));
+        }
+
+        // Collect WATCH signals from new_entries
+        if (evolution_patterns?.new_entries) {
+            const newWatchSignals = evolution_patterns.new_entries.filter(item => 
+                item.action === 'WATCH' &&
+                (item.universe === 'CORE' || item.universe === 'SATELLITE' || !item.universe)
+            );
+            allWatchSignals.push(...newWatchSignals.map(item => ({
+                symbol: item.symbol,
+                current_action: item.action,
+                current_grade: item.grade,
+                confidence: item.confidence / 100,
+                signal_quality: item.signal_quality,
+                universe: item.universe,
+                has_position: item.has_position || false,
+                source: 'new_entries'
+            })));
+        }
+
+        // Sort WATCH signals by quality and take top 10
+        const topWatchSignals = allWatchSignals
+            .filter(item => !watchlistEntries.some(entry => entry.symbol === item.symbol)) // Avoid duplicates
+            .sort((a, b) => {
+                // Sort by: 1) Signal quality, 2) Confidence, 3) Universe priority
+                const qualityScore = (item) => {
+                    const qualityMap = {
+                        'INSTITUTIONAL_GRADE': 4,
+                        'PROFESSIONAL_GRADE': 3,
+                        'RETAIL_GRADE': 2,
+                        'SPECULATIVE_GRADE': 1
+                    };
+                    return qualityMap[item.signal_quality] || 0;
+                };
+                
+                const scoreA = qualityScore(a) * 10 + (a.confidence || 0) * 5 + (a.universe === 'CORE' ? 2 : 1);
+                const scoreB = qualityScore(b) * 10 + (b.confidence || 0) * 5 + (b.universe === 'CORE' ? 2 : 1);
+                
+                return scoreB - scoreA;
+            })
+            .slice(0, 10); // Top 10 WATCH signals
+
+        topWatchSignals.forEach(item => {
+            watchlistEntries.push(this.createExpertWatchlistEntry(item, 'TOP_WATCH_SIGNAL', 6));
+        });
+        console.log(`👁️ Added ${topWatchSignals.length} top-quality WATCH signals (${allWatchSignals.length} total WATCH available)`);
+
+        console.log(`📊 Total watchlist entries before sort/limit: ${watchlistEntries.length}`);
+
+        // FALLBACK: If we don't have many entries, add ALL high-quality signals as backup
+        if (watchlistEntries.length < 15) { // Increased from 5 to 15 to accommodate BUY + WATCH
+            console.log('🔄 FALLBACK: Adding all available high-quality signals to ensure comprehensive coverage');
+            
+            // Add any BUY signals from evolution patterns that we might have missed
+            if (evolutionAnalysis.all_signals) {
+                const allBuySignals = evolutionAnalysis.all_signals.filter(item => 
+                    item.current_action === 'BUY' && 
+                    !watchlistEntries.some(entry => entry.symbol === item.symbol)
+                );
+                
+                allBuySignals.forEach(item => {
+                    watchlistEntries.push(this.createExpertWatchlistEntry(item, 'FALLBACK_BUY', 7));
+                });
+                console.log(`🔄 Added ${allBuySignals.length} fallback BUY signals`);
+            }
+            
+            // COMPREHENSIVE SEARCH: Look through ALL evolution pattern categories
+            const allEvolutionBuys = [];
+            const allEvolutionWatches = [];
+            
+            // Check breaking, recovering, strengthening, degrading for BUY and WATCH signals
+            ['breaking', 'recovering', 'strengthening', 'degrading'].forEach(category => {
+                if (evolutionAnalysis.evolution_patterns?.[category]) {
+                    const categoryBuys = evolutionAnalysis.evolution_patterns[category].filter(item => 
+                        (item.current_action === 'BUY' || item.action === 'BUY') &&
+                        !watchlistEntries.some(entry => entry.symbol === item.symbol)
+                    );
+                    const categoryWatches = evolutionAnalysis.evolution_patterns[category].filter(item => 
+                        (item.current_action === 'WATCH' || item.action === 'WATCH') &&
+                        !watchlistEntries.some(entry => entry.symbol === item.symbol)
+                    );
+                    
+                    allEvolutionBuys.push(...categoryBuys);
+                    allEvolutionWatches.push(...categoryWatches);
+                    
+                    if (categoryBuys.length > 0) {
+                        console.log(`🔄 Found ${categoryBuys.length} BUY signals in ${category}:`, categoryBuys.map(item => item.symbol));
+                    }
+                    if (categoryWatches.length > 0) {
+                        console.log(`🔄 Found ${categoryWatches.length} WATCH signals in ${category}:`, categoryWatches.map(item => item.symbol));
+                    }
+                }
+            });
+            
+            // Add fallback BUY signals
+            allEvolutionBuys.forEach(item => {
+                const normalizedItem = {
+                    symbol: item.symbol,
+                    current_action: item.current_action || item.action,
+                    current_grade: item.current_grade || item.grade,
+                    confidence: typeof item.confidence === 'number' ? 
+                        (item.confidence > 1 ? item.confidence / 100 : item.confidence) : 0.5,
+                    signal_quality: item.signal_quality || 'PROFESSIONAL_GRADE',
+                    universe: item.universe || 'CORE',
+                    has_position: item.has_position || false
+                };
+                watchlistEntries.push(this.createExpertWatchlistEntry(normalizedItem, 'COMPREHENSIVE_BUY', 8));
+            });
+            
+            // Add fallback WATCH signals (top 5 only to keep manageable)
+            const topFallbackWatches = allEvolutionWatches
+                .sort((a, b) => (b.confidence || 0) - (a.confidence || 0))
+                .slice(0, 5);
+                
+            topFallbackWatches.forEach(item => {
+                const normalizedItem = {
+                    symbol: item.symbol,
+                    current_action: item.current_action || item.action,
+                    current_grade: item.current_grade || item.grade,
+                    confidence: typeof item.confidence === 'number' ? 
+                        (item.confidence > 1 ? item.confidence / 100 : item.confidence) : 0.5,
+                    signal_quality: item.signal_quality || 'PROFESSIONAL_GRADE',
+                    universe: item.universe || 'CORE',
+                    has_position: item.has_position || false
+                };
+                watchlistEntries.push(this.createExpertWatchlistEntry(normalizedItem, 'COMPREHENSIVE_WATCH', 9));
+            });
+            
+            if (allEvolutionBuys.length > 0) {
+                console.log(`🔄 Added ${allEvolutionBuys.length} comprehensive BUY signals from other categories`);
+            }
+            if (topFallbackWatches.length > 0) {
+                console.log(`🔄 Added ${topFallbackWatches.length} comprehensive WATCH signals from other categories`);
+            }
+            
+            // Check for new_opportunities without filtering
+            if (position_impact?.new_opportunities) {
+                const allNewOpps = position_impact.new_opportunities.filter(item =>
+                    !watchlistEntries.some(entry => entry.symbol === item.symbol)
+                );
+                
+                allNewOpps.forEach(item => {
+                    watchlistEntries.push(this.createExpertWatchlistEntry(item, 'FALLBACK_OPPORTUNITY', 10));
+                });
+                console.log(`🔄 Added ${allNewOpps.length} fallback opportunities`);
+            }
+        }
+
+        console.log(`📊 Final watchlist entries before sort/limit: ${watchlistEntries.length}`);
+
+        // Sort by priority and limit to top 50 for comprehensive coverage (BUY + WATCH)
         const sortedEntries = watchlistEntries
             .sort((a, b) => a.priority - b.priority)
-            .slice(0, 30);
+            .slice(0, 50); // Increased from 30 to 50 to accommodate BUY + WATCH signals
 
-        // Batch insert
+        // Use transaction with upsert operations to handle unique constraints
         if (sortedEntries.length > 0) {
-            await prisma.watchlistStock.createMany({
-                data: sortedEntries
+            await prisma.$transaction(async (tx) => {
+                for (const entry of sortedEntries) {
+                    await tx.watchlistStock.upsert({
+                        where: { symbol: entry.symbol },
+                        update: {
+                            currentPrice: entry.currentPrice,
+                            currency: entry.currency,
+                            market: entry.market,
+                            decisionAction: entry.decisionAction,
+                            decisionConfidence: entry.decisionConfidence,
+                            decisionGrade: entry.decisionGrade,
+                            decisionReasoning: entry.decisionReasoning,
+                            systemsAgreement: entry.systemsAgreement,
+                            systemsAnalyzed: entry.systemsAnalyzed,
+                            tier: entry.tier,
+                            signalEvolution: entry.signalEvolution,
+                            daysInTier: entry.daysInTier,
+                            historicalGrades: entry.historicalGrades,
+                            tierHistory: entry.tierHistory,
+                            strengthTrend: entry.strengthTrend,
+                            momentumMultiplier: entry.momentumMultiplier,
+                            elitePriority: entry.elitePriority,
+                            executionData: entry.executionData,
+                            addedAt: entry.addedAt,
+                            lastAnalyzed: entry.lastAnalyzed
+                        },
+                        create: entry
+                    });
+                }
             });
         }
 
