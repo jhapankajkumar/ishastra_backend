@@ -15,6 +15,7 @@ const MinerviniSEPA = require('./minervini-sepa');
 const CupWithHandle = require('./cup-with-handle');
 const RSIMeanReversion = require('./rsi-mean-reversion');
 const MACDDivergence = require('./macd-divergence');
+const { SupertrendWeekly } = require('./supertrend');
 
 class SingleSystemAnalyzer {
   constructor(gateEngineFunction) {
@@ -24,7 +25,8 @@ class SingleSystemAnalyzer {
       'sepa_method': new MinerviniSEPA(),
       'cup_handle': new CupWithHandle(),
       'rsi_mean': new RSIMeanReversion(),
-      'divergence': new MACDDivergence()
+      'divergence': new MACDDivergence(),
+      'supertrend_weekly': new SupertrendWeekly()
     };
   }
 

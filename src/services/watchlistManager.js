@@ -20,7 +20,7 @@ const prisma = new PrismaClient();
 
 // Expert-recommended S&P 500 CORE Universe (Top 100 by Market Cap - Highest Liquidity)
 const SP500_CORE = [
-    // Top 50 - Mega Cap Tech & Growth Leaders (Highest Priority - Daily Analysis)
+    // // Top 50 - Mega Cap Tech & Growth Leaders (Highest Priority - Daily Analysis)
     // "NVDA", "MSFT", "AAPL", "AMZN", "META", "AVGO", "GOOGL", "GOOG", "TSLA", "BRK.B",
     // "LLY", "JPM", "UNH", "V", "XOM", "MA", "PG", "COST", "HD", "JNJ",
     // "NFLX", "ABBV", "BAC", "CRM", "CVX", "KO", "AMD", "PEP", "TMO", "WMT",
@@ -31,8 +31,8 @@ const SP500_CORE = [
     "AMGN", "AMAT", "HON", "PFE", "BKNG", "NEE", "T", "LOW", "SPGI", "BSX",
     "AXP", "SYK", "PGR", "TJX", "C", "LRCX", "BLK", "VRTX", "MS", "MDT",
     "ETN", "CB", "REGN", "ADI", "SCHW", "MU", "FI", "KKR", "GILD", "AON",
-    // "PANW", "CMG", "SO", "ICE", "APD", "DUK", "PLD", "MMC", "KLAC", "PYPL",
-    // "USB", "SHW", "ZTS", "ITW", "MCO", "WM", "EMR", "CDNS", "FCX", "MAR",
+    "PANW", "CMG", "SO", "ICE", "APD", "DUK", "PLD", "MMC", "KLAC", "PYPL",
+    "USB", "SHW", "ZTS", "ITW", "MCO", "WM", "EMR", "CDNS", "FCX", "MAR",
 
 ];
 
@@ -833,6 +833,7 @@ class WatchlistManager {
                     previous_grade: previous.grade,
                     current_grade: current.decision.grade,
                     confidence_change: confidenceChange,
+                    confidence: current.decision.confidence, // Add current confidence
                     score_change: scoreChange,
                     signal_quality: current.signal_quality,
                     evolution_pattern: this.identifyEvolutionPattern(previous, current),
@@ -999,6 +1000,7 @@ class WatchlistManager {
                     previous_grade: previous.grade,
                     current_grade: current.decision.grade,
                     confidence_change: current.decision.confidence - (previous.confidence || 0),
+                    confidence: current.decision.confidence, // Add current confidence
                     has_position: !!hasPosition,
                     signal_strength_change: currRank - prevRank
                 };
@@ -1746,12 +1748,18 @@ class WatchlistManager {
      * CREATE EXPERT WATCHLIST ENTRY
      */
     createExpertWatchlistEntry(item, entryType, priority) {
+        // Normalize confidence to decimal format (0-1 range)
+        let normalizedConfidence = 0;
+        if (typeof item.confidence === 'number') {
+            normalizedConfidence = item.confidence > 1 ? item.confidence / 100 : item.confidence;
+        }
+        
         return {
             symbol: item.symbol,
             currentPrice: item.currentPrice || 0,
             decisionAction: item.current_action || item.action,
             decisionGrade: item.current_grade || item.grade,
-            decisionConfidence: item.confidence || 0,
+            decisionConfidence: normalizedConfidence,
             priority,
             status: 'ACTIVE',
             tier: this.mapEntryTypeToTier(entryType), // Use existing tier field

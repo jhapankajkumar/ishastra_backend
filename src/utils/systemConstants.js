@@ -14,6 +14,7 @@ const SYSTEM_IDS = {
   RSI_MEAN_REVERSION: 'rsi_mean',
   MACD_DIVERGENCE: 'divergence',
   ELDER_IMPULSE: 'impulse',
+  SUPERTREND_WEEKLY: 'supertrend_weekly',
 };
 
 /**
@@ -77,6 +78,12 @@ function normalizeSystemKey(key) {
     return SYSTEM_IDS.CAN_SLIM_CUP_HANDLE;
   }
   
+  // Supertrend Weekly aliases (check both with and without underscore removal)
+  if (['supertrend', 'supertrend_weekly', 'supertrendweekly', 'st_weekly', 'stweekly', 'weekly_supertrend', 'weeklysupertrend'].includes(normalized) ||
+      key === 'supertrend_weekly' || key === 'st_weekly' || key === 'weekly_supertrend') {
+    return SYSTEM_IDS.SUPERTREND_WEEKLY;
+  }
+  
   // Return original if no match found
   return key;
 }
@@ -87,7 +94,7 @@ function normalizeSystemKey(key) {
  * @returns {boolean} Whether weekly data is required
  */
 function requiresWeeklyData(systemId) {
-  return systemId === SYSTEM_IDS.TRIPLE_SCREEN;
+  return systemId === SYSTEM_IDS.TRIPLE_SCREEN || systemId === SYSTEM_IDS.SUPERTREND_WEEKLY;
 }
 
 /**
@@ -145,6 +152,16 @@ const SYSTEM_TIERS = {
     high_confidence: { threshold: 0.75, multiplier: 1.3 },
     medium_confidence: { threshold: 0.6, multiplier: 1.0 },
     low_confidence: { threshold: 0.5, multiplier: 0.7 }
+  },
+  
+  supertrend_weekly: {
+    tier: 1,
+    type: 'COMPLETE_SYSTEM',
+    name: 'Supertrend Weekly',
+    description: '5-rule weekly breakout system with consolidation detection',
+    high_confidence: { threshold: 0.7, multiplier: 1.3 },
+    medium_confidence: { threshold: 0.6, multiplier: 1.1 },
+    low_confidence: { threshold: 0.5, multiplier: 0.8 }
   },
   
   // TIER 2: Indicator-Based Systems (require higher confidence for same weight)

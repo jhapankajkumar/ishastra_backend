@@ -31,7 +31,7 @@ router.get('/signal-analysis', async (req, res) => {
   const symbols = req.query.symbols ? req.query.symbols.split(',').map(s => s.trim().toUpperCase()) : [];
   const systems = req.query.systems ? 
     req.query.systems.split(',').map(s => s.trim()) : 
-    ['elder_triple_screen', 'sepa_method', 'cup_handle', 'rsi_mean', 'macd_divergence'];
+    ['elder_triple_screen', 'sepa_method', 'cup_handle', 'rsi_mean', 'macd_divergence', 'supertrend_weekly'];
 
   req.body = { symbols, systems };
   await tradingController.analyzeTradingSystem(req, res);
@@ -40,7 +40,7 @@ router.get('/signal-analysis', async (req, res) => {
 router.get('/signal-analysis/single', async (req, res) => {
   // Convert query parameters to req.body format for compatibility with existing controller
   const symbol = req.query.symbol ? req.query.symbol.trim().toUpperCase() : '';
-  const system = req.query.system ? req.query.system.trim() : ['elder_triple_screen', 'sepa_method', 'cup_handle', 'rsi_mean', 'macd_divergence'];
+  const system = req.query.system ? req.query.system.trim() : 'elder_triple_screen'; // Default to single system
 
   req.body = { symbol, system };
   await tradingController.analyzeSingleSystem(req, res);
@@ -48,7 +48,7 @@ router.get('/signal-analysis/single', async (req, res) => {
 
 router.get('/signal-analysis/system', async (req, res) => {
   // Convert query parameters to req.body format for compatibility with existing controller
-  const system = req.query.system ? req.query.system.trim() : ['elder_triple_screen', 'sepa_method', 'cup_handle', 'rsi_mean', 'macd_divergence'];
+  const system = req.query.system ? req.query.system.trim() : ['supertrend_weekly']//['elder_triple_screen', 'sepa_method', 'cup_handle', 'rsi_mean', 'macd_divergence'];
   const stockSize = req.query.stockSize ? parseInt(req.query.stockSize) : 50;
   req.body = { system, stockSize };
   await tradingController.testSystem(req, res);

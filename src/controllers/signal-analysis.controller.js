@@ -22,6 +22,7 @@ const MinerviniSEPA = require('../systems/minervini-sepa');
 const CupWithHandle = require('../systems/cup-with-handle');
 const RSIMeanReversion = require('../systems/rsi-mean-reversion');
 const MACDDivergence = require('../systems/macd-divergence');
+const { SupertrendWeekly } = require('../systems/supertrend');
 const { SingleSystemAnalyzer } = require('../systems/single-system-analyzer');
 const { SYSTEM_IDS, SYSTEM_TIERS, normalizeSystemKey, getSystemWeight, isCompleteSystem, getHighConvictionThreshold, defaultLookBackPeriod } = require('../utils/systemConstants');
 
@@ -41,7 +42,8 @@ class TradingSystemController {
       [SYSTEM_IDS.MINERVINI_SEPA]: new MinerviniSEPA(),
       [SYSTEM_IDS.CAN_SLIM_CUP_HANDLE]: new CupWithHandle(),
       [SYSTEM_IDS.RSI_MEAN_REVERSION]: new RSIMeanReversion(),
-      [SYSTEM_IDS.MACD_DIVERGENCE]: new MACDDivergence()
+      [SYSTEM_IDS.MACD_DIVERGENCE]: new MACDDivergence(),
+      [SYSTEM_IDS.SUPERTREND_WEEKLY]: new SupertrendWeekly()
     };
     this.systemAnalyzer = new SingleSystemAnalyzer(generateExpertAIDecision);
   }
@@ -130,17 +132,17 @@ class TradingSystemController {
   }
 
   async analyzeSingleSystem(req, res) {
-    const { symbol, systems } = req.body;
+    const { symbol, system } = req.body;
 
     if (!symbol || !system) {
       return res.status(400).json({
         success: false,
-        error: 'Symbol and system are required'
+        error: 'Symbol and systems are required'
       });
     }
 
     try {
-      const response = await this.getStockAnalysis(systems, [symbol]);
+      const response = await this.getStockAnalysis([system], [symbol]);
       // console.log(`🔧 response`, response);
       return res.status(200).json(response);
     } catch (error) {
@@ -166,7 +168,7 @@ class TradingSystemController {
         systems
       } = req.body;
       if (!Array.isArray(systems) || systems.length === 0) {
-        systems = [SYSTEM_IDS.TRIPLE_SCREEN, SYSTEM_IDS.MINERVINI_SEPA, SYSTEM_IDS.CAN_SLIM_CUP_HANDLE, SYSTEM_IDS.RSI_MEAN_REVERSION, SYSTEM_IDS.MACD_DIVERGENCE]; // Default to all systems
+        systems = [SYSTEM_IDS.TRIPLE_SCREEN, SYSTEM_IDS.MINERVINI_SEPA, SYSTEM_IDS.CAN_SLIM_CUP_HANDLE, SYSTEM_IDS.RSI_MEAN_REVERSION, SYSTEM_IDS.MACD_DIVERGENCE, SYSTEM_IDS.SUPERTREND_WEEKLY]; // Default to all systems
       }
 
       if (!symbols || !Array.isArray(symbols) || symbols.length === 0) {
@@ -196,14 +198,9 @@ class TradingSystemController {
   }
 
   async getStockAnalysis(systems, symbols) {
-    // console.log(`🔧 Supported systems:`, systems, symbols);
     // Normalize and validate systems
-    // //console.log(`🔧 Original systems:`, systems);
     const normalizedSystems = systems.map(sys => normalizeSystemKey(sys));
-    // console.log(`🔧 Normalized systems:`, normalizedSystems);
-    // console.log(`🔧 Available systems:`, Object.keys(this.systems));
     const supportedSystems = normalizedSystems.filter(sys => this.systems[sys]);
-    // console.log(`🔧 Supported systems:`, supportedSystems);
 
     if (supportedSystems.length === 0) {
       return {
@@ -274,6 +271,9 @@ class TradingSystemController {
               systemData = this.convertToRSIMeanFormat(analysisContext.technical);
             } else if (systemId === SYSTEM_IDS.MACD_DIVERGENCE) {
               systemData = this.convertToMACDDivergenceFormat(analysisContext.technical);
+            } else if (systemId === SYSTEM_IDS.SUPERTREND_WEEKLY) {
+              // Supertrend uses raw technical data with its own calculations
+              systemData = analysisContext.technical;
             } else {
               // Default: pass raw technical data
               systemData = analysisContext.technical;
@@ -292,7 +292,7 @@ class TradingSystemController {
             systemResults[systemId] = systemAnalysis;
             systemFinalResults[systemId] = finalResult;
 
-            //console.log(`    ✅ ${systemId} analysis complete: ${systemAnalysis.decision}`);
+            console.log(`    ✅ ${systemId} analysis complete: ${systemAnalysis.decision}`);
 
           } catch (systemError) {
             console.error(`    ❌ ${systemId} analysis failed:`, systemError.message);
@@ -1177,7 +1177,8 @@ class TradingSystemController {
       [SYSTEM_IDS.MINERVINI_SEPA]: { key: 'minerviniSEPA', name: 'Minervini SEPA' },
       [SYSTEM_IDS.CAN_SLIM_CUP_HANDLE]: { key: 'cupWithHandle', name: 'Cup-with-Handle' },
       [SYSTEM_IDS.RSI_MEAN_REVERSION]: { key: 'rsiMeanReversion', name: 'RSI Mean Reversion' },
-      [SYSTEM_IDS.MACD_DIVERGENCE]: { key: 'macdDivergence', name: 'MACD Divergence' }
+      [SYSTEM_IDS.MACD_DIVERGENCE]: { key: 'macdDivergence', name: 'MACD Divergence' },
+      [SYSTEM_IDS.SUPERTREND_WEEKLY]: { key: 'supertrendWeekly', name: 'Supertrend Weekly' }
     };
 
     // Add all supported systems to response
