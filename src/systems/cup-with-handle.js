@@ -53,26 +53,36 @@ class CupWithHandle {
             }
 
             const dailyData = series.daily;
-            const latest = dailyData[dailyData.length - 1];
             
-            //console.log(`  🏆 Analyzing ${dailyData.length} days of data, current price: $${latest.close.toFixed(2)}`);
+            // FIXED: Use only completed daily candles (exclude current incomplete candle)
+            const completedDailyData = dailyData.slice(0, -1);
+            const latest = completedDailyData[completedDailyData.length - 1];
+            
+            if (!latest) {
+                return this.createAvoidSignal('INSUFFICIENT_DATA', 'Not enough completed daily candles for analysis');
+            }
+            
+            //console.log(`  🏆 Analyzing ${completedDailyData.length} completed days of data, latest close: $${latest.close.toFixed(2)}`);
 
             // Phase 1: Detect cup structure
-            const cupAnalysis = this.detectCup(dailyData);
+            const cupAnalysis = this.detectCup(completedDailyData);
             
             // Phase 2: Detect handle formation (only if cup is valid)
             let handleAnalysis = null;
             if (cupAnalysis.isValid) {
-                handleAnalysis = this.detectHandle(dailyData, cupAnalysis);
+                handleAnalysis = this.detectHandle(completedDailyData, cupAnalysis);
             }
 
-            // Phase 3: Check for breakout trigger
+                        // Phase 3: Check for breakout trigger
             let breakoutAnalysis = null;
-            if (cupAnalysis.isValid && handleAnalysis?.isValid) {
-                breakoutAnalysis = this.isBreakout(dailyData, indicators, cupAnalysis, handleAnalysis);
+            if (handleAnalysis && handleAnalysis.isValid) {
+                breakoutAnalysis = this.isBreakout(completedDailyData, data.indicators, cupAnalysis, handleAnalysis);
             }
 
-            // Phase 4: Generate trading signals
+            // Phase 4: Volume analysis
+            const volumeAnalysis = this.analyzeVolume(completedDailyData, cupAnalysis, handleAnalysis);
+
+            // Phase 5: Generate signals
             const signalAnalysis = this.generateSignals(cupAnalysis, handleAnalysis, breakoutAnalysis, latest);
 
             if (signalAnalysis.signal === 'AVOID') {
@@ -520,7 +530,128 @@ class CupWithHandle {
     }
 
     /**
-     * Phase 4: Generate trading signals
+     * Phase 4: Analyze volume patterns for cup and handle
+     */
+    analyzeVolume(data, cupAnalysis, handleAnalysis) {
+        //console.log(`  🏆 Phase 4: Analyzing volume patterns...`);
+        
+        if (!cupAnalysis.isValid || data.length < 20) {
+            return {
+                isValid: false,
+                score: 0,
+                cupVolumePattern: 'insufficient_data',
+                handleVolumePattern: 'insufficient_data',
+                recent20DayAvg: 0,
+                recent50DayAvg: 0
+            };
+        }
+
+        const recentData = data.slice(-50);
+        const recent20DayAvg = this.calculateAverageVolume(data.slice(-20));
+        const recent50DayAvg = this.calculateAverageVolume(recentData);
+
+        // Analyze cup volume pattern (should show declining volume in formation)
+        const cupData = data.slice(cupAnalysis.startIndex, cupAnalysis.endIndex);
+        const cupVolumePattern = this.analyzeCupVolume(cupData);
+
+        // Analyze handle volume pattern (if handle exists)
+        let handleVolumePattern = 'no_handle';
+        if (handleAnalysis && handleAnalysis.isValid) {
+            const handleData = data.slice(handleAnalysis.startIndex, handleAnalysis.endIndex);
+            handleVolumePattern = this.analyzeHandleVolume(handleData);
+        }
+
+        // Score the volume analysis
+        let volumeScore = 0;
+        
+        // Cup volume pattern scoring
+        if (cupVolumePattern === 'declining') {
+            volumeScore += 0.4; // Ideal pattern
+        } else if (cupVolumePattern === 'stable') {
+            volumeScore += 0.2; // Acceptable
+        }
+
+        // Handle volume pattern scoring
+        if (handleVolumePattern === 'declining') {
+            volumeScore += 0.3; // Ideal
+        } else if (handleVolumePattern === 'stable') {
+            volumeScore += 0.15; // Acceptable
+        }
+
+        // Volume level scoring (prefer above-average recent volume)
+        if (recent20DayAvg > recent50DayAvg * 1.1) {
+            volumeScore += 0.3; // Recent uptick in volume
+        } else if (recent20DayAvg > recent50DayAvg * 0.9) {
+            volumeScore += 0.15; // Stable volume
+        }
+
+        const isValid = volumeScore >= 0.3; // Minimum threshold
+
+        return {
+            isValid,
+            score: Math.min(volumeScore, 1.0), // Cap at 1.0
+            cupVolumePattern,
+            handleVolumePattern,
+            recent20DayAvg,
+            recent50DayAvg,
+            volumeRatio: recent20DayAvg / recent50DayAvg
+        };
+    }
+
+    /**
+     * Analyze volume pattern during cup formation
+     */
+    analyzeCupVolume(cupData) {
+        if (cupData.length < 10) return 'insufficient_data';
+
+        const firstHalf = cupData.slice(0, Math.floor(cupData.length / 2));
+        const secondHalf = cupData.slice(Math.floor(cupData.length / 2));
+
+        const firstHalfAvg = this.calculateAverageVolume(firstHalf);
+        const secondHalfAvg = this.calculateAverageVolume(secondHalf);
+
+        if (secondHalfAvg < firstHalfAvg * 0.8) {
+            return 'declining'; // Ideal - volume dries up
+        } else if (secondHalfAvg < firstHalfAvg * 1.2) {
+            return 'stable'; // Acceptable
+        } else {
+            return 'increasing'; // Less ideal
+        }
+    }
+
+    /**
+     * Analyze volume pattern during handle formation
+     */
+    analyzeHandleVolume(handleData) {
+        if (handleData.length < 5) return 'insufficient_data';
+
+        const volumes = handleData.map(d => d.volume);
+        const firstHalf = volumes.slice(0, Math.floor(volumes.length / 2));
+        const secondHalf = volumes.slice(Math.floor(volumes.length / 2));
+
+        const firstHalfAvg = firstHalf.reduce((a, b) => a + b, 0) / firstHalf.length;
+        const secondHalfAvg = secondHalf.reduce((a, b) => a + b, 0) / secondHalf.length;
+
+        if (secondHalfAvg < firstHalfAvg * 0.9) {
+            return 'declining'; // Ideal pattern
+        } else if (secondHalfAvg < firstHalfAvg * 1.1) {
+            return 'stable'; // Acceptable
+        } else {
+            return 'increasing'; // Less ideal
+        }
+    }
+
+    /**
+     * Calculate average volume for a dataset
+     */
+    calculateAverageVolume(data) {
+        if (!data || data.length === 0) return 0;
+        const totalVolume = data.reduce((sum, day) => sum + (day.volume || 0), 0);
+        return totalVolume / data.length;
+    }
+
+    /**
+     * Phase 5: Generate trading signals
      */
     generateSignals(cupAnalysis, handleAnalysis, breakoutAnalysis, latest) {
         //console.log(`  🏆 Phase 4: Generating trading signals...`);

@@ -112,8 +112,15 @@ class MinerviniSEPA {
      */
     identifyMarketStage(series, indicators) {
         const daily = series.daily;
-        const latest = daily[daily.length - 1];
-        const priceData = daily.slice(-100); // Last 100 days for stage analysis
+        
+        // FIXED: Use only completed daily candles
+        const completedDaily = daily.slice(0, -1);
+        const latest = completedDaily[completedDaily.length - 1];
+        const priceData = completedDaily.slice(-100); // Last 100 completed days for stage analysis
+
+        if (!latest) {
+            return { stage: 'ACCUMULATION', confidence: 0.3, reasoning: 'Insufficient completed data' };
+        }
 
         // Get key moving averages
         const ema10 = indicators.sepa_specific?.priceVsEma10 || [];
@@ -277,7 +284,14 @@ class MinerviniSEPA {
     generateSignals(stageAnalysis, trendAnalysis, series) {
         const { currentStage, confidence: stageConfidence } = stageAnalysis;
         const { alignment, strength } = trendAnalysis;
-        const latest = series.daily[series.daily.length - 1];
+        
+        // FIXED: Use only completed daily candles
+        const completedDaily = series.daily.slice(0, -1);
+        const latest = completedDaily[completedDaily.length - 1];
+        
+        if (!latest) {
+            return { signal: 'AVOID', confidence: 0.3, reasoning: 'Insufficient completed data' };
+        }
 
         let signal = 'AVOID';
         let entryPrice = latest.close;

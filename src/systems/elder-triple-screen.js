@@ -260,7 +260,10 @@ class ElderTripleScreen {
    * SCREEN 3: Entry Trigger (Elder strict method: EMA10 breakout)
    */
   executeScreen3(intradayData, dailyData) {
-    // Use daily bars for trigger (most recent two closes and EMA10)
+    // FIXED: Use only completed daily bars for trigger (professional approach)
+    // This prevents intraday sensitivity that causes signal instability
+    const completedDailyData = dailyData.slice(0, -1); // Remove current incomplete candle
+    
     const screen3 = {
       timeframe: 'entry',
       status: 'NEUTRAL',
@@ -269,12 +272,14 @@ class ElderTripleScreen {
       components: {},
       reasoning: []
     };
-    if (!dailyData || dailyData.length < 2) {
-      screen3.reasoning.push('Not enough daily bars for entry trigger');
+    
+    if (!completedDailyData || completedDailyData.length < 2) {
+      screen3.reasoning.push('Not enough completed daily bars for entry trigger');
       return screen3;
     }
-    const latest = dailyData[dailyData.length - 1];
-    const previous = dailyData[dailyData.length - 2];
+    
+    const latest = completedDailyData[completedDailyData.length - 1];
+    const previous = completedDailyData[completedDailyData.length - 2];
     const ema10 = latest.ema10 !== undefined ? latest.ema10 : latest.EMA10;
     // Strict Elder trigger: price crosses EMA10 up or down
     const trigger = latest.close > ema10 && previous.close <= ema10;

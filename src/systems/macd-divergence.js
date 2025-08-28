@@ -57,21 +57,29 @@ class MACDDivergence {
             }
 
             const dailyData = series.daily;
-            const latest = dailyData[dailyData.length - 1];
             
-            //console.log(`  📊 Analyzing ${dailyData.length} days of data, current price: $${latest.close.toFixed(2)}`);
+            // FIXED: Use only completed daily candles (exclude current incomplete candle)
+            // This prevents signal changes due to intraday price movements
+            const completedDailyData = dailyData.slice(0, -1); // Remove current incomplete candle
+            const latest = completedDailyData[completedDailyData.length - 1];
+            
+            if (!latest) {
+                return this.createAvoidSignal('INSUFFICIENT_DATA', 'Not enough completed daily candles for analysis');
+            }
+            
+            //console.log(`  📊 Analyzing ${completedDailyData.length} completed days of data, latest close: $${latest.close.toFixed(2)}`);
 
             // Phase 1: Calculate or extract MACD components
-            const macdAnalysis = this.analyzeMACDData(dailyData, indicators);
+            const macdAnalysis = this.analyzeMACDData(completedDailyData, indicators);
             
             // Phase 2: Find swing points in price and MACD
-            const swingAnalysis = this.findSwingPoints(dailyData, macdAnalysis);
+            const swingAnalysis = this.findSwingPoints(completedDailyData, macdAnalysis);
             
             // Phase 3: Detect divergences
-            const divergenceAnalysis = this.detectDivergences(swingAnalysis, dailyData, macdAnalysis);
+            const divergenceAnalysis = this.detectDivergences(swingAnalysis, completedDailyData, macdAnalysis);
             
-            // Phase 4: Validate candle structure
-            const candleAnalysis = this.validateCandleStructure(dailyData, divergenceAnalysis);
+            // Phase 4: Validate candle structure (using completed candles only)
+            const candleAnalysis = this.validateCandleStructure(completedDailyData, divergenceAnalysis);
             
             // Phase 5: Generate trading signals
             const signalAnalysis = this.generateSignals(divergenceAnalysis, candleAnalysis, latest);
@@ -88,7 +96,7 @@ class MACDDivergence {
             }
 
             // Phase 6: Assess risk
-            const riskAssessment = this.assessRisk(signalAnalysis, swingAnalysis, latest, series);
+            const riskAssessment = this.assessRisk(signalAnalysis, swingAnalysis, latest, { daily: completedDailyData });
             
             // Phase 6.5: Calculate preliminary risk/reward for confidence adjustment
             const preliminaryRiskReward = this.calculatePreliminaryRiskReward(signalAnalysis, riskAssessment, divergenceAnalysis, swingAnalysis, latest);
@@ -698,15 +706,15 @@ class MACDDivergence {
     /**
      * Phase 4: Validate candle structure for confirmation
      */
-    validateCandleStructure(dailyData, divergenceAnalysis) {
-        //console.log(`  📊 Phase 4: Validating candle structure...`);
+    validateCandleStructure(completedDailyData, divergenceAnalysis) {
+        //console.log(`  📊 Phase 4: Validating candle structure using completed candles only...`);
         
         if (!divergenceAnalysis.hasDivergence) {
             return { isValid: false, reason: 'No divergence to confirm' };
         }
         
-        const latest = dailyData[dailyData.length - 1];
-        const previous = dailyData[dailyData.length - 2];
+        const latest = completedDailyData[completedDailyData.length - 1];
+        const previous = completedDailyData[completedDailyData.length - 2];
         
         const isBullish = latest.close > latest.open;
         const isBearish = latest.close < latest.open;
@@ -718,26 +726,50 @@ class MACDDivergence {
         const { bestBullish, bestBearish } = divergenceAnalysis;
         
         if (divergenceAnalysis.divergenceType === 'BULLISH' && bestBullish) {
-            // Require: 1) Bullish candle, 2) Recent divergence (≤10 bars), 3) Strong candle body
+            // FIXED: More flexible candle validation for strong divergences
             const recentDivergence = bestBullish.ageInBars <= 10;
-            const strongCandle = this.isStrongBullishCandle(latest, previous);
+            const divergenceStrength = bestBullish.strength || 0;
             
-            isValid = isBullish && recentDivergence && strongCandle;
-            reason = isValid ? 'Strong bullish candle confirms recent bullish divergence' : 
-                    !isBullish ? 'Waiting for bullish candle confirmation' :
-                    !recentDivergence ? `Divergence too old (${bestBullish.ageInBars} bars ago)` :
-                    'Waiting for stronger bullish confirmation';
+            // For very strong divergences (>80%), allow more flexible candle confirmation
+            if (divergenceStrength > 0.8 && recentDivergence) {
+                // Strong divergence: require either current bullish candle OR recent bullish momentum
+                const hasRecentBullishMomentum = this.hasRecentBullishMomentum(completedDailyData, 3);
+                const currentCandle = this.isStrongBullishCandle(latest, previous);
+                
+                isValid = (isBullish && currentCandle) || hasRecentBullishMomentum;
+                reason = isValid ? 'Strong divergence confirmed with bullish momentum' : 'Waiting for bullish confirmation';
+            } else {
+                // Regular divergence: require strong current candle
+                const strongCandle = this.isStrongBullishCandle(latest, previous);
+                isValid = isBullish && recentDivergence && strongCandle;
+                reason = isValid ? 'Strong bullish candle confirms recent bullish divergence' : 
+                        !isBullish ? 'Waiting for bullish candle confirmation' :
+                        !recentDivergence ? `Divergence too old (${bestBullish.ageInBars} bars ago)` :
+                        'Waiting for stronger bullish confirmation';
+            }
                     
         } else if (divergenceAnalysis.divergenceType === 'BEARISH' && bestBearish) {
-            // Require: 1) Bearish candle, 2) Recent divergence (≤10 bars), 3) Strong candle body
+            // FIXED: More flexible candle validation for strong divergences
             const recentDivergence = bestBearish.ageInBars <= 10;
-            const strongCandle = this.isStrongBearishCandle(latest, previous);
+            const divergenceStrength = bestBearish.strength || 0;
             
-            isValid = isBearish && recentDivergence && strongCandle;
-            reason = isValid ? 'Strong bearish candle confirms recent bearish divergence' : 
-                    !isBearish ? 'Waiting for bearish candle confirmation' :
-                    !recentDivergence ? `Divergence too old (${bestBearish.ageInBars} bars ago)` :
-                    'Waiting for stronger bearish confirmation';
+            // For very strong divergences (>80%), allow more flexible candle confirmation
+            if (divergenceStrength > 0.8 && recentDivergence) {
+                // Strong divergence: require either current bearish candle OR recent bearish momentum
+                const hasRecentBearishMomentum = this.hasRecentBearishMomentum(completedDailyData, 3);
+                const currentCandle = this.isStrongBearishCandle(latest, previous);
+                
+                isValid = (isBearish && currentCandle) || hasRecentBearishMomentum;
+                reason = isValid ? 'Strong divergence confirmed with bearish momentum' : 'Waiting for bearish confirmation';
+            } else {
+                // Regular divergence: require strong current candle
+                const strongCandle = this.isStrongBearishCandle(latest, previous);
+                isValid = isBearish && recentDivergence && strongCandle;
+                reason = isValid ? 'Strong bearish candle confirms recent bearish divergence' : 
+                        !isBearish ? 'Waiting for bearish candle confirmation' :
+                        !recentDivergence ? `Divergence too old (${bestBearish.ageInBars} bars ago)` :
+                        'Waiting for stronger bearish confirmation';
+            }
         }
         
         // Additional candle strength checks
@@ -789,6 +821,50 @@ class MACDDivergence {
         const volumeConfirmation = !previous || current.volume >= previous.volume * 0.8; // Not terrible volume
         
         return hasGoodBody && strongClose && volumeConfirmation;
+    }
+
+    /**
+     * ADDED: Helper to check for recent bullish momentum over last N candles
+     */
+    hasRecentBullishMomentum(completedDailyData, lookbackBars = 3) {
+        if (completedDailyData.length < lookbackBars + 1) return false;
+        
+        const recentCandles = completedDailyData.slice(-lookbackBars);
+        let bullishCount = 0;
+        let totalGain = 0;
+        
+        for (const candle of recentCandles) {
+            if (candle.close > candle.open) {
+                bullishCount++;
+                totalGain += (candle.close - candle.open) / candle.open;
+            }
+        }
+        
+        // Require at least 60% bullish candles and positive momentum
+        const bullishRatio = bullishCount / recentCandles.length;
+        return bullishRatio >= 0.6 && totalGain > 0.001; // At least 0.1% total gain
+    }
+
+    /**
+     * ADDED: Helper to check for recent bearish momentum over last N candles
+     */
+    hasRecentBearishMomentum(completedDailyData, lookbackBars = 3) {
+        if (completedDailyData.length < lookbackBars + 1) return false;
+        
+        const recentCandles = completedDailyData.slice(-lookbackBars);
+        let bearishCount = 0;
+        let totalLoss = 0;
+        
+        for (const candle of recentCandles) {
+            if (candle.close < candle.open) {
+                bearishCount++;
+                totalLoss += (candle.open - candle.close) / candle.open;
+            }
+        }
+        
+        // Require at least 60% bearish candles and negative momentum
+        const bearishRatio = bearishCount / recentCandles.length;
+        return bearishRatio >= 0.6 && totalLoss > 0.001; // At least 0.1% total loss
     }
 
     /**

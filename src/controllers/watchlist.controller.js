@@ -496,38 +496,6 @@ class WatchlistController {
     }
 
     /**
-     * POST /api/watchlist/cleanup
-     * Clean up old or irrelevant watchlist entries
-     */
-    async cleanupWatchlist(req, res) {
-        try {
-            const {
-                daysOld = 30,
-                removeExecuted = true,
-                removeAvoid = true
-            } = req.body;
-
-            const deletedCount = await this.watchlistService.cleanupWatchlist({
-                daysOld,
-                removeExecuted,
-                removeAvoid
-            });
-
-            res.json({
-                message: 'Watchlist cleanup completed',
-                deletedCount
-            });
-
-        } catch (error) {
-            console.error('Error cleaning up watchlist:', error);
-            res.status(500).json({
-                error: 'Failed to cleanup watchlist',
-                details: error.message
-            });
-        }
-    }
-
-    /**
      * EXPERT SIGNAL EVOLUTION SYSTEM: Professional NIFTY 200 + Select NIFTY 500
      */
     async populateWithExpertSystem(options) {

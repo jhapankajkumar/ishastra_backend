@@ -53,19 +53,27 @@ class RSIMeanReversion {
 
             // Extract capital and pricing information from options
             const { capital, symbol, currentPrice } = options;
-            const entryPrice = currentPrice || series.daily[series.daily.length - 1]?.close || 0;
 
             const dailyData = series.daily;
-            const latest = dailyData[dailyData.length - 1];
-            const previous = dailyData[dailyData.length - 2];
+            
+            // FIXED: Use only completed daily candles (exclude current incomplete candle)
+            const completedDailyData = dailyData.slice(0, -1);
+            const latest = completedDailyData[completedDailyData.length - 1];
+            const previous = completedDailyData[completedDailyData.length - 2];
+            
+            if (!latest) {
+                return this.createAvoidSignal('INSUFFICIENT_DATA', 'Not enough completed daily candles for analysis');
+            }
+            
+            const entryPrice = currentPrice || latest.close || 0;
 
-            //console.log(`  📈 Analyzing ${dailyData.length} days of data, current price: $${latest.close.toFixed(2)}`);
+            //console.log(`  📈 Analyzing ${completedDailyData.length} completed days of data, latest close: $${latest.close.toFixed(2)}`);
 
             // Phase 1: RSI analysis
-            const rsiAnalysis = this.analyzeRSI(dailyData, indicators);
+            const rsiAnalysis = this.analyzeRSI(completedDailyData, indicators);
 
             // Phase 2: Support level identification
-            const supportAnalysis = this.identifySupport(dailyData, indicators, latest);
+            const supportAnalysis = this.identifySupport(completedDailyData, indicators, latest);
 
             // Phase 3: Candle structure validation
             const candleAnalysis = this.analyzeCandleStructure(latest, previous);
