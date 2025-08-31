@@ -9,732 +9,38 @@ const MultiTimeframeAnalysis = require('../../utils/multiTimeframeAnalysis');
 const LeakFreeBacktestingEngine = require('../../utils/leakFreeBacktestingEngine');
 const FreeNewsSentimentService = require('../../services/freeNewsSentimentService');
 const { detectVolatilityRegime } = require('../../utils/volatilityRegimeDetector');
-const { detectMomentumDivergences } = require('../../utils/momentumDivergenceDetector');
 const { assessTailRisk } = require('../../utils/tailRiskProtection');
 const { analyzeMarketMicrostructure } = require('../../utils/marketMicrostructure');
 const { runMonteCarloAnalysis } = require('../../utils/monteCarloEngine');
 const { SYSTEM_IDS, normalizeSystemKey } = require('../../utils/systemConstants');
 
 // ==============================================
-// PROVEN SYSTEMS INTEGRATION - Feature Flags & Tier Policy
+// PROVEN SYSTEMS INTEGRATION - ⭐ UPGRADED FOR QUALITY IMPROVEMENT
 // ==============================================
 const PROVEN_SYSTEMS_CONFIG = {
-  // Feature flags for tier overrides
-  ALLOW_PROVEN_PRIMARY: process.env.ALLOW_PROVEN_PRIMARY === 'true' || false,
+  // ⭐ FEATURE FLAGS UPGRADED - Allow proven systems in PRIMARY tier for better signal quality
+  ALLOW_PROVEN_PRIMARY: process.env.ALLOW_PROVEN_PRIMARY === 'true' || true, // ✅ ENABLED: Promote proven systems
   ALLOW_PROVEN_VETO: false, // Always false - veto power stays with internal guardrails
   
-  // Whitelisted systems that can use PRIMARY tier (if feature flag enabled)
-  PRIMARY_WHITELIST: [SYSTEM_IDS.MINERVINI_SEPA, SYSTEM_IDS.DARVAS_BREAKOUT],
+  // ⭐ EXPANDED WHITELIST - More proven systems can use PRIMARY tier
+  PRIMARY_WHITELIST: [
+    SYSTEM_IDS.MINERVINI_SEPA,         // ✅ Sophisticated SEPA implementation (1159 lines)
+    SYSTEM_IDS.TRIPLE_SCREEN,          // ✅ Comprehensive Triple Screen (944 lines)
+    SYSTEM_IDS.CAN_SLIM_CUP_HANDLE,    // ✅ Professional Cup & Handle (vs removed simple version)
+    SYSTEM_IDS.RSI_MEAN_REVERSION,      // ✅ Sophisticated RSI mean reversion
+    SYSTEM_IDS.MACD_DIVERGENCE        // ✅ MACD Divergence Detection
+  ],
   
-  // Priority ranges for proven systems
-  PRIORITY_RANGE: { min: 2.05, max: 2.49 },
+  // ⭐ UPGRADED PRIORITY RANGES - Higher priority for proven systems
+  PRIORITY_RANGE: { min: 1.8, max: 1.95 }, // Higher priority than confirmers (2.x)
   
-  // Minimum confidence for PRIMARY tier
-  PRIMARY_MIN_CONFIDENCE: 0.80
+  // ⭐ LOWERED CONFIDENCE THRESHOLD - Allow more proven system signals
+  PRIMARY_MIN_CONFIDENCE: 0.65 // Reduced from 0.80 for better signal capture
 };
 
 
 // ---- Diagnostics helpers ----
 function pct(n) { return Math.round(n * 100) / 100; }
-
-function gateMarginTrend(technical) {
-  const close = technical?.latestPrice ?? technical?.currentPrice ?? 0;
-  const ema200 = technical?.technicalIndicators?.latest?.ema200 ?? 0;
-  if (!close || !ema200) return { pass: false, marginPct: null, note: 'missing_ema200' };
-  const diffPct = ((close - ema200) / ema200) * 100;
-  // your rule: need close > 200EMA by 0% (or tweak here)
-  return { pass: diffPct >= 0, marginPct: pct(diffPct), need: '≥ 0%' };
-}
-
-function gateMarginVolume(technical) {
-  const L = technical?.technicalIndicators?.latest;
-  const lastVol = L?.volume ?? L?.avgVolume ?? null;
-  const v20     = L?.vol20dma ?? L?.avgVolume20DMA ?? null;
-  //console.log(`🔍 Volume Analysis: Last Volume = ${lastVol}, 20DMA Volume = ${v20}`);
-  if (!lastVol || !v20) return { pass: true, mode:'soft', note:'missing_volume', multiple:null, needMultiple:1.5 };
-  const mult = lastVol / v20;
-  return { pass: mult >= 1.5, multiple: +mult.toFixed(2), needMultiple: 1.5 };
-}
-
-function gateMarginRR(executionPlan) {
-  const rr = executionPlan?.riskReward ?? 0;
-  const need = 2.0;
-  return { pass: rr >= need, value: +rr.toFixed(2), need };
-}
-
-function gateMarginEarnings(earningsProximity) {
-  // from StructureAwareStopEngine.checkEarningsProximity()
-  if (!earningsProximity || earningsProximity.daysUntilEarnings == null)
-    return { pass: true, daysUntil: null, needDays: 14, note: 'no_data' };
-  const need = 14;
-  const d = earningsProximity.daysUntilEarnings;
-  return { pass: d > need, daysUntil: d, needDays: need };
-}
-
-function gateMarginRegime(regimeDetection) {
-  if (!regimeDetection) return { pass: true, strength: null, note: 'no_regime' };
-  // example: penalize when BEAR strength ≥ 70; pass when < 70
-  const strength = Math.round((regimeDetection.regimeStrength ?? 0) * 100) / 1; // already 0..1 → %
-  const needBelow = 70;
-  const pass = regimeDetection.regime !== 'BEAR' || strength < needBelow;
-  return { pass, strengthPct: strength, needBelowPct: needBelow, type: regimeDetection.regime };
-}
-
-/**
- * GET /api/trading/analysis?symbol=HDFCBANK.NS&period=3mo
- * 
- * Master AI endpoint that combines:
- * - Technical Analysis (indicators, patterns)
- * - Backtesting Validation (system performance)
- * - Sentiment Analysis (news impact)
- * - Risk Management (levels, targets)
- * - AI Recommendations (unified decision)
- */
-// exports.getAnalysis = async (req, res) => {
-//   try {
-//     const { symbol, period, capital, diagnostics } = req.query;
-//     const isDiagnostics = diagnostics === '1' || diagnostics === 'true';
-
-//     if (!symbol) {
-//       return res.status(400).json({
-//         success: false,
-//         error: 'Stock symbol is required',
-//         usage: 'GET /api/trading/unified-analysis?symbol=HDFCBANK.NS&period=3mo'
-//       });
-//     }
-
-//     //console.log(`🎯 Starting unified AI analysis for ${symbol}...`);
-//     const startTime = Date.now();
-
-//     // Ensure proper symbol format
-//     const { analysisContext, finalTechnical, sentiment, formattedSymbol, monteCarlo, tailRisk } = await prepareAnalysisContext(symbol, period, capital);
-
-//     // Run Expert AI Decision Engine with signal reconciliation
-//     let expertDecision;
-//     try {
-//       //console.log('🧠 Calling Expert AI Decision Engine...');
-//       expertDecision = await generateExpertAIDecision(analysisContext);
-//       //console.log('✅ Expert AI Decision Engine completed successfully');
-//     } catch (expertError) {
-//       console.error('❌ Expert AI Decision Engine failed:', expertError.message);
-//       console.error('Stack:', expertError.stack);
-      
-//       // Create fallback expert decision
-//       expertDecision = {
-//         finalDecision: { action: 'HOLD', confidence: 0.5 },
-//         signalQuality: { grade: 'F' },
-//         tradeReadiness: { status: 'AVOID' },
-//         executionPlan: { entryPrice: currentPrice, stopLoss: currentPrice * 0.95, riskReward: 0 },
-//         riskAssessment: { maxRiskPercent: 2 },
-//         positionSizing: { sizingMethod: 'NORMAL', recommendedShares: 0, positionValue: 0, percentOfPortfolio: 0 },
-//         regimeDetection: { regime: 'SIDEWAYS', confidence: 0.5, regimeStrength: 0.5 },
-//         signalWeights: {},
-//         monteCarlo: null,
-//         conflictResolution: { conflicts: [], method: 'FALLBACK' },
-//         confidenceBreakdown: { overall: 0.5, technical: 0.3, fundamental: 0.2 },
-//         sentimentRules: { vetoRecommendation: false }
-//       };
-//     }
-
-//     // Get enhanced trend analysis for context
-//     const trendAnalysis = calculateEnhancedTrendAnalysis(finalTechnical, sentiment);
-
-//     // ---- Diagnostics margins (no math changes to decisions) ----
-//     const diagTrend = gateMarginTrend(finalTechnical);
-//     const diagVol = gateMarginVolume(finalTechnical);
-//     const diagRR = gateMarginRR(expertDecision.executionPlan);
-//     const diagErn = gateMarginEarnings(expertDecision.riskAssessment?.earningsProximity);
-//     const diagReg = gateMarginRegime(expertDecision.regimeDetection);
-
-//     // Quick GO-rate hint for this request only (all hard gates)
-//     const hardGatesPass =
-//       // your existing hard gates: action validity handled later; here we test market gates
-//       diagTrend.pass && diagRR.pass && // keep RR as hard
-//       (!diagErn.daysUntil || diagErn.pass) && // earnings ok
-//       (diagVol.multiple == null || diagVol.pass) && // if volume present
-//       diagReg.pass; // regime gate
-
-//     // Helper function to determine trend label
-//     const getTrendLabel = (trendState, pricePositionPct) => {
-//       if (trendState === 'ABOVE_BAND') return 'UPTREND';
-//       if (trendState === 'BELOW_BAND') return 'DOWNTREND';
-//       return 'SIDEWAYS';
-//     };
-
-//     // Helper function to determine risk level
-//     const getRiskLevel = (grade, riskReward) => {
-//       if (grade === 'A+' || grade === 'A') return 'LOW';
-//       if ((grade === 'A-' || grade === 'B+') && riskReward >= 2.0) return 'LOW';
-//       if (grade === 'B' || grade === 'B-') return 'MEDIUM';
-//       return 'HIGH';
-//     };
-
-//     // Helper function to get unified decision status
-//     const getDecisionStatus = (expertDecision, trendAnalysis) => {
-//       const action = expertDecision.finalDecision.action;
-//       const readiness = expertDecision.tradeReadiness.status;
-      
-//       // Ready to execute cases - Primary Actions
-//       if (readiness === 'READY' && ['BUY', 'STRONG_BUY'].includes(action)) {
-//         return 'BUY';
-//       }
-//       if (readiness === 'READY' && ['SELL', 'STRONG_SELL'].includes(action)) {
-//         return 'SELL';
-//       }
-      
-//       // 🎯 CONTEXTUAL DECISION MAPPING: WATCH stays actionable when appropriate
-//       if (action === 'WATCH') {
-//         const signalGrade = expertDecision.signalQuality.grade;
-//         const riskReward = expertDecision.executionPlan?.riskReward || 0;
-//         const primarySignal = expertDecision.conflictResolution?.hierarchyDecision?.primaryDecision || 
-//                             expertDecision.conflictResolution?.resolvedSignal;
-        
-//         // WATCH remains WATCH when:
-//         // 1. Below contextual R/R floor but positive expectancy
-//         // 2. Decent setup quality (C+ or better)
-//         // 3. Clear directional bias from primary signal
-//         if (readiness === 'READY' || readiness === 'WATCH') {
-//           if (signalGrade && !['F', 'D+', 'D', 'D-'].includes(signalGrade) && riskReward >= 1.5) {
-//             // Convert WATCH+READY to actionable BUY/SELL when conditions are met
-//             if (readiness === 'READY') {
-//               if (primarySignal === 'BUY') {
-//                 //console.log(`🎯 WATCH→BUY conversion: Grade ${signalGrade}, R/R ${riskReward.toFixed(2)}, Ready status`);
-//                 return 'BUY';
-//               }
-//               if (primarySignal === 'SELL') {
-//                 //console.log(`🎯 WATCH→SELL conversion: Grade ${signalGrade}, R/R ${riskReward.toFixed(2)}, Ready status`);
-//                 return 'SELL';
-//               }
-//             }
-            
-//             // Keep as actionable WATCH for probe sizing (moderate R/R scenarios)
-//             if (riskReward >= 1.6) {
-//               //console.log(`📊 Actionable WATCH maintained: Grade ${signalGrade}, R/R ${riskReward.toFixed(2)} - probe sizing available`);
-//               return 'WATCH';
-//             }
-//           }
-//         }
-//       }
-      
-//       // AVOID cases - hard failures
-//       if (readiness === 'AVOID' || action === 'AVOID') {
-//         return 'AVOID';
-//       }
-      
-//       // Only set HOLD for truly non-actionable scenarios:
-//       // - Very poor grades with negative expectancy
-//       // - Below absolute minimums
-//       // - Hard veto triggers
-//       const signalGrade = expertDecision.signalQuality.grade;
-//       const riskReward = expertDecision.executionPlan?.riskReward || 0;
-      
-//       if (['F', 'D+', 'D', 'D-'].includes(signalGrade) || riskReward < 1.4) {
-//         return 'HOLD'; // Only HOLD for truly poor setups
-//       }
-      
-//       // Default fallback for edge cases
-//       return action === 'NEUTRAL' ? 'HOLD' : 'WATCH';
-//     };
-
-//     // Helper functions for enhanced response
-//     const getReasonCodes = (expertDecision, trendAnalysis, finalTechnical) => {
-//       const codes = [];
-//       const currentPrice = finalTechnical.currentPrice || finalTechnical.latestPrice || 0;
-//       const resistance = finalTechnical.levels?.resistance || 0;
-//       const support = finalTechnical.levels?.support || 0;
-//       const volumeRatio = expertDecision.volumeAnalysis?.ratio || 0;
-//       // Risk/Reward reasons
-//       const riskReward = expertDecision.executionPlan?.riskReward || 0;
-//       // Primary decision-based reasons
-//       if (expertDecision.finalDecision.action === 'AVOID' || expertDecision.tradeReadiness?.status === 'AVOID') {
-//         // Trend-based reasons
-//         if (trendAnalysis.trendState === 'BELOW_BAND') {
-//           codes.push('PRICE_BELOW_200EMA');
-//         }
-//         if (trendAnalysis.pricePositionPercent < -10) {
-//           codes.push(`PRICE_${Math.abs(Math.round(trendAnalysis.pricePositionPercent))}PCT_BELOW_TREND`);
-//         }
-
-//         // Regime-based reasons
-//         if (expertDecision.regimeDetection?.regime === 'BEAR') {
-//           codes.push('BEAR_MARKET_REGIME');
-//         }
-
-//         // Volume-based reasons
-//         if (expertDecision.volumeAnalysis?.status === 'DISQUALIFYING') {
-//           codes.push('INSUFFICIENT_VOLUME');
-//         }
-        
-//         if (volumeRatio < 1.5) {
-//           codes.push(`VOLUME_${Math.round(volumeRatio * 100)}PCT_OF_AVERAGE`);
-//         }
-
-//         // Quality-based reasons
-//         if (expertDecision.signalQuality.grade === 'C+' || expertDecision.signalQuality.grade === 'C' || expertDecision.signalQuality.grade === 'C-') {
-//           codes.push(`SIGNAL_GRADE_${expertDecision.signalQuality.grade.replace('+', 'PLUS').replace('-', 'MINUS')}`);
-//         }
-
-        
-//         if (riskReward < 2.0) {
-//           codes.push(`RISK_REWARD_${Math.round(riskReward * 100)}PCT_TOO_LOW`);
-//         }
-
-//         // Overhead supply analysis
-//         if (currentPrice > 0 && resistance > 0) {
-//           const overheadGap = (resistance - currentPrice) / currentPrice * 100;
-//           if (overheadGap < 1.2) {
-//             codes.push(`OVERHEAD_RESISTANCE_${Math.round(overheadGap * 10) / 10}PCT_AWAY`);
-//           }
-//         }
-
-//         // Earnings proximity
-//         const earningsDate = finalTechnical.earnings?.nextDate;
-//         if (earningsDate) {
-//           const daysToEarnings = Math.ceil((new Date(earningsDate) - new Date()) / (1000 * 60 * 60 * 24));
-//           if (daysToEarnings <= 14 && daysToEarnings >= 0) {
-//             codes.push(`EARNINGS_IN_${daysToEarnings}_DAYS`);
-//           }
-//         }
-
-//         // Confidence-based reasons
-//         const confidence = expertDecision.finalDecision.confidence || 0;
-//         if (confidence < 0.8) {
-//           codes.push(`CONFIDENCE_${Math.round(confidence * 100)}PCT_LOW`);
-//         }
-//       }
-
-//       // Ready/Buy reasons
-//       else if (expertDecision.finalDecision.action === 'READY' || expertDecision.finalDecision.action === 'BUY') {
-//         if (trendAnalysis.trendState === 'ABOVE_BAND') {
-//           codes.push('PRICE_ABOVE_200EMA');
-//         }
-        
-//         if (volumeRatio >= 1.5) {
-//           codes.push(`STRONG_VOLUME_${Math.round(volumeRatio * 100)}PCT_AVERAGE`);
-//         }
-        
-//         if (expertDecision.signalQuality.grade === 'A+' || expertDecision.signalQuality.grade === 'A' || expertDecision.signalQuality.grade === 'A-') {
-//           codes.push(`HIGH_QUALITY_GRADE_${expertDecision.signalQuality.grade.replace('+', 'PLUS').replace('-', 'MINUS')}`);
-//         }
-        
-//         if (riskReward >= 3.0) {
-//           codes.push(`EXCELLENT_RISK_REWARD_${Math.round(riskReward * 100)}PCT`);
-//         } else if (riskReward >= 2.0) {
-//           codes.push(`GOOD_RISK_REWARD_${Math.round(riskReward * 100)}PCT`);
-//         }
-        
-//         const confidence = expertDecision.finalDecision.confidence || 0;
-//         if (confidence >= 0.8) {
-//           codes.push(`HIGH_CONFIDENCE_${Math.round(confidence * 100)}PCT`);
-//         }
-//       }
-
-//       // Always add grade and confidence context
-//       if (expertDecision.signalQuality?.grade) {
-//         codes.push(`GRADE_${expertDecision.signalQuality.grade.replace('+', 'PLUS').replace('-', 'MINUS')}`);
-//       }
-      
-//       const confidence = Math.round((expertDecision.finalDecision?.confidence || 0) * 100);
-//       codes.push(`CONFIDENCE_${confidence}PCT`);
-
-//       // Return meaningful codes or fallback
-//       return codes.length > 0 ? codes : ['GENERIC_ANALYSIS_COMPLETE'];
-//     };
-
-//     const getWhyAvoid = (expertDecision, trendAnalysis, finalTechnical) => {
-//       const reasons = [];
-
-//       // Check for critical system failures first
-//       if (!expertDecision || !trendAnalysis || !finalTechnical) {
-//         reasons.push('Critical data missing - analysis incomplete');
-//         return reasons;
-//       }
-
-//       // ADX calculation failure check
-//       if (finalTechnical.technicalIndicators?.latest?.adx === 25 && 
-//           finalTechnical.technicalIndicators?.latest?.plusDI === 25 &&
-//           finalTechnical.technicalIndicators?.latest?.minusDI === 25) {
-//         reasons.push('ADX calculation failed - using fallback trend analysis');
-//       }
-
-//       // NaN values in execution plan
-//       if (isNaN(expertDecision.executionPlan?.stopLoss) || 
-//           isNaN(expertDecision.executionPlan?.riskReward)) {
-//         reasons.push('Risk calculation error - position sizing unavailable');
-//       }
-
-//       // Zero trades in backtest
-//       if (expertDecision.riskAssessment?.backtestHealth === 0) {
-//         reasons.push('No historical trades found - system reliability unknown');
-//       }
-
-//       if (trendAnalysis.trendState === 'BELOW_BAND') {
-//         reasons.push('Price below 200EMA');
-//       }
-
-//       if (expertDecision.regimeDetection?.regime === 'BEAR') {
-//         reasons.push(`Bear regime (${Math.round(expertDecision.regimeDetection.regimeStrength * 100)}% strength) penalized momentum signals`);
-//       }
-
-//       if (expertDecision.volumeAnalysis?.ratio < 1.5) {
-//         reasons.push('Volume < 1.5x 20DMA on last breakout attempt');
-//       }
-
-//       // Artificial confidence floor warning
-//       if (expertDecision.finalDecision?.confidence === 0.15 || 
-//           expertDecision.finalDecision?.confidence === 0.10) {
-//         reasons.push('Low signal confidence - all indicators showing weakness');
-//       }
-
-//       return reasons;
-//     };
-
-//     const getFlipToReady = (expertDecision, trendAnalysis, finalTechnical) => {
-//       // ✅ FIX: Only provide flip conditions if current decision is NOT already actionable
-//       const currentAction = expertDecision?.finalDecision?.action || 'HOLD';
-//       if (['BUY', 'STRONG_BUY', 'SELL', 'STRONG_SELL'].includes(currentAction)) {
-//         return []; // Already actionable - no flip conditions needed
-//       }
-
-//       const conditions = [];
-//       const currentPrice = finalTechnical.currentPrice || finalTechnical.latestPrice || 0;
-//       const ema200 = finalTechnical.technicalIndicators?.latest?.ema200 || 0;
-//       const avgVolume = finalTechnical.technicalIndicators?.latest?.avgVolume || 0;
-//       const avgVolume20DMA = finalTechnical.technicalIndicators?.latest?.avgVolume20DMA || avgVolume; // Use 20DMA if available, fallback to avgVolume
-
-//       if (trendAnalysis.trendState === 'BELOW_BAND' && ema200 > 0) {
-//         const ema200Target = Math.round(ema200 * 100) / 100;
-//         const gapPercent = currentPrice > 0 ? Math.round(((ema200 - currentPrice) / currentPrice) * 100 * 10) / 10 : 0;
-//         conditions.push(`Close > ${ema200Target} (currently ${gapPercent}% below) for 2 consecutive bars`);
-//       }
-
-//       const resistance = finalTechnical.levels?.resistance || 0;
-//       if (resistance > 0) {
-//         // Use actual 20DMA volume for precise requirements
-//         const volume20DMA = avgVolume20DMA || avgVolume;
-//         const volumeReq = Math.round(volume20DMA * 1.5);
-//         const volumeReqDisplay = volumeReq >= 1000000 ?
-//           `${(volumeReq / 1000000).toFixed(1)}M` :
-//           volumeReq >= 1000 ? `${(volumeReq / 1000).toFixed(0)}K` : volumeReq.toLocaleString();
-
-//         const volume20DMADisplay = volume20DMA >= 1000000 ?
-//           `${(volume20DMA / 1000000).toFixed(1)}M` :
-//           volume20DMA >= 1000 ? `${(volume20DMA / 1000).toFixed(0)}K` : volume20DMA.toLocaleString();
-
-//         const gapToResistance = currentPrice > 0 ? Math.round(((resistance - currentPrice) / currentPrice) * 100 * 10) / 10 : 0;
-//         conditions.push(`Breakout above ${Math.round(resistance * 100) / 100} (+${gapToResistance}%) with ≥${volumeReqDisplay} volume (1.5x 20DMA: ${volume20DMADisplay})`);
-//       }
-
-//       const rsi = finalTechnical.technicalIndicators?.latest?.rsi || 0;
-//       if (rsi > 0 && rsi < 55) {
-//         conditions.push(`RSI(14) > 55 (currently ${Math.round(rsi)}) AND Impulse = Green for 1 bar`);
-//       }
-
-//       // Add regime-specific conditions
-//       if (expertDecision.regimeDetection?.regime === 'BEAR') {
-//         const regimeStrength = Math.round(expertDecision.regimeDetection.regimeStrength * 100);
-//         conditions.push(`Bear regime strength < 70% (currently ${regimeStrength}%) to lift momentum penalties`);
-//       }
-
-//       return conditions;
-//     };
-
-//     const getStopMethod = (expertDecision, finalTechnical) => {
-//       const atrMultiplier = expertDecision.executionPlan?.atrMultiplier || 2.2;
-//       const adx = finalTechnical.technicalIndicators?.latest?.adx || 25;
-//       const atr = finalTechnical.technicalIndicators?.latest?.atr || 0;
-//       const currentPrice = finalTechnical.currentPrice || finalTechnical.latestPrice || 0;
-//       const support = finalTechnical.levels?.support || 0;
-
-//       // Calculate structure level (recent swing low)
-//       const structureLevel = support > 0 ? Math.round(support * 100) / 100 : null;
-//       const atrStop = currentPrice > 0 && atr > 0 ? Math.round((currentPrice - (atr * atrMultiplier)) * 100) / 100 : null;
-
-//       // Risk percent calculation
-//       const riskPercent = currentPrice > 0 && atrStop > 0 ?
-//         Math.round(((currentPrice - atrStop) / currentPrice) * 100 * 10) / 10 : 0;
-
-//       return {
-//         type: 'blended_structure',
-//         adx: Math.round(adx),
-//         atrMult: atrMultiplier,
-//         structureLevel: structureLevel,
-//         atrStop: atrStop,
-//         finalStop: Math.max(atrStop || 0, structureLevel || 0) || atrStop || structureLevel,
-//         atrValue: Math.round((atr || 0) * 100) / 100,
-//         riskPercent: riskPercent,
-//         logic: structureLevel && atrStop ?
-//           `max(ATR: ${atrStop}, Structure: ${structureLevel}) = ${Math.max(atrStop, structureLevel)}` :
-//           atrStop ? `ATR-based: ${atrStop}` :
-//             structureLevel ? `Structure-based: ${structureLevel}` : 'Insufficient data',
-//         riskCapApplied: expertDecision.riskAssessment?.riskCapApplied || false
-//       };
-//     };
-
-//     const getSignalsWeights = (expertDecision) => {
-//       const signals = expertDecision.regimeAdjustedSignals?.all || [];
-
-//       const weights = signals.slice(0, 3).map(signal => ({
-//         system: signal.source.replace('_', ''), // Clean naming: multitimeframe, dualtimeframe, sepamethod
-//         R: Math.round((signal.reliability || 0.5) * 100) / 100,
-//         C: Math.round((signal.confidence || 0.5) * 100) / 100,
-//         rawWeight: Math.round(((signal.reliability || 0.5) * (signal.confidence || 0.5)) * 100) / 100,
-//         final: 0, // Will be calculated after normalization
-//         penalties: signal.regimeAdjustment ? {
-//           regime: signal.regimeAdjustment.regime || 'UNKNOWN',
-//           factor: signal.regimeAdjustment.regimeWeight || 1.0,
-//           applied: signal.regimeAdjustment.adjustmentPct || '0%',
-//           breakdown: (() => {
-//             const penaltyDetails = [];
-//             // Regime penalty
-//             if (signal.regimeAdjustment.regimeWeight < 1.0) {
-//               const regimePenalty = Math.round((1.0 - signal.regimeAdjustment.regimeWeight) * 100);
-//               penaltyDetails.push(`Regime penalty −${regimePenalty}%`);
-//             }
-//             // Bear shrinkage penalty (from Bayesian analysis)
-//             if (signal.bayesianAdjustment?.shrinkagePenalty) {
-//               const shrinkagePenalty = Math.round(signal.bayesianAdjustment.shrinkagePenalty * 100);
-//               penaltyDetails.push(`Bear shrinkage −${shrinkagePenalty}%`);
-//             }
-//             // Volume penalty
-//             if (signal.volumePenalty) {
-//               const volumePenalty = Math.round(signal.volumePenalty * 100);
-//               penaltyDetails.push(`Volume penalty −${volumePenalty}%`);
-//             }
-//             // Confidence interval width penalty
-//             if (signal.bayesianAdjustment?.ciWidthPenalty) {
-//               penaltyDetails.push(`Wide CI penalty −10%`);
-//             }
-//             return penaltyDetails.length > 0 ? penaltyDetails.join(', ') : 'No penalties applied';
-//           })()
-//         } : {
-//           regime: 'BULL',
-//           factor: 1.0,
-//           applied: '0%',
-//           breakdown: 'No penalties applied'
-//         },
-//         sampleSize: signal.bayesianAdjustment?.sampleSize || 'insufficient'
-//       }));
-
-//       // Auto-normalize weights to sum = 1.00 for transparency
-//       const totalRawWeight = weights.reduce((sum, w) => sum + w.rawWeight, 0);
-//       if (totalRawWeight > 0) {
-//         weights.forEach(w => {
-//           w.final = Math.round((w.rawWeight / totalRawWeight) * 100) / 100;
-//         });
-//       }
-
-//       const weightSum = Math.round(weights.reduce((sum, w) => sum + w.final, 0) * 100) / 100;
-
-//       return {
-//         weights,
-//         weightSum, // Should be ~1.00
-//         normalization: {
-//           applied: totalRawWeight > 0,
-//           originalSum: Math.round(totalRawWeight * 100) / 100,
-//           scaleFactor: totalRawWeight > 0 ? Math.round((1.0 / totalRawWeight) * 100) / 100 : 1.0
-//         },
-//         transparency: {
-//           penalizedSystems: weights.filter(w => w.penalties && w.penalties.breakdown !== 'No penalties applied').length,
-//           insufficientData: weights.filter(w => w.sampleSize === 'insufficient').length,
-//           totalSystemsConsidered: signals.length
-//         }
-//       };
-//     };
-
-//     const getConfidenceBreakdown = (expertDecision) => {
-//       const breakdown = [];
-
-//       if (expertDecision.conflictResolution?.hierarchyDecision?.primaryConfidence) {
-//         const baseConf = Math.round(expertDecision.conflictResolution.hierarchyDecision.primaryConfidence * 100);
-//         breakdown.push(`Primary BUY base ${baseConf}%`);
-
-//         if (expertDecision.regimeDetection?.regime === 'BEAR') {
-//           breakdown.push('→ regime penalty −18%');
-//         }
-//       }
-
-//       if (expertDecision.conflictResolution?.hierarchyDecision?.confirmerAdjustment) {
-//         const adj = Math.round(expertDecision.conflictResolution.hierarchyDecision.confirmerAdjustment * 100);
-//         if (adj !== 0) {
-//           breakdown.push(`Confirmers net ${adj > 0 ? '+' : ''}${adj}%`);
-//         }
-//       }
-
-//       return breakdown;
-//     };
-
-//     // Build optimized response format
-//     const response = {
-//       symbol: formattedSymbol,
-//       currentPrice: Math.round((finalTechnical.currentPrice || finalTechnical.latestPrice || 0) * 100) / 100,
-//       timestamp: new Date().toISOString(),
-      
-//       decision: {
-//         status: getDecisionStatus(expertDecision, trendAnalysis),
-//         confidence: Math.round(expertDecision.finalDecision.confidence * 100),
-//         grade: expertDecision.signalQuality.grade,
-//         reasonCodes: getReasonCodes(expertDecision, trendAnalysis, finalTechnical)
-//       },
-      
-//       execution: {
-//         entry: Math.round((expertDecision.executionPlan?.entryPrice || finalTechnical.currentPrice || 0) * 100) / 100,
-//         stop: Math.round((expertDecision.executionPlan?.stopLoss || 0) * 100) / 100,
-//         riskReward: Math.round((expertDecision.executionPlan?.riskReward || 0) * 100) / 100,
-//         target1: expertDecision.breakoutPlan ? Math.round(expertDecision.breakoutPlan.targets.primary * 100) / 100 : Math.round(((finalTechnical.currentPrice || 0) * 1.08) * 100) / 100,
-//         target2: expertDecision.breakoutPlan ? Math.round(expertDecision.breakoutPlan.targets.secondary * 100) / 100 : Math.round(((finalTechnical.currentPrice || 0) * 1.15) * 100) / 100,
-//         positionSize: {
-//           shares: expertDecision.positionSizing?.recommendedShares || 0,
-//           value: Math.round(expertDecision.positionSizing?.positionValue || 0),
-//           risk: `${Math.round((expertDecision.positionSizing?.percentOfPortfolio || 0) * 10) / 10}%`
-//         }
-//       },
-      
-//       context: {
-//         trend: getTrendLabel(trendAnalysis.trendState, trendAnalysis.pricePositionPercent),
-//         levels: {
-//           support: Math.round((finalTechnical.levels?.support || 0) * 100) / 100,
-//           resistance: Math.round((finalTechnical.levels?.resistance || 0) * 100) / 100
-//         },
-//         volume: {
-//           status: (() => {
-//             const volumeData = finalTechnical.technicalIndicators?.latest;
-//             const lastVol = volumeData?.volume || volumeData?.avgVolume || 0;
-//             const avgVol = volumeData?.avgVolume20DMA || volumeData?.avgVolume || 1;
-//             const multiple = lastVol / avgVol;
-            
-//             if (multiple >= 2.0) return 'VERY_STRONG';
-//             if (multiple >= 1.5) return 'STRONG';
-//             if (multiple >= 1.0) return 'NORMAL';
-//             return 'WEAK';
-//           })(),
-//           multiple: (() => {
-//             const volumeData = finalTechnical.technicalIndicators?.latest;
-//             const lastVol = volumeData?.volume || volumeData?.avgVolume || 0;
-//             const avgVol = volumeData?.avgVolume20DMA || volumeData?.avgVolume || 1;
-//             return Math.round((lastVol / avgVol) * 100) / 100;
-//           })()
-//         },
-//         earnings: {
-//           daysAway: expertDecision.riskAssessment?.earningsProximity?.daysUntilEarnings || null,
-//           impact: expertDecision.riskAssessment?.earningsProximity?.daysUntilEarnings <= 14 ? 'AVOID_OR_REDUCE' : 'NONE'
-//         }
-//       },
-      
-//       scenarios: {
-//         breakout: expertDecision.breakoutPlan ? {
-//           trigger: Math.round(expertDecision.breakoutPlan.triggerPrice * 100) / 100,
-//           probability: Math.round((expertDecision.breakoutPlan.successProbability || 0.38) * 100),
-//           target: Math.round(expertDecision.breakoutPlan.targets.primary * 100) / 100
-//         } : monteCarlo?.recommendations?.dominantScenario?.scenario === 'bullish' ? {
-//           trigger: Math.round((finalTechnical.levels?.resistance || 0) * 100) / 100,
-//           probability: Math.round((monteCarlo.scenarioAnalysis?.scenarios?.bullish?.probability || 0.33) * 100),
-//           target: Math.round(((finalTechnical.currentPrice || 0) * 1.12) * 100) / 100
-//         } : {
-//           trigger: Math.round((finalTechnical.levels?.resistance || 0) * 100) / 100,
-//           probability: 35,
-//           target: Math.round(((finalTechnical.currentPrice || 0) * 1.08) * 100) / 100
-//         },
-//         breakdown: expertDecision.breakdownPlan ? {
-//           trigger: Math.round(expertDecision.breakdownPlan.triggerPrice * 100) / 100,
-//           probability: Math.round((expertDecision.breakdownPlan.successProbability || 0.44) * 100),
-//           target: Math.round(expertDecision.breakdownPlan.targets.primary * 100) / 100
-//         } : {
-//           trigger: Math.round((finalTechnical.levels?.support || 0) * 100) / 100,
-//           probability: monteCarlo ? Math.round((monteCarlo.scenarioAnalysis?.scenarios?.bearish?.probability || 0.33) * 100) : 35,
-//           target: Math.round(((finalTechnical.currentPrice || 0) * 0.92) * 100) / 100
-//         }
-//       },
-      
-//       risk: {
-//         level: getRiskLevel(expertDecision.signalQuality.grade, expertDecision.executionPlan.riskReward),
-//         tailRiskScore: tailRisk?.overallRiskScore || 25,
-//         maxDrawdown: `${Math.round((monteCarlo?.riskMetrics?.drawdownAnalysis?.worstMaxDrawdown || 0.18) * 100)}%`
-//       },
-      
-//       nextStepSummary: (() => {
-//         const currentPrice = finalTechnical.currentPrice || finalTechnical.latestPrice || 0;
-//         const resistance = finalTechnical.levels?.resistance || 0;
-//         const avgVolume20DMA = finalTechnical.technicalIndicators?.latest?.avgVolume20DMA || finalTechnical.technicalIndicators?.latest?.avgVolume || 0;
-
-//         // If ready to execute
-//         if (expertDecision.tradeReadiness.status === 'READY' && ['BUY', 'SELL', 'STRONG_BUY', 'STRONG_SELL'].includes(expertDecision.finalDecision.action)) {
-//           const entry = expertDecision.executionPlan?.entryPrice || currentPrice;
-//           const stop = expertDecision.executionPlan?.stopLoss || 0;
-//           const rr = expertDecision.executionPlan?.riskReward || 0;
-//           const shares = expertDecision.positionSizing?.recommendedShares || 0;
-//           const riskPct = expertDecision.positionSizing?.percentOfPortfolio || 0;
-//           return `Ready to ${expertDecision.finalDecision.action.toLowerCase()} at ${Math.round(entry * 100) / 100} with stop ${Math.round(stop * 100) / 100} (R/R: ${Math.round(rr * 100) / 100}x). Position: ${shares} shares risking ${Math.round(riskPct * 10) / 10}%`;
-//         }
-
-//         // If avoiding
-//         if (expertDecision.finalDecision.action === 'AVOID' || expertDecision.tradeReadiness.status === 'AVOID') {
-//           const flipConditions = getFlipToReady(expertDecision, trendAnalysis, finalTechnical);
-//           if (flipConditions.length > 0) {
-//             const primaryCondition = flipConditions[0];
-//             return `Wait for ${primaryCondition}`;
-//           }
-//           return 'Avoid - multiple constraints active, monitor for structural improvements';
-//         }
-
-//         // If watching/monitoring
-//         if (resistance > 0 && avgVolume20DMA > 0) {
-//           const volumeReq = Math.round(avgVolume20DMA * 1.5);
-//           const volumeDisplay = volumeReq >= 1000000 ?
-//             `${(volumeReq / 1000000).toFixed(1)}M` :
-//             volumeReq >= 1000 ? `${(volumeReq / 1000).toFixed(0)}K` : volumeReq.toLocaleString();
-
-//           return `Watch for breakout above ${Math.round(resistance * 100) / 100} with ≥${volumeDisplay} volume`;
-//         }
-
-//         return `Monitor for improved signal quality (current grade: ${expertDecision.signalQuality.grade})`;
-//       })(),
-      
-//       whyAvoid: getWhyAvoid(expertDecision, trendAnalysis, finalTechnical),
-//       flipToReady: getFlipToReady(expertDecision, trendAnalysis, finalTechnical)
-//     };
-
-//     //console.log(`✅ Expert AI analysis complete for ${formattedSymbol}`);
-//     //console.log(`   🎯 Decision: ${response.decision.status} (Grade: ${response.decision.grade}) - ${response.decision.confidence}% confidence`);
-//     //console.log(`   📊 Entry: ${response.execution.entry} | Stop: ${response.execution.stop} | R/R: ${response.execution.riskReward}`);
-//     //console.log(`   🔧 Position: ${response.execution.positionSize.shares} shares, ${response.execution.positionSize.value} value, ${response.execution.positionSize.risk} risk`);
-//     if (isDiagnostics) {
-//       response.diagnostics = {
-//         ...response.diagnostics,
-//         gates: {
-//           trend_filter: diagTrend,
-//           volume_gate: diagVol,
-//           rr_min2: diagRR,
-//           earnings_window: diagErn,
-//           regime_penalty: diagReg
-//         },
-//         summary: {
-//           hardGatesPass,
-//           // show “distance to pass” where relevant
-//           deltas: {
-//             trendPctFrom200Ema: diagTrend.marginPct,          // e.g., -3.1 means 3.1% below
-//             volumeMultiple: diagVol.multiple,                 // e.g., 1.12 vs need 1.5
-//             rrValue: diagRR.value,                            // e.g., 2.7 vs need 2.0
-//             daysUntilEarnings: diagErn.daysUntil,             // e.g., 9 vs need >14
-//             bearStrengthPct: diagReg.strengthPct              // e.g., 68 vs need <70
-//           }
-//         }
-//       };
-//     }
-
-//     res.json(response);
-
-//   } catch (error) {
-//     console.error('❌ Error in unified AI analysis:', error);
-//     res.status(500).json({
-//       success: false,
-//       error: 'Failed to perform unified AI analysis',
-//       details: error.message,
-//       symbol: req.query.symbol,
-//       timestamp: new Date().toISOString()
-//     });
-//   }
-// };
 
 async function prepareAnalysisContext(symbol, period, capital) {
   const formattedSymbol = symbol;
@@ -742,12 +48,10 @@ async function prepareAnalysisContext(symbol, period, capital) {
   // ==============================================
   // RULE 1: TIMEFRAME POLICY - Clamp swing decision period
   // ==============================================
-  const originalPeriod = period || '3mo';
-  const swingDecisionPeriod = clampToSwingTimeframe(originalPeriod);
+  const originalPeriod = period || '2y';
   let sharedTechnicalData = null;
-  
   try {
-    sharedTechnicalData = await getTechnicalAnalysisData(formattedSymbol, swingDecisionPeriod);
+    sharedTechnicalData = await getTechnicalAnalysisData(formattedSymbol, originalPeriod);
     //console.log(`✅ Shared market data fetched: ${sharedTechnicalData?.ohlcData?.length || 0} OHLC bars, ${sharedTechnicalData?.dataPoints || 0} data points`);
   } catch (error) {
     console.error(`❌ Failed to fetch shared market data:`, error.message);
@@ -767,13 +71,13 @@ async function prepareAnalysisContext(symbol, period, capital) {
     getSentimentAnalysis(formattedSymbol),
 
     // 4. Tail Risk with shared data
-    getTailRiskAssessment(formattedSymbol, swingDecisionPeriod, sharedTechnicalData),
+    getTailRiskAssessment(formattedSymbol, originalPeriod, sharedTechnicalData),
 
-    // 5. Market Microstructure with shared data  
-    getMarketMicrostructureAnalysis(formattedSymbol, swingDecisionPeriod, sharedTechnicalData),
+    // 5. Market Microstructure with shared data
+    getMarketMicrostructureAnalysis(formattedSymbol, originalPeriod, sharedTechnicalData),
 
     // 6. Monte Carlo with shared data
-    getMonteCarloScenarios(formattedSymbol, swingDecisionPeriod, sharedTechnicalData)
+    getMonteCarloScenarios(formattedSymbol, originalPeriod, sharedTechnicalData)
   ]);
 
   // ==============================================
@@ -825,6 +129,7 @@ async function prepareAnalysisContext(symbol, period, capital) {
   // ==============================================
   //console.log(`⚡ Phase 3: Running Expert AI Decision Engine...`);
 
+  // console.log(`🔍 AISignal: ${JSON.stringify(sharedTechnicalData.technicalIndicators.aiSignals)}...`);
   // Create comprehensive analysis context
   const analysisContext = {
     technical: finalTechnical,
@@ -836,7 +141,8 @@ async function prepareAnalysisContext(symbol, period, capital) {
     capital: capital,
     symbol: formattedSymbol,
     timestamp: new Date().toISOString(),
-    provenSignals: []
+    provenSignals: [],
+    aiSignals: sharedTechnicalData.technicalIndicators.aiSignals
   };
   return { analysisContext, finalTechnical, backtest, sentiment, formattedSymbol, monteCarlo, tailRisk };
 }
@@ -1163,17 +469,13 @@ function createFallbackTailRiskResponse(reason) {
 async function generateExpertAIDecision(analysisContext) {
   //console.log('🧠 Starting Expert AI Decision Engine...');
   try {
-    const { technical, backtest, sentiment, tailRisk, microstructure, monteCarlo, capital, symbol } = analysisContext;
+    const { technical, backtest, sentiment, tailRisk, microstructure, monteCarlo, capital, symbol, provenSignals } = analysisContext;
     const currentPrice = technical?.currentPrice || technical?.latestPrice || 0;
-    
-    //console.log(`   📊 Context: ${symbol}, Price: $${currentPrice}, Capital: $${capital}`);
-    //console.log(`   🔧 Technical: ${technical ? 'YES' : 'NO'}, Backtest: ${backtest ? 'YES' : 'NO'}, Sentiment: ${sentiment ? 'YES' : 'NO'}`);
-    //console.log(`   🎲 Monte Carlo: ${monteCarlo ? 'YES' : 'NO'}, Microstructure: ${microstructure ? 'YES' : 'NO'}`);
-    
 
     if (!technical) {
       throw new Error('Technical analysis data is required');
     }
+
     
     if (!technical.ohlcData || technical.ohlcData.length < 50) {
       //console.log(`⚠️ Insufficient OHLC data: need 50+, got ${technical?.ohlcData?.length || 0}`);
@@ -1307,12 +609,7 @@ async function generateExpertAIDecision(analysisContext) {
     }
 
     // Step 1: Collect All Signals (Base Collection + Proven Systems)
-    const rawSignalCollection = collectAllSignals(
-      technical, 
-      backtest, 
-      sentiment, 
-      analysisContext.provenSignals || []
-    );
+    const rawSignalCollection = collectAllSignalsDeterministicWithProven(technical, backtest, sentiment, provenSignals || []);
 
     // Step 1B: ⭐ REGIME DETECTION & SIGNAL ADJUSTMENT ⭐
     // Core Improvement #1: Market Regime Detection
@@ -1555,6 +852,9 @@ function collectAllSignalsDeterministic(technical, backtest, sentiment) {
   // Order: Multi-timeframe → Dual Timeframe (deterministic priority)
   // ==============================================
 
+  // ⭐ CONSOLE LOG SPAM REMOVED - Clean debug output for better developer experience
+  // console.log(`📋 Collecting signals with deterministic priority order...`, technical.signals);
+
   // Priority 1.1: Multi-Timeframe Analysis (if available)
   if (technical?.multiTimeframe?.recommendation?.action) {
     const mtfSignal = signalRegistry.registerSignal('multi_timeframe', {
@@ -1622,24 +922,40 @@ function collectAllSignalsDeterministic(technical, backtest, sentiment) {
   // Order: Core Systems → Technical → Sentiment
   // ==============================================
 
-  // Priority 5.1-5.X: Other Core Trading Systems (alphabetical for determinism)
+  // ⭐ PATTERN DETECTION SYSTEMS FILTERING - Exclude removed low-quality systems
   if (technical?.signals?.systems) {
     const systemNames = Object.keys(technical.signals.systems)
-      .filter(name => !['sepa', 'tripleScreen'].includes(name)) // Already processed
-      .sort(); // Alphabetical determinism
+      .filter(name => {
+        // ⭐ EXCLUDE REMOVED PATTERN DETECTION SYSTEMS (Quality Improvement)
+        const excludedSystems = [
+          'threeWeeksTight',    // ❌ Removed: Oversimplified price range check
+          'cupHandle',          // ❌ Removed: Lacks proper cup depth ratios  
+          'flagPennant',        // ❌ Removed: Missing consolidation analysis
+          'darvasBox',          // ❌ Removed: Insufficient box validation
+          'sepa',               // ✅ Processed by proven systems (higher quality)
+          'tripleScreen'        // ✅ Processed by proven systems (higher quality)
+        ];
+        return !excludedSystems.includes(name);
+      })
+      .sort(); // Alphabetical determinism for consistency
 
     systemNames.forEach((systemName, index) => {
       const systemData = formatSystemSignal(technical.signals.systems[systemName]);
       if (systemData.detected) {
+        // ⭐ FOUNDATION SYSTEMS PRIORITIZATION - Focus on EMA, RSI, proven technical analysis
+        const isFoundationSystem = ['EMA_SYSTEM', 'RSI_SYSTEM', 'SIMPLE_MOMENTUM'].includes(systemName);
+        const tier = isFoundationSystem ? 'CONFIRMER' : 'SUPPLEMENTARY'; // Upgrade foundation systems
+        const basePriority = isFoundationSystem ? 2.5 : 5.1; // Higher priority for foundation systems
+        
         const coreSystemSignal = signalRegistry.registerSignal(`core_system_${systemName}`, {
-          source: 'core_systems',
-          tier: 'SUPPLEMENTARY',
-          priority: 5.1 + (index * 0.01),
+          source: isFoundationSystem ? 'foundation_systems' : 'core_systems',
+          tier: tier,
+          priority: basePriority + (index * 0.01),
           signal: systemData.signal,
-          confidence: systemData.confidence || 0.3,
-          reasoning: systemData.reasoning || `${systemName} system signal`,
+          confidence: systemData.confidence || (isFoundationSystem ? 0.4 : 0.3), // Higher confidence for foundation
+          reasoning: systemData.reasoning || `${systemName} ${isFoundationSystem ? 'foundation' : 'system'} signal`,
           systemName,
-          metadata: { systemData }
+          metadata: { systemData, isFoundationSystem }
         });
       }
     });
@@ -1910,7 +1226,7 @@ class DeterministicSignalRegistry {
 
 function collectAllSignals(technical, backtest, sentiment, provenSignals = []) {
   // RULE 0: Use deterministic signal collection with proven systems integration
-  return collectAllSignalsDeterministicWithProven(technical, backtest, sentiment, provenSignals);
+  
 }
 
 function resolveSignalConflicts(signals, technical) {
@@ -5397,26 +4713,9 @@ async function getTechnicalAnalysisData(symbol, requestedPeriod) {
 
     const shortTermStartDate = new Date();
     // Parse requested period for short-term analysis
-    let requestedMonths = 6; // default fallback
-    if (typeof requestedPeriod === 'string') {
-      if (requestedPeriod.endsWith('mo')) {
-        requestedMonths = parseInt(requestedPeriod);
-      } else if (requestedPeriod.endsWith('y')) {
-        requestedMonths = parseInt(requestedPeriod) * 12;
-      }
-    } else if (typeof requestedPeriod === 'number') {
-      requestedMonths = requestedPeriod;
-    }
-
-    // Ensure we have enough data for short-term analysis
-    if (requestedMonths < 3) requestedMonths = 3;
-    if (requestedMonths > 24) requestedMonths = 24; // Cap at 24 months
+    let requestedMonths = 3; // default fallback
 
     shortTermStartDate.setMonth(endDate.getMonth() - requestedMonths);
-
-    //console.log(`📈 Fetching historical data for ${symbol}...`);
-    //console.log(`   📊 Long-term analysis: 24 months (reliable backtesting)`);
-    //console.log(`   ⚡ Short-term filter: ${requestedMonths} months (momentum/timing)`);
 
     const queryOptions = {
       period1: longTermStartDate, // Always fetch 24 months
@@ -5424,7 +4723,8 @@ async function getTechnicalAnalysisData(symbol, requestedPeriod) {
       interval: '1d'
     };
 
-    // console.log(`📊 Yahoo Finance query options:`, queryOptions);
+    // ⭐ CONSOLE LOG SPAM REMOVED - Clean debug output for better developer experience
+    // console.log(`📊 Yahoo Finance query options:`, queryOptions, requestedMonths, requestedPeriod, shortTermStartDate);
 
     const data = await yahooFinance.historical(symbol, queryOptions);
     // console.log(`📊 Yahoo Finance returned ${data ? data.length : 0} data points for ${symbol} (24mo base + ${requestedMonths}mo filter)`);
@@ -5449,12 +4749,6 @@ async function getTechnicalAnalysisData(symbol, requestedPeriod) {
     shortTermCutoff.setMonth(endDate.getMonth() - requestedMonths);
     const shortTermData = fullOhlcData.filter(d => new Date(d.date) >= shortTermCutoff);
 
-    //console.log(`📊 Running dual-timeframe technical analysis for ${symbol}:`);
-    //console.log(`   📈 Long-term (${fullOhlcData.length} data points): Foundation analysis`);
-    //console.log(`   ⚡ Short-term (${shortTermData.length} data points): Momentum filter`);
-
-    // ✅ EARNINGS PROXIMITY CHECK - Yahoo Finance Integration
-    //console.log(`📅 Fetching earnings data for ${symbol}...`);
     let earningsData = null;
     try {
       const earningsResponse = await yahooFinance.quoteSummary(symbol, {
@@ -5839,248 +5133,6 @@ function formatSystemSignal(systemData) {
     direction: systemData.direction,
     reasoning: systemData.reasoning,
     ...systemData // Include any additional system-specific data
-  };
-}
-
-function calculateUnifiedSignal(technical, backtest, sentiment) {
-  let score = 0;
-  let factors = 0;
-
-  // Technical Analysis Weight: 40%
-  if (technical?.signals?.overall) {
-    const techScore = technical.signals.overall === 'BUY' ? 0.8 :
-      technical.signals.overall === 'SELL' ? 0.2 : 0.5;
-    score += techScore * 0.4;
-    factors++;
-  }
-
-  // Backtesting Weight: 35%
-  if (backtest?.confidence) {
-    score += backtest.confidence * 0.35;
-    factors++;
-  }
-
-  // Sentiment Weight: 25%
-  if (sentiment?.sentimentScore !== undefined) {
-    const sentScore = (sentiment.sentimentScore + 1) / 2; // Normalize -1 to 1 → 0 to 1
-    score += sentScore * 0.25;
-    factors++;
-  }
-
-  const finalConfidence = factors > 0 ? score / factors * 100 : 50;
-
-  let action, direction, overall;
-  if (finalConfidence > 70) {
-    action = 'BUY';
-    direction = 'BULLISH';
-    overall = 'BUY';
-  } else if (finalConfidence < 30) {
-    action = 'SELL';
-    direction = 'BEARISH';
-    overall = 'SELL';
-  } else {
-    action = 'HOLD';
-    direction = 'NEUTRAL';
-    overall = 'NEUTRAL';
-  }
-
-  return {
-    overall,
-    action,
-    direction,
-    strength: finalConfidence / 100,
-    confidence: finalConfidence,
-    positionType: action === 'SELL' ? 'SHORT' : 'LONG'
-  };
-}
-
-/**
- * 🔥 RULE 8: Risk Scaling with Portfolio Heat Monitoring
- * Professional position sizing with correlation adjustments and portfolio protection
- */
-function calculateRiskMetrics(technical, backtest) {
-  //console.log('🔥 RULE 8: Portfolio Heat Monitoring - Calculating risk-scaled position...');
-
-  const currentPrice = technical?.currentPrice || technical?.latestPrice || 0;
-  const atr = technical?.indicators?.atr || technical?.indicators?.ATR || 20;
-
-  // =====================================================
-  // RULE 8: PORTFOLIO HEAT ASSESSMENT
-  // =====================================================
-
-  const portfolioHeat = calculatePortfolioHeat(technical.symbol);
-  const correlationRisk = assessCorrelationRisk(technical.symbol, technical.sector);
-  const marketRegime = technical?.marketRegime?.regime || 'NEUTRAL';
-
-  //console.log(`   🌡️ Portfolio Heat: ${portfolioHeat.temperature}°C (${portfolioHeat.riskLevel})`);
-  //console.log(`   🔗 Correlation Risk: ${correlationRisk.level} (${correlationRisk.exposurePercent}% exposure)`);
-  //console.log(`   📊 Market Regime: ${marketRegime}`);
-
-  // =====================================================
-  // RULE 8: DYNAMIC POSITION SIZING
-  // =====================================================
-
-  // Base position size (as percentage of portfolio)
-  let basePositionSize = 0.02; // 2% base risk
-
-  // Portfolio heat adjustments
-  if (portfolioHeat.temperature > 80) {
-    basePositionSize *= 0.3; // Reduce to 0.6% in hot portfolio
-    //console.log(`   🚨 RULE 8: Portfolio overheating - position reduced to ${(basePositionSize * 100).toFixed(1)}%`);
-  } else if (portfolioHeat.temperature > 60) {
-    basePositionSize *= 0.6; // Reduce to 1.2% in warm portfolio
-    //console.log(`   ⚠️ RULE 8: Portfolio warming - position reduced to ${(basePositionSize * 100).toFixed(1)}%`);
-  } else if (portfolioHeat.temperature < 20) {
-    basePositionSize *= 1.3; // Increase to 2.6% in cold portfolio
-    //console.log(`   ❄️ RULE 8: Portfolio cold - position increased to ${(basePositionSize * 100).toFixed(1)}%`);
-  }
-
-  // Correlation risk adjustments
-  if (correlationRisk.level === 'HIGH') {
-    basePositionSize *= 0.5; // Halve position if high correlation
-    //console.log(`   🔗 RULE 8: High correlation detected - position halved to ${(basePositionSize * 100).toFixed(1)}%`);
-  } else if (correlationRisk.level === 'MEDIUM') {
-    basePositionSize *= 0.75; // Reduce by 25% for medium correlation
-  }
-
-  // Market regime adjustments
-  if (marketRegime === 'BEAR') {
-    basePositionSize *= 0.7; // Reduce by 30% in bear markets
-    //console.log(`   🐻 RULE 8: Bear market - position reduced by 30%`);
-  } else if (marketRegime === 'HIGH_VOLATILITY') {
-    basePositionSize *= 0.8; // Reduce by 20% in high volatility
-  }
-
-  // =====================================================
-  // RULE 8: ADVANCED STOP LOSS CALCULATION
-  // =====================================================
-
-  // ✅ VALIDATE ATR FOR STOP CALCULATION
-  const validATR = (!isNaN(atr) && atr > 0) ? atr : (currentPrice * 0.02);
-
-  // Base stop loss calculation with portfolio heat consideration
-  const stopLossMultiplier = calculateDynamicStopMultiplier(
-    portfolioHeat,
-    correlationRisk,
-    marketRegime,
-    backtest?.confidence || 0.5
-  );
-
-  const stopLoss = Math.round((currentPrice - (validATR * stopLossMultiplier)) * 100) / 100;
-  
-  // ✅ VALIDATE STOP LOSS CALCULATION
-  let adjustedStopLoss = Math.max(stopLoss, currentPrice * 0.92); // Max 8% stop loss
-  if (!adjustedStopLoss || isNaN(adjustedStopLoss) || adjustedStopLoss <= 0) {
-    adjustedStopLoss = currentPrice * 0.95; // 5% fallback stop loss
-    console.warn(`⚠️ RULE 8: Invalid stop loss calculated, using 5% fallback: $${adjustedStopLoss}`);
-  }
-  
-  let riskAmount = Math.abs(currentPrice - adjustedStopLoss);
-  
-  // ✅ VALIDATE RISK AMOUNT
-  if (!riskAmount || isNaN(riskAmount) || riskAmount <= 0) {
-    riskAmount = currentPrice * 0.05; // 5% fallback risk
-    console.warn(`⚠️ RULE 8: Invalid risk amount, using 5% fallback: $${riskAmount}`);
-  }
-
-  // =====================================================
-  // RULE 8: RISK-ADJUSTED TARGETS
-  // =====================================================
-
-  const riskAdjustment = calculateRiskAdjustment(portfolioHeat, correlationRisk);
-  
-  // ✅ VALIDATE RISK ADJUSTMENT
-  const validRiskAdjustment = (!isNaN(riskAdjustment) && riskAdjustment > 0) ? riskAdjustment : 1.0;
-  
-  let target1 = Math.round((currentPrice + (riskAmount * (1.5 * validRiskAdjustment))) * 100) / 100;
-  let target2 = Math.round((currentPrice + (riskAmount * (3.0 * validRiskAdjustment))) * 100) / 100;
-
-  // ✅ VALIDATE TARGET CALCULATIONS
-  if (!target1 || isNaN(target1)) {
-    target1 = currentPrice + (riskAmount * 1.5); // Simple 1.5:1 fallback
-    console.warn(`⚠️ RULE 8: Invalid target1, using fallback: $${target1}`);
-  }
-  if (!target2 || isNaN(target2)) {
-    target2 = currentPrice + (riskAmount * 3.0); // Simple 3:1 fallback
-    console.warn(`⚠️ RULE 8: Invalid target2, using fallback: $${target2}`);
-  }
-
-  // ✅ VALIDATE RISK REWARD CALCULATION
-  let riskReward = '0.00';
-  if (riskAmount > 0 && !isNaN(riskAmount) && !isNaN(target1) && !isNaN(currentPrice)) {
-    const rrCalc = (target1 - currentPrice) / riskAmount;
-    riskReward = (!isNaN(rrCalc) && isFinite(rrCalc)) ? rrCalc.toFixed(2) : '0.00';
-  }
-
-  // =====================================================
-  // RULE 8: POSITION SIZING OUTPUT
-  // =====================================================
-
-  const finalPositionSize = Math.min(basePositionSize, 0.05); // Cap at 5% maximum
-  const positionValue = finalPositionSize * 100000; // Assuming $100k portfolio
-  const sharesCount = Math.floor(positionValue / currentPrice);
-
-  //console.log(`   💰 RULE 8 Final Position: ${(finalPositionSize * 100).toFixed(1)}% (${sharesCount} shares @ $${currentPrice})`);
-  //console.log(`   🛡️ Stop Loss: $${adjustedStopLoss} (${(riskAmount / currentPrice * 100).toFixed(1)}% risk)`);
-  //console.log(`   🎯 Target: $${target1} (R:R = ${riskReward})`);
-
-  return {
-    // Legacy fields
-    stopLoss: adjustedStopLoss,
-    riskReward: parseFloat(riskReward),
-    riskAmount,
-
-    // RULE 8: Enhanced risk management
-    portfolioHeat: portfolioHeat,
-    correlationRisk: correlationRisk,
-    positionSize: finalPositionSize,
-    sharesCount: sharesCount,
-    positionValue: positionValue,
-
-    // Risk scaling metrics
-    riskScaling: {
-      baseRisk: 0.02,
-      adjustedRisk: finalPositionSize,
-      heatAdjustment: portfolioHeat.temperature > 60 ? 'REDUCED' : 'NORMAL',
-      correlationAdjustment: correlationRisk.level !== 'LOW' ? 'REDUCED' : 'NORMAL',
-      regimeAdjustment: marketRegime === 'BEAR' ? 'REDUCED' : 'NORMAL'
-    },
-
-    targets: {
-      target1: target1,
-      target2: target2,
-      riskAdjustment: riskAdjustment
-    }
-  };
-}
-
-function calculateSmartTargets(technical, backtest, sentiment) {
-  const currentPrice = technical?.currentPrice || technical?.latestPrice || 0;
-  const atr = technical?.indicators?.atr || technical?.indicators?.ATR || 20;
-
-  // Base targets on ATR
-  const target1 = Math.round((currentPrice + (atr * 1.5)) * 100) / 100;
-  const target2 = Math.round((currentPrice + (atr * 2.5)) * 100) / 100;
-
-  // Adjust probabilities based on confluence
-  let target1Prob = 45;
-  let target2Prob = 25;
-
-  if (backtest?.confidence > 0.6) {
-    target1Prob += 15;
-    target2Prob += 10;
-  }
-
-  if (sentiment?.sentimentScore > 0.3) {
-    target1Prob += 10;
-    target2Prob += 8;
-  }
-
-  return {
-    target1,
-    target2,
-    target1Probability: Math.min(target1Prob, 85),
-    target2Probability: Math.min(target2Prob, 65)
   };
 }
 
@@ -7102,9 +6154,9 @@ function calculateRegimeAwareWeights(signals, regimeDetection) {
       if (bayesianResult.reason === 'insufficient_bear_data') {
         //console.log(`   ⚠️ ${signal.source}: ${bayesianResult.formula}`);
       } else {
-        const relPercent = (bayesianResult.reliability * 100).toFixed(1);
-        const confPercent = (bayesianResult.confidence * 100).toFixed(1);
-        const warningFlag = bayesianResult.hasWideCIWarning ? '⚠️' : '';
+        // const relPercent = (bayesianResult.reliability * 100).toFixed(1);
+        // const confPercent = (bayesianResult.confidence * 100).toFixed(1);
+        // const warningFlag = bayesianResult.hasWideCIWarning ? '⚠️' : '';
         //console.log(`   🧠 ${signal.source}: R=${relPercent}% C=${confPercent}% (${bayesianResult.bearOnlyTrades}t) ${warningFlag}`);
         //console.log(`      Formula: ${bayesianResult.formula}`);
       }

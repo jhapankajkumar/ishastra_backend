@@ -3,9 +3,8 @@ const prisma = new PrismaClient();
 //console.log('✅ Prisma instance created:', !!prisma);
 const TradeIdGenerator = require('../utils/tradeIdGenerator');
 const CapitalManager = require('../utils/capitalManager');
-const ImpulseExitAnalyzer = require('../services/exitStrategies/impulseExit');
 const { getQuote } = require('../yahoo');
-const TradeHealthAnalyzer = require('../services/TradeHealthAnalyzer');
+const TradeHealthAnalyzer = require('../services/tradeHealthAnalyzer');
 
 // Get all trades with related data
 exports.getAllTrades = async (req, res) => {

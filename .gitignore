@@ -3,3 +3,29 @@ node_modules
 .env
 
 /generated/prisma
+
+# TypeScript
+dist/
+*.tsbuildinfo
+*.tscache
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

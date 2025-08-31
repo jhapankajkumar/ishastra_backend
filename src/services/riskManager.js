@@ -191,7 +191,9 @@ class RiskManager {
       
       if (validationResults.warnings.length > 0) {
         //console.log(`⚠️  Trade approved with warnings for ${signal.symbol}:`);
-        validationResults.warnings.forEach(warning => //console.log(`   - ${warning}`));
+        validationResults.warnings.forEach(warning => {
+          //console.log(`   - ${warning}`);
+        });
       }
 
     } catch (error) {

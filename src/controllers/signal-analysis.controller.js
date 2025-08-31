@@ -33,6 +33,7 @@ const {
 const CapitalManager = require('../utils/capitalManager');
 const { getMarketCapital, getMarketInfo, formatCurrency } = require('../utils/marketUtils');
 const { get } = require('lodash');
+const IntelligentNarrative = require('../intelligent/IntelligentNarrative');
 
 class TradingSystemController {
   constructor() {
@@ -1161,6 +1162,9 @@ class TradingSystemController {
       nextStepSummary: actionableIntelligence.nextStep,
       whyAvoid: actionableIntelligence.whyAvoid,
       flipToReady: actionableIntelligence.flipToReady,
+
+      // 🤖 AI NARRATIVE INTEGRATION
+      aiSignals: analysisContext.aiSignals,
 
       // SIMPLIFIED SYSTEM DETAILS - Essential info only
       systems: this.buildSystemsResponse(systemResults, supportedSystems, technicalData.currentPrice)

@@ -1,0 +1,146 @@
+// ===================================================
+// AI ENHANCEMENT SYSTEM - DATABASE SCHEMA DESIGN
+// ===================================================
+
+// 1. TRADEOUTCOME TABLE (REQUIRED - Main AI Learning Table)
+model TradeOutcome {
+  id                Int       @id @default(autoincrement())
+  
+  // Basic Trade Info
+  symbol            String    // e.g., "AAPL", "MSFT"
+  userId            String?   // User who made the trade
+  tradeId           String?   // Reference to existing Trade table
+  
+  // Entry/Exit Data
+  entryDate         DateTime
+  exitDate          DateTime?
+  entryPrice        Float
+  exitPrice         Float?
+  quantity          Int
+  
+  // Trade Outcome
+  outcome           String    // "WIN", "LOSS", "BREAKEVEN"
+  pnlAmount         Float?    // Profit/Loss in dollars
+  pnlPercent        Float     // Profit/Loss percentage
+  daysHeld          Int?      // How many days trade was held
+  
+  // AI Enhancement Data
+  aiEnhanced        Boolean   @default(false)  // Was AI used?
+  originalGrade     String?   // Original system grade (e.g., "B+")
+  enhancedGrade     String?   // AI enhanced grade (e.g., "A-")
+  originalConfidence Float?   // Original confidence (0.0-1.0)
+  enhancedConfidence Float?   // AI enhanced confidence
+  
+  // AI Insights
+  aiNarrative       String?   // AI narrative analysis
+  aiSentiment       String?   // "POSITIVE", "NEGATIVE", "NEUTRAL"
+  aiRiskFactors     String?   // JSON array of risk factors
+  systemUsed        String?   // "SEPA", "MOMENTUM", etc.
+  
+  // Tracking
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  @@index([symbol, userId])
+  @@index([entryDate])
+  @@index([aiEnhanced])
+}
+
+// 2. AI_PERFORMANCE_METRICS (OPTIONAL - Enhanced Monitoring)
+model AIPerformanceMetrics {
+  id                Int       @id @default(autoincrement())
+  
+  // Time Period
+  periodStart       DateTime
+  periodEnd         DateTime
+  
+  // Performance Data
+  symbol            String?   // null = all symbols
+  userId            String?   // null = all users
+  
+  // AI vs Baseline Metrics
+  aiTotalTrades     Int       @default(0)
+  aiWinRate         Float     @default(0)
+  aiAvgReturn       Float     @default(0)
+  aiMaxDrawdown     Float     @default(0)
+  
+  baselineTotalTrades Int     @default(0)
+  baselineWinRate   Float     @default(0)
+  baselineAvgReturn Float     @default(0)
+  baselineMaxDrawdown Float   @default(0)
+  
+  // ROI Analysis
+  aiROI             Float     @default(0)
+  estimatedCost     Float     @default(0)
+  
+  // Metadata
+  calculatedAt      DateTime  @default(now())
+  
+  @@index([periodStart, periodEnd])
+  @@index([symbol, userId])
+}
+
+// 3. AI_SYSTEM_LOGS (OPTIONAL - System Health Tracking)
+model AISystemLogs {
+  id                Int       @id @default(autoincrement())
+  
+  // Event Data
+  eventType         String    // "ENHANCEMENT", "ERROR", "HEALTH_CHECK"
+  component         String    // "NARRATIVE", "LEARNING", "MONITORING"
+  
+  // Request Data
+  symbol            String?
+  userId            String?
+  requestData       String?   // JSON string
+  
+  // Result Data
+  success           Boolean
+  responseTime      Int?      // milliseconds
+  errorMessage      String?
+  
+  // Circuit Breaker Data
+  circuitBreakerState String? // "CLOSED", "OPEN", "HALF_OPEN"
+  
+  // Timestamp
+  timestamp         DateTime  @default(now())
+  
+  @@index([eventType, component])
+  @@index([timestamp])
+}
+
+// ===================================================
+// INTEGRATION WITH EXISTING SCHEMA
+// ===================================================
+
+// ADD TO EXISTING Trade MODEL:
+model Trade {
+  // ... existing fields ...
+  
+  // ADD THESE FIELDS FOR AI INTEGRATION:
+  aiEnhanced        Boolean?  @default(false)
+  aiGrade           String?   // AI enhanced grade
+  aiConfidence      Float?    // AI confidence score
+  aiNarrative       String?   // AI market narrative
+  aiRiskFactors     String?   // JSON array of AI risk factors
+  
+  // Link to AI outcome tracking
+  tradeOutcome      TradeOutcome? @relation(fields: [tradeId], references: [tradeId])
+  
+  // ... rest of existing fields ...
+}
+
+// ===================================================
+// MIGRATION PRIORITY
+// ===================================================
+
+// PRIORITY 1 (REQUIRED): TradeOutcome
+// - This is essential for AI learning and monitoring
+// - Without this, AI can't learn from historical performance
+
+// PRIORITY 2 (RECOMMENDED): AI fields in Trade model
+// - Enhances existing trade tracking with AI data
+// - Allows correlation between AI predictions and outcomes
+
+// PRIORITY 3 (OPTIONAL): AIPerformanceMetrics & AISystemLogs
+// - Advanced monitoring and analytics
+// - Can be added later for enhanced insights

@@ -1,0 +1,72 @@
+// ===================================================
+// MINIMAL AI ENHANCEMENT SCHEMA - ADD TO PRISMA SCHEMA
+// ===================================================
+// Add this to your existing prisma/schema.prisma file
+
+// PRIORITY 1: TradeOutcome Table (REQUIRED for AI Learning)
+model TradeOutcome {
+  id                Int       @id @default(autoincrement())
+  
+  // Basic Trade Info
+  symbol            String    // Stock symbol
+  userId            String?   // User identifier
+  tradeId           String?   // Link to existing Trade table
+  
+  // Trade Timeline
+  entryDate         DateTime
+  exitDate          DateTime?
+  entryPrice        Float
+  exitPrice         Float?
+  quantity          Int
+  
+  // Trade Performance
+  outcome           String    // "WIN", "LOSS", "BREAKEVEN"
+  pnlPercent        Float     // Profit/Loss percentage
+  daysHeld          Int?      // Days trade was held
+  
+  // AI Enhancement Tracking
+  aiEnhanced        Boolean   @default(false)
+  originalGrade     String?   // System grade (e.g., "B+")
+  enhancedGrade     String?   // AI enhanced grade
+  originalConfidence Float?   // System confidence
+  enhancedConfidence Float?   // AI confidence
+  systemUsed        String?   // Trading system used
+  
+  // Metadata
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  // Indexes for performance
+  @@index([symbol, userId])
+  @@index([entryDate])
+  @@index([aiEnhanced])
+}
+
+// ===================================================
+// OPTIONAL: Enhance existing Trade model
+// ===================================================
+// Add these fields to your existing Trade model:
+
+/*
+model Trade {
+  // ... your existing fields ...
+  
+  // AI Enhancement Fields (OPTIONAL)
+  aiEnhanced        Boolean?  @default(false)
+  aiGrade           String?   // AI enhanced grade
+  aiConfidence      Float?    // AI confidence score
+  aiNarrative       String?   // AI market narrative
+  
+  // ... rest of existing fields ...
+}
+*/
+
+// ===================================================
+// TO APPLY THIS SCHEMA:
+// ===================================================
+// 1. Copy the TradeOutcome model to your prisma/schema.prisma
+// 2. Run: npx prisma db push
+// 3. Run: npx prisma generate
+// 4. Restart your application
+// 
+// The AI system will automatically detect the table and start using it!

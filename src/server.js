@@ -60,6 +60,9 @@ app.use('/api/market', require('./routes/market.routes'));
 // Trading system routes (multi-system stock analysis)
 app.use('/api/trading', require('./routes/signal-analysis.routes'));
 
+// 🧠 AI Enhancement routes (optional AI layer)
+app.use('/api/intelligent', require('./routes/intelligent.routes'));
+
 // Capital management routes
 app.use('/api/capital', require('./routes/capital.routes'));
 
