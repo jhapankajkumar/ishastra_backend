@@ -1,17 +1,7 @@
-import {
-  SMA,
-  EMA,
-  RSI,
-  MACD,
-  BollingerBands,
-  ATR,
-  Stochastic,
-  ADX
-} from 'technicalindicators';
+
 import * as _ from 'lodash';
-import * as existingIndicators from './technicalIndicators';
 const AdvancedTechnicalIndicators = require('./advancedTechnicalIndicators');
-import { TechnicalIndicators, LatestIndicatorValues } from '../types/technical-analysis';
+import { TechnicalIndicators } from '../types/technical-analysis';
 
 /**
  * OHLC data structure for technical analysis

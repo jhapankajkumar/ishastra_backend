@@ -58,7 +58,7 @@ class IntelligentController {
                 'narrative',
                 () => this.narrative.analyzeMarketStory(symbol, analysisResult),
                 {
-                    fallback: this.createFallbackNarrative(analysisResult),
+                    fallback: this.createFallbackNarrative(analysisResult, symbol),
                     timeout: 20000
                 }
             );
@@ -485,13 +485,17 @@ class IntelligentController {
             // Get comprehensive analysis using your sophisticated system
             const analysisResult = await tradingController.getStockAnalysis(systems, [symbol]);
             console.log(`🔧 Sophisticated analysis result for ${symbol}:`, analysisResult);
-            if (analysisResult.success) {
+            if (analysisResult.success && analysisResult.results && analysisResult.results.length > 0) {
                 const symbolAnalysis = analysisResult.results[0];
-                return symbolAnalysis
-            } else {
-                console.warn(`⚠️ Sophisticated analysis failed for ${symbol}:`, analysisResult.error);
-                return this.createFallbackSophisticatedAnalysis(symbol);
-            }
+                // Ensure the symbol is properly set
+                if (symbolAnalysis) {
+                    symbolAnalysis.symbol = symbol;
+                    return symbolAnalysis;
+                }
+            } 
+            
+            console.warn(`⚠️ Sophisticated analysis failed for ${symbol}:`, analysisResult.error || 'No results returned');
+            return this.createFallbackSophisticatedAnalysis(symbol);
 
         } catch (error) {
             console.error(`❌ Failed to get sophisticated analysis for ${symbol}:`, error);
@@ -601,12 +605,17 @@ class IntelligentController {
             symbol,
             error: 'Sophisticated system analysis unavailable',
             fallback: true,
+            decision: {
+                action: 'HOLD',
+                confidence: 0.5
+            },
             systems: {},
             consensus: {
                 finalDecision: 'HOLD',
                 confidence: 0.5,
                 grade: 'C'
             },
+            aiSignals: [],
             source: 'FALLBACK'
         };
     }
@@ -817,12 +826,16 @@ class IntelligentController {
     // FALLBACK METHODS
     // ==========================================
 
-    createFallbackNarrative(symbolAnalysisResult) {
+    createFallbackNarrative(symbolAnalysisResult, symbol = 'UNKNOWN') {
+        // Handle undefined or empty analysis result
+        const resultSymbol = symbolAnalysisResult?.symbol || symbol;
+        const action = symbolAnalysisResult?.decision?.action || 'HOLD';
+        
         return {
-            symbol: symbolAnalysisResult.symbol,
+            symbol: resultSymbol,
             sentiment: 'NEUTRAL',
             confidence: 0.5,
-            mainStory: `Technical analysis primary for ${symbolAnalysisResult.symbol} ${symbolAnalysisResult.decision.action} position`,
+            mainStory: `Technical analysis primary for ${resultSymbol} ${action} position`,
             keyFactors: ['Technical indicators active'],
             riskFactors: ['AI analysis unavailable'],
             tradingImplications: 'Rely on technical analysis',
