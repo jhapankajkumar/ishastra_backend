@@ -410,19 +410,20 @@ class TradingSystemController {
       riskReward = null;
     }
 
-    // Extract system-generated grade from signalQuality or nested analysis
+    // 🎯 SIMPLIFIED: Extract grade with clear hierarchy and single log
     let grade = this.getGrade(unifiedConfidence); // Fallback
     
+    // Check in order of preference: signalQuality > system-specific grades
     if (winningSystem?.signalQuality?.grade) {
       grade = winningSystem.signalQuality.grade;
-      console.log(`🎯 Using system grade: ${grade} from ${winningSystem.systemId}`);
     } else if (winningSystem?.templateAnalysis?.templateGrade) {
       grade = winningSystem.templateAnalysis.templateGrade;
-      console.log(`🎯 Using template grade: ${grade} from ${winningSystem.systemId}`);
-    } else if (winningSystem?.cascadeAnalysis?.cascadeGrade) {
-      grade = winningSystem.cascadeAnalysis.cascadeGrade;
-      console.log(`🎯 Using cascade grade: ${grade} from ${winningSystem.systemId}`);
+    } else if (winningSystem?.cascadeAnalysis?.momentumCascade?.grade) {
+      grade = winningSystem.cascadeAnalysis.momentumCascade.grade;
     }
+    // 🎯 CLEAN RESPONSE: Winning system name in decision, no systems bloat
+    const winningSystemName = winningSystem?.systemName || 'Unknown System';
+    const winningSystemId = winningSystem?.systemId || 'unknown';
 
     return {
       symbol,
@@ -436,94 +437,18 @@ class TradingSystemController {
         grade: grade,
         reasoning: unifiedDecision.reasoning || 'Analysis complete',
         systemsAgreement: unifiedDecision.systemsAgreement || 'PARTIAL',
+        winningSystem: winningSystemName,
+        winningSystemId: winningSystemId
       },
 
       execution: execution,
-      riskReward: riskReward,
+      riskReward: riskReward
 
-      // SIMPLIFIED SYSTEM DETAILS - Essential info only
-      systems: this.buildSystemsResponse(systemResults, supportedSystems, technicalData.currentPrice)
+      // 🚨 DELETED: systems object - eliminated redundancy and confusion
     };
   }
 
-  // NEW: Build systems response dynamically for all analyzed systems
-  buildSystemsResponse(systemResults, supportedSystems, currentPrice) {
-    const systems = {};
-
-    // Map system IDs to display names
-    const systemDisplayNames = {
-      [SYSTEM_IDS.TRIPLE_SCREEN]: { key: 'elderTripleScreen', name: 'Elder\'s Triple Screen' },
-      [SYSTEM_IDS.MINERVINI_SEPA]: { key: 'minerviniSEPA', name: 'Minervini SEPA' },
-      [SYSTEM_IDS.RSI_MEAN_REVERSION]: { key: 'rsiMeanReversion', name: 'RSI Mean Reversion' },
-      [SYSTEM_IDS.MACD_DIVERGENCE]: { key: 'macdDivergence', name: 'MACD Divergence' },
-      // 🏛️ NEW INSTITUTIONAL SYSTEMS
-      'minervini_template_advanced': { key: 'minerviniTemplateAdvanced', name: 'Minervini Template Advanced' },
-      'institutional_momentum_cascade': { key: 'institutionalMomentumCascade', name: 'Institutional Momentum Cascade' }
-    };
-
-    // Add all supported systems to response
-    supportedSystems.forEach(systemId => {
-      const systemResult = systemResults[systemId];
-      const displayInfo = systemDisplayNames[systemId];
-
-      if (systemResult && displayInfo) {
-        systems[displayInfo.key] = this.simplifySystemResponse(systemResult, displayInfo.name, systemId, currentPrice);
-      }
-    });
-
-    return systems;
-  }
-
-  // 🚀 OPTIMIZED: Use system data directly instead of recalculating everything
-  simplifySystemResponse(analysis, systemName, systemId, currentPrice) {
-    if (!analysis) return null;
-
-    // 🎯 Use system's pre-calculated values directly (no recalculation needed)
-    const systemRiskReward = analysis.riskReward || {};
-    const systemExecution = analysis.execution || {};
-    // Use system's confidence and decision directly
-    const confidence = analysis.confidence || 0;
-    const confidencePercent = Math.round(confidence * 100);
-    
-    // Extract system-generated grade from signalQuality or nested analysis
-    let grade = this.getGrade(confidence); // Fallback
-    
-    if (analysis.signalQuality?.grade) {
-      grade = analysis.signalQuality.grade;
-    } else if (analysis.templateAnalysis?.templateGrade) {
-      grade = analysis.templateAnalysis.templateGrade;
-    } else if (analysis.cascadeAnalysis?.cascadeGrade) {
-      grade = analysis.cascadeAnalysis.cascadeGrade;
-    }
-
-    const decision = {
-      action: analysis.decision || 'AVOID',
-      confidence: confidence,
-      confidencePercent: confidencePercent,
-      grade: grade,
-    };
-
-    // 🚀 Build clean response using system's calculated values
-    const response = {
-      system: systemId,
-      systemName: systemName,
-      decision: decision,
-      execution: systemExecution,
-      riskReward: systemRiskReward,
-    };
-
-    // Add system-specific metadata if available
-    if (systemId === 'divergence' && analysis.formationDates) {
-      response.formationDates = analysis.formationDates;
-    }
-
-    return response;
-  }
-
-  /**
-   * 🧠 Identify the winning system based on unified decision logic
-   * Returns the system that should provide the execution plan
-   */
+  // 🎯 SIMPLE: Identify winning system for attribution
   identifyWinningSystem(systemResults, unifiedDecision) {
     try {
       // Convert systemResults to array format for processing
