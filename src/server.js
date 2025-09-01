@@ -1,23 +1,26 @@
 // Start price refresh cron job (runs at midnight and on startup)
+// TEMPORARILY DISABLED - Missing dependencies
+/*
 try {
   require('./refresh-prices-cron');
 } catch (error) {
   console.error('❌ Failed to start price refresh cron job:', error.message);
 }
+*/
 
-// Start watchlist update cron job (runs Tuesday-Saturday at 9 AM Singapore Time)
-// NOTE: Temporarily disabled - watchlist-update-cron file not found
-/*
+// Start watchlist cron job - SIMPLE DAILY SCAN
 try {
-  const { watchlistCron } = require('./watchlist-update-cron');
+  const WatchlistCron = require('./cron/watchlistCron');
+  const watchlistCron = new WatchlistCron();
   watchlistCron.start();
-  console.log('✅ Watchlist cron job started successfully');
+  console.log('✅ Daily Watchlist cron job started successfully (9:30 AM IST)');
 } catch (error) {
   console.error('❌ Failed to start watchlist cron job:', error.message);
 }
-*/
 
 // Start Expert Analysis cron job (NIFTY 200 Core + Satellite)
+// TEMPORARILY DISABLED - Deleted watchlistManager dependency
+/*
 try {
   const ExpertAnalysisCron = require('./cron/expert-analysis.cron');
   const expertCron = new ExpertAnalysisCron();
@@ -26,6 +29,7 @@ try {
 } catch (error) {
   console.error('❌ Failed to start expert analysis cron jobs:', error.message);
 }
+*/
 
 const express = require('express');
 const cors = require('cors');
@@ -60,17 +64,17 @@ app.use('/api/market', require('./routes/market.routes'));
 // Trading system routes (multi-system stock analysis)
 app.use('/api/trading', require('./routes/signal-analysis.routes'));
 
-// 🧠 AI Enhancement routes (optional AI layer)
-app.use('/api/intelligent', require('./routes/intelligent.routes'));
 
 // Capital management routes
+
 app.use('/api/capital', require('./routes/capital.routes'));
 
 // Watchlist routes
-app.use('/api/watchlist', require('./routes/watchlist.routes'));
+app.use('/api/watchlist', require('./routes/simpleWatchlistRoutes'));
 
 // Alert routes
-app.use('/api/alerts', require('./routes/alertRoutes'));
+
+app.use('/api/alerts', require('./routes/simpleAlertRoutes'));
 
 // Yahoo Finance API endpoints
 app.get('/api/yahoo/search', async (req, res) => {

@@ -76,19 +76,16 @@ model Trade {
   lessonLearned      String?
   emotionalState       String?
 
-  grade           String?   // AI enhanced grade
-  confidence      Float?    // AI confidence score
-  narrative       String?   // AI market narrative
-  riskFactors     String?   // JSON array of AI risk factors
-
-  rMultiple          Float?
-  isPaperTrade       Boolean?
   status             String?   @default("Open") // Open, Partial Closed, Closed
   tags               String?   // Consider making tags a separate join table
+  
+  // Analysis and Learning Fields
+  rMultiple          Float?    // Risk-reward ratio outcome
+  isPaperTrade       Boolean?  // Whether this was practice
+  
   tradeFills         TradeFill[]
   tradeImages        TradeImage[]
   tradeTransactions  TradeTransaction[]
-  tradeAlerts        TradeAlert[]
 }
 
 model TradeTransaction {
@@ -101,11 +98,6 @@ model TradeTransaction {
   reasonForExit    String?
   exitTacticId     Int?
   createdAt        DateTime @default(now())
-
-  grade           String?   // AI enhanced grade
-  confidence      Float?    // AI confidence score
-  narrative       String?   // AI market narrative
-  riskFactors     String?   // JSON array of AI risk factors
   
   // Exit Transaction Outcome Fields (null for entry transactions)
   outcome           String?    // "WIN", "LOSS", "BREAKEVEN" - only for exits
@@ -207,42 +199,33 @@ model Capital {
   updatedAt       DateTime @updatedAt
 }
 
-// Watchlist Schema - Automated from Signal Analysis
+// Watchlist Schema - SIMPLE & CLEAN - Stores complete signal analysis data
 model WatchlistStock {
   id              Int      @id @default(autoincrement())
-  symbol          String   @unique // Stock symbol (e.g., "AAPL", "ASHIANA.NS")
-  currentPrice    Float    // Price when added to watchlist
+  symbol          String   @unique // Stock symbol (e.g., "AAPL", "RELIANCE.NS")
+  currentPrice    Float    // Price when analyzed
   currency        String?  @default("USD") // 'USD' or 'INR'
   market          String?  // 'US' or 'IN' 
   
-  // Decision Information
-  decisionAction      String   // "BUY", "WATCH", "HOLD", etc.
+  // Decision Information - Core signal data
+  decisionAction      String   // "BUY", "WATCH", "HOLD", "AVOID", "SELL"
   decisionConfidence  Float    // 0.0 to 1.0
   decisionGrade      String   // "A", "B+", "C", etc.
   decisionReasoning  String?  // Brief reasoning text
   systemsAgreement   String?  // "FULL", "PARTIAL", "NONE"
   systemsAnalyzed    Int?     // Number of systems analyzed
   
-  // ===== ELITE SYSTEM FIELDS (Top 1% Trader Features) =====
-  tier               String?  // "HOT_BUY", "STRONG_WATCH", "DEVELOPING", "COOLING", "ARCHIVE"
-  signalEvolution    String?  // "IMPROVING", "DETERIORATING", "STABLE_STRONG", "NEW_BREAKOUT", "STABLE_WEAK"
-  daysInTier         Int?     @default(0) // Days in current tier
-  historicalGrades   String?  // JSON: Array of historical grades for trend analysis
-  tierHistory        String?  // JSON: Array of tier changes with timestamps
-  strengthTrend      String?  // "STRENGTHENING", "WEAKENING", "STABLE", "UNKNOWN"
-  momentumMultiplier Float?   @default(1.0) // Elite momentum calculation
-  elitePriority      Int?     @default(1000) // Elite ranking priority
+  // Execution Data (JSON from signal-analysis.controller.js)
+  executionData   String?  // JSON: Complete execution object { entry, stopLoss, targets, position }
   
-  // Execution Information (JSON stored as String)
-  executionData   String?  // JSON: { entry, stop, targets, riskReward, positionSize }
+  // Systems Data (JSON from signal-analysis.controller.js) 
+  systemsData     String?  // JSON: Complete systems analysis results
   
-  // System Results Summary (JSON stored as String) 
-  systemsData     String?  // JSON: Simplified systems results
+  // Context Data (JSON from signal-analysis.controller.js)
+  contextData     String?  // JSON: Complete context { trend, levels, volume, earnings }
   
-  // Market Classification (for elite system)
-  sector          String?  @default("Unknown")
-  country         String?  @default("US")
-  exchange        String?  // NYSE, NASDAQ, etc.
+  // Risk Data (JSON from signal-analysis.controller.js)
+  riskData        String?  // JSON: Complete risk analysis { level, tailRiskScore, maxDrawdown }
   
   // Status and Metadata
   status          String   @default("ACTIVE") // "ACTIVE", "EXECUTED", "EXPIRED", "REMOVED"
@@ -259,120 +242,11 @@ model WatchlistStock {
   @@index([priority])
   @@index([market])
   @@index([status])
-  @@index([tier])              // Elite index
-  @@index([signalEvolution])   // Elite index
-  @@index([elitePriority])     // Elite index
 }
 
-model TradeAlert {
-  id          Int      @id @default(autoincrement())
-  tradeId     Int
-  alertType   String   // 'EXIT_WARNING', 'STOP_BREACH', 'TARGET_APPROACH', 'VOLUME_SPIKE', 'TREND_BREAK'
-  priority    String   // 'LOW', 'MEDIUM', 'HIGH', 'CRITICAL'
-  message     String
-  isRead      Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  expiresAt   DateTime? // Auto-cleanup old alerts
-  
-  // Additional context data (JSON as string)
-  contextData String?  // JSON: { currentPrice, triggerPrice, riskLevel, etc. }
-  
-  trade       Trade    @relation(fields: [tradeId], references: [id], onDelete: Cascade)
-  
-  @@index([tradeId])
-  @@index([priority])
-  @@index([isRead])
-  @@index([createdAt])
-}
-
-// Signal History Table for Alert System
-model SignalHistory {
-  id                String   @id @default(cuid())
-  symbol            String
-  action            String   // BUY, WATCH, AVOID, SELL, etc.
-  confidence        Float
-  grade             String   // A+, A, B+, etc.
-  signalQuality     String   // INSTITUTIONAL_GRADE, STANDARD, etc.
-  universe          String   // SP500_CORE, SATELLITE, etc.
-  analysisTimestamp DateTime @default(now())
-  metadata          String?  // JSON string with additional analysis data
-  
-  @@index([symbol, analysisTimestamp])
-  @@index([analysisTimestamp])
-}
-
-// Alert History Table (Optional - to track sent alerts)
-model AlertHistory {
-  id          String   @id @default(cuid())
-  type        String   // CRITICAL, URGENT, IMPORTANT
-  category    String   // SIGNAL_BREAKDOWN, NEW_OPPORTUNITY, etc.
-  symbol      String
-  message     String
-  sentAt      DateTime @default(now())
-  acknowledged Boolean @default(false)
-  
-  @@index([symbol, sentAt])
-  @@index([type, sentAt])
-}
-
-// 2. AI_PERFORMANCE_METRICS (OPTIONAL - Enhanced Monitoring)
-model AIPerformanceMetrics {
-  id                Int       @id @default(autoincrement())
-  
-  // Time Period
-  periodStart       DateTime
-  periodEnd         DateTime
-  
-  // Performance Data
-  symbol            String?   // null = all symbols
-  userId            String?   // null = all users
-  
-  // AI vs Baseline Metrics
-  aiTotalTrades     Int       @default(0)
-  aiWinRate         Float     @default(0)
-  aiAvgReturn       Float     @default(0)
-  aiMaxDrawdown     Float     @default(0)
-  
-  baselineTotalTrades Int     @default(0)
-  baselineWinRate   Float     @default(0)
-  baselineAvgReturn Float     @default(0)
-  baselineMaxDrawdown Float   @default(0)
-  
-  // ROI Analysis
-  aiROI             Float     @default(0)
-  estimatedCost     Float     @default(0)
-  
-  // Metadata
-  calculatedAt      DateTime  @default(now())
-  
-  @@index([periodStart, periodEnd])
-  @@index([symbol, userId])
-}
-
-// 3. AI_SYSTEM_LOGS (OPTIONAL - System Health Tracking)
-model AISystemLogs {
-  id                Int       @id @default(autoincrement())
-  
-  // Event Data
-  eventType         String    // "ENHANCEMENT", "ERROR", "HEALTH_CHECK"
-  component         String    // "NARRATIVE", "LEARNING", "MONITORING"
-  
-  // Request Data
-  symbol            String?
-  userId            String?
-  requestData       String?   // JSON string
-  
-  // Result Data
-  success           Boolean
-  responseTime      Int?      // milliseconds
-  errorMessage      String?
-  
-  // Circuit Breaker Data
-  circuitBreakerState String? // "CLOSED", "OPEN", "HALF_OPEN"
-  
-  // Timestamp
-  timestamp         DateTime  @default(now())
-  
-  @@index([eventType, component])
-  @@index([timestamp])
-}
+// ===== LEARNING & OBSERVATION MODELS =====
+// These models are for learning and improving trading skills:
+// - Trade: Records all trade decisions and outcomes for review
+// - ChartAnalysis: Journal for studying chart patterns and setups  
+// - TradeFill: Multiple fills per trade (real trading data)
+// - TradeImage: Screenshots for trade review and learning

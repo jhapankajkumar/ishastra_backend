@@ -4,7 +4,6 @@ const prisma = new PrismaClient();
 const TradeIdGenerator = require('../utils/tradeIdGenerator');
 const CapitalManager = require('../utils/capitalManager');
 const { getQuote } = require('../yahoo');
-const TradeHealthAnalyzer = require('../services/tradeHealthAnalyzer');
 
 // Get all trades with related data
 exports.getAllTrades = async (req, res) => {
@@ -539,97 +538,6 @@ exports.getTradeById = async (req, res) => {
       tradeSetup: tradeSetup,
       tradeFills: tradeFills
     };
-
-    // Add Elder's Impulse analysis for open or partially closed trades
-    console.log(`🎯 [TRADE-DETAIL] Checking analysis conditions for ${trade.ticker}: status='${trade.status}'`);
-    if (trade.status === 'Open' || trade.status === 'Partial Closed') {
-      // Add comprehensive trade health analysis using AI infrastructure
-      console.log(`🎯 [TRADE-DETAIL] Analyzing health for ${trade.ticker} (${trade.status})`);
-      
-      try {
-        // Initialize trade health analyzer
-        const healthAnalyzer = new TradeHealthAnalyzer();
-        
-        // � Enhanced approach: Send complete trade with transactions to health analyzer
-        const isPartialTrade = trade.status === 'Partial Closed' && trade.remainingQuantity !== trade.quantity;
-        
-        // Create comprehensive trade object with full transaction history
-        const completeTradeForAnalysis = {
-          ...trade,
-          // Override quantity with current remaining quantity for analysis
-          quantity: trade.remainingQuantity || trade.quantity,
-          // Keep original quantity for reference
-          originalQuantity: trade.quantity,
-          // Add transaction context
-          tradeTransactions: trade.tradeTransactions || [],
-          isPartialTrade: isPartialTrade,
-          currentQuantity: trade.remainingQuantity || trade.quantity,
-          transactionHistory: (trade.tradeTransactions || []).map(t => ({
-            type: t.transactionType,
-            quantity: t.quantity,
-            price: t.price,
-            date: t.transactionDate,
-            reason: t.reasonForExit
-          }))
-        };
-        
-        console.log(`🔧 [TRADE-DETAIL] ${trade.ticker} - Status: ${trade.status}, Original: ${trade.quantity}, Current: ${completeTradeForAnalysis.currentQuantity}, Transactions: ${completeTradeForAnalysis.tradeTransactions.length}`);
-        
-        // Clear cache for partial trades to ensure fresh analysis with transaction context
-        if (isPartialTrade) {
-          console.log(`🔧 [TRADE-DETAIL] Clearing cache for partial trade ${trade.ticker} with ${completeTradeForAnalysis.tradeTransactions.length} transactions`);
-          healthAnalyzer.clearCacheForTicker(trade.ticker);
-        }
-        
-        // Get comprehensive trade health analysis with full trade context
-        const tradeHealth = await healthAnalyzer.analyzeTradeHealth(completeTradeForAnalysis);
-        
-        // Use the analysis directly since it now has full transaction context
-        response.analysis = tradeHealth.birdEyeView;
-        
-        console.log(`✅ [TRADE-DETAIL] ${trade.ticker}: ${tradeHealth.birdEyeView.status} (${tradeHealth.birdEyeView.aiGrade}) - Analysis with ${completeTradeForAnalysis.tradeTransactions.length} transactions`);
-
-      } catch (healthError) {
-        console.error(`❌ [TRADE-HEALTH] Error analyzing ${trade.ticker}:`, healthError.message);
-        
-        // Add fallback health data on error
-        response.exitAnalysis = {
-          recommendation: 'HOLD',
-          confidence: 0.5,
-          riskLevel: 'MEDIUM',
-          timeframe: 'Unknown',
-          reasoning: [`Health analysis unavailable: ${healthError.message}`],
-          triggers: {
-            stopLoss: trade.stopLoss,
-            target1: trade.target1,
-            target2: trade.target2
-          }
-        };
-        response.tradeHealth = {
-          healthScore: 0.5,
-          stageAnalysis: 'Analysis unavailable',
-          momentumStatus: 'Unknown',
-          volumeHealth: 'Unknown',
-          trendIntegrity: 'Unknown',
-          keyLevels: { support: [], resistance: [] }
-        };
-        response.riskAssessment = {
-          currentRisk: 0,
-          riskLevel: 'MEDIUM',
-          stopDistance: null,
-          recommendations: ['Manual analysis required']
-        };
-        response.tradeMetrics = {
-          unrealizedPnL: { amount: 0, percentage: 0 },
-          riskReward: 0,
-          daysHeld: 0,
-          priceChange: 0
-        };
-      }
-    } else {
-      //console.log(`ℹ️  [IMPULSE] Trade ${trade.ticker} is ${trade.status} - skipping impulse analysis`);
-    }
-
     res.json(response);
 
   } catch (error) {
