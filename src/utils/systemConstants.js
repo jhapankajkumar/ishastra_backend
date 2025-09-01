@@ -3,9 +3,7 @@
  * Canonical system identifiers and aliases for consistency across the application
  */
 
-import { SystemRequirement, WatchlistFilter, UnifiedSignal, ExecutionPlan, PositionSizing } from '../types/technical-analysis';
-
-export const SYSTEM_IDS = {
+const SYSTEM_IDS = {
   TRIPLE_SCREEN: 'triple_screen',
   MINERVINI_SEPA: 'sepa_method',
   CAN_SLIM_CUP_HANDLE: 'cup_handle',
@@ -15,19 +13,15 @@ export const SYSTEM_IDS = {
   SUPERTREND_WEEKLY: 'supertrend_weekly',
   MINERVINI_TEMPLATE_ADVANCED: 'minervini_template_advanced',
   INSTITUTIONAL_MOMENTUM_CASCADE: 'institutional_momentum_cascade',
-} as const;
+};
 
-export type SystemId = typeof SYSTEM_IDS[keyof typeof SYSTEM_IDS];
-
-export const SYSTEM_TIERS = {
+const SYSTEM_TIERS = {
   TIER_1: ['triple_screen', 'sepa_method', 'minervini_template_advanced', 'institutional_momentum_cascade'],
   TIER_2: ['cup_handle', 'rsi_mean', 'divergence', 'supertrend_weekly'],
   TIER_3: ['impulse', 'divergence'],
-} as const;
+};
 
-export type SystemTier = keyof typeof SYSTEM_TIERS;
-
-export const WATCHLIST_FILTERS = {
+const WATCHLIST_FILTERS = {
   STRONG_BUY: 'strong_buy',
   BUY: 'buy',
   BULLISH_SETUP: 'bullish_setup',
@@ -35,18 +29,16 @@ export const WATCHLIST_FILTERS = {
   BREAKOUT: 'breakout',
   PULLBACK: 'pullback',
   ALL: 'all'
-} as const;
+};
 
-export type WatchlistFilterType = typeof WATCHLIST_FILTERS[keyof typeof WATCHLIST_FILTERS];
-
-export const defaultLookBackPeriod = 100;
+const defaultLookBackPeriod = 100;
 
 /**
  * Normalize system key aliases to canonical IDs
  * @param key - Raw system identifier 
  * @returns Canonical system ID
  */
-export function normalizeSystemKey(key: string): SystemId {
+function normalizeSystemKey(key) {
   const normalized = (key || '').toLowerCase().replace(/[_-]/g, '');
   
   // Triple Screen aliases (check both with and without underscore removal)
@@ -55,12 +47,17 @@ export function normalizeSystemKey(key: string): SystemId {
     return SYSTEM_IDS.TRIPLE_SCREEN;
   }
   
+  // Supertrend Weekly - map to Triple Screen for now (includes supertrend analysis)
+  if (['supertrendweekly', 'supertrend_weekly', 'weekly_supertrend'].includes(normalized) ||
+      key === 'supertrend_weekly') {
+    return SYSTEM_IDS.TRIPLE_SCREEN; // Triple Screen includes supertrend in multi-timeframe analysis
+  }
+  
   // SEPA aliases (check both with and without underscore removal) 
   if (['sepa', 'sepamethod', 'sepamethod', 'minervini', 'minervnisepa', 'sepa_method'].includes(normalized) ||
       key === 'sepa_method') {
     return SYSTEM_IDS.MINERVINI_SEPA;
   }
-  
   
   // Cup Handle aliases
   if (['cuphandle', 'cup_handle', 'cupandhandle', 'cup', 'canslim'].includes(normalized)) {
@@ -98,13 +95,13 @@ export function normalizeSystemKey(key: string): SystemId {
   }
   
   // Return original key if no alias found (fallback)
-  return key as SystemId;
+  return key;
 }
 
 /**
  * Check if system requires weekly data
  */
-export function requiresWeeklyData(systemId: SystemId): boolean {
+function requiresWeeklyData(systemId) {
   return systemId === SYSTEM_IDS.SUPERTREND_WEEKLY || 
          systemId === SYSTEM_IDS.TRIPLE_SCREEN;
 }
@@ -112,14 +109,14 @@ export function requiresWeeklyData(systemId: SystemId): boolean {
 /**
  * Check if system requires intraday data
  */
-export function requiresIntradayData(systemId: SystemId): boolean {
+function requiresIntradayData(systemId) {
   return systemId === SYSTEM_IDS.ELDER_IMPULSE;
 }
 
 /**
  * Get data requirements for a trading system
  */
-export function getSystemRequirements(systemId: SystemId): SystemRequirement {
+function getSystemRequirements(systemId) {
   return {
     weeklyData: requiresWeeklyData(systemId),
     intradayData: requiresIntradayData(systemId),
@@ -131,18 +128,18 @@ export function getSystemRequirements(systemId: SystemId): SystemRequirement {
 /**
  * Get system weight for portfolio allocation
  */
-export function getSystemWeight(systemId: SystemId): number {
-  if (SYSTEM_TIERS.TIER_1.includes(systemId as any)) return 0.4;
-  if (SYSTEM_TIERS.TIER_2.includes(systemId as any)) return 0.3;
-  if (SYSTEM_TIERS.TIER_3.includes(systemId as any)) return 0.2;
+function getSystemWeight(systemId) {
+  if (SYSTEM_TIERS.TIER_1.includes(systemId)) return 0.4;
+  if (SYSTEM_TIERS.TIER_2.includes(systemId)) return 0.3;
+  if (SYSTEM_TIERS.TIER_3.includes(systemId)) return 0.2;
   return 0.1; // Default weight
 }
 
 /**
  * Check if system is a complete trading system
  */
-export function isCompleteSystem(systemId: SystemId): boolean {
-  const completeSystems: SystemId[] = [
+function isCompleteSystem(systemId) {
+  const completeSystems = [
     SYSTEM_IDS.TRIPLE_SCREEN,
     SYSTEM_IDS.MINERVINI_SEPA,
     SYSTEM_IDS.CAN_SLIM_CUP_HANDLE,
@@ -155,26 +152,23 @@ export function isCompleteSystem(systemId: SystemId): boolean {
 /**
  * Get high conviction threshold for system
  */
-export function getHighConvictionThreshold(systemId: SystemId): number {
-  if (SYSTEM_TIERS.TIER_1.includes(systemId as any)) return 0.8;
-  if (SYSTEM_TIERS.TIER_2.includes(systemId as any)) return 0.7;
+function getHighConvictionThreshold(systemId) {
+  if (SYSTEM_TIERS.TIER_1.includes(systemId)) return 0.8;
+  if (SYSTEM_TIERS.TIER_2.includes(systemId)) return 0.7;
   return 0.6;
 }
 
 /**
  * Calculate watchlist score based on multiple signals
  */
-export function calculateWatchlistScore(
-  signals: UnifiedSignal[],
-  filters: WatchlistFilterType[] = []
-): number {
+function calculateWatchlistScore(signals, filters = []) {
   if (!signals || signals.length === 0) return 0;
   
   let totalScore = 0;
   let weightSum = 0;
   
   for (const signal of signals) {
-    const weight = getSystemWeight(signal.systemId as SystemId);
+    const weight = getSystemWeight(signal.systemId);
     const strength = parseFloat(signal.strength?.toString() || '0');
     
     // Apply filter bonus
@@ -195,10 +189,7 @@ export function calculateWatchlistScore(
 /**
  * Rank watchlist candidates by score
  */
-export function rankWatchlistCandidates(
-  candidates: Array<{ symbol: string; signals: UnifiedSignal[] }>,
-  filters: WatchlistFilterType[] = []
-): Array<{ symbol: string; score: number; signals: UnifiedSignal[] }> {
+function rankWatchlistCandidates(candidates, filters = []) {
   const scored = candidates.map(candidate => ({
     ...candidate,
     score: calculateWatchlistScore(candidate.signals, filters)
@@ -210,12 +201,9 @@ export function rankWatchlistCandidates(
 /**
  * Apply sector diversification to watchlist
  */
-export function applySectorDiversification(
-  candidates: Array<{ symbol: string; sector?: string; score: number }>,
-  maxPerSector: number = 3
-): Array<{ symbol: string; sector?: string; score: number }> {
-  const sectorCounts = new Map<string, number>();
-  const diversified: Array<{ symbol: string; sector?: string; score: number }> = [];
+function applySectorDiversification(candidates, maxPerSector = 3) {
+  const sectorCounts = new Map();
+  const diversified = [];
   
   for (const candidate of candidates) {
     const sector = candidate.sector || 'Unknown';
@@ -233,7 +221,7 @@ export function applySectorDiversification(
 /**
  * Normalize signal strength to 0-1 range
  */
-export function normalizeSignal(signal: UnifiedSignal): UnifiedSignal {
+function normalizeSignal(signal) {
   const strength = parseFloat(signal.strength?.toString() || '0');
   const normalizedStrength = Math.max(0, Math.min(1, strength));
   
@@ -246,11 +234,7 @@ export function normalizeSignal(signal: UnifiedSignal): UnifiedSignal {
 /**
  * Build unified execution plan from multiple signals
  */
-export function buildUnifiedExecutionPlan(
-  signals: UnifiedSignal[],
-  currentPrice: number,
-  accountSize: number
-): ExecutionPlan {
+function buildUnifiedExecutionPlan(signals, currentPrice, accountSize) {
   if (!signals || signals.length === 0) {
     return {
       action: 'HOLD',
@@ -265,51 +249,52 @@ export function buildUnifiedExecutionPlan(
     };
   }
   
-  const normalizedSignals = signals.map(normalizeSignal);
-  const avgConfidence = normalizedSignals.reduce((sum, s) => sum + (s.strength as number), 0) / normalizedSignals.length;
+  // Calculate unified confidence from multiple signals
+  const weightedSignals = signals.map(signal => ({
+    ...signal,
+    weight: getSystemWeight(signal.systemId),
+    normalizedStrength: Math.max(0, Math.min(1, parseFloat(signal.strength?.toString() || '0')))
+  }));
   
-  // Determine primary action
-  const buySignals = normalizedSignals.filter(s => s.action === 'BUY');
-  const sellSignals = normalizedSignals.filter(s => s.action === 'SELL');
+  const totalWeight = weightedSignals.reduce((sum, s) => sum + s.weight, 0);
+  const confidence = totalWeight > 0 ? 
+    weightedSignals.reduce((sum, s) => sum + (s.normalizedStrength * s.weight), 0) / totalWeight : 0;
   
-  let action: 'BUY' | 'SELL' | 'HOLD' = 'HOLD';
-  if (buySignals.length > sellSignals.length) {
+  // Determine primary action based on signal consensus
+  const buySignals = signals.filter(s => (s.action || '').toLowerCase().includes('buy'));
+  const sellSignals = signals.filter(s => (s.action || '').toLowerCase().includes('sell'));
+  const holdSignals = signals.filter(s => (s.action || '').toLowerCase().includes('hold'));
+  
+  let action = 'HOLD';
+  if (buySignals.length > sellSignals.length && buySignals.length > holdSignals.length) {
     action = 'BUY';
-  } else if (sellSignals.length > buySignals.length) {
+  } else if (sellSignals.length > buySignals.length && sellSignals.length > holdSignals.length) {
     action = 'SELL';
   }
   
-  const positionSizing = calculateUnifiedPositionSizing(normalizedSignals, avgConfidence, accountSize);
-  
   return {
     action,
-    confidence: avgConfidence,
-    systemsCount: normalizedSignals.length,
-    positionSizing,
-    entryPrice: currentPrice,
-    stopLoss: normalizedSignals.find(s => s.stopLoss)?.stopLoss,
-    takeProfit: normalizedSignals.find(s => s.takeProfit)?.takeProfit
+    confidence: Math.round(confidence * 100) / 100,
+    systemsCount: signals.length,
+    positionSizing: calculateUnifiedPositionSizing(confidence, accountSize),
+    signals: signals.map(s => normalizeSignal(s))
   };
 }
 
 /**
- * Calculate unified position sizing based on multiple signals
+ * Calculate unified position sizing recommendation
  */
-export function calculateUnifiedPositionSizing(
-  signals: UnifiedSignal[],
-  confidence: number,
-  accountSize: number
-): PositionSizing {
-  let recommendation: 'BUY' | 'SELL' | 'HOLD' | 'AVOID';
-  let riskPercent: number;
-  let maxPosition: number;
-  let rationale: string;
+function calculateUnifiedPositionSizing(confidence, accountSize) {
+  let recommendation = 'AVOID';
+  let riskPercent = 0;
+  let maxPosition = 0;
+  let rationale = 'Default position sizing';
   
   if (confidence >= 0.8) {
     recommendation = 'BUY';
-    riskPercent = Math.min(3, confidence * 4); // Max 3% risk for high confidence
-    maxPosition = accountSize * 0.15; // Max 15% position size
-    rationale = 'High conviction trade based on multiple strong signals';
+    riskPercent = Math.min(5, confidence * 6); // Max 5% risk for high confidence
+    maxPosition = accountSize * 0.2; // Max 20% position size
+    rationale = 'High conviction trade with strong signal convergence';
   } else if (confidence >= 0.6) {
     recommendation = 'BUY';
     riskPercent = Math.min(2, confidence * 3); // Max 2% risk for medium confidence
@@ -339,13 +324,13 @@ export function calculateUnifiedPositionSizing(
 /**
  * Clean execution plan by removing null/undefined values
  */
-export function cleanExecutionPlan(plan: ExecutionPlan): ExecutionPlan {
-  const cleaned: any = {};
+function cleanExecutionPlan(plan) {
+  const cleaned = {};
   
   for (const [key, value] of Object.entries(plan)) {
     if (value !== null && value !== undefined) {
       if (typeof value === 'object' && !Array.isArray(value)) {
-        const cleanedSubObject = cleanExecutionPlan(value as ExecutionPlan);
+        const cleanedSubObject = cleanExecutionPlan(value);
         if (Object.keys(cleanedSubObject).length > 0) {
           cleaned[key] = cleanedSubObject;
         }
@@ -357,10 +342,10 @@ export function cleanExecutionPlan(plan: ExecutionPlan): ExecutionPlan {
     }
   }
   
-  return cleaned as ExecutionPlan;
+  return cleaned;
 }
 
-// CommonJS compatibility
+// CommonJS exports
 module.exports = {
   SYSTEM_IDS,
   SYSTEM_TIERS,

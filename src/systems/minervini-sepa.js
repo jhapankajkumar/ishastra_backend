@@ -34,7 +34,7 @@ class MinerviniSEPA {
     /**
      * Main analysis method for SEPA methodology
      * @param {Object} data - Technical data in SEPA format
-     * @param {Object} options - Analysis options including capital, symbol, currentPrice
+     * @param {Object} options - Analysis options including capital, symbol, currentPrice, aiSignals
      * @returns {Object} - Complete SEPA analysis result
      */
     analyze(data, options = {}) {
@@ -42,7 +42,7 @@ class MinerviniSEPA {
 
         try {
             const { series, indicators, meta } = data;
-            const { capital, symbol, currentPrice } = options;
+            const { capital, symbol, currentPrice, aiSignals } = options; // 🤖 AI SIGNALS INTEGRATION
 
             if (!series?.daily || series.daily.length === 0) {
                 return this.createAvoidSignal('INSUFFICIENT_DATA', 'Insufficient daily data for SEPA analysis');
@@ -67,9 +67,9 @@ class MinerviniSEPA {
             //console.log(`  🎯 SEPA Phase 4: Assessing risk/reward...`);
             const riskAssessment = this.assessRisk(stageAnalysis, signalAnalysis, series);
 
-            // Phase 5: Final Decision (using risk/reward data)
-            //console.log(`  🎯 SEPA Phase 5: Making final decision...`);
-            const finalDecision = this.makeFinalDecision(stageAnalysis, trendAnalysis, signalAnalysis, riskAssessment);
+            // Phase 5: AI-Enhanced Final Decision 🤖
+            //console.log(`  🎯 SEPA Phase 5: Making AI-enhanced final decision...`);
+            const finalDecision = this.makeFinalDecisionWithAI(stageAnalysis, trendAnalysis, signalAnalysis, riskAssessment, aiSignals);
 
             // Calculate enhanced risk/reward with conditional calculations for WATCH signals
             const enhancedRiskReward = this.calculateRiskReward(riskAssessment, signalAnalysis, finalDecision.action, series, currentPrice);
@@ -98,7 +98,11 @@ class MinerviniSEPA {
                 // Quality metrics for gate engine (standardized with Elder)
                 signalQuality: signalQuality,
                 // Execution details (standardized with Elder as 'execution')
-                execution: executionPlan
+                execution: executionPlan,
+                // 🤖 AI Enhancement fields
+                aiEnhanced: finalDecision.aiEnhanced || false,
+                aiReasoning: finalDecision.aiReasoning || null,
+                originalSepaAction: finalDecision.originalSepaAction || null
             };
 
         } catch (error) {
@@ -461,6 +465,110 @@ class MinerviniSEPA {
             riskReward,
             atr,
             riskPercentage: stopLoss > 0 ? Math.abs((entryPrice - stopLoss) / entryPrice) : 0
+        };
+    }
+
+    /**
+     * 🤖 AI-ENHANCED: Make final trading decision with AI momentum validation
+     */
+    makeFinalDecisionWithAI(stageAnalysis, trendAnalysis, signalAnalysis, riskAssessment, aiSignals = null) {
+        // Get the base SEPA decision first
+        const baseDecision = this.makeFinalDecision(stageAnalysis, trendAnalysis, signalAnalysis, riskAssessment);
+        
+        // If no AI signals, return base decision
+        if (!aiSignals) {
+            return {
+                ...baseDecision,
+                aiEnhanced: false
+            };
+        }
+
+        // Apply AI enhancements to SEPA's over-strict requirements
+        return this.applySEPAAIEnhancement(baseDecision, stageAnalysis, trendAnalysis, signalAnalysis, aiSignals);
+    }
+
+    /**
+     * 🤖 SEPA AI ENHANCEMENT: Fix SEPA's over-engineering problem
+     */
+    applySEPAAIEnhancement(baseDecision, stageAnalysis, trendAnalysis, signalAnalysis, aiSignals) {
+        const { momentum, conviction, bias } = aiSignals;
+        let enhancedAction = baseDecision.action;
+        let enhancedConfidence = baseDecision.confidence;
+        let aiReasoningParts = [];
+        let aiEnhanced = false;
+
+        // ENHANCEMENT 1: Stage 2 + Strong AI = BUY (even if trend alignment is MIXED or criteria missing)
+        if (stageAnalysis.currentStage === 2 && 
+            (baseDecision.action === 'HOLD' || signalAnalysis.signal === 'HOLD')) {
+            
+            // Strong AI momentum can override missing breakout criteria or mixed trends
+            if ((momentum === 'BUILDING_BULL' || momentum === 'STRONG_BULL') &&
+                conviction !== 'LOW' &&
+                bias.includes('LONG')) {
+                
+                enhancedAction = 'BUY';
+                enhancedConfidence = Math.min(0.85, baseDecision.confidence + 0.20);
+                aiEnhanced = true;
+                aiReasoningParts.push(`AI UPGRADE: Stage 2 markup + ${momentum} momentum (${conviction} conviction) overrides SEPA's strict breakout requirements`);
+            }
+        }
+
+        // ENHANCEMENT 2: Stage 1 (Accumulation) + Strong AI = WATCH upgrade
+        else if (stageAnalysis.currentStage === 1 && 
+                 baseDecision.action === 'AVOID' &&
+                 momentum === 'BUILDING_BULL' &&
+                 conviction === 'HIGH') {
+            
+            enhancedAction = 'WATCH';
+            enhancedConfidence = 0.65;
+            aiEnhanced = true;
+            aiReasoningParts.push(`AI UPGRADE: Stage 1 base building enhanced by strong AI momentum - worth watching`);
+        }
+
+        // ENHANCEMENT 3: Any positive signal + Very Strong AI = Upgrade
+        else if (stageAnalysis.currentStage >= 1 &&
+                 momentum === 'STRONG_BULL' &&
+                 conviction === 'HIGH' &&
+                 baseDecision.action !== 'BUY') {
+            
+            enhancedAction = baseDecision.action === 'AVOID' ? 'WATCH' : 'BUY';
+            enhancedConfidence = Math.min(0.80, baseDecision.confidence + 0.25);
+            aiEnhanced = true;
+            aiReasoningParts.push(`AI UPGRADE: Strong bull momentum + high conviction upgrades ${baseDecision.action} to ${enhancedAction}`);
+        }
+
+        // ENHANCEMENT 4: Downgrade on negative AI
+        else if ((momentum === 'BUILDING_BEAR' || momentum === 'STRONG_BEAR') &&
+                 baseDecision.action !== 'AVOID') {
+            
+            enhancedAction = 'AVOID';
+            enhancedConfidence = 0.25;
+            aiEnhanced = true;
+            aiReasoningParts.push(`AI DOWNGRADE: ${baseDecision.action} downgraded due to ${momentum} momentum`);
+        }
+
+        // ENHANCEMENT 5: Confidence adjustments based on AI conviction
+        if (!aiEnhanced) {
+            if (conviction === 'HIGH' && baseDecision.action === 'BUY') {
+                enhancedConfidence = Math.min(0.90, enhancedConfidence + 0.10);
+                aiReasoningParts.push('AI confidence boost from HIGH conviction');
+                aiEnhanced = true;
+            } else if (conviction === 'LOW') {
+                enhancedConfidence = Math.max(0.20, enhancedConfidence - 0.08);
+                aiReasoningParts.push('AI confidence reduction from LOW conviction');
+                aiEnhanced = true;
+            }
+        }
+
+        return {
+            action: enhancedAction,
+            confidence: enhancedConfidence,
+            reasoning: baseDecision.reasoning,
+            factors: baseDecision.factors,
+            aiEnhanced: aiEnhanced,
+            aiReasoning: aiReasoningParts.join('; ') || 'No significant AI adjustments',
+            originalSepaAction: baseDecision.action,
+            aiSignals: aiSignals
         };
     }
 

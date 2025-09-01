@@ -129,7 +129,7 @@ async function prepareAnalysisContext(symbol, period, capital) {
   // ==============================================
   //console.log(`⚡ Phase 3: Running Expert AI Decision Engine...`);
 
-  // console.log(`🔍 AISignal: ${JSON.stringify(sharedTechnicalData.technicalIndicators.aiSignals)}...`);
+  // console.log(`🔍 AISignal: ${JSON.stringify(sharedTechnicalData?.technicalIndicators?.aiSignals)}...`);
   // Create comprehensive analysis context
   const analysisContext = {
     technical: finalTechnical,
@@ -142,7 +142,7 @@ async function prepareAnalysisContext(symbol, period, capital) {
     symbol: formattedSymbol,
     timestamp: new Date().toISOString(),
     provenSignals: [],
-    aiSignals: sharedTechnicalData.technicalIndicators.aiSignals
+    aiSignals: sharedTechnicalData?.technicalIndicators?.aiSignals || []
   };
   return { analysisContext, finalTechnical, backtest, sentiment, formattedSymbol, monteCarlo, tailRisk };
 }
@@ -165,7 +165,7 @@ async function getAnalysisDirect(symbol, period = '3mo', capital = 100000, diagn
     };
     
     // Call the main analysis function
-    await exports.getAnalysis(mockReq, mockRes);
+    await getAnalysis(mockReq, mockRes);
     
     return resultData;
     
@@ -178,6 +178,53 @@ async function getAnalysisDirect(symbol, period = '3mo', capital = 100000, diagn
       symbol,
       timestamp: new Date().toISOString()
     };
+  }
+}
+
+/**
+ * Main stock analysis endpoint - Express.js compatible
+ */
+async function getAnalysis(req, res) {
+  try {
+    const { symbol, period = '3mo', capital = 100000, diagnostics = false } = req.query;
+    
+    if (!symbol) {
+      return res.status(400).json({
+        success: false,
+        error: 'Symbol parameter is required',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // Prepare analysis context using the internal function
+    const { analysisContext, finalTechnical, backtest, sentiment, formattedSymbol, monteCarlo, tailRisk } = 
+      await prepareAnalysisContext(symbol, period, parseFloat(capital));
+
+    // Generate expert AI decision
+    const expertDecision = await generateExpertAIDecision(analysisContext);
+
+    return res.json({
+      success: true,
+      symbol: formattedSymbol,
+      analysis: {
+        technical: finalTechnical,
+        backtest: backtest,
+        sentiment: sentiment,
+        monteCarlo: monteCarlo,
+        tailRisk: tailRisk,
+        expertDecision: expertDecision
+      },
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('❌ Error in stock analysis:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Internal server error during analysis',
+      details: error.message,
+      timestamp: new Date().toISOString()
+    });
   }
 }
 
@@ -4703,33 +4750,45 @@ module.exports.getContextualRRFloor = getContextualRRFloor;
 
 async function getTechnicalAnalysisData(symbol, requestedPeriod) {
   try {
-    // Get historical data first
-    const yahooFinance = require('yahoo-finance2').default;
-    const endDate = new Date();
-
+    // Validate ticker symbol format and common mistakes
+    if (!symbol || typeof symbol !== 'string') {
+      throw new Error('Invalid symbol: Symbol must be a non-empty string');
+    }
+    
+    // Clean and validate ticker symbol
+    const cleanSymbol = symbol.toUpperCase().trim();
+    
+    // Check for common ticker mistakes
+    const commonMistakes = {
+      'APPL': 'AAPL',  // Apple Inc.
+      'AMZN': 'AMZN',  // Amazon (correct)
+      'GOOG': 'GOOGL', // Alphabet Class A
+      'TSLA': 'TSLA',  // Tesla (correct)
+      'MSFT': 'MSFT'   // Microsoft (correct)
+    };
+    
+    let validatedSymbol = cleanSymbol;
+    if (commonMistakes[cleanSymbol] && commonMistakes[cleanSymbol] !== cleanSymbol) {
+      console.log(`⚠️ Ticker symbol correction: ${cleanSymbol} → ${commonMistakes[cleanSymbol]}`);
+      validatedSymbol = commonMistakes[cleanSymbol];
+    }
+    
+    // Get historical data using our yahoo.js wrapper
+    const { getHistorical, getCurrentPrice } = require('../../yahoo');
+    
     // 🎯 UNIFIED PERIOD STRATEGY: Always fetch 2+ years but analyze both long-term and short-term
-    const longTermStartDate = new Date();
-    longTermStartDate.setMonth(endDate.getMonth() - 24); // 2 years for reliable backtesting
-
-    const shortTermStartDate = new Date();
+    const longTermPeriod = '24mo'; // 2 years for reliable backtesting
+    
     // Parse requested period for short-term analysis
     let requestedMonths = 3; // default fallback
 
-    shortTermStartDate.setMonth(endDate.getMonth() - requestedMonths);
-
-    const queryOptions = {
-      period1: longTermStartDate, // Always fetch 24 months
-      period2: endDate,
-      interval: '1d'
-    };
-
     // ⭐ CONSOLE LOG SPAM REMOVED - Clean debug output for better developer experience
-    // console.log(`📊 Yahoo Finance query options:`, queryOptions, requestedMonths, requestedPeriod, shortTermStartDate);
+    // console.log(`📊 Fetching data for ${validatedSymbol}: ${longTermPeriod} base period, ${requestedMonths}mo filter`);
 
-    const data = await yahooFinance.historical(symbol, queryOptions);
-    // console.log(`📊 Yahoo Finance returned ${data ? data.length : 0} data points for ${symbol} (24mo base + ${requestedMonths}mo filter)`);
+    const data = await getHistorical(validatedSymbol, longTermPeriod);
+    // console.log(`📊 Yahoo Finance returned ${data ? data.length : 0} data points for ${validatedSymbol} (24mo base + ${requestedMonths}mo filter)`);
     if (!data || data.length < 20) {
-      throw new Error(`Insufficient data for ${symbol}: ${data ? data.length : 0} points`);
+      throw new Error(`Insufficient data for ${validatedSymbol}: ${data ? data.length : 0} points. Verify ticker symbol is correct (e.g., "AAPL" not "APPL").`);
     }
 
     // Convert to OHLC format
@@ -4746,18 +4805,19 @@ async function getTechnicalAnalysisData(symbol, requestedPeriod) {
 
     // Short-term data for momentum/timing analysis
     const shortTermCutoff = new Date();
-    shortTermCutoff.setMonth(endDate.getMonth() - requestedMonths);
+    shortTermCutoff.setMonth(shortTermCutoff.getMonth() - requestedMonths);
     const shortTermData = fullOhlcData.filter(d => new Date(d.date) >= shortTermCutoff);
 
     let earningsData = null;
     try {
-      const earningsResponse = await yahooFinance.quoteSummary(symbol, {
+      const yahooFinance = require('yahoo-finance2').default;
+      const earningsResponse = await yahooFinance.quoteSummary(validatedSymbol, {
         modules: ["earnings"]
       });
-      earningsData = earningsResponse.earnings;
-      //console.log(`   ✅ Earnings data fetched successfully for ${symbol}`);
+      earningsData = earningsResponse?.earnings || null;
+      //console.log(`   ✅ Earnings data fetched successfully for ${validatedSymbol}`);
     } catch (earningsError) {
-      //console.log(`   ⚠️ Earnings data unavailable for ${symbol}: ${earningsError.message}`);
+      //console.log(`   ⚠️ Earnings data unavailable for ${validatedSymbol}: ${earningsError.message}`);
       // System continues without earnings data - graceful degradation
     }
 
@@ -7405,8 +7465,7 @@ function getVolumeRequirementForPattern(patternType) {
 initializeBayesianTracker();
 
 module.exports = {
-  getAnalysis: exports.getAnalysis,
-  // getAdvancedAnalysis: exports.getAIAnalysis,
+  getAnalysis,
   getAnalysisDirect,
   getLeakFreeBacktest: exports.getLeakFreeBacktest,
   // Contextual R/R utility functions for testing

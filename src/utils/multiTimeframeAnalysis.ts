@@ -99,42 +99,54 @@ export class MultiTimeframeAnalysis {
       for (const timeframe of timeframes) {
         //console.log(`📊 Analyzing ${symbol} on ${timeframe} timeframe...`);
         
-        const period = this.getPeriodForTimeframe(timeframe);
-        const historicalData = await yahooFinance.chart(symbol, {
-          period1: period.start,
-          period2: period.end,
-          interval: timeframe as any
-        });
-        
-        if (historicalData && historicalData.quotes && historicalData.quotes.length > 50) {
-          // Basic technical analysis
-          const analysis = await AdvancedTechnicalAnalysis.analyzeStock(historicalData.quotes, symbol);
+        try {
+          const period = this.getPeriodForTimeframe(timeframe);
+          const historicalData = await yahooFinance.chart(symbol, {
+            period1: period.start,
+            period2: period.end,
+            interval: timeframe as any
+          });
           
-          // Advanced patterns
-          const patterns = AdvancedPatterns.detectAdvancedPatterns(historicalData.quotes);
-          
-          // Supertrend analysis
-          const supertrend = AdvancedPatterns.calculateSupertrend(historicalData.quotes);
-          
-          // Fibonacci analysis
-          const recentHigh = Math.max(...historicalData.quotes.slice(-30).map((d: any) => d.high));
-          const recentLow = Math.min(...historicalData.quotes.slice(-30).map((d: any) => d.low));
-          const fibonacci = AdvancedPatterns.calculateFibonacci(recentHigh, recentLow, true);
-          
-          // Volume analysis
-          const volumeAnalysis = AdvancedPatterns.analyzeVolumeProfile(historicalData.quotes);
-          
-          results[timeframe] = {
-            ...analysis,
-            advancedPatterns: patterns,
-            supertrend: _.last(supertrend),
-            fibonacci,
-            volumeAnalysis,
-            dataPoints: historicalData.quotes.length
-          };
-          
-          // Calculate confluence score for this timeframe
-          confluenceScores[timeframe] = this.calculateConfluenceScore(results[timeframe]);
+          if (historicalData && historicalData.quotes && historicalData.quotes.length > 50) {
+            // Basic technical analysis
+            const analysis = await AdvancedTechnicalAnalysis.analyzeStock(historicalData.quotes, symbol);
+            
+            // Advanced patterns
+            const patterns = AdvancedPatterns.detectAdvancedPatterns(historicalData.quotes);
+            
+            // Supertrend analysis with error handling
+            let supertrend: any[] = [];
+            try {
+              supertrend = AdvancedPatterns.calculateSupertrend(historicalData.quotes);
+            } catch (supertrendError) {
+              console.error(`⚠️ Supertrend calculation error for ${symbol}:`, supertrendError.message);
+            }
+            
+            // Fibonacci analysis
+            const recentHigh = Math.max(...historicalData.quotes.slice(-30).map((d: any) => d.high));
+            const recentLow = Math.min(...historicalData.quotes.slice(-30).map((d: any) => d.low));
+            const fibonacci = AdvancedPatterns.calculateFibonacci(recentHigh, recentLow, true);
+            
+            // Volume analysis
+            const volumeAnalysis = AdvancedPatterns.analyzeVolumeProfile(historicalData.quotes);
+            
+            results[timeframe] = {
+              ...analysis,
+              advancedPatterns: patterns,
+              supertrend: supertrend.length > 0 ? _.last(supertrend) : null,
+              fibonacci,
+              volumeAnalysis,
+              dataPoints: historicalData.quotes.length
+            };
+            
+            // Calculate confluence score for this timeframe
+            confluenceScores[timeframe] = this.calculateConfluenceScore(results[timeframe]);
+          } else {
+            console.log(`⚠️ Insufficient data for ${symbol} ${timeframe}: ${historicalData?.quotes?.length || 0} points`);
+          }
+        } catch (timeframeError) {
+          console.error(`❌ Error analyzing ${symbol} on ${timeframe}:`, timeframeError.message);
+          // Continue with other timeframes even if one fails
         }
       }
       

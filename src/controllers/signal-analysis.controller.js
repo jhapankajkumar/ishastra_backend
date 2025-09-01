@@ -19,21 +19,27 @@
 
 const { ElderTripleScreen } = require('../systems/elder-triple-screen');
 const MinerviniSEPA = require('../systems/minervini-sepa');
-const CupWithHandle = require('../systems/cup-with-handle');
 const RSIMeanReversion = require('../systems/rsi-mean-reversion');
 const MACDDivergence = require('../systems/macd-divergence');
-const { SupertrendWeekly } = require('../systems/supertrend');
-const { SingleSystemAnalyzer } = require('../systems/single-system-analyzer');
+
+// 🏛️ NEW INSTITUTIONAL SYSTEMS
+const MinerviniTemplateAdvanced = require('../systems/minervini-template-advanced');
+const InstitutionalMomentumCascade = require('../systems/institutional-momentum-cascade');
+
+// 🚨 REMOVED: Complex AI dependencies for simple mode
+// const { SingleSystemAnalyzer } = require('../systems/single-system-analyzer');
+// const { generateExpertAIDecision, prepareAnalysisContext } = require('./ai/stock.expert.controller');
+
 const { SYSTEM_IDS, SYSTEM_TIERS, normalizeSystemKey, getSystemWeight, isCompleteSystem, getHighConvictionThreshold, defaultLookBackPeriod } = require('../utils/systemConstants');
 
-const {
-  generateExpertAIDecision,
-  prepareAnalysisContext
-} = require('./ai/stock.expert.controller');
-const CapitalManager = require('../utils/capitalManager');
-const { getMarketCapital, getMarketInfo, formatCurrency } = require('../utils/marketUtils');
+// 🚨 SIMPLE MODE: Minimal dependencies only
+const CapitalManager = require('../utils/capitalManager'); // ENABLED: Need real capital from DB
+// const { getMarketCapital, getMarketInfo, formatCurrency } = require('../utils/marketUtils');
 const { get } = require('lodash');
 const IntelligentNarrative = require('../intelligent/IntelligentNarrative');
+
+// 🚨 SIMPLE MODE: Basic data fetcher (replaces complex prepareAnalysisContext)
+const { getSimpleTechnicalData } = require('../utils/simpleTechnicalDataFetcher');
 
 class TradingSystemController {
   constructor() {
@@ -41,118 +47,14 @@ class TradingSystemController {
     this.systems = {
       [SYSTEM_IDS.TRIPLE_SCREEN]: new ElderTripleScreen(),
       [SYSTEM_IDS.MINERVINI_SEPA]: new MinerviniSEPA(),
-      [SYSTEM_IDS.CAN_SLIM_CUP_HANDLE]: new CupWithHandle(),
       [SYSTEM_IDS.RSI_MEAN_REVERSION]: new RSIMeanReversion(),
       [SYSTEM_IDS.MACD_DIVERGENCE]: new MACDDivergence(),
-      [SYSTEM_IDS.SUPERTREND_WEEKLY]: new SupertrendWeekly()
+      // 🏛️ NEW INSTITUTIONAL SYSTEMS
+      'minervini_template_advanced': new MinerviniTemplateAdvanced(),
+      'institutional_momentum_cascade': new InstitutionalMomentumCascade()
     };
-    this.systemAnalyzer = new SingleSystemAnalyzer(generateExpertAIDecision);
-  }
-
-  async testSystem(req, res) {
-    const { system, stockSize } = req.body;
-
-    if (!system) {
-      return res.status(400).json({
-        success: false,
-        error: 'Symbol and system are required'
-      });
-    }
-
-    try {
-
-      const { getAllStocks, getStockBatch } = require('../utils/stockList');
-      const symbolsToAnalyze = getStockBatch(stockSize ? stockSize : 50); // Gets all 500 stocks
-      console.log(`${symbolsToAnalyze.length} stocks from master list for system ${system}`);
-
-      // Step 1: Analyze all symbols in parallel
-      console.log('📈 Phase 1: Running comprehensive analysis...');
-      const analysisPromises = symbolsToAnalyze.map(async (symbol) => {
-        try {
-          // Use http module instead of fetch for Node.js compatibility
-          const http = require('http');
-
-          const analysisResult = await new Promise((resolve, reject) => {
-            const options = {
-              hostname: 'localhost',
-              port: 8000,
-              path: `/api/trading/signal-analysis?symbols=${symbol}`,
-              method: 'GET',
-              headers: {
-                'Content-Type': 'application/json'
-              }
-            };
-
-            const req = http.request(options, (res) => {
-              let data = '';
-              res.on('data', (chunk) => {
-                data += chunk;
-              });
-              res.on('end', () => {
-                try {
-                  resolve(JSON.parse(data));
-                } catch (error) {
-                  reject(new Error(`Invalid JSON response: ${data}`));
-                }
-              });
-            });
-
-            req.on('error', (error) => {
-              reject(error);
-            });
-
-            req.end();
-          });
-
-          if (analysisResult.success && analysisResult.results?.[0]) {
-            const result = analysisResult.results[0];
-            // result.sector = this.getSectorFromSymbol(symbol);
-            return result;
-          }
-          return null;
-        } catch (error) {
-          console.error(`❌ Analysis failed for ${symbol}:`, error.message);
-          return null;
-        }
-      });
-
-      const allAnalyses = await Promise.all(analysisPromises);
-      const validAnalyses = allAnalyses.filter(analysis => analysis !== null && (analysis.decision.action === 'BUY' || analysis.decision.action === 'WATCH'));
-      validAnalyses.forEach(analysis => {
-        console.log(`✅ Analysis result for ${analysis.symbol}:`, analysis.decision.action);
-      });
-      console.log(`✅ Analysis complete: ${validAnalyses.length}/${symbolsToAnalyze.length} successful`);
-      return res.status(200).json(validAnalyses);
-    } catch (error) {
-      console.error(`❌ Single System Analysis Error:`, error);
-      return res.status(500).json({
-        success: false,
-        error: 'Internal server error'
-      });
-    }
-  }
-
-  async analyzeSingleSystem(req, res) {
-    const { symbol, system } = req.body;
-
-    if (!symbol || !system) {
-      return res.status(400).json({
-        success: false,
-        error: 'Symbol and systems are required'
-      });
-    }
-
-    try {
-      const response = await this.getStockAnalysis([system], [symbol]);
-      // console.log(`🔧 response`, response);
-      return res.status(200).json(response);
-    } catch (error) {
-      console.error(`❌ Single System Analysis Error:`, error);
-      return res.status(500).json({
-        success: false,
-        error: 'Internal server error'
-      });
-    }
+    // 🚨 REMOVED: Complex system analyzer dependency
+    // this.systemAnalyzer = new SingleSystemAnalyzer(generateExpertAIDecision);
   }
 
   /**
@@ -165,25 +67,20 @@ class TradingSystemController {
 
     try {
       const {
-        symbols,
-        systems
+        symbols
       } = req.body;
-      if (!Array.isArray(systems) || systems.length === 0) {
-        systems = [SYSTEM_IDS.TRIPLE_SCREEN, SYSTEM_IDS.MINERVINI_SEPA, SYSTEM_IDS.CAN_SLIM_CUP_HANDLE, SYSTEM_IDS.RSI_MEAN_REVERSION, SYSTEM_IDS.MACD_DIVERGENCE, SYSTEM_IDS.SUPERTREND_WEEKLY]; // Default to all systems
-      }
-
+      
       if (!symbols || !Array.isArray(symbols) || symbols.length === 0) {
         return res.status(400).json({
           success: false,
           error: 'symbols array is required',
           example: {
             symbols: ['AAPL', 'MSFT', 'GOOGL'],
-            systems: ['triple_screen', 'sepa_method'] // Optional
           }
         });
       }
 
-      const response = await this.getStockAnalysis(systems, symbols);
+      const response = await this.getStockAnalysis(symbols);
 
       res.json(response);
 
@@ -198,21 +95,26 @@ class TradingSystemController {
     }
   }
 
-  async getStockAnalysis(systems, symbols) {
-    // Normalize and validate systems
-    const normalizedSystems = systems.map(sys => normalizeSystemKey(sys));
-    const supportedSystems = normalizedSystems.filter(sys => this.systems[sys]);
+  async getStockAnalysis(symbols) {
+    // 🚨 EMERGENCY REFACTOR: Force only the 2 BEST systems regardless of input
+  
+    const CORE_SYSTEMS = [
+      'minervini_template_advanced',
+      'institutional_momentum_cascade'
+    ];
+    
+    const supportedSystems = CORE_SYSTEMS.filter(sys => this.systems[sys]);
 
     if (supportedSystems.length === 0) {
       return {
         success: false,
-        error: 'No supported systems specified',
+        error: 'Core systems not available',
         availableSystems: Object.keys(this.systems),
-        received: normalizedSystems
+        note: 'SIMPLE MODE: Using only Minervini + Momentum'
       };
     }
 
-    console.log(`📊 Analyzing ${symbols.length} stocks: ${symbols.join(', ')}`);
+    console.log(`📊 SIMPLE MODE: Analyzing ${symbols.length} stocks with 2 core systems: ${supportedSystems.join(', ')}`);
 
     // PERFORMANCE OPTIMIZATION: Limit symbols and process in parallel
     const maxSymbols = 10; // Limit for performance
@@ -221,79 +123,89 @@ class TradingSystemController {
     // Process all symbols in parallel instead of sequential
     const symbolPromises = limitedSymbols.map(async (symbol) => {
       try {
-        // Get symbol-specific capital for this analysis
-        const capitalInfo = await getMarketCapital(symbol, CapitalManager);
-        const remainingCapital = capitalInfo.remaining;
-
-        //Prepare analysis context
-        const { analysisContext } = await prepareAnalysisContext(symbol, defaultLookBackPeriod, remainingCapital); // Uses symbol-specific capital
-
-        // Log any failures for debugging
-        [
-          ['Technical', analysisContext.technical],
-          ['Backtest', analysisContext.backtest],
-          ['Sentiment', analysisContext.sentiment],
-          ['TailRisk', analysisContext.tailRisk],
-          ['Microstructure', analysisContext.microstructure],
-          ['MonteCarlo', analysisContext.monteCarlo]
-        ].forEach(([name, result]) => {
-          if (result && result.status === 'rejected') {
-            console.log(`    ⚠️ ${name} data failed: ${result.reason?.message || result.reason}`);
-          } else {
-            //console.log(`    ✅ ${name} data: SUCCESS`);
-          }
-        });
-
-        if (!analysisContext || !analysisContext.technical) {
-          throw new Error(`Failed to fetch technical data for ${symbol}`);
+        // � CAPITAL: Get real capital from database
+        let remainingCapital = 100000; // Fallback
+        try {
+          // Determine currency based on symbol
+          const currency = symbol.includes('.NS') ? 'INR' : 'USD';
+          const capitalData = await CapitalManager.getCapital(currency);
+          remainingCapital = capitalData ? capitalData.remaining : remainingCapital;
+          console.log(`  💰 CAPITAL: Using ${currency} capital: ${remainingCapital.toLocaleString()} (from DB)`);
+        } catch (error) {
+          console.log(`  ⚠️ CAPITAL: Using fallback capital: $${remainingCapital.toLocaleString()} (DB error: ${error.message})`);
         }
 
-        // Phase 2: Run analysis for each requested system
-        //console.log(`  🔍 Phase 2: Running ${supportedSystems.length} system(s) analysis for ${symbol}...`);
+        // 🚨 SIMPLE MODE: Basic technical data only (no complex AI analysis)
+        console.log(`  🚨 SIMPLE: Fetching basic technical data for ${symbol}...`);
+        const technicalData = await getSimpleTechnicalData(symbol);
+        
+        if (!technicalData || !technicalData.ohlcData || technicalData.ohlcData.length === 0) {
+          throw new Error(`Failed to fetch technical data for ${symbol}`);
+        }
+        
+        console.log(`  ✅ SIMPLE: Got ${technicalData.dataPoints} data points for ${symbol} (price: $${technicalData.currentPrice.toFixed(2)})`);
+
+        // Create simple analysis context (no complex AI signals)
+        const analysisContext = {
+          technical: technicalData,
+        };
+
+        // Phase 2: 🚨 SIMPLE MODE - Run only 2 core systems
+        console.log(`  🔍 SIMPLE MODE: Running 2 core systems for ${symbol}...`);
 
         const systemResults = {};
         const systemFinalResults = {};
 
         for (const systemId of supportedSystems) {
-          //console.log(`    🔧 Analyzing with ${systemId}...`);
+          console.log(`    🔧 SIMPLE: Analyzing with ${systemId}...`);
 
           try {
-            // Convert data to system-specific format for the SingleSystemAnalyzer
+            // 🚨 EMERGENCY FIX: Convert technical data to format systems expect
             let systemData;
-            if (systemId === SYSTEM_IDS.TRIPLE_SCREEN) {
-              //console.log(`📊 [SYSTEM] Loading Elder Triple Screen system for ${symbol}`);
-              systemData = this.convertToElderFormat(analysisContext.technical);
-              //console.log(`🔧 [SYSTEM] Elder format result has indicators:`, Object.keys(systemData.indicators.triple_screen || {}));
-            } else if (systemId === SYSTEM_IDS.MINERVINI_SEPA) {
-              systemData = this.convertToSEPAFormat(analysisContext.technical);
-            } else if (systemId === SYSTEM_IDS.CAN_SLIM_CUP_HANDLE) {
-              systemData = this.convertToCupHandleFormat(analysisContext.technical);
-            } else if (systemId === SYSTEM_IDS.RSI_MEAN_REVERSION) {
-              systemData = this.convertToRSIMeanFormat(analysisContext.technical);
-            } else if (systemId === SYSTEM_IDS.MACD_DIVERGENCE) {
-              systemData = this.convertToMACDDivergenceFormat(analysisContext.technical);
-            } else if (systemId === SYSTEM_IDS.SUPERTREND_WEEKLY) {
-              // Supertrend uses raw technical data with its own calculations
-              systemData = analysisContext.technical;
+            
+            if (systemId === 'minervini_template_advanced' || systemId === 'institutional_momentum_cascade') {
+              // 🎯 CRITICAL: Systems need structured format {indicators, series}
+              systemData = {
+                indicators: technicalData.indicators,
+                series: {
+                  daily: technicalData.ohlcData
+                }
+              };
+              console.log(`    � FIXED: Using structured data format for ${systemId}`);
             } else {
-              // Default: pass raw technical data
-              systemData = analysisContext.technical;
+              // Fallback - use technical data directly
+              systemData = technicalData;
             }
 
-
-            // Run complete analysis through SingleSystemAnalyzer (includes system analysis + gate engine)
-            const finalResult = await Promise.race([
-              this.systemAnalyzer.analyzeSystem(systemId, systemData, analysisContext),
-              new Promise((_, reject) => setTimeout(() => reject(new Error('Gate analysis timeout')), 15000))
-            ]);
-
-            // Extract system analysis from finalResult
-            const systemAnalysis = finalResult.system;
+            // 🚨 SIMPLE: Run system analysis directly (skip complex gate engine for now)
+            const systemInstance = this.systems[systemId];
+            
+            let systemAnalysis;
+            if (systemInstance && typeof systemInstance.analyze === 'function') {
+              // Call the system's analyze method directly
+              const options = {
+                capital: remainingCapital,
+                symbol: symbol,
+                currentPrice: technicalData?.currentPrice || technicalData?.latestPrice,
+                // 🚨 REMOVED: aiSignals (no complex AI analysis)
+                // aiSignals: analysisContext.aiSignals || []
+              };
+              
+              systemAnalysis = await systemInstance.analyze(systemData, options);
+              
+              // Normalize the response to match expected structure
+              if (systemAnalysis && systemAnalysis.action) {
+                systemAnalysis.decision = systemAnalysis.action;
+                systemAnalysis.confidence = systemAnalysis.confidence || 0;
+              }
+            } else {
+              throw new Error(`System ${systemId} not found or invalid`);
+            }
 
             systemResults[systemId] = systemAnalysis;
-            systemFinalResults[systemId] = finalResult;
+            systemFinalResults[systemId] = systemAnalysis;
 
-            console.log(`    ✅ ${systemId} analysis complete: ${systemAnalysis.decision}`);
+            console.log(`    ✅ SIMPLE: ${systemId} analysis complete: ${systemAnalysis.decision} (${Math.round(systemAnalysis.confidence * 100)}%)`);
 
           } catch (systemError) {
             console.error(`    ❌ ${systemId} analysis failed:`, systemError.message);
@@ -310,13 +222,27 @@ class TradingSystemController {
           }
         }
 
-        // Phase 3: Combine results and create unified decision
-        //console.log(`  🚪 Phase 3: Creating unified decision for ${symbol}...`);
-        const unifiedDecision = this.createUnifiedDecision(systemResults, supportedSystems); // Use system analysis results, not gate engine
-        const finalResult = systemFinalResults[supportedSystems[0]] || {}; // Use first system's gate engine result
-
+        // Phase 3: 🚨 SIMPLE MODE - Create simple 2-system vote
+        console.log(`  🚪 SIMPLE MODE: Creating simple 2-system decision for ${symbol}...`);
+        
+        // Get the 2 system results
+        const minerviniResult = systemResults['minervini_template_advanced'] || { decision: 'HOLD', confidence: 0 };
+        const momentumResult = systemResults['institutional_momentum_cascade'] || { decision: 'HOLD', confidence: 0 };
+        
+        // 🚨 SIMPLE VOTING LOGIC - No complex weighting
+        const unifiedDecision = this.simpleVote(minerviniResult, momentumResult);
+        
+        console.log(`  🎯 SIMPLE VOTE: ${unifiedDecision.action} (${Math.round(unifiedDecision.confidence * 100)}%) - ${unifiedDecision.reasoning}`);
+        
+        // 🚨 SIMPLE MODE: Create simple final result (no complex gate engine)
+        const finalResult = {
+          action: unifiedDecision.action,
+          confidence: unifiedDecision.confidence,
+          reasoning: unifiedDecision.reasoning,
+          gateEngine: {} // Empty gate result for simple mode
+        };
+        
         // Build comprehensive response using the fetched data
-        const technicalData = analysisContext.technical;
         const gateResult = finalResult.gateEngine || {};
 
         // Build enhanced analysis result with all trading information
@@ -812,7 +738,83 @@ class TradingSystemController {
     return sepaData;
   }
 
-  // NEW: Create unified decision from multiple system results
+  // 🚨 SIMPLE: 2-system voting method (replaces complex unified decision)
+  simpleVote(minerviniResult, momentumResult) {
+    const minervini = minerviniResult || { decision: 'HOLD', confidence: 0 };
+    const momentum = momentumResult || { decision: 'HOLD', confidence: 0 };
+
+    console.log(`  🗳️  SIMPLE VOTE: Minervini=${minervini.decision}(${Math.round(minervini.confidence * 100)}%), Momentum=${momentum.decision}(${Math.round(momentum.confidence * 100)}%)`);
+
+    // Both systems agree on BUY
+    if ((minervini.decision === 'BUY' || minervini.decision === 'STRONG_BUY') && 
+        (momentum.decision === 'BUY' || momentum.decision === 'STRONG_BUY')) {
+      return {
+        action: 'BUY',
+        confidence: Math.min(0.95, (minervini.confidence + momentum.confidence) / 2 + 0.10),
+        reasoning: 'Both systems bullish - strong confluence'
+      };
+    }
+
+    // Both systems agree on SELL/AVOID  
+    if ((minervini.decision === 'SELL' || minervini.decision === 'AVOID') && 
+        (momentum.decision === 'SELL' || momentum.decision === 'AVOID')) {
+      
+      // If both are AVOID (no entry signal), return AVOID  
+      if (minervini.decision === 'AVOID' && momentum.decision === 'AVOID') {
+        return {
+          action: 'AVOID',
+          confidence: Math.min(0.70, (minervini.confidence + momentum.confidence) / 2),
+          reasoning: 'Both systems avoid entry - no signal to buy'
+        };
+      }
+      
+      // If one or both are SELL (exit position), return SELL
+      return {
+        action: 'SELL',
+        confidence: Math.min(0.90, (minervini.confidence + momentum.confidence) / 2 + 0.05),
+        reasoning: 'Both systems bearish - exit position'
+      };
+    }
+
+    // One BUY, one HOLD/WATCH - moderate bullish
+    if (((minervini.decision === 'BUY' || minervini.decision === 'STRONG_BUY') && 
+         (momentum.decision === 'HOLD' || momentum.decision === 'WATCH')) ||
+        ((minervini.decision === 'HOLD' || minervini.decision === 'WATCH') && 
+         (momentum.decision === 'BUY' || momentum.decision === 'STRONG_BUY'))) {
+      const buySystem = (minervini.decision === 'BUY' || minervini.decision === 'STRONG_BUY') ? minervini : momentum;
+      return {
+        action: 'WATCH',
+        confidence: Math.min(0.75, buySystem.confidence),
+        reasoning: 'Mixed signals - watch for entry'
+      };
+    }
+
+    // Both have low confidence
+    if (minervini.confidence < 0.60 && momentum.confidence < 0.60) {
+      return {
+        action: 'HOLD',
+        confidence: 0.30,
+        reasoning: 'Low confidence from both systems'
+      };
+    }
+
+    // Default: Follow the stronger system
+    if (minervini.confidence > momentum.confidence) {
+      return {
+        action: minervini.decision,
+        confidence: Math.min(0.80, minervini.confidence),
+        reasoning: `Following Minervini system (${Math.round(minervini.confidence * 100)}% confidence)`
+      };
+    } else {
+      return {
+        action: momentum.decision,
+        confidence: Math.min(0.80, momentum.confidence),
+        reasoning: `Following momentum system (${Math.round(momentum.confidence * 100)}% confidence)`
+      };
+    }
+  }
+
+  // OLD COMPLEX METHOD (keeping for reference but not used in simple mode)
   createUnifiedDecision(systemResults, supportedSystems) {
     //console.log(`  🎯 Creating unified decision from ${supportedSystems.length} systems...`);
 
@@ -1053,27 +1055,23 @@ class TradingSystemController {
     const unifiedConfidence = unifiedDecision.confidence || 0;
     const confidencePercent = Math.round(unifiedConfidence * 100);
 
-    // Get symbol-specific market capital for position sizing
-    const symbolMarketInfo = getMarketInfo(symbol);
-    let symbolMarketCapital;
-
-    try {
-      // Import CapitalManager dynamically to avoid circular dependency
-      const CapitalManagerClass = require('../utils/capitalManager');
-      symbolMarketCapital = await getMarketCapital(symbol, CapitalManagerClass);
-    } catch (error) {
-      console.error(`❌ Error getting market capital for ${symbol}:`, error.message);
-      // Fallback to default capital based on market
-      const fallbackAmounts = {
-        'USD': 100000,  // $100k for US market  
-        'INR': 8000000  // ₹80L for Indian market
-      };
-      symbolMarketCapital = {
-        remaining: fallbackAmounts[symbolMarketInfo.currency],
-        currency: symbolMarketInfo.currency,
-        market: symbolMarketInfo.market
-      };
-    }
+    // 🚨 SIMPLE MODE: Get symbol market info without complex dependencies
+    const symbolMarketInfo = { 
+      symbol: symbol,
+      exchange: 'NASDAQ', // Default
+      type: 'equity', // Default
+      currency: 'USD',
+      market: 'US'
+    };
+    
+    // 🚨 SIMPLE MODE: Use fixed capital (no complex capital management)
+    let symbolMarketCapital = {
+      allocated: 100000,
+      used: 0,
+      remaining: 100000,
+      currency: 'USD',
+      market: 'US'
+    };
 
     // 🚀 OPTIMIZED: Identify winning system and use its execution data directly
     const winningSystem = this.identifyWinningSystem(systemResults, unifiedDecision);
@@ -1179,10 +1177,11 @@ class TradingSystemController {
     const systemDisplayNames = {
       [SYSTEM_IDS.TRIPLE_SCREEN]: { key: 'elderTripleScreen', name: 'Elder\'s Triple Screen' },
       [SYSTEM_IDS.MINERVINI_SEPA]: { key: 'minerviniSEPA', name: 'Minervini SEPA' },
-      [SYSTEM_IDS.CAN_SLIM_CUP_HANDLE]: { key: 'cupWithHandle', name: 'Cup-with-Handle' },
       [SYSTEM_IDS.RSI_MEAN_REVERSION]: { key: 'rsiMeanReversion', name: 'RSI Mean Reversion' },
       [SYSTEM_IDS.MACD_DIVERGENCE]: { key: 'macdDivergence', name: 'MACD Divergence' },
-      [SYSTEM_IDS.SUPERTREND_WEEKLY]: { key: 'supertrendWeekly', name: 'Supertrend Weekly' }
+      // 🏛️ NEW INSTITUTIONAL SYSTEMS
+      'minervini_template_advanced': { key: 'minerviniTemplateAdvanced', name: 'Minervini Template Advanced' },
+      'institutional_momentum_cascade': { key: 'institutionalMomentumCascade', name: 'Institutional Momentum Cascade' }
     };
 
     // Add all supported systems to response
@@ -1258,9 +1257,11 @@ class TradingSystemController {
     const systemDisplayNames = {
       [SYSTEM_IDS.TRIPLE_SCREEN]: 'Elder\'s Triple Screen',
       [SYSTEM_IDS.MINERVINI_SEPA]: 'Minervini SEPA',
-      [SYSTEM_IDS.CAN_SLIM_CUP_HANDLE]: 'Cup-with-Handle',
       [SYSTEM_IDS.RSI_MEAN_REVERSION]: 'RSI Mean Reversion',
-      [SYSTEM_IDS.MACD_DIVERGENCE]: 'MACD Divergence'
+      [SYSTEM_IDS.MACD_DIVERGENCE]: 'MACD Divergence',
+      // 🏛️ NEW INSTITUTIONAL SYSTEMS
+      'minervini_template_advanced': 'Minervini Template Advanced',
+      'institutional_momentum_cascade': 'Institutional Momentum Cascade'
     };
     return systemDisplayNames[systemId] || systemId;
   }

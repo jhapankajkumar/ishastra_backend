@@ -41,9 +41,50 @@ class MACDDivergence {
     }
 
     /**
+     * 🤖 NEW: Validate MACD signals against AI momentum indicators
+     * This prevents conflicting signals between systems
+     */
+    validateAgainstAIMomentum(aiSignals) {
+        if (!aiSignals) return { valid: true, reason: 'No AI data available' };
+
+        const momentum = aiSignals.momentum;
+        const conviction = aiSignals.conviction;
+        const bias = aiSignals.bias;
+
+        // Check for major conflicts
+        const conflicts = [];
+        
+        // Momentum conflicts
+        if (momentum === 'BUILDING_BEAR' || momentum === 'STRONG_BEAR') {
+            conflicts.push(`AI momentum is ${momentum} - conflicts with bullish MACD signals`);
+        }
+        
+        // Conviction conflicts  
+        if (conviction === 'LOW' || conviction === 'VERY_LOW') {
+            conflicts.push(`AI conviction is ${conviction} - reduces signal reliability`);
+        }
+
+        // Bias conflicts
+        if (bias && bias.includes('SHORT')) {
+            conflicts.push(`AI bias is ${bias} - conflicts with long positions`);
+        }
+
+        const hasConflicts = conflicts.length > 0;
+        
+        return {
+            valid: !hasConflicts,
+            conflicts,
+            momentumState: momentum,
+            convictionLevel: conviction,
+            biasDirection: bias,
+            reason: hasConflicts ? conflicts.join('; ') : 'AI signals support MACD analysis'
+        };
+    }
+
+    /**
      * Main analysis method for MACD divergence detection
      * @param {Object} data - Technical data with OHLCV and indicators
-     * @param {Object} options - Analysis options
+     * @param {Object} options - Analysis options including aiSignals
      * @returns {Object} - Complete MACD divergence analysis result
      */
     analyze(data, options = {}) {
@@ -51,6 +92,7 @@ class MACDDivergence {
 
         try {
             const { series, indicators } = data;
+            const { aiSignals } = options; // Extract AI signals from options
             
             if (!this.validateData(series, indicators)) {
                 return this.createAvoidSignal('INSUFFICIENT_DATA', 'Missing required OHLCV data or MACD indicators');
@@ -69,8 +111,8 @@ class MACDDivergence {
             
             //console.log(`  📊 Analyzing ${completedDailyData.length} completed days of data, latest close: $${latest.close.toFixed(2)}`);
 
-            // Phase 1: Calculate or extract MACD components
-            const macdAnalysis = this.analyzeMACDData(completedDailyData, indicators);
+            // Phase 1: Calculate or extract MACD components WITH AI validation
+            const macdAnalysis = this.analyzeMACDData(completedDailyData, indicators, aiSignals);
             
             // Phase 2: Find swing points in price and MACD
             const swingAnalysis = this.findSwingPoints(completedDailyData, macdAnalysis);
@@ -147,6 +189,15 @@ class MACDDivergence {
                 
                 // Quality metrics
                 signalQuality: this.calculateSignalQuality(finalDecision, divergenceAnalysis),
+                
+                // 🤖 AI INTEGRATION RESULTS
+                aiIntegration: this.aiMomentumCheck ? {
+                    valid: this.aiMomentumCheck.valid,
+                    conflicts: this.aiMomentumCheck.conflicts || [],
+                    momentumState: this.aiMomentumCheck.momentumState,
+                    convictionLevel: this.aiMomentumCheck.convictionLevel,
+                    reason: this.aiMomentumCheck.reason
+                } : null,
             };
 
         } catch (error) {
@@ -157,9 +208,10 @@ class MACDDivergence {
 
     /**
      * Phase 1: Analyze MACD data (calculate if needed or use existing)
+     * ENHANCED: Now checks AI signals for consistency
      */
-    analyzeMACDData(dailyData, indicators) {
-        //console.log(`  📊 Phase 1: Analyzing MACD data...`);
+    analyzeMACDData(dailyData, indicators, aiSignals = null) {
+        //console.log(`  📊 Phase 1: Analyzing MACD data with AI integration...`);
         
         // Try to use existing MACD data first
         let macdLine = indicators?.base?.macd;
@@ -172,6 +224,12 @@ class MACDDivergence {
             macdLine = calculated.macdLine;
             macdSignal = calculated.macdSignal;
             macdHistogram = calculated.macdHistogram;
+        }
+
+        // 🤖 AI INTEGRATION: Check for momentum conflicts
+        this.aiMomentumCheck = null;
+        if (aiSignals) {
+            this.aiMomentumCheck = this.validateAgainstAIMomentum(aiSignals);
         }
         
         // Ensure we have arrays
@@ -1090,13 +1148,32 @@ class MACDDivergence {
      * Phase 7: Make final trading decision
      */
     makeFinalDecision(signalAnalysis, riskAssessment, divergenceAnalysis, candleAnalysis, swingAnalysis, riskReward = null) {
-        //console.log(`  📊 Phase 7: Making final decision...`);
+        //console.log(`  📊 Phase 7: Making final decision with AI integration...`);
 
         let finalSignal = signalAnalysis.signal;
         let confidence = 0.5;
         let reasoning = [signalAnalysis.reasoning];
 
-        // Add recency check for divergence signals
+        // 🤖 AI CONFLICT CHECK: Override signals that conflict with AI analysis
+        if (this.aiMomentumCheck && !this.aiMomentumCheck.valid) {
+            console.log(`🤖 AI CONFLICT DETECTED: ${this.aiMomentumCheck.reason}`);
+            
+            // Downgrade strong signals to WATCH or AVOID based on severity
+            if (finalSignal === 'BUY' || finalSignal === 'SELL') {
+                if (this.aiMomentumCheck.momentumState === 'BUILDING_BEAR' && 
+                    this.aiMomentumCheck.convictionLevel === 'LOW') {
+                    // Major conflict - override to AVOID
+                    finalSignal = 'AVOID';
+                    reasoning.push(`🤖 AI Override: ${this.aiMomentumCheck.reason}`);
+                } else {
+                    // Minor conflict - downgrade to WATCH
+                    finalSignal = 'WATCH';
+                    reasoning.push(`🤖 AI Caution: ${this.aiMomentumCheck.reason}`);
+                }
+            }
+        }
+
+        // Add recency check for divergence signals (original logic)
         const { bestBullish, bestBearish } = divergenceAnalysis;
         // For structured logic: Only allow BUY/SELL if has recent divergence and the divergence list is not empty
         // We need access to allBullish/allBearish arrays and candles

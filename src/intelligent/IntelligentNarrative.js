@@ -133,26 +133,51 @@ class IntelligentNarrative {
 
 
     /**
-     * Prepare news text for AI analysis
+     * Prepare news text for AI analysis with REAL content extraction
      */
     prepareNewsText(newsItems) {
         if (!newsItems || newsItems.length === 0) {
-            return 'No news items available for analysis.';
+            return 'No relevant news items available for analysis.';
         }
 
         let newsText = '';
+        const processedNews = [];
 
-        newsItems.slice(0, 5).forEach((item, index) => { // Limit to 5 most recent
-            newsText += `News ${index + 1}:\n`;
-            newsText += `Title: ${item.title || 'No title'}\n`;
-            if (item.summary) {
-                newsText += `Summary: ${item.summary}\n`;
+        // Filter and process only meaningful news
+        newsItems.slice(0, 3).forEach((item, index) => { // Reduce to 3 most recent for quality
+            // Skip if title is just a URL or website name
+            if (!item.title || item.title.length < 10 || item.title.includes('...')) {
+                return;
             }
-            if (item.content && item.content.length > 0) {
-                newsText += `Content: ${item.content.substring(0, 200)}...\n`;
+
+            // Extract actual content, not just truncated snippets
+            let content = '';
+            if (item.summary && item.summary.length > 50) {
+                content = item.summary;
+            } else if (item.content && item.content.length > 100) {
+                // Get meaningful content, not just "..."
+                content = item.content.length > 400 ? 
+                    item.content.substring(0, 400) + '...' : 
+                    item.content;
+            } else if (item.description && item.description.length > 50) {
+                content = item.description;
             }
-            newsText += `Date: ${item.publishedAt || item.date || 'Unknown'}\n\n`;
+
+            // Only include news with actual content
+            if (content && content.length > 50) {
+                newsText += `News ${index + 1}:\n`;
+                newsText += `Title: ${item.title}\n`;
+                newsText += `Content: ${content}\n`;
+                newsText += `Source: ${item.source || 'Unknown'}\n`;
+                newsText += `Date: ${item.publishedAt || item.date || 'Unknown'}\n\n`;
+                processedNews.push(item);
+            }
         });
+
+        // If no meaningful news found, return minimal text
+        if (processedNews.length === 0) {
+            return 'No meaningful news content available - titles only or insufficient content for analysis.';
+        }
 
         return newsText;
     }
@@ -172,60 +197,65 @@ class IntelligentNarrative {
         console.log('--- Prompt Start ---');
         console.log(prompt);
         console.log('--- Prompt End ---');
-//         try {
-//             const response = await this.openai.chat.completions.create({
-//                 model: this.config.model,
-//                 messages: [
-//                     {
-//                         role: 'system',
-//                         content: `
-// You are a disciplined and objective financial Copilot operating inside a professional trading system called Ishastra.
+        try {
+            const response = await this.openai.chat.completions.create({
+                model: this.config.model,
+                messages: [
+                    {
+                        role: 'system',
+                        content: `
+You are a disciplined and objective financial Copilot operating inside a professional trading system called Ishastra.
 
-// Your responsibilities:
-// - Analyze real-world news in context of technical trading signals
-// - Extract market-moving narratives with a focus on short-term trading impact
-// - Compare news direction with Ishastra's rule-based technical outputs
-// - Output a strictly valid JSON object based on user schema
-// - NEVER hallucinate numbers, events, or claims not present in the input
-// - NEVER include commentary or explanations outside the JSON object
+Your responsibilities:
+- Analyze real-world news in context of technical trading signals
+- Extract market-moving narratives with a focus on short-term trading impact
+- Compare news direction with Ishastra's rule-based technical outputs
+- Output a strictly valid JSON object based on user schema
+- NEVER hallucinate numbers, events, or claims not present in the input
+- NEVER include commentary or explanations outside the JSON object
 
-// You are forbidden from:
-// - Repeating vague phrases like "Investors are watching closely" or "Could go either way"
-// - Using ambiguous adjectives like "strong", "mixed", or "significant" without quantified context
-// - Overusing HOLD as a safe fallback; use it only if rules below permit
+You are forbidden from:
+- Repeating vague phrases like "Investors are watching closely" or "Could go either way"
+- Using ambiguous adjectives like "strong", "mixed", or "significant" without quantified context
+- Overusing HOLD as a safe fallback; use it only if rules below permit
 
-// ⚠️ Penalties apply for:
-// - Outputting anything other than valid JSON
-// - Exceeding 150 tokens unless strictly required for accuracy
-// - Repeating keyFactors or riskFactors
-// - Using the same reason across multiple fields
+⚠️ Penalties apply for:
+- Outputting anything other than valid JSON
+- Exceeding 150 tokens unless strictly required for accuracy
+- Repeating keyFactors or riskFactors
+- Using the same reason across multiple fields
 
-// You will be graded on:
-// - Precision
-// - Alignment to technical context
-// - Clarity for swing trading
-// `
-//                     },
-//                     {
-//                         role: 'user',
-//                         content: prompt
-//                     }
-//                 ],
-//                 max_tokens: this.config.maxTokens,
-//                 temperature: this.config.temperature
-//             });
+You will be graded on:
+- Precision
+- Alignment to technical context
+- Clarity for swing trading
+`
+                    },
+                    {
+                        role: 'user',
+                        content: prompt
+                    }
+                ],
+                max_tokens: this.config.maxTokens,
+                temperature: this.config.temperature
+            });
 
-//             if (!response.choices || response.choices.length === 0) {
-//                 throw new Error('No response from OpenAI');
-//             }
+           
 
-//             return response.choices[0].message.content;
+            if (!response.choices || response.choices.length === 0) {
+                throw new Error('No response from OpenAI');
+            }
 
-//         } catch (error) {
-//             console.error('❌ OpenAI API call failed:', error);
-//             console.warn(`⚠️  Falling back to non-AI analysis for ${symbol}`);
-//             return null
-//         }
+             console.log('--- Response Start ---');
+            console.log(response.choices[0].message.content);
+            console.log('--- Response End ---');
+            return response.choices[0].message.content;
+
+        } catch (error) {
+            console.error('❌ OpenAI API call failed:', error);
+            console.warn(`⚠️  Falling back to non-AI analysis for ${symbol}`);
+            return null
+        }
     }
 
     /**
@@ -264,7 +294,6 @@ ${JSON.stringify(analysisResult.aiSignals, null, 2)}`;
 No sophisticated system data available - rely on news sentiment and general market principles.`;
         }
 
-        // Add stock context (kept minimal now that we have real technical data)
         prompt += `
 
 🧠 TASK INSTRUCTIONS:
@@ -315,7 +344,7 @@ Respond ONLY with valid JSON.`;
     }
 
     /**
-     * Parse AI response into structured narrative
+     * Parse AI response into structured narrative - SIMPLIFIED VERSION
      */
     parseAIResponse(aiResponse, symbol) {
         try {
@@ -327,15 +356,19 @@ Respond ONLY with valid JSON.`;
                 sentiment: this.validateSentiment(parsed.sentiment),
                 confidence: this.validateConfidence(parsed.confidence),
                 action: this.validateAction(parsed.action),
-                actionConfidence: this.validateConfidence(parsed.actionConfidence),
-                mainStory: parsed.mainStory || 'Market narrative analysis completed',
-                keyFactors: Array.isArray(parsed.keyFactors) ? parsed.keyFactors.slice(0, 5) : [],
-                riskFactors: Array.isArray(parsed.riskFactors) ? parsed.riskFactors.slice(0, 3) : [],
-                tradingImplications: parsed.tradingImplications || 'No specific trading implications identified',
-                timeHorizon: this.validateTimeHorizon(parsed.timeHorizon),
-                technicalAlignment: this.validateTechnicalAlignment(parsed.technicalAlignment),
-                signalAgreementScore: this.validateConfidence(parsed.signalAgreementScore),
-                confidenceBreakdown: this.validateConfidenceBreakdown(parsed.confidenceBreakdown),
+                actionConfidence: parsed.confidence || 0.5, // Use same confidence for simplicity
+                mainStory: parsed.mainStory || 'Analysis completed based on available data',
+                keyFactors: Array.isArray(parsed.keyFactors) ? parsed.keyFactors.slice(0, 3) : [],
+                riskFactors: Array.isArray(parsed.riskFactors) ? parsed.riskFactors.slice(0, 2) : [],
+                tradingImplications: parsed.mainStory || 'See main story for implications',
+                timeHorizon: 'SHORT', // Default to short-term for trading
+                technicalAlignment: this.determineTechnicalAlignment(parsed.action),
+                signalAgreementScore: parsed.confidence || 0.5,
+                confidenceBreakdown: {
+                    newsSignal: parsed.confidence || 0.5,
+                    technicalSignal: 0.5, // Default since we simplified this
+                    contradictionPenalty: 0.0
+                },
                 source: 'AI_ANALYSIS',
                 timestamp: new Date(),
                 raw: aiResponse
@@ -343,27 +376,45 @@ Respond ONLY with valid JSON.`;
 
         } catch (parseError) {
             console.error('⚠️ Failed to parse AI response as JSON:', parseError);
+            console.log('Raw AI Response:', aiResponse);
 
-            // Fallback: extract sentiment from text response
-            const sentiment = this.extractSentimentFromText(aiResponse);
-
+            // Create fallback response
             return {
                 symbol,
-                sentiment,
-                confidence: 0.5,
+                sentiment: 'NEUTRAL',
+                confidence: 0.3,
                 action: 'HOLD',
-                actionConfidence: 0.5,
-                mainStory: aiResponse.substring(0, 200) + '...',
-                keyFactors: ['AI analysis completed'],
-                riskFactors: ['Response parsing incomplete'],
-                tradingImplications: 'Manual review recommended',
+                actionConfidence: 0.3,
+                mainStory: 'AI analysis failed - using conservative fallback',
+                keyFactors: ['Analysis parsing failed'],
+                riskFactors: ['Uncertain AI output'],
+                tradingImplications: 'Hold position until clear signals emerge',
                 timeHorizon: 'SHORT',
                 technicalAlignment: 'NEUTRAL',
-                source: 'AI_ANALYSIS_FALLBACK',
+                signalAgreementScore: 0.3,
+                confidenceBreakdown: {
+                    newsSignal: 0.3,
+                    technicalSignal: 0.3,
+                    contradictionPenalty: 0.4
+                },
+                source: 'FALLBACK_ANALYSIS',
                 timestamp: new Date(),
+                error: 'JSON_PARSE_FAILED',
                 raw: aiResponse
             };
         }
+    }
+
+    /**
+     * Simple helper to determine technical alignment based on action
+     */
+    determineTechnicalAlignment(action) {
+        const buyActions = ['BUY', 'STRONG_BUY'];
+        const sellActions = ['SELL', 'STRONG_SELL'];
+        
+        if (buyActions.includes(action)) return 'SUPPORTS';
+        if (sellActions.includes(action)) return 'CONTRADICTS';
+        return 'NEUTRAL';
     }
 
     /**

@@ -24,12 +24,13 @@ class ElderTripleScreen {
   /**
    * Analyze ticker using Elder's Triple Screen methodology
    * @param {Object} tickerData - Pre-computed indicators from MultiSystemDataGenerator
-   * @param {Object} options - Analysis options including capital, symbol, currentPrice
+   * @param {Object} options - Analysis options including capital, symbol, currentPrice, aiSignals
    * @returns {Object} Complete Elder's analysis with BUY/SELL/WATCH/AVOID + confidence
    */
   analyze(tickerData, options = {}) {
     try {
       const { indicators, series } = tickerData;
+      const { aiSignals } = options; // 🤖 AI SIGNALS INTEGRATION
       //console.log(`🔍 [ELDER] Starting analysis for ${tickerData.meta?.symbol}`);
 
       // Validate required data
@@ -43,18 +44,8 @@ class ElderTripleScreen {
       const screen2 = this.executeScreen2(indicators.triple_screen, indicators.base, series.daily);
       const screen3 = this.executeScreen3(series.intraday, series.daily);
 
-      // Combine screens for final signal
-      const combinedAnalysis = this.combineScreens(screen1, screen2, screen3);
-
-      // if (combinedAnalysis.overallSignal === 'AVOID') {
-      //   return {
-      //     system: this.systemId,
-      //     systemName: this.name,
-      //     decision: combinedAnalysis.overallSignal,
-      //     confidence: 0,
-      //     reasoning: combinedAnalysis.reasoning,
-      //   }
-      // }
+      // 🤖 AI-ENHANCED SCREEN COMBINATION
+      const combinedAnalysis = this.combineScreensWithAI(screen1, screen2, screen3, aiSignals);
 
       // Extract capital and pricing information from options
       const { capital, symbol, currentPrice } = options;
@@ -63,35 +54,41 @@ class ElderTripleScreen {
       // Calculate risk/reward using current market data
       const riskReward = this.calculateRiskReward(series.daily, combinedAnalysis);
 
-      // Generate final decision with confidence and capital-aware position sizing
-      const decision = this.generateDecision(combinedAnalysis, riskReward, indicators, {
+      // Generate final decision with AI-enhanced confidence
+      const decision = this.generateDecisionWithAI(combinedAnalysis, riskReward, indicators, {
         capital,
         symbol,
         entryPrice
-      });
+      }, aiSignals);
 
       return {
         system: this.systemId,
         systemName: this.name,
         decision: decision.action,
         confidence: decision.confidence,
-        reasoning: combinedAnalysis.reasoning,
-        // Detailed screen breakdown
-        // screens: {
-        //   screen1: { ...screen1, description: 'Weekly Trend (MACD/EMA)' },
-        //   screen2: { ...screen2, description: 'Daily Counter-trend (Stochastic)' },
-        //   screen3: { ...screen3, description: 'Intraday Timing (Volume)' }
-        // },
-
-        // Risk management
-        riskReward: riskReward,
-        // Execution details
+        reasoning: decision.reason,
+        stopLoss: decision.stopLoss,
+        targets: decision.targets,
+        riskReward: decision.riskReward,
         execution: decision.execution,
-        // Quality metrics for gate engine
         signalQuality: decision.signalQuality,
-        // System metadata
-        // timestamp: new Date().toISOString(),
-        // dataQuality: this.assessDataQuality(indicators, series)
+        screenAnalysis: {
+          screen1: screen1,
+          screen2: screen2,
+          screen3: screen3,
+          alignment: combinedAnalysis.screenAlignment,
+          supporting: combinedAnalysis.supportingScreens,
+          conflicting: combinedAnalysis.conflictingScreens
+        },
+        factors: {
+          overallSignal: combinedAnalysis.overallSignal,
+          overallStrength: combinedAnalysis.overallStrength,
+          screenAlignment: combinedAnalysis.screenAlignment,
+          riskReward: decision.riskReward
+        },
+        aiEnhanced: decision.aiEnhanced || false,
+        aiReasoning: decision.aiReasoning || 'No AI enhancement applied',
+        timestamp: new Date().toISOString()
       };
 
     } catch (error) {
@@ -302,6 +299,103 @@ class ElderTripleScreen {
       screen3.reasoning.push('No EMA10 breakout trigger');
     }
     return screen3;
+  }
+
+  /**
+   * 🤖 AI-ENHANCED: Combine all three screens with AI momentum validation
+   * This is where AI saves Elder from being too strict!
+   */
+  combineScreensWithAI(screen1, screen2, screen3, aiSignals = null) {
+    // First get the strict Elder analysis
+    const strictAnalysis = this.combineScreens(screen1, screen2, screen3);
+    
+    // If we already have a perfect signal, return it
+    if (strictAnalysis.overallSignal === 'BUY' || strictAnalysis.overallSignal === 'SELL') {
+      return {
+        ...strictAnalysis,
+        aiEnhanced: false,
+        aiReasoning: 'Perfect Elder alignment - no AI enhancement needed'
+      };
+    }
+
+    // 🤖 AI ENHANCEMENT LOGIC - Upgrade WATCH signals to actionable signals
+    if (aiSignals && strictAnalysis.overallSignal.includes('WATCH')) {
+      return this.applyAIEnhancement(strictAnalysis, screen1, screen2, screen3, aiSignals);
+    }
+
+    return {
+      ...strictAnalysis,
+      aiEnhanced: false,
+      aiReasoning: 'No AI signals provided or signal not suitable for enhancement'
+    };
+  }
+
+  /**
+   * 🤖 AI ENHANCEMENT LOGIC: Convert strong WATCH signals to BUY when AI confirms
+   */
+  applyAIEnhancement(strictAnalysis, screen1, screen2, screen3, aiSignals) {
+    const { momentum, conviction, bias } = aiSignals;
+    
+    let enhancedSignal = strictAnalysis.overallSignal;
+    let enhancedStrength = strictAnalysis.overallStrength;
+    let aiReasoning = [];
+    let aiEnhanced = false;
+
+    // ENHANCEMENT 1: STRONG_WATCH + Strong AI = BUY
+    if (strictAnalysis.overallSignal === 'STRONG_WATCH' && 
+        screen1.signal === 'BULLISH' && 
+        screen2.signal === 'STRONG_PULLBACK_CONFIRMED') {
+      
+      // AI momentum must support the direction
+      if ((momentum === 'BUILDING_BULL' || momentum === 'STRONG_BULL') && 
+          conviction !== 'LOW' && 
+          bias.includes('LONG')) {
+        
+        enhancedSignal = 'BUY';
+        enhancedStrength = Math.min(95, strictAnalysis.overallStrength + 15);
+        aiEnhanced = true;
+        aiReasoning.push(`AI UPGRADE: Strong Elder setup (${screen1.strength}% weekly + ${screen2.strength}% pullback) enhanced by ${momentum} momentum with ${conviction} conviction`);
+      }
+      // AI warns against the direction
+      else if ((momentum === 'BUILDING_BEAR' || momentum === 'STRONG_BEAR') || 
+               conviction === 'LOW') {
+        aiReasoning.push(`AI CAUTION: Elder setup strong but AI shows ${momentum} momentum with ${conviction} conviction - keeping WATCH`);
+      }
+    }
+
+    // ENHANCEMENT 2: Regular WATCH + Very Strong AI = BUY  
+    else if (strictAnalysis.overallSignal === 'WATCH' && 
+             momentum === 'STRONG_BULL' && 
+             conviction === 'HIGH' && 
+             bias.includes('LONG')) {
+      
+      enhancedSignal = 'BUY';
+      enhancedStrength = Math.min(85, strictAnalysis.overallStrength + 25);
+      aiEnhanced = true;
+      aiReasoning.push(`AI UPGRADE: Elder WATCH upgraded to BUY due to strong AI conviction (${momentum} + ${conviction})`);
+    }
+
+    // ENHANCEMENT 3: Weak signals get downgraded if AI is negative
+    else if ((momentum === 'BUILDING_BEAR' || momentum === 'STRONG_BEAR') && 
+             conviction !== 'LOW') {
+      
+      if (strictAnalysis.overallSignal !== 'AVOID') {
+        enhancedSignal = 'AVOID';
+        enhancedStrength = 20;
+        aiEnhanced = true;
+        aiReasoning.push(`AI DOWNGRADE: ${strictAnalysis.overallSignal} downgraded to AVOID due to ${momentum} momentum`);
+      }
+    }
+
+    return {
+      ...strictAnalysis,
+      overallSignal: enhancedSignal,
+      overallStrength: enhancedStrength,
+      aiEnhanced: aiEnhanced,
+      aiReasoning: aiReasoning.join('; '),
+      aiSignals: aiSignals,
+      originalElderSignal: strictAnalysis.overallSignal
+    };
   }
 
   /**
@@ -528,6 +622,56 @@ class ElderTripleScreen {
       riskReward: round2(riskReward),
       atr: round2(atr),
       latestClose: round2(latest.close)
+    };
+  }
+
+  /**
+   * 🤖 AI-ENHANCED: Generate final Elder's Triple Screen decision with AI confidence boost
+   */
+  generateDecisionWithAI(combinedAnalysis, riskReward, indicators, capitalInfo = {}, aiSignals = null) {
+    // Get the base decision first
+    const baseDecision = this.generateDecision(combinedAnalysis, riskReward, indicators, capitalInfo);
+    
+    // If no AI signals, return base decision
+    if (!aiSignals) {
+      return {
+        ...baseDecision,
+        aiEnhanced: false
+      };
+    }
+
+    // Apply AI confidence adjustments
+    let enhancedConfidence = baseDecision.confidence;
+    let confidenceBonus = 0;
+    const aiReasoningParts = [];
+
+    // AI momentum alignment bonus
+    if (combinedAnalysis.aiEnhanced) {
+      if (combinedAnalysis.overallSignal === 'BUY' && 
+          (aiSignals.momentum === 'BUILDING_BULL' || aiSignals.momentum === 'STRONG_BULL')) {
+        confidenceBonus += 0.15;
+        aiReasoningParts.push(`AI momentum ${aiSignals.momentum} aligns with Elder BUY`);
+      }
+    }
+
+    // AI conviction bonus
+    if (aiSignals.conviction === 'HIGH') {
+      confidenceBonus += 0.08;
+      aiReasoningParts.push(`AI conviction HIGH adds confidence`);
+    } else if (aiSignals.conviction === 'LOW') {
+      confidenceBonus -= 0.05;
+      aiReasoningParts.push(`AI conviction LOW reduces confidence`);
+    }
+
+    // Apply enhancements
+    enhancedConfidence = Math.min(0.95, Math.max(0.15, enhancedConfidence + confidenceBonus));
+
+    return {
+      ...baseDecision,
+      confidence: enhancedConfidence,
+      aiEnhanced: true,
+      aiConfidenceBonus: confidenceBonus,
+      aiReasoning: aiReasoningParts.join('; ') || 'No significant AI adjustments'
     };
   }
 
