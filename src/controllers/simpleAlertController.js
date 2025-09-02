@@ -28,7 +28,8 @@ class SimpleAlertController {
                     quantity: true,
                     entryPrice: true,
                     currentPrice: true,
-                    createdAt: true
+                    createdAt: true,
+                    analysis: true  // Add analysis field for exit levels
                 }
             });
             
@@ -74,6 +75,78 @@ class SimpleAlertController {
         const pnlPercent = (currentPrice - trade.entryPrice) / trade.entryPrice;
         const daysHeld = Math.floor((Date.now() - new Date(trade.createdAt)) / (1000 * 60 * 60 * 24));
         const pnlAmount = (currentPrice - trade.entryPrice) * trade.quantity;
+        
+        // Parse analysis data for exit levels
+        let exitLevels = null;
+        if (trade.analysis) {
+            try {
+                const analysisData = typeof trade.analysis === 'string' ? JSON.parse(trade.analysis) : trade.analysis;
+                exitLevels = analysisData?.execution?.exitStrategy;
+            } catch (e) {
+                console.log(`⚠️ Could not parse analysis for ${trade.ticker}`);
+            }
+        }
+        
+        // 🚨 PRIORITY ALERT 1: STOP LOSS HIT
+        if (exitLevels?.stopLoss?.initial && currentPrice <= exitLevels.stopLoss.initial) {
+            return {
+                ticker: trade.ticker,
+                type: 'STOP_LOSS_HIT',
+                priority: 'CRITICAL',
+                message: `🚨 ${trade.ticker} STOP LOSS HIT at $${currentPrice} → SELL ALL IMMEDIATELY`,
+                currentPrice: currentPrice,
+                stopLoss: exitLevels.stopLoss.initial,
+                daysHeld: daysHeld,
+                action: 'SELL_ALL'
+            };
+        }
+        
+        // 🎯 PRIORITY ALERT 2: PROFIT TARGET HIT
+        if (exitLevels?.targets?.conservative && currentPrice >= exitLevels.targets.conservative) {
+            return {
+                ticker: trade.ticker,
+                type: 'PROFIT_TARGET_HIT',
+                priority: 'HIGH',
+                message: `🎯 ${trade.ticker} HIT PROFIT TARGET at $${currentPrice} → SELL 50%`,
+                currentPrice: currentPrice,
+                target: exitLevels.targets.conservative,
+                daysHeld: daysHeld,
+                action: 'SELL_50_PERCENT'
+            };
+        }
+        
+        // ⚠️ PRIORITY ALERT 3: EARLY WARNING
+        if (exitLevels?.systemExits?.momentumLoss?.trigger) {
+            const earlyWarningPrice = parseFloat(exitLevels.systemExits.momentumLoss.trigger.replace('Price below ', ''));
+            if (!isNaN(earlyWarningPrice) && currentPrice <= earlyWarningPrice) {
+                return {
+                    ticker: trade.ticker,
+                    type: 'EARLY_WARNING',
+                    priority: 'HIGH',
+                    message: `⚠️ ${trade.ticker} EARLY WARNING at $${currentPrice} → CONSIDER 50% EXIT`,
+                    currentPrice: currentPrice,
+                    warningLevel: earlyWarningPrice,
+                    daysHeld: daysHeld,
+                    action: 'CONSIDER_50_PERCENT_EXIT'
+                };
+            }
+        }
+        
+        // ⏰ PRIORITY ALERT 4: MAX HOLD PERIOD
+        const maxHold = exitLevels?.timeBasedExits?.maxHoldPeriod || 22;
+        if (daysHeld >= maxHold) {
+            return {
+                ticker: trade.ticker,
+                type: 'MAX_HOLD_PERIOD',
+                priority: 'MEDIUM',
+                message: `⏰ ${trade.ticker} HELD ${daysHeld} DAYS (Max: ${maxHold}) → REVIEW FOR FULL EXIT`,
+                daysHeld: daysHeld,
+                maxHold: maxHold,
+                action: 'REVIEW_FULL_EXIT'
+            };
+        }
+        
+        // FALLBACK TO PERCENTAGE-BASED ALERTS (Lower Priority)
         
         // 🎉 BIG WINNER (20%+ gain)
         if (pnlPercent >= 0.20) {
@@ -159,7 +232,8 @@ class SimpleAlertController {
                     ticker: true, 
                     quantity: true,
                     entryPrice: true,
-                    currentPrice: true
+                    currentPrice: true,
+                    analysis: true
                 }
             });
             

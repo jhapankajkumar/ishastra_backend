@@ -13,7 +13,7 @@
 
 // Current active configuration
 // 🎯 ACTIVE CONFIGURATION - Change this one line to transform the entire system!
-const ACTIVE_CONFIG = 'RELAXED';  // Switched back from ULTRA_SELECTIVE - better for current market
+const ACTIVE_CONFIG = 'SELECTIVE';  // Switched back from ULTRA_SELECTIVE - better for current market
 
 const THRESHOLD_CONFIGS = {
   
