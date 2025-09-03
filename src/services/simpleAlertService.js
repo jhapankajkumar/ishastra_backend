@@ -13,7 +13,6 @@
  */
 
 const { PrismaClient } = require('@prisma/client');
-const { calculateUnrealizedPnL } = require('../utils/tradeCalculations');
 
 const prisma = new PrismaClient();
 

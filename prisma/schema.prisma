@@ -43,24 +43,28 @@ model Trade {
   direction          String    // Consider enum: LONG, SHORT
   instrumentType     String?   // Stocks, Options, Futures
   currency           String?   @default("USD") // 'USD' or 'INR'
+  currentPrice       Float?    // Latest fetched price
+  
+  //Trade System 
+  tradeSetupId       Int? //Minervini/Momentum/Elder
+  confidence         Int?
+  grade              String?
+  
+  //Entry
+  entryDate          DateTime?
+  reasonForEntry     String?
+  entryCommission    Float?
+
+  //Execution
+  quantity           Int?
   entryPrice         Float?
   stopLoss           Float?
   target1            Float?
   target2            Float?
   target3            Float?
-  quantity           Int?
-  currentPrice       Float?    // Latest fetched price
-  
-  entryCommission    Float?
-  entryDate          DateTime?
-  reasonForEntry     String?
-  confidenceRating   Int?
-  tradeSetupId       Int?
-  timeframeUsed      String?
   notes              String?
-  atrValue           Float?
-  riskPerTrade       String?
-  riskPerTradeValue  Float?
+
+
   createdAt          DateTime  @default(now())
 
 //Exit
@@ -74,7 +78,7 @@ model Trade {
 //Review
   postTradeAnalysis  String?
   lessonLearned      String?
-  emotionalState       String?
+  emotionalState     String?
 
   status             String?   @default("Open") // Open, Partial Closed, Closed
   tags               String?   // Consider making tags a separate join table
@@ -83,6 +87,9 @@ model Trade {
   rMultiple          Float?    // Risk-reward ratio outcome
   isPaperTrade       Boolean?  // Whether this was practice
   
+  // Full Stock Analysis as json 
+  systemAnalysisResult      String?
+
   tradeFills         TradeFill[]
   tradeImages        TradeImage[]
   tradeTransactions  TradeTransaction[]
@@ -207,46 +214,12 @@ model WatchlistStock {
   currency        String?  @default("USD") // 'USD' or 'INR'
   market          String?  // 'US' or 'IN' 
   
-  // Decision Information - Core signal data
-  decisionAction      String   // "BUY", "WATCH", "HOLD", "AVOID", "SELL"
-  decisionConfidence  Float    // 0.0 to 1.0
-  decisionGrade      String   // "A", "B+", "C", etc.
-  decisionReasoning  String?  // Brief reasoning text
-  systemsAgreement   String?  // "FULL", "PARTIAL", "NONE"
-  systemsAnalyzed    Int?     // Number of systems analyzed
+  // Execution Data (JSON from signal-analysis.controller.js)
+  decision        String?
   
   // Execution Data (JSON from signal-analysis.controller.js)
-  executionData   String?  // JSON: Complete execution object { entry, stopLoss, targets, position }
-  
-  // Systems Data (JSON from signal-analysis.controller.js) 
-  systemsData     String?  // JSON: Complete systems analysis results
-  
-  // Context Data (JSON from signal-analysis.controller.js)
-  contextData     String?  // JSON: Complete context { trend, levels, volume, earnings }
-  
-  // Risk Data (JSON from signal-analysis.controller.js)
-  riskData        String?  // JSON: Complete risk analysis { level, tailRiskScore, maxDrawdown }
-  
-  // Status and Metadata
-  status          String   @default("ACTIVE") // "ACTIVE", "EXECUTED", "EXPIRED", "REMOVED"
-  priority        Int      @default(1)        // 1=Low, 2=Medium, 3=High (based on grade/confidence)
-  nextStepSummary String?  // What to do next
+  execution       String?  // JSON: Complete execution object { entry, stopLoss, targets, position }
   
   // Timestamps
-  addedAt         DateTime @default(now())
-  lastAnalyzedAt  DateTime @default(now()) 
-  updatedAt       DateTime @updatedAt
-  
-  @@index([decisionAction])
-  @@index([decisionGrade])
-  @@index([priority])
-  @@index([market])
-  @@index([status])
+  createdAt         DateTime @default(now())
 }
-
-// ===== LEARNING & OBSERVATION MODELS =====
-// These models are for learning and improving trading skills:
-// - Trade: Records all trade decisions and outcomes for review
-// - ChartAnalysis: Journal for studying chart patterns and setups  
-// - TradeFill: Multiple fills per trade (real trading data)
-// - TradeImage: Screenshots for trade review and learning

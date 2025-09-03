@@ -39,10 +39,10 @@ console.log('✅ Price refresh cron jobs scheduled successfully');
 // Run once on startup (with error handling to prevent server crash)
 setTimeout(() => {
   try {
-    // console.log('🔄 Running startup price refresh...');
-    // refreshAllInvestmentPrices({}, { 
-    //   json: (msg) => console.log(`[STARTUP] Price refresh (investments):`, msg?.message || 'completed') 
-    // });
+    console.log('🔄 Running startup price refresh...');
+    refreshAllInvestmentPrices({}, { 
+      json: (msg) => console.log(`[STARTUP] Price refresh (investments):`, msg?.message || 'completed') 
+    });
   } catch (err) {
     console.error('[STARTUP] Error refreshing investment prices:', err.message);
   }

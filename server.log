@@ -4,13 +4,244 @@
 
 📈 Setting up price refresh cron jobs...
 ✅ Price refresh cron jobs scheduled successfully
-🚀 Starting Expert Analysis Cron Jobs...
-📅 Scheduled NIFTY 200 CORE: Tuesday-Friday 9:00 AM SG Time
-📅 Scheduled NIFTY SATELLITE: Saturday 9:00 AM SG Time
-✅ Expert Analysis cron jobs started successfully
-📰 Intelligent Narrative initialized with FreeNewsSentimentService
-🧠 Intelligent Learning System initialized
-📊 Intelligent Monitoring initialized
-🧠 AI Plugin Core initialized - ALL PHASES ACTIVE
-🧠 Intelligent Controller initialized with all phases
+✅ Price refresh cron job started successfully (11:30 AM - 6:30 PM SG Time)
+❌ Failed to setup email transporter: TypeError: nodemailer.createTransporter is not a function
+    at EmailAlertService.setupTransporter (/Users/pankajkumarjha/Development/Projects/Personal/ishastra/ishastra_backend/dist/services/emailAlertService.js:26:47)
+    at new EmailAlertService (/Users/pankajkumarjha/Development/Projects/Personal/ishastra/ishastra_backend/dist/services/emailAlertService.js:16:14)
+    at new PositionAlertsCron (/Users/pankajkumarjha/Development/Projects/Personal/ishastra/ishastra_backend/dist/cron/positionAlertsCron.js:13:29)
+    at Object.<anonymous> (/Users/pankajkumarjha/Development/Projects/Personal/ishastra/ishastra_backend/dist/server.js:12:28)
+    at Module._compile (node:internal/modules/cjs/loader:1529:14)
+    at Module._extensions..js (node:internal/modules/cjs/loader:1613:10)
+    at Module.load (node:internal/modules/cjs/loader:1275:32)
+    at Module._load (node:internal/modules/cjs/loader:1096:12)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:164:12)
+    at node:internal/main/run_main_module:28:49
+🚨 Starting Position Alerts Cron...
+📅 Position alerts scheduled: Every 15 min, 11:30 AM - 6:30 PM SG Time (Mon-Fri)
+✅ Position alerts cron job started successfully (11:30 AM - 6:30 PM SG Time)
+🕒 Watchlist cron job scheduled for 9:30 AM IST (Mon-Fri)
+✅ Daily Watchlist cron job started successfully (9:30 AM IST)
+❌ Failed to setup email transporter: TypeError: nodemailer.createTransporter is not a function
+    at EmailAlertService.setupTransporter (/Users/pankajkumarjha/Development/Projects/Personal/ishastra/ishastra_backend/dist/services/EmailAlertService.js:26:47)
+    at new EmailAlertService (/Users/pankajkumarjha/Development/Projects/Personal/ishastra/ishastra_backend/dist/services/EmailAlertService.js:16:14)
+    at new EntryTriggerService (/Users/pankajkumarjha/Development/Projects/Personal/ishastra/ishastra_backend/dist/services/EntryTriggerService.js:13:34)
+    at new EntryTriggerCron (/Users/pankajkumarjha/Development/Projects/Personal/ishastra/ishastra_backend/dist/cron/EntryTriggerCron.js:13:36)
+    at Object.<anonymous> (/Users/pankajkumarjha/Development/Projects/Personal/ishastra/ishastra_backend/dist/server.js:32:30)
+    at Module._compile (node:internal/modules/cjs/loader:1529:14)
+    at Module._extensions..js (node:internal/modules/cjs/loader:1613:10)
+    at Module.load (node:internal/modules/cjs/loader:1275:32)
+    at Module._load (node:internal/modules/cjs/loader:1096:12)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:164:12)
+🔔 Entry Trigger Monitoring Cron started (every 15 minutes during market hours)
+✅ Entry Trigger Monitoring cron job started successfully (every 15 minutes)
 🚀 Server running at http://localhost:8000
+🔄 Running startup price refresh...
+Please consider completing the survey at https://bit.ly/yahoo-finance-api-feedback if you haven't already; for more info see https://github.com/gadicc/node-yahoo-finance2/issues/764#issuecomment-2056623851.  This will only be shown once, but you can suppress this message in future with `yahooFinance.suppressNotices(['yahooSurvey'])`.
+Fetching crumb and cookies from https://finance.yahoo.com/quote/AAPL...
+We expected a redirect to guce.yahoo.com, but got https://finance.yahoo.com/quote/AAPL/
+We'll try to continue anyway - you can safely ignore this if the request succeeds
+Success. Cookie expires on Thu Sep 03 2026 16:38:29 GMT+0800 (Singapore Standard Time)
+fetch https://query1.finance.yahoo.com/v1/test/getcrumb
+New crumb: gQy/ULlqNQC
+[STARTUP] Price refresh (investments): Prices refreshed for 66 investments.
+  💰 CAPITAL: Using INR capital: 2,000,000 (from DB)
+📊 SIMPLE: Fetching basic technical data for DALBHARAT.NS...
+✅ SIMPLE: Fetched 493 data points for DALBHARAT.NS (current: $2402.20)
+  ✅ MINERVINI: Data validation passed - 493 days, SMA150: true, SMA200: true
+  🏛️ TEMPLATE: Analyzing DALBHARAT.NS at $2402.20
+  🏛️ TEMPLATE: Executing 8-criteria template validation...
+  🏛️ TEMPLATE: SMA150=2010.38, SMA200=1960.65, Price=2402.20
+  🏛️ TEMPLATE: Score 63.6% (6/8 criteria), Grade: B+
+  🎯 R/R ENFORCEMENT: Target adjusted from 2471.04 to 2631.66 for minimum 2.5:1 R/R
+  🏛️ TEMPLATE: Raw decision - Action: BUY, Confidence: 75.0%
+  🏛️ TEMPLATE: Raw: BUY, Stabilized: BUY, Confidence: 75.0%
+  🎯 UNIFIED SCORING: Template B+(2) + Signal A+(3) = 5.0 → STRONG
+    ✅ SIMPLE: minervini_template_advanced analysis complete: BUY (75%)
+  🌊 CASCADE: Analyzing DALBHARAT.NS at $2402.20
+  🌊 CASCADE: Executing 6-rule momentum cascade validation...
+  🌊 CASCADE: Score 53.5% (3/6 rules), Cascade: B
+  🌊 CASCADE: Raw: WATCH, Stabilized: WATCH, Confidence: 52.1%
+  🎯 UNIFIED SCORING: Momentum B(1.5) + Signal A(2.5) = 4.0 → HALF
+    ✅ SIMPLE: institutional_momentum_cascade analysis complete: WATCH (52%)
+  🗳️  SIMPLE VOTE: Minervini=BUY(75%), Momentum=WATCH(52%)
+🎯 Using winning system: minervini_template_advanced for BUY
+  💰 CAPITAL: Using INR capital: 2,000,000 (from DB)
+📊 SIMPLE: Fetching basic technical data for DALBHARAT.NS...
+✅ SIMPLE: Fetched 493 data points for DALBHARAT.NS (current: $2402.20)
+  ✅ MINERVINI: Data validation passed - 493 days, SMA150: true, SMA200: true
+  🏛️ TEMPLATE: Analyzing DALBHARAT.NS at $2402.20
+  🏛️ TEMPLATE: Executing 8-criteria template validation...
+  🏛️ TEMPLATE: SMA150=2010.38, SMA200=1960.65, Price=2402.20
+  🏛️ TEMPLATE: Score 63.6% (6/8 criteria), Grade: B+
+  🎯 R/R ENFORCEMENT: Target adjusted from 2471.04 to 2631.66 for minimum 2.5:1 R/R
+  🏛️ TEMPLATE: Raw decision - Action: BUY, Confidence: 75.0%
+  🏛️ TEMPLATE: Raw: BUY, Stabilized: BUY, Confidence: 71.2%
+  🎯 UNIFIED SCORING: Template B+(2) + Signal A+(3) = 5.0 → STRONG
+    ✅ SIMPLE: minervini_template_advanced analysis complete: BUY (71%)
+  🌊 CASCADE: Analyzing DALBHARAT.NS at $2402.20
+  🌊 CASCADE: Executing 6-rule momentum cascade validation...
+  🌊 CASCADE: Score 53.5% (3/6 rules), Cascade: B
+  🌊 CASCADE: Raw: WATCH, Stabilized: WATCH, Confidence: 52.1%
+  🎯 UNIFIED SCORING: Momentum B(1.5) + Signal A(2.5) = 4.0 → HALF
+    ✅ SIMPLE: institutional_momentum_cascade analysis complete: WATCH (52%)
+  🗳️  SIMPLE VOTE: Minervini=BUY(71%), Momentum=WATCH(52%)
+🎯 Using winning system: minervini_template_advanced for BUY
+  💰 CAPITAL: Using INR capital: 2,000,000 (from DB)
+📊 SIMPLE: Fetching basic technical data for DALBHARAT.NS...
+  💰 CAPITAL: Using INR capital: 2,000,000 (from DB)
+📊 SIMPLE: Fetching basic technical data for DALBHARAT.NS...
+✅ SIMPLE: Fetched 493 data points for DALBHARAT.NS (current: $2402.20)
+  ✅ MINERVINI: Data validation passed - 493 days, SMA150: true, SMA200: true
+  🏛️ TEMPLATE: Analyzing DALBHARAT.NS at $2402.20
+  🏛️ TEMPLATE: Executing 8-criteria template validation...
+  🏛️ TEMPLATE: SMA150=2010.38, SMA200=1960.65, Price=2402.20
+  🏛️ TEMPLATE: Score 63.6% (6/8 criteria), Grade: B+
+  🎯 R/R ENFORCEMENT: Target adjusted from 2471.04 to 2631.66 for minimum 2.5:1 R/R
+  🏛️ TEMPLATE: Raw decision - Action: BUY, Confidence: 75.0%
+  🏛️ TEMPLATE: Raw: BUY, Stabilized: BUY, Confidence: 71.2%
+  🎯 UNIFIED SCORING: Template B+(2) + Signal A+(3) = 5.0 → STRONG
+    ✅ SIMPLE: minervini_template_advanced analysis complete: BUY (71%)
+  🌊 CASCADE: Analyzing DALBHARAT.NS at $2402.20
+  🌊 CASCADE: Executing 6-rule momentum cascade validation...
+  🌊 CASCADE: Score 53.5% (3/6 rules), Cascade: B
+  🌊 CASCADE: Raw: WATCH, Stabilized: WATCH, Confidence: 52.1%
+  🎯 UNIFIED SCORING: Momentum B(1.5) + Signal A(2.5) = 4.0 → HALF
+    ✅ SIMPLE: institutional_momentum_cascade analysis complete: WATCH (52%)
+  🗳️  SIMPLE VOTE: Minervini=BUY(71%), Momentum=WATCH(52%)
+🎯 Using winning system: minervini_template_advanced for BUY
+✅ SIMPLE: Fetched 493 data points for DALBHARAT.NS (current: $2402.20)
+  ✅ MINERVINI: Data validation passed - 493 days, SMA150: true, SMA200: true
+  🏛️ TEMPLATE: Analyzing DALBHARAT.NS at $2402.20
+  🏛️ TEMPLATE: Executing 8-criteria template validation...
+  🏛️ TEMPLATE: SMA150=2010.38, SMA200=1960.65, Price=2402.20
+  🏛️ TEMPLATE: Score 63.6% (6/8 criteria), Grade: B+
+  🎯 R/R ENFORCEMENT: Target adjusted from 2471.04 to 2631.66 for minimum 2.5:1 R/R
+  🏛️ TEMPLATE: Raw decision - Action: BUY, Confidence: 75.0%
+  🏛️ TEMPLATE: Raw: BUY, Stabilized: BUY, Confidence: 71.2%
+  🎯 UNIFIED SCORING: Template B+(2) + Signal A+(3) = 5.0 → STRONG
+    ✅ SIMPLE: minervini_template_advanced analysis complete: BUY (71%)
+  🌊 CASCADE: Analyzing DALBHARAT.NS at $2402.20
+  🌊 CASCADE: Executing 6-rule momentum cascade validation...
+  🌊 CASCADE: Score 53.5% (3/6 rules), Cascade: B
+  🌊 CASCADE: Raw: WATCH, Stabilized: WATCH, Confidence: 52.1%
+  🎯 UNIFIED SCORING: Momentum B(1.5) + Signal A(2.5) = 4.0 → HALF
+    ✅ SIMPLE: institutional_momentum_cascade analysis complete: WATCH (52%)
+  🗳️  SIMPLE VOTE: Minervini=BUY(71%), Momentum=WATCH(52%)
+🎯 Using winning system: minervini_template_advanced for BUY
+🔍 Entry trigger check started at 2025-09-03 10:45 SGT
+🔍 CHECKING ENTRY TRIGGERS FOR WATCHLIST STOCKS...
+📊 Monitoring 5 BUY signals for entry triggers
+  💰 CAPITAL: Using INR capital: 2,000,000 (from DB)
+📊 SIMPLE: Fetching basic technical data for ASHOKLEY.NS...
+✅ SIMPLE: Fetched 493 data points for ASHOKLEY.NS (current: $130.39)
+  ✅ MINERVINI: Data validation passed - 493 days, SMA150: true, SMA200: true
+  🏛️ TEMPLATE: Analyzing ASHOKLEY.NS at $130.39
+  🏛️ TEMPLATE: Executing 8-criteria template validation...
+  🏛️ TEMPLATE: SMA150=115.23, SMA200=114.19, Price=130.39
+  🏛️ TEMPLATE: Score 55.6% (6/8 criteria), Grade: B+
+  🎯 R/R ENFORCEMENT: Target adjusted from 132.36 to 147.31 for minimum 2.5:1 R/R
+  🏛️ TEMPLATE: Raw decision - Action: BUY, Confidence: 75.0%
+  🏛️ TEMPLATE: Raw: BUY, Stabilized: BUY, Confidence: 75.0%
+  🎯 UNIFIED SCORING: Template B+(2) + Signal A+(3) = 5.0 → STRONG
+    ✅ SIMPLE: minervini_template_advanced analysis complete: BUY (75%)
+  🌊 CASCADE: Analyzing ASHOKLEY.NS at $130.39
+  🌊 CASCADE: Executing 6-rule momentum cascade validation...
+  🌊 CASCADE: Score 27.5% (0/6 rules), Cascade: F
+  🌊 CASCADE: Raw: AVOID, Stabilized: AVOID, Confidence: 20.0%
+    ✅ SIMPLE: institutional_momentum_cascade analysis complete: AVOID (20%)
+  🗳️  SIMPLE VOTE: Minervini=BUY(75%), Momentum=AVOID(20%)
+🎯 Using winning system: minervini_template_advanced for BUY
+📧 Email not configured, skipping email alert
+📧 Entry trigger alert sent for ASHOKLEY.NS (1 new triggers)
+  💰 CAPITAL: Using INR capital: 2,000,000 (from DB)
+📊 SIMPLE: Fetching basic technical data for DALBHARAT.NS...
+✅ SIMPLE: Fetched 493 data points for DALBHARAT.NS (current: $2402.20)
+  ✅ MINERVINI: Data validation passed - 493 days, SMA150: true, SMA200: true
+  🏛️ TEMPLATE: Analyzing DALBHARAT.NS at $2402.20
+  🏛️ TEMPLATE: Executing 8-criteria template validation...
+  🏛️ TEMPLATE: SMA150=2010.38, SMA200=1960.65, Price=2402.20
+  🏛️ TEMPLATE: Score 63.6% (6/8 criteria), Grade: B+
+  🎯 R/R ENFORCEMENT: Target adjusted from 2471.04 to 2631.66 for minimum 2.5:1 R/R
+  🏛️ TEMPLATE: Raw decision - Action: BUY, Confidence: 75.0%
+  🏛️ TEMPLATE: Raw: BUY, Stabilized: BUY, Confidence: 71.2%
+  🎯 UNIFIED SCORING: Template B+(2) + Signal A+(3) = 5.0 → STRONG
+    ✅ SIMPLE: minervini_template_advanced analysis complete: BUY (71%)
+  🌊 CASCADE: Analyzing DALBHARAT.NS at $2402.20
+  🌊 CASCADE: Executing 6-rule momentum cascade validation...
+  🌊 CASCADE: Score 53.5% (3/6 rules), Cascade: B
+  🌊 CASCADE: Raw: WATCH, Stabilized: WATCH, Confidence: 52.1%
+  🎯 UNIFIED SCORING: Momentum B(1.5) + Signal A(2.5) = 4.0 → HALF
+    ✅ SIMPLE: institutional_momentum_cascade analysis complete: WATCH (52%)
+  🗳️  SIMPLE VOTE: Minervini=BUY(71%), Momentum=WATCH(52%)
+🎯 Using winning system: minervini_template_advanced for BUY
+  💰 CAPITAL: Using INR capital: 2,000,000 (from DB)
+📊 SIMPLE: Fetching basic technical data for NYKAA.NS...
+✅ SIMPLE: Fetched 493 data points for NYKAA.NS (current: $232.52)
+  ✅ MINERVINI: Data validation passed - 493 days, SMA150: true, SMA200: true
+  🏛️ TEMPLATE: Analyzing NYKAA.NS at $232.52
+  🏛️ TEMPLATE: Executing 8-criteria template validation...
+  🏛️ TEMPLATE: SMA150=193.39, SMA200=187.24, Price=232.52
+  🏛️ TEMPLATE: Score 69.8% (6/8 criteria), Grade: A
+  🎯 R/R ENFORCEMENT: Target adjusted from 236.96 to 267.03 for minimum 2.5:1 R/R
+  🏛️ TEMPLATE: Raw decision - Action: BUY, Confidence: 85.0%
+  🏛️ TEMPLATE: Raw: BUY, Stabilized: BUY, Confidence: 85.0%
+  🎯 UNIFIED SCORING: Template A(2.5) + Signal A+(3) = 5.5 → FULL
+    ✅ SIMPLE: minervini_template_advanced analysis complete: BUY (85%)
+  🌊 CASCADE: Analyzing NYKAA.NS at $232.52
+  🌊 CASCADE: Executing 6-rule momentum cascade validation...
+  🌊 CASCADE: Score 42.0% (2/6 rules), Cascade: C
+  🌊 CASCADE: Raw: WATCH, Stabilized: WATCH, Confidence: 50.0%
+  ⚠️ CASCADE: Position sizing skipped - recommendation: AVOID, entryPrice: 232.52000427246094, stopLoss: 215.27, capital: 2000000
+  🎯 UNIFIED SCORING: Momentum C(1) + Signal B(1.5) = 2.5 → AVOID
+    ✅ SIMPLE: institutional_momentum_cascade analysis complete: WATCH (50%)
+  🗳️  SIMPLE VOTE: Minervini=BUY(85%), Momentum=WATCH(50%)
+🎯 Using winning system: minervini_template_advanced for BUY
+📧 Email not configured, skipping email alert
+📧 Entry trigger alert sent for NYKAA.NS (1 new triggers)
+  💰 CAPITAL: Using INR capital: 2,000,000 (from DB)
+📊 SIMPLE: Fetching basic technical data for LEMONTREE.NS...
+✅ SIMPLE: Fetched 493 data points for LEMONTREE.NS (current: $165.27)
+  ✅ MINERVINI: Data validation passed - 493 days, SMA150: true, SMA200: true
+  🏛️ TEMPLATE: Analyzing LEMONTREE.NS at $165.27
+  🏛️ TEMPLATE: Executing 8-criteria template validation...
+  🏛️ TEMPLATE: SMA150=141.11, SMA200=141.07, Price=165.27
+  🏛️ TEMPLATE: Score 67.8% (6/8 criteria), Grade: A
+  🎯 R/R ENFORCEMENT: Target adjusted from 175.01 to 196.26 for minimum 2.5:1 R/R
+  🏛️ TEMPLATE: Raw decision - Action: BUY, Confidence: 85.0%
+  🏛️ TEMPLATE: Raw: BUY, Stabilized: BUY, Confidence: 85.0%
+  🎯 UNIFIED SCORING: Template A(2.5) + Signal A+(3) = 5.5 → FULL
+    ✅ SIMPLE: minervini_template_advanced analysis complete: BUY (85%)
+  🌊 CASCADE: Analyzing LEMONTREE.NS at $165.27
+  🌊 CASCADE: Executing 6-rule momentum cascade validation...
+  🌊 CASCADE: Score 42.5% (3/6 rules), Cascade: C
+  🌊 CASCADE: Raw: WATCH, Stabilized: WATCH, Confidence: 50.0%
+  ⚠️ CASCADE: Position sizing skipped - recommendation: AVOID, entryPrice: 165.27000427246094, stopLoss: 152.05, capital: 2000000
+  🎯 UNIFIED SCORING: Momentum C(1) + Signal B(1.5) = 2.5 → AVOID
+    ✅ SIMPLE: institutional_momentum_cascade analysis complete: WATCH (50%)
+  🗳️  SIMPLE VOTE: Minervini=BUY(85%), Momentum=WATCH(50%)
+🎯 Using winning system: minervini_template_advanced for BUY
+📧 Email not configured, skipping email alert
+📧 Entry trigger alert sent for LEMONTREE.NS (1 new triggers)
+  💰 CAPITAL: Using INR capital: 2,000,000 (from DB)
+📊 SIMPLE: Fetching basic technical data for RBLBANK.NS...
+✅ SIMPLE: Fetched 493 data points for RBLBANK.NS (current: $269.30)
+  ✅ MINERVINI: Data validation passed - 493 days, SMA150: true, SMA200: true
+  🏛️ TEMPLATE: Analyzing RBLBANK.NS at $269.30
+  🏛️ TEMPLATE: Executing 8-criteria template validation...
+  🏛️ TEMPLATE: SMA150=209.08, SMA200=197.11, Price=269.30
+  🏛️ TEMPLATE: Score 68.1% (5/8 criteria), Grade: A
+  🎯 R/R ENFORCEMENT: Target adjusted from 270.00 to 307.15 for minimum 2.5:1 R/R
+  🏛️ TEMPLATE: Raw decision - Action: BUY, Confidence: 85.0%
+  🏛️ TEMPLATE: Raw: BUY, Stabilized: BUY, Confidence: 85.0%
+  🎯 UNIFIED SCORING: Template A(2.5) + Signal A+(3) = 5.5 → FULL
+    ✅ SIMPLE: minervini_template_advanced analysis complete: BUY (85%)
+  🌊 CASCADE: Analyzing RBLBANK.NS at $269.30
+  🌊 CASCADE: Executing 6-rule momentum cascade validation...
+  🌊 CASCADE: Score 36.5% (2/6 rules), Cascade: C
+  🌊 CASCADE: Raw: AVOID, Stabilized: AVOID, Confidence: 28.2%
+    ✅ SIMPLE: institutional_momentum_cascade analysis complete: AVOID (28%)
+  🗳️  SIMPLE VOTE: Minervini=BUY(85%), Momentum=AVOID(28%)
+🎯 Using winning system: minervini_template_advanced for BUY
+📧 Email not configured, skipping email alert
+📧 Entry trigger alert sent for RBLBANK.NS (1 new triggers)
+✅ ENTRY TRIGGER CHECK COMPLETE

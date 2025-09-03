@@ -1,12 +1,20 @@
-// Start price refresh cron job (runs at midnight and on startup)
-// TEMPORARILY DISABLED - Missing dependencies
-/*
+// Start price refresh cron job (runs every 15 minutes during trading hours)
 try {
   require('./refresh-prices-cron');
+  console.log('✅ Price refresh cron job started successfully (11:30 AM - 6:30 PM SG Time)');
 } catch (error) {
   console.error('❌ Failed to start price refresh cron job:', error.message);
 }
-*/
+
+// Start position alerts cron job (monitors open trades)
+try {
+  const PositionAlertsCron = require('./cron/positionAlertsCron');
+  const positionAlerts = new PositionAlertsCron();
+  positionAlerts.start();
+  console.log('✅ Position alerts cron job started successfully (11:30 AM - 6:30 PM SG Time)');
+} catch (error) {
+  console.error('❌ Failed to start position alerts cron job:', error.message);
+}
 
 // Start watchlist cron job - SIMPLE DAILY SCAN
 try {
@@ -16,6 +24,16 @@ try {
   console.log('✅ Daily Watchlist cron job started successfully (9:30 AM IST)');
 } catch (error) {
   console.error('❌ Failed to start watchlist cron job:', error.message);
+}
+
+// Start Entry Trigger Monitoring cron job
+try {
+  const EntryTriggerCron = require('./cron/EntryTriggerCron');
+  const entryTriggerCron = new EntryTriggerCron();
+  entryTriggerCron.start();
+  console.log('✅ Entry Trigger Monitoring cron job started successfully (every 15 minutes)');
+} catch (error) {
+  console.error('❌ Failed to start entry trigger cron job:', error.message);
 }
 
 // Start Expert Analysis cron job (NIFTY 200 Core + Satellite)

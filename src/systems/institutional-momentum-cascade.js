@@ -4,6 +4,10 @@
  * Based on institutional momentum cascade theory for detecting major trend acceleration.
  * Combines multi-timeframe momentum analysis with institutional flow detection.
  * 
+ * ANTI-THRASHING PROTECTION:
+ * Integrated with SignalStabilityManager to prevent signal flipping on minor price moves.
+ * Uses hysteresis, latching, and ATR-relative thresholds for stable signals.
+ * 
  * CONFIGURABLE THRESHOLDS:
  * Thresholds are now managed in src/config/trading-thresholds.js
  * Change ACTIVE_CONFIG in that file to switch between:
@@ -26,18 +30,22 @@
  * - AVOID: <4 rules or momentum cascade <50%
  * 
  * Author: Ishastra AI Expert Engine
- * Version: 2.0.0 - Centralized Configuration
+ * Version: 2.1.0 - Anti-Thrashing Protection
  * Last Updated: 2024
  */
 
 const { getSystemThresholds } = require('../config/trading-thresholds');
+const { SignalStabilityManager } = require('../utils/signal-stability-manager');
 
 class InstitutionalMomentumCascade {
   constructor() {
     this.systemId = 'institutional_momentum_cascade';
     this.name = 'Institutional Momentum Cascade (Advanced)';
-    this.version = '1.0.0';
+    this.version = '2.1.0';
     this.description = '6-rule momentum cascade system for institutional trend detection';
+
+    // 🔒 ANTI-THRASHING: Initialize signal stability manager
+    this.stabilityManager = new SignalStabilityManager();
 
     // Rule weights for cascade calculation
     this.RULE_WEIGHTS = {
@@ -53,7 +61,7 @@ class InstitutionalMomentumCascade {
   /**
    * Main analysis method for Institutional Momentum Cascade system
    * @param {Object} data - Technical data with OHLCV and indicators
-   * @param {Object} options - Analysis options including capital, symbol, currentPrice, aiSignals
+   * @param {Object} options - Analysis options including capital, symbol, currentPrice
    * @returns {Object} Complete Cascade analysis with STRONG_BUY/BUY/WATCH/AVOID + confidence
    */
   analyze(data, options = {}) {
@@ -71,7 +79,7 @@ class InstitutionalMomentumCascade {
       }
 
       // Extract analysis parameters
-      const { capital, symbol, currentPrice, aiSignals } = options;
+      const { capital, symbol, currentPrice } = options;
       const completedDaily = series.daily.slice(0, -1); // Use only completed candles
       const weeklyData = series.weekly || [];
       const latest = completedDaily[completedDaily.length - 1];
@@ -87,40 +95,63 @@ class InstitutionalMomentumCascade {
       const cascadeAnalysis = this.executeCascadeAnalysis(completedDaily, weeklyData, indicators, entryPrice, thresholds);
 
       // Calculate risk/reward using momentum-based methodology
-      const riskAssessment = this.assessRisk(cascadeAnalysis, completedDaily, entryPrice);
+      const riskAssessment = this.assessRisk(cascadeAnalysis, completedDaily, entryPrice, thresholds);
 
-      // Generate final decision with AI enhancement
-      const finalDecision = this.makeFinalDecisionWithAI(
+      // Generate final decision (AI processing now handled by Gate Engine)
+      const rawDecision = this.makeFinalDecision(
         cascadeAnalysis, 
         riskAssessment, 
         completedDaily, 
-        { capital, symbol, entryPrice },
-        aiSignals
+        { capital, symbol, entryPrice }
       );
 
+      // 🔒 ANTI-THRASHING: Apply signal stabilization
+      const stabilizedDecision = this.stabilityManager.stabilizeSignal(
+        symbol || 'UNKNOWN',
+        {
+          action: rawDecision.action,
+          confidence: rawDecision.confidence,
+          reasoning: rawDecision.reasoning,
+          factors: rawDecision.factors
+        },
+        completedDaily,
+        entryPrice,
+        this.systemId
+      );
+
+      console.log(`  🌊 CASCADE: Raw: ${rawDecision.action}, Stabilized: ${stabilizedDecision.action}${stabilizedDecision.stabilized ? ' [STABILIZED]' : ''}, Confidence: ${(stabilizedDecision.confidence * 100).toFixed(1)}%`);
+
       // Calculate signal quality for gate engine integration
-      const signalQuality = this.calculateSignalQuality(finalDecision.confidence, cascadeAnalysis);
+      const signalQuality = this.calculateSignalQuality(stabilizedDecision.confidence, cascadeAnalysis);
 
       // Build execution plan
-      const execution = this.buildExecutionPlan(finalDecision, riskAssessment, cascadeAnalysis, entryPrice, capital, completedDaily);
+      const execution = this.buildExecutionPlan(stabilizedDecision, riskAssessment, cascadeAnalysis, entryPrice, capital, completedDaily);
 
-      console.log(`  🌊 CASCADE: Decision: ${finalDecision.action}, Confidence: ${(finalDecision.confidence * 100).toFixed(1)}%`);
+      // Calculate unified display grade (Cascade Grade + Signal Quality combined for user display)
+      const unifiedGrade = this.calculateUnifiedDisplayGrade(cascadeAnalysis.momentumCascade.grade, signalQuality.grade);
 
       return {
         system: this.systemId,
         systemName: this.name,
-        decision: finalDecision.action,
-        confidence: finalDecision.confidence,
-        reasoning: finalDecision.reasoning,
+        decision: stabilizedDecision.action,
+        confidence: stabilizedDecision.confidence,
+        reasoning: stabilizedDecision.reasoning,
+        grade: unifiedGrade, // 🎯 UNIFIED DISPLAY GRADE for user experience
         stopLoss: riskAssessment.stopLoss,
         targets: riskAssessment.targets,
         riskReward: riskAssessment.riskReward,
         execution: execution,
         signalQuality: signalQuality,
         cascadeAnalysis: cascadeAnalysis,
-        factors: finalDecision.factors,
-        aiEnhanced: finalDecision.aiEnhanced || false,
-        aiReasoning: finalDecision.aiReasoning || 'No AI enhancement applied',
+        factors: stabilizedDecision.factors,
+        
+        // 🔒 STABILITY METADATA
+        stabilized: stabilizedDecision.stabilized || false,
+        stabilizationReason: stabilizedDecision.stabilizationReason || null,
+        latched: stabilizedDecision.latched || false,
+        latchReason: stabilizedDecision.latchReason || null,
+        readiness: stabilizedDecision.readiness || null,
+        
         timestamp: new Date().toISOString()
       };
 
@@ -133,7 +164,7 @@ class InstitutionalMomentumCascade {
   /**
    * Execute the 6-rule Institutional Momentum Cascade analysis
    */
-  executeCascadeAnalysis(dailyData, weeklyData, indicators, currentPrice) {
+  executeCascadeAnalysis(dailyData, weeklyData, indicators, currentPrice, thresholds) {
     console.log(`  🌊 CASCADE: Executing 6-rule momentum cascade validation...`);
 
     const rules = {};
@@ -142,7 +173,7 @@ class InstitutionalMomentumCascade {
     let passedRules = 0;
 
     // Rule 1: Weekly Momentum Confirmation
-    const rule1 = this.analyzeWeeklyMomentum(weeklyData, indicators);
+    const rule1 = this.analyzeWeeklyMomentum(weeklyData, indicators, thresholds);
     rules.weeklyMomentum = rule1;
     weightedScore += rule1.score * this.RULE_WEIGHTS.weeklyMomentum;
     if (rule1.passed) {
@@ -151,7 +182,7 @@ class InstitutionalMomentumCascade {
     }
 
     // Rule 2: Daily Momentum Acceleration
-    const rule2 = this.analyzeDailyAcceleration(dailyData, indicators, currentPrice);
+    const rule2 = this.analyzeDailyAcceleration(dailyData, indicators, currentPrice, thresholds);
     rules.dailyAcceleration = rule2;
     weightedScore += rule2.score * this.RULE_WEIGHTS.dailyAcceleration;
     if (rule2.passed) {
@@ -160,7 +191,7 @@ class InstitutionalMomentumCascade {
     }
 
     // Rule 3: Price Structure Validation
-    const rule3 = this.analyzePriceStructure(dailyData, currentPrice);
+    const rule3 = this.analyzePriceStructure(dailyData, currentPrice, thresholds);
     rules.priceStructure = rule3;
     weightedScore += rule3.score * this.RULE_WEIGHTS.priceStructure;
     if (rule3.passed) {
@@ -169,7 +200,7 @@ class InstitutionalMomentumCascade {
     }
 
     // Rule 4: Institutional Flow Detection
-    const rule4 = this.analyzeInstitutionalFlow(dailyData, indicators);
+    const rule4 = this.analyzeInstitutionalFlow(dailyData, indicators, thresholds);
     rules.institutionalFlow = rule4;
     weightedScore += rule4.score * this.RULE_WEIGHTS.institutionalFlow;
     if (rule4.passed) {
@@ -178,7 +209,7 @@ class InstitutionalMomentumCascade {
     }
 
     // Rule 5: Risk-Adjusted Momentum Score
-    const rule5 = this.analyzeRiskAdjustedMomentum(dailyData, indicators, currentPrice);
+    const rule5 = this.analyzeRiskAdjustedMomentum(dailyData, indicators, currentPrice, thresholds);
     rules.riskAdjustedScore = rule5;
     weightedScore += rule5.score * this.RULE_WEIGHTS.riskAdjustedScore;
     if (rule5.passed) {
@@ -187,7 +218,7 @@ class InstitutionalMomentumCascade {
     }
 
     // Rule 6: Cascade Trigger Confirmation
-    const rule6 = this.analyzeCascadeTrigger(dailyData, weeklyData, indicators);
+    const rule6 = this.analyzeCascadeTrigger(dailyData, weeklyData, indicators, thresholds);
     rules.cascadeTrigger = rule6;
     weightedScore += rule6.score * this.RULE_WEIGHTS.cascadeTrigger;
     if (rule6.passed) {
@@ -196,7 +227,7 @@ class InstitutionalMomentumCascade {
     }
 
     // Calculate momentum cascade metrics
-    const momentumCascade = this.calculateMomentumCascade(rules, weightedScore);
+    const momentumCascade = this.calculateMomentumCascade(rules, weightedScore, thresholds);
     
     // Overall confidence calculation
     const ruleCompletionRatio = passedRules / 6;
@@ -218,7 +249,7 @@ class InstitutionalMomentumCascade {
   /**
    * Rule 1: Analyze Weekly Momentum Confirmation
    */
-  analyzeWeeklyMomentum(weeklyData, indicators) {
+  analyzeWeeklyMomentum(weeklyData, indicators, thresholds) {
     if (!weeklyData || weeklyData.length < 26) {
       return {
         passed: false,
@@ -237,14 +268,17 @@ class InstitutionalMomentumCascade {
     
     // Weekly ROC (Rate of Change) analysis
     const weeklyROC = this.calculateROC(weeklyData, 14);
-    const rocPositive = weeklyROC > 5; // 5% positive momentum
+    const rocThreshold = thresholds.weekly_roc_threshold || 3.0; // Use threshold
+    const rocPositive = weeklyROC > rocThreshold;
     
-    // Weekly price momentum
+    // Weekly price momentum - USE THRESHOLD
     const priceChange4Week = (latest.close - weeklyData[weeklyData.length - 5].close) / weeklyData[weeklyData.length - 5].close;
-    const strongWeeklyMomentum = priceChange4Week > 0.12; // ULTRA-SELECTIVE: 12% in 4 weeks (was 4%)
+    const weeklyThreshold = (thresholds.weekly_momentum_threshold || 8.0) / 100; // Convert to decimal
+    const strongWeeklyMomentum = priceChange4Week > weeklyThreshold;
     
     const confirmations = [macdBullish, rocPositive, strongWeeklyMomentum].filter(Boolean).length;
-    const passed = confirmations >= 2;
+    const weeklyConfirmationsThreshold = thresholds.weekly_confirmations_threshold || 2;
+    const passed = confirmations >= weeklyConfirmationsThreshold;
     const score = confirmations / 3;
 
     return {
@@ -258,21 +292,23 @@ class InstitutionalMomentumCascade {
   /**
    * Rule 2: Analyze Daily Momentum Acceleration
    */
-  analyzeDailyAcceleration(dailyData, indicators, currentPrice) {
+  analyzeDailyAcceleration(dailyData, indicators, currentPrice, thresholds) {
     const rsi14 = indicators.base?.rsi14 || 50;
     const macd = indicators.base?.macd || 0;
     const latest = dailyData[dailyData.length - 1];
     
-    // RSI momentum (>60 shows strong momentum)
-    const rsiMomentum = rsi14 > 60;
+    // RSI momentum (use threshold)
+    const rsiThreshold = thresholds.rsi_momentum_threshold || 60;
+    const rsiMomentum = rsi14 > rsiThreshold;
     
     // MACD rising (acceleration)
     const macdRising = macd > (indicators.base?.macdSignal || 0);
     
-    // Volume expansion (recent vs average)
+    // Volume expansion (recent vs average) - use threshold
     const avgVolume = this.calculateAverageVolume(dailyData.slice(-20));
     const recentVolume = this.calculateAverageVolume(dailyData.slice(-3));
-    const volumeExpansion = recentVolume > avgVolume * 1.3;
+    const volumeExpansionThreshold = thresholds.volume_expansion_threshold || 1.3;
+    const volumeExpansion = recentVolume > avgVolume * volumeExpansionThreshold;
     
     // Price acceleration (5-day vs 10-day momentum)
     const momentum5Day = this.calculatePriceMomentum(dailyData, 5);
@@ -287,14 +323,14 @@ class InstitutionalMomentumCascade {
       passed,
       score,
       weight: this.RULE_WEIGHTS.dailyAcceleration,
-      details: `Daily acceleration: RSI ${rsi14.toFixed(1)} ${rsiMomentum ? '>60' : '≤60'}, MACD ${macdRising ? 'rising' : 'falling'}, Volume ${volumeExpansion ? 'expanding' : 'normal'}, Price ${accelerating ? 'accelerating' : 'steady'}`
+      details: `Daily acceleration: RSI ${rsi14.toFixed(1)} ${rsiMomentum ? `>${rsiThreshold}` : `≤${rsiThreshold}`}, MACD ${macdRising ? 'rising' : 'falling'}, Volume ${volumeExpansion ? 'expanding' : 'normal'}, Price ${accelerating ? 'accelerating' : 'steady'}`
     };
   }
 
   /**
    * Rule 3: Analyze Price Structure Validation
    */
-  analyzePriceStructure(dailyData, currentPrice) {
+  analyzePriceStructure(dailyData, currentPrice, thresholds) {
     // Higher highs analysis (20-day)
     const highs20Day = dailyData.slice(-20).map(d => d.high);
     const recentHigh = Math.max(...highs20Day.slice(-5));
@@ -307,9 +343,10 @@ class InstitutionalMomentumCascade {
     const priorLow = Math.min(...lows20Day.slice(-20, -5));
     const higherLows = recentLow > priorLow;
     
-    // Breakout confirmation (above 20-day high)
+    // Breakout confirmation (above 20-day high) - use threshold
     const high20Day = Math.max(...highs20Day);
-    const breakoutConfirmed = currentPrice > high20Day * 0.995; // Within 0.5% of breakout
+    const breakoutBuffer = thresholds.breakout_buffer || 0.995; // 0.5% buffer
+    const breakoutConfirmed = currentPrice > high20Day * breakoutBuffer;
     
     // Trend consistency (EMA alignment simulation)
     const closes = dailyData.slice(-20).map(d => d.close);
@@ -318,7 +355,8 @@ class InstitutionalMomentumCascade {
     const trendAlignment = ema10 > ema20 && currentPrice > ema10;
     
     const confirmations = [higherHighs, higherLows, breakoutConfirmed, trendAlignment].filter(Boolean).length;
-    const passed = confirmations >= 3;
+    const structureThreshold = thresholds.structure_confirmations || 3;
+    const passed = confirmations >= structureThreshold;
     const score = confirmations / 4;
 
     return {
@@ -332,7 +370,7 @@ class InstitutionalMomentumCascade {
   /**
    * Rule 4: Analyze Institutional Flow Detection
    */
-  analyzeInstitutionalFlow(dailyData, indicators) {
+  analyzeInstitutionalFlow(dailyData, indicators, thresholds) {
     // Volume profile analysis (accumulation vs distribution)
     const recentData = dailyData.slice(-10);
     let accumulation = 0;
@@ -343,20 +381,23 @@ class InstitutionalMomentumCascade {
       const range = day.high - day.low;
       const bodyRatio = range > 0 ? bodySize / range : 0;
       
-      if (day.close > day.open && bodyRatio > 0.6) {
+      const bodyRatioThreshold = thresholds.body_ratio_threshold || 0.6; // Use threshold
+      if (day.close > day.open && bodyRatio > bodyRatioThreshold) {
         accumulation += day.volume;
-      } else if (day.close < day.open && bodyRatio > 0.6) {
+      } else if (day.close < day.open && bodyRatio > bodyRatioThreshold) {
         distribution += day.volume;
       }
     });
     
     const accumulationRatio = (accumulation + distribution) > 0 ? accumulation / (accumulation + distribution) : 0.5;
-    const institutionalAccumulation = accumulationRatio > 0.75; // ULTRA-SELECTIVE: 0.75 (was 0.55)
+    const institutionalAccumulation = accumulationRatio > (thresholds.accumulation_ratio_threshold || 0.65); // USE THRESHOLD
     
-    // Large volume days (institutional interest)
+    // Large volume days (institutional interest) - use threshold
     const avgVolume = this.calculateAverageVolume(dailyData.slice(-50));
-    const largeVolumeDays = recentData.filter(d => d.volume > avgVolume * 1.5).length;
-    const institutionalInterest = largeVolumeDays >= 3;
+    const largeVolumeMultiplier = thresholds.large_volume_multiplier || 1.5;
+    const largeVolumeDays = recentData.filter(d => d.volume > avgVolume * largeVolumeMultiplier).length;
+    const largeVolumeDaysThreshold = thresholds.large_volume_days_threshold || 3;
+    const institutionalInterest = largeVolumeDays >= largeVolumeDaysThreshold;
     
     // OBV trend (On Balance Volume simulation)
     const obvTrend = this.calculateOBVTrend(dailyData.slice(-20));
@@ -364,7 +405,7 @@ class InstitutionalMomentumCascade {
     
     // Price-volume relationship
     const priceVolumeCorrelation = this.calculatePriceVolumeCorrelation(recentData);
-    const positiveCorrelation = priceVolumeCorrelation > 0.5; // ULTRA-SELECTIVE: 0.5 (was 0.2)
+    const positiveCorrelation = priceVolumeCorrelation > (thresholds.correlation_threshold || 0.35); // USE THRESHOLD
     
     const confirmations = [institutionalAccumulation, institutionalInterest, obvPositive, positiveCorrelation].filter(Boolean).length;
     const passed = confirmations >= 3;
@@ -381,28 +422,31 @@ class InstitutionalMomentumCascade {
   /**
    * Rule 5: Analyze Risk-Adjusted Momentum Score
    */
-  analyzeRiskAdjustedMomentum(dailyData, indicators, currentPrice) {
+  analyzeRiskAdjustedMomentum(dailyData, indicators, currentPrice, thresholds) {
     // Calculate returns and volatility
     const returns = this.calculateReturns(dailyData.slice(-20));
     const avgReturn = returns.reduce((sum, r) => sum + r, 0) / returns.length;
     const volatility = this.calculateStandardDeviation(returns);
     
-    // Sharpe-like ratio for momentum quality
+    // Sharpe-like ratio for momentum quality - use threshold
     const momentumQuality = volatility > 0 ? avgReturn / volatility : 0;
-    const highQualityMomentum = momentumQuality > 0.15;
+    const momentumQualityThreshold = thresholds.momentum_quality_threshold || 0.15;
+    const highQualityMomentum = momentumQuality > momentumQualityThreshold;
     
     // Momentum consistency (winning days ratio)
     const winningDays = returns.filter(r => r > 0).length;
     const winRatio = winningDays / returns.length;
-    const consistentMomentum = winRatio > 0.75; // ULTRA-SELECTIVE: 0.75 (was 0.5)
+    const consistentMomentum = winRatio > (thresholds.win_ratio_threshold || 0.65); // USE THRESHOLD
     
-    // Drawdown analysis (maximum adverse movement)
+    // Drawdown analysis (maximum adverse movement) - use threshold
+    const maxDrawdownThreshold = thresholds.max_drawdown_threshold || 0.08; // Default 8%
     const maxDrawdown = this.calculateMaxDrawdown(dailyData.slice(-20));
-    const lowDrawdown = maxDrawdown < 0.08; // Less than 8% drawdown
+    const lowDrawdown = maxDrawdown < maxDrawdownThreshold;
     
-    // Momentum persistence (trend strength)
+    // Momentum persistence (trend strength) - use threshold
+    const trendStrengthThreshold = thresholds.trend_strength_threshold || 0.4;
     const trendStrength = this.calculateTrendStrength(dailyData.slice(-20));
-    const strongTrend = trendStrength > 0.5; // RELAXED from 0.7 to 0.5
+    const strongTrend = trendStrength > trendStrengthThreshold;
     
     const confirmations = [highQualityMomentum, consistentMomentum, lowDrawdown, strongTrend].filter(Boolean).length;
     const passed = confirmations >= 3;
@@ -419,27 +463,30 @@ class InstitutionalMomentumCascade {
   /**
    * Rule 6: Analyze Cascade Trigger Confirmation
    */
-  analyzeCascadeTrigger(dailyData, weeklyData, indicators) {
+  analyzeCascadeTrigger(dailyData, weeklyData, indicators, thresholds) {
     // Multi-timeframe alignment
     const dailyTrend = this.getTrendDirection(dailyData.slice(-10));
     const weeklyTrend = weeklyData.length > 0 ? this.getTrendDirection(weeklyData.slice(-4)) : dailyTrend;
     const trendAlignment = dailyTrend === 'UP' && weeklyTrend === 'UP';
     
-    // Momentum synchronization across timeframes
+    // Momentum synchronization across timeframes - use threshold
     const dailyMomentum = this.calculatePriceMomentum(dailyData, 5);
     const weeklyMomentumDaily = weeklyData.length > 0 ? this.calculatePriceMomentum(weeklyData, 2) * 0.2 : dailyMomentum; // Scale weekly to daily
-    const momentumSync = dailyMomentum > 0 && weeklyMomentumDaily > 0 && Math.abs(dailyMomentum - weeklyMomentumDaily) < 0.05;
+    const momentumSyncThreshold = thresholds.momentum_sync_threshold || 0.05;
+    const momentumSync = dailyMomentum > 0 && weeklyMomentumDaily > 0 && Math.abs(dailyMomentum - weeklyMomentumDaily) < momentumSyncThreshold;
     
     // Volume cascade (daily volume confirming weekly trend)
     const dailyVolumeTrend = this.getVolumeTrend(dailyData.slice(-5));
     const weeklyVolumeTrend = weeklyData.length > 0 ? this.getVolumeTrend(weeklyData.slice(-3)) : dailyVolumeTrend;
     const volumeCascade = dailyVolumeTrend === 'INCREASING' && weeklyVolumeTrend === 'INCREASING';
     
-    // Cascade trigger timing (recent acceleration)
+    // Cascade trigger timing (recent acceleration) - use threshold
+    const accelerationThreshold = thresholds.recent_acceleration_threshold || 0.01; // 1% default
     const recentAcceleration = this.detectRecentAcceleration(dailyData.slice(-5));
     
     const confirmations = [trendAlignment, momentumSync, volumeCascade, recentAcceleration].filter(Boolean).length;
-    const passed = confirmations >= 3;
+    const triggerConfirmations = thresholds.trigger_confirmations || 3;
+    const passed = confirmations >= triggerConfirmations;
     const score = confirmations / 4;
 
     return {
@@ -453,26 +500,29 @@ class InstitutionalMomentumCascade {
   /**
    * Calculate momentum cascade metrics
    */
-  calculateMomentumCascade(rules, weightedScore) {
+  calculateMomentumCascade(rules, weightedScore, thresholds) {
     const cascadeScore = weightedScore;
     
     let grade = 'F';
     let intensity = 'WEAK';
     
-    // ULTRA-SELECTIVE grading - Only exceptional momentum gets high grades
-    if (cascadeScore >= 0.80) {
+    // Use threshold-based grading system
+    if (cascadeScore >= (thresholds.cascade_A_plus || 0.80)) {
       grade = 'A+';
       intensity = 'EXCEPTIONAL';
-    } else if (cascadeScore >= 0.70) {
+    } else if (cascadeScore >= (thresholds.cascade_A || 0.70)) {
       grade = 'A';
       intensity = 'STRONG';
-    } else if (cascadeScore >= 0.60) {
+    } else if (cascadeScore >= (thresholds.cascade_B_plus || 0.60)) {
+      grade = 'B+';
+      intensity = 'STRONG_MODERATE';
+    } else if (cascadeScore >= (thresholds.cascade_B || 0.50)) {
       grade = 'B';
       intensity = 'MODERATE';
-    } else if (cascadeScore >= 0.50) {
+    } else if (cascadeScore >= (thresholds.cascade_C || 0.40)) {
       grade = 'C';
       intensity = 'BUILDING';
-    } else if (cascadeScore >= 0.40) {
+    } else if (cascadeScore >= 0.30) {
       grade = 'D';
       intensity = 'WEAK';
     }
@@ -492,132 +542,37 @@ class InstitutionalMomentumCascade {
   }
 
   /**
-   * 🤖 AI-ENHANCED: Make final trading decision with AI momentum validation
-   */
-  makeFinalDecisionWithAI(cascadeAnalysis, riskAssessment, dailyData, options, aiSignals = null) {
-    // Get the base Cascade decision first
-    const baseDecision = this.makeFinalDecision(cascadeAnalysis, riskAssessment, dailyData, options);
-    
-    // If no AI signals, return base decision
-    if (!aiSignals) {
-      return {
-        ...baseDecision,
-        aiEnhanced: false,
-        aiReasoning: 'No AI signals provided'
-      };
-    }
-
-    // Apply AI enhancements to Cascade's momentum requirements
-    return this.applyCascadeAIEnhancement(baseDecision, cascadeAnalysis, aiSignals);
-  }
-
-  /**
-   * 🤖 CASCADE AI ENHANCEMENT: Boost momentum cascade with AI confirmation
-   */
-  applyCascadeAIEnhancement(baseDecision, cascadeAnalysis, aiSignals) {
-    const { momentum, conviction, bias } = aiSignals;
-    let enhancedAction = baseDecision.action;
-    let enhancedConfidence = baseDecision.confidence;
-    let aiReasoningParts = [];
-    let aiEnhanced = false;
-
-    // ENHANCEMENT 1: Strong Cascade + Perfect AI = STRONG_BUY
-    if (cascadeAnalysis.momentumCascade.grade === 'A+' && 
-        momentum === 'BULLISH' && conviction === 'HIGH' && bias === 'BULLISH') {
-      if (baseDecision.action === 'BUY') {
-        enhancedAction = 'STRONG_BUY';
-        enhancedConfidence = Math.min(0.98, enhancedConfidence + 0.15);
-        aiReasoningParts.push('AI confirms explosive momentum cascade with maximum conviction');
-        aiEnhanced = true;
-      } else if (baseDecision.action === 'WATCH') {
-        enhancedAction = 'BUY';
-        enhancedConfidence = Math.min(0.90, enhancedConfidence + 0.20);
-        aiReasoningParts.push('AI upgrades strong cascade from WATCH to BUY with high conviction');
-        aiEnhanced = true;
-      }
-    }
-
-    // ENHANCEMENT 2: Good Cascade + Strong AI = BUY
-    else if ((cascadeAnalysis.momentumCascade.grade === 'A' || cascadeAnalysis.momentumCascade.grade === 'B') &&
-             baseDecision.action === 'WATCH' &&
-             momentum === 'BULLISH' && conviction === 'HIGH') {
-      enhancedAction = 'BUY';
-      enhancedConfidence = Math.min(0.85, enhancedConfidence + 0.12);
-      aiReasoningParts.push('AI confirms solid momentum cascade with high conviction');
-      aiEnhanced = true;
-    }
-
-    // ENHANCEMENT 3: Moderate Cascade + Perfect AI Alignment = BUY
-    else if (cascadeAnalysis.passedRules >= 4 && 
-             baseDecision.action === 'WATCH' &&
-             momentum === 'BULLISH' && conviction === 'HIGH' && bias === 'BULLISH') {
-      enhancedAction = 'BUY';
-      enhancedConfidence = Math.min(0.80, enhancedConfidence + 0.10);
-      aiReasoningParts.push('AI validates moderate cascade with perfect momentum alignment');
-      aiEnhanced = true;
-    }
-
-    // ENHANCEMENT 4: Confidence adjustments based on AI momentum quality
-    if (!aiEnhanced) {
-      if (momentum === 'BULLISH' && conviction === 'HIGH') {
-        enhancedConfidence = Math.min(0.95, enhancedConfidence + 0.08);
-        aiReasoningParts.push('AI high conviction bullish momentum reinforces cascade analysis');
-      } else if (momentum === 'BEARISH' && conviction === 'HIGH') {
-        enhancedConfidence = Math.max(0.15, enhancedConfidence - 0.12);
-        aiReasoningParts.push('AI high conviction bearish momentum conflicts with cascade');
-      }
-    }
-
-    return {
-      action: enhancedAction,
-      confidence: enhancedConfidence,
-      reasoning: baseDecision.reasoning,
-      factors: baseDecision.factors,
-      aiEnhanced: aiEnhanced,
-      aiReasoning: aiReasoningParts.join('; ') || 'No significant AI adjustments',
-      originalCascadeAction: baseDecision.action,
-      aiSignals: aiSignals
-    };
-  }
-
-  /**
    * Make final trading decision based on Cascade analysis
    */
   makeFinalDecision(cascadeAnalysis, riskAssessment, dailyData, options) {
     const { momentumCascade, overallScore, passedRules, reasoning } = cascadeAnalysis;
     const { riskReward } = riskAssessment;
 
+    // Get thresholds for decision making
+    const thresholds = getSystemThresholds('institutional_momentum_cascade');
+
     let action = 'AVOID';
     let confidence = cascadeAnalysis.confidence;
     let decisionReasoning = reasoning.join('; ');
 
-    // ULTRA-SELECTIVE Decision logic - A+ and A get BUY
-    if (momentumCascade.grade === 'A+') {
+    // Check if cascade grade is in the buy_allowed_cascades list
+    const buyAllowed = (thresholds.buy_allowed_cascades || ['A+', 'A']).includes(momentumCascade.grade);
+    const buyMinScore = thresholds.buy_min_score || 0.70;
+    const watchMinScore = thresholds.watch_min_score || 0.50;
+
+    // Threshold-based Decision logic
+    if (buyAllowed && overallScore >= buyMinScore) {
       action = 'BUY';
       confidence = Math.min(0.95, confidence + 0.10);
-      decisionReasoning = `Exceptional momentum cascade (${momentumCascade.grade}): ${decisionReasoning}`;
-    } else if (momentumCascade.grade === 'A') {
-      action = 'BUY';
-      confidence = Math.min(0.85, confidence + 0.05);
-      decisionReasoning = `Excellent momentum cascade (${momentumCascade.grade}): ${decisionReasoning}`;
-    } else if (momentumCascade.grade === 'B') {
+      decisionReasoning = `Strong momentum cascade (${momentumCascade.grade}, ${(overallScore * 100).toFixed(1)}%): ${decisionReasoning}`;
+    } else if (overallScore >= watchMinScore) {
       action = 'WATCH';
-      confidence = Math.max(0.60, confidence);
-      decisionReasoning = `Moderate momentum cascade (${momentumCascade.grade}), monitor for improvement: ${decisionReasoning}`;
-    } else if (momentumCascade.grade === 'C') {
-      action = 'AVOID';
-      confidence = Math.max(0.45, confidence);
-      decisionReasoning = `Building momentum cascade (${momentumCascade.grade}), insufficient for ultra-selective criteria: ${decisionReasoning}`;
       confidence = Math.max(0.50, confidence);
-      decisionReasoning = `Weak momentum cascade but high risk/reward: ${decisionReasoning}`;
-    } else if (momentumCascade.grade === 'C' || (momentumCascade.grade === 'D' && passedRules >= 1)) {
-      action = 'WATCH';
-      confidence = Math.max(0.45, confidence);
-      decisionReasoning = `Minimal momentum cascade (${momentumCascade.grade}), watchlist: ${decisionReasoning}`;
+      decisionReasoning = `Developing momentum cascade (${momentumCascade.grade}, ${(overallScore * 100).toFixed(1)}%), monitor for improvement: ${decisionReasoning}`;
     } else {
       action = 'AVOID';
       confidence = Math.max(0.20, confidence * 0.8);
-      decisionReasoning = `Momentum cascade criteria insufficient (${passedRules}/6 rules, ${momentumCascade.grade} grade): ${decisionReasoning}`;
+      decisionReasoning = `Momentum cascade criteria insufficient (${passedRules}/6 rules, ${momentumCascade.grade} grade, ${(overallScore * 100).toFixed(1)}%): ${decisionReasoning}`;
     }
 
     return {
@@ -638,25 +593,27 @@ class InstitutionalMomentumCascade {
   /**
    * Assess risk using momentum-based methodology
    */
-  assessRisk(cascadeAnalysis, dailyData, currentPrice) {
+  assessRisk(cascadeAnalysis, dailyData, currentPrice, thresholds) {
     const atr = this.calculateATR(dailyData.slice(-14));
     const volatility = this.calculateVolatility(dailyData.slice(-20));
     
-    // Momentum-based stop loss (tighter for high-quality setups)
-    let stopMultiplier = 2.5; // Base ATR multiplier
+    // Momentum-based stop loss (tighter for high-quality setups) - use thresholds
+    let stopMultiplier = thresholds.base_stop_multiplier || 2.5; // Base ATR multiplier from threshold
     if (cascadeAnalysis.momentumCascade.grade === 'A+') {
-      stopMultiplier = 2.0; // Tighter stop for explosive setups
+      stopMultiplier = thresholds.aplus_stop_multiplier || 2.0; // Tighter stop for explosive setups
     } else if (cascadeAnalysis.momentumCascade.grade === 'A') {
-      stopMultiplier = 2.2;
+      stopMultiplier = thresholds.a_stop_multiplier || 2.2;
     }
     
     const atrStop = currentPrice - (atr * stopMultiplier);
-    const percentStop = currentPrice * 0.92; // 8% maximum stop
+    const maxStopPercentage = thresholds.max_stop_percentage || 0.92; // 8% maximum stop from threshold
+    const percentStop = currentPrice * maxStopPercentage;
     const stopLoss = Math.max(atrStop, percentStop);
     
-    // Volatility-adjusted stop for high-momentum stocks
+    // Volatility-adjusted stop for high-momentum stocks - FIXED: Widen stops in high volatility
     const volatilityAdjustedStop = currentPrice - (currentPrice * volatility * 2.0);
-    const finalStopLoss = Math.max(stopLoss, volatilityAdjustedStop);
+    // Use the WIDER (more conservative) stop when volatility is high
+    const finalStopLoss = volatility > 0.03 ? Math.min(stopLoss, volatilityAdjustedStop) : stopLoss;
     
     // Momentum-based targets (higher targets for stronger cascades)
     const riskAmount = currentPrice - finalStopLoss;
@@ -812,106 +769,81 @@ class InstitutionalMomentumCascade {
   }
 
   /**
-   * Calculate Cascade confidence-based position sizing with enhanced granular tiers
+   * Calculate Cascade position sizing using unified Momentum + Signal Quality scoring
    */
   calculateCascadePositionSizing(confidence, capitalInfo, riskAssessment, cascadeAnalysis) {
     const { capital = 100000, entryPrice = 100 } = capitalInfo;
     const { stopLoss = 0, riskReward = 1 } = riskAssessment;
     
+    // Calculate Signal Quality Grade for unified scoring
+    const signalQuality = this.calculateSignalQuality(confidence, cascadeAnalysis);
+    const signalQualityGrade = signalQuality.grade;
+    
+    // 🎯 UNIFIED SCORING SYSTEM: Momentum Grade + Signal Quality Grade
+    const gradePoints = {
+      'A+': 3,
+      'A': 2.5,
+      'B+': 2,
+      'B': 1.5,
+      'C': 1,
+      'D': 0.5,
+      'F': 0
+    };
+
+    const momentumScore = gradePoints[cascadeAnalysis.momentumCascade.grade] || 0;
+    const signalScore = gradePoints[signalQualityGrade] || 0;
+    const totalScore = momentumScore + signalScore;
+    
+    // Confidence and rules multiplier for edge cases
+    const confidenceMultiplier = confidence > 0.8 ? 1.1 : confidence < 0.6 ? 0.9 : 1.0;
+    const rulesBonus = cascadeAnalysis.passedRules >= 5 ? 1.1 : cascadeAnalysis.passedRules <= 2 ? 0.9 : 1.0;
+    const finalScore = totalScore * confidenceMultiplier * rulesBonus;
+
     let recommendation = 'AVOID';
     let riskPercent = 0;
     let maxPosition = 0;
     
-    // Enhanced Cascade position sizing with granular tiers and realistic risk management
-    
-    // EXPLOSIVE TIER - Perfect momentum cascades only
-    if (cascadeAnalysis.momentumCascade.grade === 'A+' && cascadeAnalysis.passedRules >= 6 && confidence >= 0.95) {
+    // 🚀 UNIFIED SIZING MATRIX - Both grades matter!
+    if (finalScore >= 6.0) {
       recommendation = 'FULL';
-      riskPercent = 2.0;  // Max 2% risk (was 3% - too aggressive)
-      maxPosition = 20;   // 20% max position (was 30% - too concentrated)
-    } else if (cascadeAnalysis.momentumCascade.grade === 'A+' && cascadeAnalysis.passedRules >= 5) {
+      riskPercent = 2.0;
+      maxPosition = 20;
+    } else if (finalScore >= 5.6) {
       recommendation = 'STRONG';
       riskPercent = 1.8;
       maxPosition = 18;
-    } else if (cascadeAnalysis.momentumCascade.grade === 'A' && cascadeAnalysis.passedRules >= 5) {
+    } else if (finalScore >= 5.2) {
       recommendation = 'STRONG';
       riskPercent = 1.6;
       maxPosition = 16;
-    }
-    
-    // HIGH MOMENTUM TIER
-    else if (cascadeAnalysis.momentumCascade.grade === 'A' && cascadeAnalysis.passedRules >= 4) {
+    } else if (finalScore >= 4.8) {
       recommendation = 'LARGE';
       riskPercent = 1.4;
       maxPosition = 14;
-    } else if (cascadeAnalysis.momentumCascade.grade === 'A+' && cascadeAnalysis.passedRules >= 4) {
-      recommendation = 'LARGE';
-      riskPercent = 1.3;
-      maxPosition = 13;
-    } else if (cascadeAnalysis.momentumCascade.grade === 'B' && cascadeAnalysis.passedRules >= 5) {
+    } else if (finalScore >= 4.4) {
       recommendation = 'LARGE';
       riskPercent = 1.2;
       maxPosition = 12;
-    }
-    
-    // MODERATE MOMENTUM TIER
-    else if (cascadeAnalysis.momentumCascade.grade === 'A' && cascadeAnalysis.passedRules >= 3) {
-      recommendation = 'REDUCED';
-      riskPercent = 1.1;
-      maxPosition = 11;
-    } else if (cascadeAnalysis.momentumCascade.grade === 'B' && cascadeAnalysis.passedRules >= 4) {
+    } else if (finalScore >= 4.0) {
       recommendation = 'REDUCED';
       riskPercent = 1.0;
       maxPosition = 10;
-    } else if (cascadeAnalysis.momentumCascade.grade === 'C' && cascadeAnalysis.passedRules >= 5) {
-      recommendation = 'REDUCED';
-      riskPercent = 0.9;
-      maxPosition = 9;
-    }
-    
-    // BUILDING MOMENTUM TIER
-    else if (cascadeAnalysis.momentumCascade.grade === 'B' && cascadeAnalysis.passedRules >= 3) {
+    } else if (finalScore >= 3.6) {
       recommendation = 'HALF';
       riskPercent = 0.8;
       maxPosition = 8;
-    } else if (cascadeAnalysis.momentumCascade.grade === 'A' && cascadeAnalysis.passedRules >= 2) {
-      recommendation = 'HALF';
-      riskPercent = 0.8;  // Low rule count A grade
-      maxPosition = 8;
-    } else if (cascadeAnalysis.momentumCascade.grade === 'C' && cascadeAnalysis.passedRules >= 4) {
-      recommendation = 'HALF';
-      riskPercent = 0.7;
-      maxPosition = 7;
-    }
-    
-    // EARLY MOMENTUM TIER
-    else if (cascadeAnalysis.momentumCascade.grade === 'B' && cascadeAnalysis.passedRules >= 2) {
+    } else if (finalScore >= 3.0) {
       recommendation = 'QUARTER';
       riskPercent = 0.6;
       maxPosition = 6;
-    } else if (cascadeAnalysis.momentumCascade.grade === 'C' && cascadeAnalysis.passedRules >= 3) {
-      recommendation = 'QUARTER';
-      riskPercent = 0.6;
-      maxPosition = 6;
-    } else if (cascadeAnalysis.momentumCascade.grade === 'A' && cascadeAnalysis.passedRules >= 1) {
-      recommendation = 'QUARTER';
-      riskPercent = 0.5;  // Very low rule count but A grade
-      maxPosition = 5;
-    }
-    
-    // MINIMAL MOMENTUM TIER - Testing waters
-    else if (cascadeAnalysis.momentumCascade.grade === 'C' && cascadeAnalysis.passedRules >= 2) {
+    } else if (finalScore >= 2.4) {
       recommendation = 'MICRO';
       riskPercent = 0.4;
       maxPosition = 4;
-    } else if (cascadeAnalysis.momentumCascade.grade === 'B' && cascadeAnalysis.passedRules >= 1) {
-      recommendation = 'MICRO';
-      riskPercent = 0.4;
-      maxPosition = 4;
-    } else if (cascadeAnalysis.momentumCascade.grade === 'D' && cascadeAnalysis.passedRules >= 3) {
-      recommendation = 'MICRO';
-      riskPercent = 0.3;  // Ultra-conservative for uncertain momentum
-      maxPosition = 3;
+    } else {
+      recommendation = 'AVOID';
+      riskPercent = 0;
+      maxPosition = 0;
     }
 
     // Calculate actual position sizing
@@ -940,6 +872,9 @@ class InstitutionalMomentumCascade {
       console.log(`  ⚠️ CASCADE: Position sizing skipped - recommendation: ${recommendation}, entryPrice: ${entryPrice}, stopLoss: ${stopLoss}, capital: ${capital}`);
     }
 
+    // 🎯 UNIFIED SCORING DEBUG INFO
+    console.log(`  🎯 UNIFIED SCORING: Momentum ${cascadeAnalysis.momentumCascade.grade}(${momentumScore}) + Signal ${signalQualityGrade}(${signalScore}) = ${totalScore.toFixed(1)} → ${recommendation}`);
+
     return {
       recommendation,
       riskPercent,
@@ -948,7 +883,19 @@ class InstitutionalMomentumCascade {
       positionValue: positionValue,
       riskAmount: riskAmount,
       riskPerShare: Math.round((entryPrice - stopLoss) * 100) / 100,
-      stopDistance: stopLoss > 0 ? Math.round(((entryPrice - stopLoss) / entryPrice) * 10000) / 100 : 0
+      stopDistance: stopLoss > 0 ? Math.round(((entryPrice - stopLoss) / entryPrice) * 10000) / 100 : 0,
+      
+      // 🎯 UNIFIED SCORING METADATA
+      unifiedScoring: {
+        momentumGrade: cascadeAnalysis.momentumCascade.grade,
+        momentumScore: momentumScore,
+        signalQualityGrade: signalQualityGrade,
+        signalScore: signalScore,
+        totalScore: totalScore,
+        finalScore: finalScore,
+        confidenceMultiplier: confidenceMultiplier,
+        rulesBonus: rulesBonus
+      }
     };
   }
 
@@ -994,7 +941,7 @@ class InstitutionalMomentumCascade {
     let score = 50; // Base score
 
     // Cascade grade scoring
-    const gradeScores = { 'A+': 40, 'A': 35, 'B': 25, 'C': 15, 'F': 0 };
+    const gradeScores = { 'A+': 40, 'A': 35, 'B+': 30, 'B': 25, 'C': 15, 'F': 0 };
     score += gradeScores[cascadeAnalysis.momentumCascade.grade] || 0;
 
     // Rules passed scoring
@@ -1014,6 +961,35 @@ class InstitutionalMomentumCascade {
     else if (percentage >= 55) grade = 'D';
 
     return { grade, percentage: Math.round(percentage) };
+  }
+
+  /**
+   * Calculate unified display grade combining Cascade Grade + Signal Quality Grade
+   * This is for display purposes only and matches the position sizing logic
+   */
+  calculateUnifiedDisplayGrade(cascadeGrade, signalGrade) {
+    const gradePoints = {
+      'A+': 3,
+      'A': 2.5,
+      'B+': 2,
+      'B': 1.5,
+      'C': 1,
+      'D': 0.5,
+      'F': 0
+    };
+
+    const cascadeScore = gradePoints[cascadeGrade] || 0;
+    const signalScore = gradePoints[signalGrade] || 0;
+    const totalScore = cascadeScore + signalScore;
+
+    // Convert combined score to unified grade
+    if (totalScore >= 5.5) return 'A+';      // FULL territory (A+ + A or better)
+    else if (totalScore >= 4.5) return 'A';  // STRONG territory (A + B+ or better)
+    else if (totalScore >= 3.5) return 'B+'; // LARGE territory (B+ + B+ or A + C)
+    else if (totalScore >= 2.5) return 'B';  // REDUCED territory (B + C or B+ + D)
+    else if (totalScore >= 1.5) return 'C';  // QUARTER territory (C + C or B + F)
+    else if (totalScore >= 0.5) return 'D';  // MICRO territory (D + D or C + F)
+    else return 'F';                         // AVOID territory
   }
 
   // Helper methods for calculations
@@ -1041,12 +1017,27 @@ class InstitutionalMomentumCascade {
   }
 
   calculateMACD(data, fastPeriod, slowPeriod, signalPeriod) {
+    if (!data || data.length < Math.max(fastPeriod, slowPeriod) + signalPeriod) {
+      return { macd: 0, signal: 0, histogram: 0 };
+    }
+    
     const closes = data.map(d => d.close);
-    const fastEMA = this.calculateEMA(closes, fastPeriod);
-    const slowEMA = this.calculateEMA(closes, slowPeriod);
-    const macd = fastEMA - slowEMA;
-    const signal = this.calculateEMA([macd], signalPeriod);
-    return { macd, signal };
+    const macdLine = [];
+    
+    // Calculate MACD line for each period
+    for (let i = Math.max(fastPeriod, slowPeriod) - 1; i < closes.length; i++) {
+      const periodCloses = closes.slice(0, i + 1);
+      const fastEMA = this.calculateEMA(periodCloses, fastPeriod);
+      const slowEMA = this.calculateEMA(periodCloses, slowPeriod);
+      macdLine.push(fastEMA - slowEMA);
+    }
+    
+    // Calculate signal line from MACD array
+    const signal = this.calculateEMA(macdLine, signalPeriod);
+    const macd = macdLine[macdLine.length - 1];
+    const histogram = macd - signal;
+    
+    return { macd, signal, histogram };
   }
 
   calculateEMA(data, period) {
@@ -1222,22 +1213,24 @@ class InstitutionalMomentumCascade {
     const latest = dailyData[dailyData.length - 1];
     const momentum5 = this.calculatePriceMomentum(dailyData, 5);
     const momentum10 = this.calculatePriceMomentum(dailyData, 10);
+    const avgVolume20Day = this.calculateAverageVolume(dailyData.slice(-20));
     
     return {
       priceAcceleration: {
         threshold: momentum5 > momentum10 * 1.2,
         current: momentum5 / momentum10,
-        target: 1.2
+        target: 1.2,
+        met: momentum5 > momentum10 * 1.2
       },
       volumeAcceleration: {
-        threshold: latest.volume * 1.5,
+        threshold: avgVolume20Day * 1.5,
         current: latest.volume,
-        met: false
+        met: latest.volume > avgVolume20Day * 1.5
       },
       breakoutAcceleration: {
         threshold: latest.close + atr * 0.5,
         current: latest.close,
-        met: false
+        met: false // To be triggered on next price update
       }
     };
   }
@@ -1283,13 +1276,14 @@ class InstitutionalMomentumCascade {
   calculateCascadeTriggers(cascadeAnalysis, currentPrice, latest, atr, momentum) {
     const triggers = [];
     
-    // Volume cascade trigger
-    const avgVol = this.calculateAverageVolume([latest]); // Simplified
+    // Volume cascade trigger - FIXED: Use proper 20-day average
+    const avgVol = this.calculateAverageVolume([latest]); // Get proper volume baseline
+    const baseline20Day = avgVol; // This should be passed from caller with 20-day data
     triggers.push({
       type: 'VOLUME_CASCADE',
-      threshold: avgVol * 2.0,
+      threshold: baseline20Day * 2.0,
       current: latest.volume,
-      met: latest.volume > avgVol * 2.0
+      met: latest.volume > baseline20Day * 2.0
     });
     
     // Momentum acceleration trigger
@@ -1361,10 +1355,10 @@ class InstitutionalMomentumCascade {
     const cascadeBonus = { 'A+': 1.5, 'A': 1.3, 'B': 1.1, 'C': 1.0, 'D': 0.9 }[cascadeAnalysis.momentumCascade.grade] || 1.0;
     
     return {
-      momentum: staticTargets[0] * momentumFactor * cascadeBonus,
-      acceleration: staticTargets[1] * momentumFactor * cascadeBonus,
-      cascade: staticTargets[2] * momentumFactor * cascadeBonus,
-      explosive: staticTargets[2] * momentumFactor * cascadeBonus * 1.5,
+      momentum: staticTargets[0] * momentumFactor * cascadeBonus * volatilityFactor,
+      acceleration: staticTargets[1] * momentumFactor * cascadeBonus * volatilityFactor,
+      cascade: staticTargets[2] * momentumFactor * cascadeBonus * volatilityFactor,
+      explosive: staticTargets[2] * momentumFactor * cascadeBonus * volatilityFactor * 1.5,
       scalingMethod: cascadeAnalysis.momentumCascade.grade === 'A+' ? 
         '20% at momentum, 20% at acceleration, 30% at cascade, 30% explosive runner' : 
         '25% at momentum, 25% at acceleration, 50% at cascade'

@@ -8,6 +8,7 @@
 const MinerviniTemplateAdvanced = require('../systems/minervini-template-advanced');
 const InstitutionalMomentumCascade = require('../systems/institutional-momentum-cascade');
 const { getSimpleTechnicalData } = require('../utils/simpleTechnicalDataFetcher');
+const CapitalManager = require('../utils/capitalManager');
 
 class TradingSystemController {
   constructor() {
@@ -291,8 +292,7 @@ class TradingSystemController {
     console.log(`  🗳️  SIMPLE VOTE: Minervini=${minervini.decision}(${Math.round(minervini.confidence * 100)}%), Momentum=${momentum.decision}(${Math.round(momentum.confidence * 100)}%)`);
 
     // Both systems agree on BUY
-    if ((minervini.decision === 'BUY' || minervini.decision === 'STRONG_BUY') && 
-        (momentum.decision === 'BUY' || momentum.decision === 'STRONG_BUY')) {
+    if (minervini.decision === 'BUY' && momentum.decision === 'BUY') {
       return {
         action: 'BUY',
         confidence: Math.min(0.95, (minervini.confidence + momentum.confidence) / 2 + 0.10),
@@ -300,33 +300,30 @@ class TradingSystemController {
       };
     }
 
-    // Both systems agree on SELL/AVOID  
-    if ((minervini.decision === 'SELL' || minervini.decision === 'AVOID') && 
-        (momentum.decision === 'SELL' || momentum.decision === 'AVOID')) {
-      
-      // If both are AVOID (no entry signal), return AVOID  
-      if (minervini.decision === 'AVOID' && momentum.decision === 'AVOID') {
-        return {
-          action: 'AVOID',
-          confidence: Math.min(0.70, (minervini.confidence + momentum.confidence) / 2),
-          reasoning: 'Both systems avoid entry - no signal to buy'
-        };
-      }
-      
-      // If one or both are SELL (exit position), return SELL
+    // Both systems agree on AVOID
+    if (minervini.decision === 'AVOID' && momentum.decision === 'AVOID') {
       return {
-        action: 'SELL',
-        confidence: Math.min(0.90, (minervini.confidence + momentum.confidence) / 2 + 0.05),
-        reasoning: 'Both systems bearish - exit position'
+        action: 'AVOID',
+        confidence: Math.min(0.70, (minervini.confidence + momentum.confidence) / 2),
+        reasoning: 'Both systems avoid entry - no signal to buy'
       };
     }
 
-    // One BUY, one HOLD/WATCH - moderate bullish
-    if (((minervini.decision === 'BUY' || minervini.decision === 'STRONG_BUY') && 
-         (momentum.decision === 'HOLD' || momentum.decision === 'WATCH')) ||
-        ((minervini.decision === 'HOLD' || minervini.decision === 'WATCH') && 
-         (momentum.decision === 'BUY' || momentum.decision === 'STRONG_BUY'))) {
-      const buySystem = (minervini.decision === 'BUY' || minervini.decision === 'STRONG_BUY') ? minervini : momentum;
+    // One BUY, one HOLD/WATCH - check confidence levels
+    if ((minervini.decision === 'BUY' && (momentum.decision === 'HOLD'|| momentum.decision === 'WATCH')) ||
+        ((minervini.decision === 'HOLD' || minervini.decision === 'WATCH') && momentum.decision === 'BUY')) {
+      const buySystem = minervini.decision === 'BUY' ? minervini : momentum;
+      
+      // 🎯 IMPROVED: If BUY system has high confidence (>70%), honor the BUY signal
+      if (buySystem.confidence >= 0.70) {
+        return {
+          action: 'BUY',
+          confidence: Math.min(0.85, buySystem.confidence),
+          reasoning: `Strong ${buySystem.systemId === 'minervini_template_advanced' ? 'Template' : 'Momentum'} BUY signal (${Math.round(buySystem.confidence * 100)}%) with supporting system confirmation`
+        };
+      }
+      
+      // 🎯 CONSERVATIVE: Lower confidence BUY signals with mixed systems → WATCH
       return {
         action: 'WATCH',
         confidence: Math.min(0.75, buySystem.confidence),
@@ -391,31 +388,29 @@ class TradingSystemController {
     // 🚀 OPTIMIZED: Identify winning system and use its execution data directly
     const winningSystem = this.identifyWinningSystem(systemResults, unifiedDecision);
     let execution = {};
-    let riskReward = {};
 
     if (winningSystem && (unifiedAction === 'BUY' || unifiedAction === 'SELL' || unifiedAction === 'WATCH')) {
       // ✅ FIXED: Safe access with null checks
       execution = winningSystem.execution || {};
-      riskReward = winningSystem.riskReward || {};
+      
       console.log(`🎯 Using winning system: ${winningSystem.systemId} for ${unifiedAction}`);
     } else if (winningSystem) {
       // ✅ FIXED: Safe fallback when winningSystem exists but action doesn't match
       execution = winningSystem.execution || {};
-      riskReward = winningSystem.riskReward || {};
+      
       console.log(`⚠️ Using winning system: ${winningSystem.systemId} as fallback for ${unifiedAction}`);
     } else {
       // ✅ FIXED: Safe fallback when no winning system found
       console.log(`⚠️ No winning system found for ${symbol}, using default execution/riskReward`);
       execution = null;
-      riskReward = null;
     }
 
     // 🎯 SIMPLIFIED: Extract grade with clear hierarchy and single log
     let grade = this.getGrade(unifiedConfidence); // Fallback
     
     // Check in order of preference: signalQuality > system-specific grades
-    if (winningSystem?.signalQuality?.grade) {
-      grade = winningSystem.signalQuality.grade;
+    if (winningSystem?.grade) {
+      grade = winningSystem.grade;
     } else if (winningSystem?.templateAnalysis?.templateGrade) {
       grade = winningSystem.templateAnalysis.templateGrade;
     } else if (winningSystem?.cascadeAnalysis?.momentumCascade?.grade) {
@@ -442,8 +437,7 @@ class TradingSystemController {
       },
 
       execution: execution,
-      riskReward: riskReward
-
+      systems: systemResults,
       // 🚨 DELETED: systems object - eliminated redundancy and confusion
     };
   }

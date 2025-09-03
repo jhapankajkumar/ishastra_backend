@@ -247,6 +247,73 @@ export class CapitalManager {
     }
   }
 
+   /**
+   * Reset total capital for a currency (admin function)
+   * @param currency - 'USD' or 'INR'
+   * @param newTotal - New total amount
+   * @param adjustRemaining - Whether to adjust remaining proportionally
+   * @returns Updated capital object
+   */
+  static async resetCapital(
+    currency: string, 
+    newTotal: number, 
+    adjustRemaining: boolean = false
+  ): Promise<Capital> {
+    try {
+      const upperCurrency: string = currency.toUpperCase();
+      
+      // Validate input
+      if (!newTotal || newTotal <= 0) {
+        throw new Error('New total must be greater than 0');
+      }
+
+      // Get current capital
+      const currentCapital: Capital | null = await this.getCapital(upperCurrency);
+      if (!currentCapital) {
+        throw new Error(`Capital record not found for currency: ${upperCurrency}`);
+      }
+
+      let newRemaining: number = newTotal; // Default: all capital is available
+
+      if (adjustRemaining && currentCapital.total > 0) {
+        // Maintain the same ratio of used capital
+        const usedRatio: number = (currentCapital.total - currentCapital.remaining) / currentCapital.total;
+        newRemaining = newTotal * (1 - usedRatio);
+      }
+
+      console.log(`🔄 Resetting ${upperCurrency} capital. New Total: ${newTotal}, Adjust Remaining: ${adjustRemaining}, New Remaining: ${newRemaining}`);
+      
+      // Update capital
+      const updatedCapital = await prisma.capital.update({
+        where: { currency: upperCurrency },
+        data: { 
+          total: newTotal,
+          remaining: Math.max(0, newRemaining), // Ensure remaining is not negative
+          updatedAt: new Date()
+        }
+      });
+
+      //console.log(`✅ Reset capital for ${upperCurrency}. Total: ${updatedCapital.total}, Remaining: ${updatedCapital.remaining}`);
+      return updatedCapital;
+    } catch (error) {
+      console.error(`Error resetting capital for ${currency}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Calculate trade amount for capital allocation
+   * @param price - Price per share/unit
+   * @param quantity - Number of shares/units
+   * @returns Total trade amount
+   */
+  static calculateTradeAmount(price: number, quantity: number): number {
+    if (!price || !quantity || price <= 0 || quantity <= 0) {
+      throw new Error('Price and quantity must be greater than 0');
+    }
+    return parseFloat((price * quantity).toFixed(2));
+  }
+
   /**
    * Initialize capital records if they don't exist
    * @param initialCapitals - Array of {currency, total} objects
@@ -286,3 +353,4 @@ export default CapitalManager;
 // CommonJS compatibility
 module.exports = CapitalManager;
 module.exports.default = CapitalManager;
+

@@ -13,7 +13,7 @@
 
 // Current active configuration
 // 🎯 ACTIVE CONFIGURATION - Change this one line to transform the entire system!
-const ACTIVE_CONFIG = 'SELECTIVE';  // Switched back from ULTRA_SELECTIVE - better for current market
+const ACTIVE_CONFIG = 'RELAXED';  // Testing RELAXED for BUY signals
 
 const THRESHOLD_CONFIGS = {
   
@@ -24,6 +24,8 @@ const THRESHOLD_CONFIGS = {
     
     minervini_template_advanced: {
       // Criteria thresholds
+      criterion4_high_proximity_threshold: 0.20,  // 20% from 52-week high (ultra-selective)
+      criterion5_low_distance_threshold: 0.35,    // 35% above 52-week low (ultra-selective)
       criterion6_relative_strength: 75,     // Was 50 (relaxed), now 75 (ultra-elite)
       criterion7_volume_multiplier: 1.8,    // Was 1.1 (relaxed), now 1.8 (exceptional)
       criterion8_fundamental_score: 70,     // Was 40 (relaxed), now 70 (top-tier)
@@ -73,6 +75,8 @@ const THRESHOLD_CONFIGS = {
     
     minervini_template_advanced: {
       // Slightly relaxed from ultra-selective
+      criterion4_high_proximity_threshold: 0.25,  // 25% from 52-week high (standard Minervini)
+      criterion5_low_distance_threshold: 0.30,    // 30% above 52-week low (standard Minervini)
       criterion6_relative_strength: 65,     // Relaxed from 75 to 65
       criterion7_volume_multiplier: 1.5,    // Relaxed from 1.8 to 1.5
       criterion8_fundamental_score: 60,     // Relaxed from 70 to 60
@@ -122,6 +126,8 @@ const THRESHOLD_CONFIGS = {
     
     minervini_template_advanced: {
       // Original relaxed thresholds
+      criterion4_high_proximity_threshold: 0.30,  // 30% from 52-week high (relaxed)
+      criterion5_low_distance_threshold: 0.25,    // 25% above 52-week low (relaxed)
       criterion6_relative_strength: 50,     // Original relaxed value
       criterion7_volume_multiplier: 1.1,    // Original relaxed value
       criterion8_fundamental_score: 40,     // Original relaxed value
