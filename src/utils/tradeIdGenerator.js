@@ -1,20 +1,21 @@
-import { PrismaClient } from '@prisma/client';
+const { PrismaClient } = require('@prisma/client');
 
 const prisma = new PrismaClient();
 
 // Trade ID Generation Utility
-export class TradeIdGenerator {
+class TradeIdGenerator {
   
   /**
    * Generate a professional trade ID in format: ISH-YYYY-NNNNNN
    * Example: ISH-2025-000001, ISH-2025-000002
+   * @returns {Promise<string>}
    */
-  static async generateTradeId(): Promise<string> {
+  static async generateTradeId() {
     const year = new Date().getFullYear();
     const prefix = `ISH-${year}-`;
     
     // Helper to generate a random 5-character alphanumeric hash
-    function randomHash(length: number = 5): string {
+    function randomHash(length = 5) {
       return Math.random().toString(36).substring(2, 2 + length).toUpperCase();
     }
     
@@ -46,8 +47,9 @@ export class TradeIdGenerator {
   /**
    * Generate UUID-style trade ID (more modern approach)
    * Example: TRD_clkv123abc_2025
+   * @returns {string}
    */
-  static generateUuidTradeId(): string {
+  static generateUuidTradeId() {
     const year = new Date().getFullYear();
     const timestamp = Date.now().toString(36); // Base36 encoding
     const random = Math.random().toString(36).substring(2, 8); // 6 random chars
@@ -58,8 +60,9 @@ export class TradeIdGenerator {
   /**
    * Generate short professional ID
    * Example: T25-001234
+   * @returns {Promise<string>}
    */
-  static async generateShortTradeId(): Promise<string> {
+  static async generateShortTradeId() {
     const year = String(new Date().getFullYear()).slice(-2); // Last 2 digits of year
     
     try {
@@ -74,8 +77,4 @@ export class TradeIdGenerator {
   }
 }
 
-export default TradeIdGenerator;
-
-// CommonJS compatibility
 module.exports = TradeIdGenerator;
-module.exports.default = TradeIdGenerator;

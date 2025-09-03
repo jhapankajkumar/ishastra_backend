@@ -1,48 +1,19 @@
-import { PrismaClient } from '@prisma/client';
+const { PrismaClient } = require('@prisma/client');
 
 const prisma = new PrismaClient();
-
-export interface Capital {
-  id?: string;
-  currency: string;
-  total: number;
-  remaining: number;
-  createdAt?: Date;
-  updatedAt?: Date;
-}
-
-export interface CapitalSummaryItem {
-  currency: string;
-  total: number;
-  remaining: number;
-  allocated: number;
-  utilizationRate: number;
-  updatedAt?: Date;
-}
-
-export interface CapitalSummaryResponse {
-  success: boolean;
-  data: CapitalSummaryItem[];
-  timestamp: Date;
-}
-
-export interface InitialCapital {
-  currency: string;
-  total: number;
-}
 
 /**
  * Capital Management Utility for USD and INR currencies
  * Handles allocation and release of capital for trades and investments
  */
-export class CapitalManager {
+class CapitalManager {
   
   /**
    * Get current capital information for a specific currency
-   * @param currency - 'USD' or 'INR'
-   * @returns Capital object or null if not found
+   * @param {string} currency - 'USD' or 'INR'
+   * @returns {Promise<Object|null>} Capital object or null if not found
    */
-  static async getCapital(currency: string): Promise<Capital | null> {
+  static async getCapital(currency) {
     try {
       const capital = await prisma.capital.findUnique({
         where: { currency: currency.toUpperCase() }
@@ -56,9 +27,9 @@ export class CapitalManager {
 
   /**
    * Get capital information for all currencies
-   * @returns Array of capital objects
+   * @returns {Promise<Array>} Array of capital objects
    */
-  static async getAllCapital(): Promise<Capital[]> {
+  static async getAllCapital() {
     try {
       const capitals = await prisma.capital.findMany({
         orderBy: { currency: 'asc' }
@@ -72,11 +43,11 @@ export class CapitalManager {
 
   /**
    * Allocate capital when opening a trade or investment
-   * @param currency - 'USD' or 'INR'
-   * @param amount - Amount to allocate
-   * @returns Updated capital object
+   * @param {string} currency - 'USD' or 'INR'
+   * @param {number} amount - Amount to allocate
+   * @returns {Promise<Object>} Updated capital object
    */
-  static async allocateCapital(currency: string, amount: number): Promise<Capital> {
+  static async allocateCapital(currency, amount) {
     try {
       const upperCurrency = currency.toUpperCase();
       
@@ -117,11 +88,11 @@ export class CapitalManager {
 
   /**
    * Release capital when closing a trade or investment
-   * @param currency - 'USD' or 'INR'
-   * @param amount - Amount to release
-   * @returns Updated capital object
+   * @param {string} currency - 'USD' or 'INR'
+   * @param {number} amount - Amount to release
+   * @returns {Promise<Object>} Updated capital object
    */
-  static async releaseCapital(currency: string, amount: number): Promise<Capital> {
+  static async releaseCapital(currency, amount) {
     try {
       const upperCurrency = currency.toUpperCase();
       
@@ -155,11 +126,11 @@ export class CapitalManager {
 
   /**
    * Update total capital for a currency
-   * @param currency - 'USD' or 'INR'
-   * @param newTotal - New total amount
-   * @returns Updated capital object
+   * @param {string} currency - 'USD' or 'INR'
+   * @param {number} newTotal - New total amount
+   * @returns {Promise<Object>} Updated capital object
    */
-  static async updateTotalCapital(currency: string, newTotal: number): Promise<Capital> {
+  static async updateTotalCapital(currency, newTotal) {
     try {
       const upperCurrency = currency.toUpperCase();
       
@@ -198,13 +169,13 @@ export class CapitalManager {
 
   /**
    * Get capital utilization summary
-   * @returns Summary of capital usage across all currencies
+   * @returns {Promise<Object>} Summary of capital usage across all currencies
    */
-  static async getCapitalSummary(): Promise<CapitalSummaryResponse> {
+  static async getCapitalSummary() {
     try {
       const capitals = await this.getAllCapital();
       
-      const summary: CapitalSummaryItem[] = capitals.map(capital => {
+      const summary = capitals.map(capital => {
         const allocated = capital.total - capital.remaining;
         const utilizationRate = capital.total > 0 ? (allocated / capital.total) * 100 : 0;
         
@@ -231,11 +202,11 @@ export class CapitalManager {
 
   /**
    * Check if sufficient capital is available for a trade
-   * @param currency - 'USD' or 'INR'
-   * @param amount - Required amount
-   * @returns True if sufficient capital is available
+   * @param {string} currency - 'USD' or 'INR'
+   * @param {number} amount - Required amount
+   * @returns {Promise<boolean>} True if sufficient capital is available
    */
-  static async hasSufficientCapital(currency: string, amount: number): Promise<boolean> {
+  static async hasSufficientCapital(currency, amount) {
     try {
       const capital = await this.getCapital(currency);
       if (!capital) return false;
@@ -249,18 +220,14 @@ export class CapitalManager {
 
    /**
    * Reset total capital for a currency (admin function)
-   * @param currency - 'USD' or 'INR'
-   * @param newTotal - New total amount
-   * @param adjustRemaining - Whether to adjust remaining proportionally
-   * @returns Updated capital object
+   * @param {string} currency - 'USD' or 'INR'
+   * @param {number} newTotal - New total amount
+   * @param {boolean} adjustRemaining - Whether to adjust remaining proportionally
+   * @returns {Promise<Object>} Updated capital object
    */
-  static async resetCapital(
-    currency: string, 
-    newTotal: number, 
-    adjustRemaining: boolean = false
-  ): Promise<Capital> {
+  static async resetCapital(currency, newTotal, adjustRemaining = false) {
     try {
-      const upperCurrency: string = currency.toUpperCase();
+      const upperCurrency = currency.toUpperCase();
       
       // Validate input
       if (!newTotal || newTotal <= 0) {
@@ -268,16 +235,16 @@ export class CapitalManager {
       }
 
       // Get current capital
-      const currentCapital: Capital | null = await this.getCapital(upperCurrency);
+      const currentCapital = await this.getCapital(upperCurrency);
       if (!currentCapital) {
         throw new Error(`Capital record not found for currency: ${upperCurrency}`);
       }
 
-      let newRemaining: number = newTotal; // Default: all capital is available
+      let newRemaining = newTotal; // Default: all capital is available
 
       if (adjustRemaining && currentCapital.total > 0) {
         // Maintain the same ratio of used capital
-        const usedRatio: number = (currentCapital.total - currentCapital.remaining) / currentCapital.total;
+        const usedRatio = (currentCapital.total - currentCapital.remaining) / currentCapital.total;
         newRemaining = newTotal * (1 - usedRatio);
       }
 
@@ -303,11 +270,11 @@ export class CapitalManager {
 
   /**
    * Calculate trade amount for capital allocation
-   * @param price - Price per share/unit
-   * @param quantity - Number of shares/units
-   * @returns Total trade amount
+   * @param {number} price - Price per share/unit
+   * @param {number} quantity - Number of shares/units
+   * @returns {number} Total trade amount
    */
-  static calculateTradeAmount(price: number, quantity: number): number {
+  static calculateTradeAmount(price, quantity) {
     if (!price || !quantity || price <= 0 || quantity <= 0) {
       throw new Error('Price and quantity must be greater than 0');
     }
@@ -316,9 +283,9 @@ export class CapitalManager {
 
   /**
    * Initialize capital records if they don't exist
-   * @param initialCapitals - Array of {currency, total} objects
+   * @param {Array} initialCapitals - Array of {currency, total} objects
    */
-  static async initializeCapital(initialCapitals: InitialCapital[] = []): Promise<void> {
+  static async initializeCapital(initialCapitals = []) {
     try {
       const defaultCapitals = initialCapitals.length > 0 ? initialCapitals : [
         { currency: 'USD', total: 20000 },
@@ -348,9 +315,4 @@ export class CapitalManager {
   }
 }
 
-export default CapitalManager;
-
-// CommonJS compatibility
 module.exports = CapitalManager;
-module.exports.default = CapitalManager;
-
