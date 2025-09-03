@@ -39,6 +39,29 @@ export const WATCHLIST_FILTERS = {
 
 export type WatchlistFilterType = typeof WATCHLIST_FILTERS[keyof typeof WATCHLIST_FILTERS];
 
+/**
+ * Trading System Trigger Types
+ * Consolidated trigger types used across all trading systems
+ */
+export const TRIGGER_TYPES = {
+  // Volume triggers
+  VOLUME: 'VOLUME',
+  
+  // Price action triggers  
+  BREAKOUT_LEVEL: 'BREAKOUT_LEVEL',
+  CANDLE_STRENGTH: 'CANDLE_STRENGTH',
+  
+  // Momentum triggers
+  MOMENTUM_ACCELERATION: 'MOMENTUM_ACCELERATION',
+  
+  // System grade triggers
+  CASCADE_GRADE: 'CASCADE_GRADE'
+} as const;
+
+export type TriggerType = typeof TRIGGER_TYPES[keyof typeof TRIGGER_TYPES];
+
+export const VALID_TRIGGER_TYPES = Object.values(TRIGGER_TYPES);
+
 export const defaultLookBackPeriod = 100;
 
 /**
@@ -365,6 +388,8 @@ module.exports = {
   SYSTEM_IDS,
   SYSTEM_TIERS,
   WATCHLIST_FILTERS,
+  TRIGGER_TYPES,
+  VALID_TRIGGER_TYPES,
   defaultLookBackPeriod,
   normalizeSystemKey,
   requiresWeeklyData,

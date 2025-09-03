@@ -7,7 +7,8 @@
  */
 
 const { PrismaClient } = require('@prisma/client');
-const EmailAlertService = require('./EmailAlertService');
+const EmailAlertService = require('./emailAlertService');
+const { TRIGGER_TYPES } = require('../utils/systemConstants');
 const prisma = new PrismaClient();
 
 class EntryTriggerService {
@@ -35,20 +36,40 @@ class EntryTriggerService {
 
         if (watchlistStocks.length === 0) {
             console.log('📋 No BUY signals in watchlist to monitor');
-            return;
+            return {
+                monitored: 0,
+                triggered: 0,
+                alerts: []
+            };
         }
 
         console.log(`📊 Monitoring ${watchlistStocks.length} BUY signals for entry triggers`);
 
+        let triggeredCount = 0;
+        const alertsSent = [];
+
         for (const stock of watchlistStocks) {
             try {
-                await this.checkStockEntryTriggers(stock);
+                const result = await this.checkStockEntryTriggers(stock);
+                if (result?.triggered) {
+                    triggeredCount++;
+                    alertsSent.push({
+                        symbol: stock.symbol,
+                        triggers: result.newlyMetTriggers.length,
+                        price: result.currentPrice
+                    });
+                }
             } catch (error) {
                 console.error(`❌ Error checking triggers for ${stock.symbol}:`, error.message);
             }
         }
 
         console.log('✅ ENTRY TRIGGER CHECK COMPLETE');
+        return {
+            monitored: watchlistStocks.length,
+            triggered: triggeredCount,
+            alerts: alertsSent
+        };
     }
 
     /**
@@ -83,7 +104,18 @@ class EntryTriggerService {
 
         if (newlyMetTriggers.length > 0) {
             await this.sendEntryTriggerAlert(stock, currentAnalysis, newlyMetTriggers);
+            return {
+                triggered: true,
+                newlyMetTriggers,
+                currentPrice: currentAnalysis.currentPrice
+            };
         }
+
+        return {
+            triggered: false,
+            newlyMetTriggers: [],
+            currentPrice: currentAnalysis.currentPrice
+        };
     }
 
     /**
@@ -151,9 +183,20 @@ class EntryTriggerService {
                 return;
             }
 
-            const triggerDetails = newlyMetTriggers.map(trigger => 
-                `• ${trigger.type}: ${trigger.current} (threshold: ${trigger.threshold}) ✅`
-            ).join('\n');
+            // Format newly met triggers
+            const newlyMetTriggerDetails = newlyMetTriggers.map(trigger => 
+                `• ${trigger.type}: ${this.formatTriggerValue(trigger)} ✅ NEW`
+            );
+
+            // Format ALL trigger conditions (both met and unmet) for complete overview
+            const allTriggerDetails = currentAnalysis.execution.entryStrategy.triggerConditions.map(trigger => {
+                const status = trigger.met ? '✅' : '❌';
+                const isNew = newlyMetTriggers.some(newTrigger => 
+                    newTrigger.type === trigger.type && newTrigger.current === trigger.current
+                );
+                const newLabel = isNew ? ' NEW' : '';
+                return `• ${trigger.type}: ${this.formatTriggerValue(trigger)} ${status}${newLabel}`;
+            });
 
             const totalMetTriggers = currentAnalysis.execution.entryStrategy.triggerConditions.filter(t => t.met).length;
             const totalTriggers = currentAnalysis.execution.entryStrategy.triggerConditions.length;
@@ -168,8 +211,10 @@ class EntryTriggerService {
                 grade: decision?.grade || 'N/A',
                 message: `Entry triggers activated for ${stock.symbol}`,
                 details: {
-                    newlyMetTriggers: triggerDetails,
+                    newlyMetTriggers: newlyMetTriggerDetails,
+                    allTriggers: allTriggerDetails,
                     totalProgress: `${totalMetTriggers}/${totalTriggers} triggers met`,
+                    newlyActivated: `${newlyMetTriggers.length} new trigger(s) activated`,
                     entryZone: currentAnalysis.execution?.entryStrategy?.entryZone || {},
                     stopLoss: currentAnalysis.execution?.exitStrategy?.stopLoss?.initial || 'N/A'
                 }
@@ -180,6 +225,39 @@ class EntryTriggerService {
 
         } catch (error) {
             console.error(`❌ Error sending entry trigger alert for ${stock.symbol}:`, error.message);
+        }
+    }
+
+    /**
+     * Format trigger value based on type for better readability
+     * ONLY handles trigger types that actually exist in the trading systems
+     */
+    formatTriggerValue(trigger) {
+        const { type, current, threshold } = trigger;
+        
+        switch (type) {
+            // Volume trigger (unified for all systems)
+            case TRIGGER_TYPES.VOLUME:
+                return `${current.toLocaleString()} (threshold: ${threshold.toLocaleString()})`;
+            
+            // Price breakout trigger (unified for all systems)
+            case TRIGGER_TYPES.BREAKOUT_LEVEL:
+                return `₹${current.toFixed(2)} (threshold: ₹${threshold.toFixed(2)})`;
+            
+            // Candle strength trigger
+            case TRIGGER_TYPES.CANDLE_STRENGTH:
+                return `${(current * 100).toFixed(1)}% (threshold: ${(threshold * 100).toFixed(1)}%)`;
+            
+            // Momentum acceleration trigger
+            case TRIGGER_TYPES.MOMENTUM_ACCELERATION:
+                return `${(current * 100).toFixed(2)}% (threshold: ${(threshold * 100).toFixed(2)}%)`;
+                
+            // System grade trigger
+            case TRIGGER_TYPES.CASCADE_GRADE:
+                return `${current} (threshold: ${threshold})`;
+            
+            default:
+                return `${current} (threshold: ${threshold})`;
         }
     }
 }

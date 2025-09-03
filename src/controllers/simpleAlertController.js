@@ -1,15 +1,19 @@
 /**
  * 📊 BRUTALLY SIMPLE POSITION ALERTS - NO BULLSHIT
  * 
- * ONE JOB: Check open positions and alert on big moves
+ * TWO JOBS: 
+ * 1. Check open positions and alert on big moves
+ * 2. Check watchlist for entry triggers
  * NO AI. NO COMPLEX ANALYSIS. JUST PRICE-BASED ALERTS.
  */
 
 const { PrismaClient } = require('@prisma/client');
+const EntryTriggerService = require('../services/EntryTriggerService');
 
 class SimpleAlertController {
     constructor() {
         this.db = new PrismaClient();
+        this.entryTriggerService = new EntryTriggerService();
     }
     
     /**
@@ -222,56 +226,73 @@ class SimpleAlertController {
     }
 
     /**
-     * 📊 GET POSITION SUMMARY - QUICK OVERVIEW
+     * 🎯 GET WATCHLIST ENTRY ALERTS - CONTROLLER METHOD
+     * Checks watchlist stocks for entry trigger conditions
      */
-    async getPositionSummary() {
+    async getWatchlistAlerts() {
         try {
-            const openTrades = await this.db.trade.findMany({
-                where: { status: { in: ['Open', 'Partial Closed'] } },
-                select: { 
-                    ticker: true, 
-                    quantity: true,
-                    entryPrice: true,
-                    currentPrice: true,
-                    analysis: true
-                }
-            });
+            console.log('🎯 Getting watchlist entry alerts...');
             
-            if (openTrades.length === 0) {
-                return { totalPositions: 0, totalValue: 0, totalPnL: 0 };
-            }
+            // Check entry triggers for all watchlist stocks
+            const entryTriggers = await this.entryTriggerService.checkEntryTriggers();
             
-            let totalValue = 0;
-            let totalPnL = 0;
-            let winners = 0;
-            let losers = 0;
-            
-            for (const trade of openTrades) {
-                const currentPrice = trade.currentPrice || trade.entryPrice;
-                const positionValue = currentPrice * trade.quantity;
-                const pnl = (currentPrice - trade.entryPrice) * trade.quantity;
-                
-                totalValue += positionValue;
-                totalPnL += pnl;
-                
-                if (pnl > 0) winners++;
-                else if (pnl < 0) losers++;
-            }
-            
-            return {
-                totalPositions: openTrades.length,
-                totalValue: Math.round(totalValue),
-                totalPnL: Math.round(totalPnL),
-                winners: winners,
-                losers: losers,
-                winRate: openTrades.length > 0 ? Math.round((winners / openTrades.length) * 100) : 0
+            // Count different types of triggers based on actual EntryTriggerService response
+            const triggerCounts = {
+                immediate: entryTriggers.triggered || 0,
+                near: 0, // Not implemented yet
+                waiting: (entryTriggers.monitored || 0) - (entryTriggers.triggered || 0),
+                total: entryTriggers.monitored || 0
             };
-            
+
+            // Format alerts for API response (DO NOT SEND EMAILS)
+            const alerts = [];
+            if (entryTriggers.alerts && entryTriggers.alerts.length > 0) {
+                entryTriggers.alerts.forEach(alertData => {
+                    alerts.push({
+                        symbol: alertData.symbol,
+                        type: 'ENTRY_TRIGGER',
+                        message: `Entry conditions met: ${alertData.triggers} trigger(s) activated`,
+                        priority: 'HIGH',
+                        currentPrice: alertData.price,
+                        triggersCount: alertData.triggers,
+                        timestamp: new Date(),
+                        note: 'Detailed email already sent by cron job'
+                    });
+                });
+            }
+
+            console.log('✅ Watchlist entry check completed:', {
+                monitored: triggerCounts.total,
+                triggered: triggerCounts.immediate,
+                waiting: triggerCounts.waiting
+            });
+
+            return {
+                success: true,
+                alertType: 'WATCHLIST_ENTRY_TRIGGERS',
+                triggerCounts,
+                alerts,
+                rawData: entryTriggers, // Include raw data for debugging
+                message: triggerCounts.immediate > 0 ? 
+                    `${triggerCounts.immediate} immediate entry signal(s) found!` :
+                    triggerCounts.total > 0 ?
+                    `${triggerCounts.waiting} stock(s) monitored, no triggers yet` :
+                    'No stocks being monitored',
+                timestamp: new Date().toISOString()
+            };
+
         } catch (error) {
-            console.error('❌ Error getting position summary:', error);
-            return { error: error.message };
+            console.error('❌ Error getting watchlist alerts:', error);
+            return {
+                success: false,
+                error: error.message,
+                alerts: [],
+                triggerCounts: { immediate: 0, near: 0, waiting: 0, total: 0 },
+                timestamp: new Date().toISOString()
+            };
         }
     }
+
 }
 
 module.exports = SimpleAlertController;

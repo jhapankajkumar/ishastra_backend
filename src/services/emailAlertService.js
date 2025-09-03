@@ -6,26 +6,71 @@
  * - Profit targets reached (HIGH)
  * - Position alerts (MEDIUM/LOW)
  * 
- * ZERO COMPLEXITY - JUST WORKS
+ * SUPPORTS: Mailgun, Gmail, Outlook, Custom SMTP
  */
 
 const nodemailer = require('nodemailer');
+const formData = require('form-data');
+const Mailgun = require('mailgun.js');
 
 class EmailAlertService {
     constructor() {
         this.transporter = null;
+        this.mailgun = null;
         this.isConfigured = false;
-        this.setupTransporter();
+        this.setupEmailService();
     }
 
     /**
-     * Setup email transporter with multiple provider support
+     * Setup email service with multiple provider support
      */
-    setupTransporter() {
+    setupEmailService() {
         try {
-            // Support multiple email providers
             const emailProvider = process.env.EMAIL_PROVIDER || 'gmail';
             
+            if (emailProvider === 'mailgun') {
+                this.setupMailgun();
+            } else {
+                this.setupNodemailer(emailProvider);
+            }
+
+        } catch (error) {
+            console.error('❌ Failed to setup email service:', error);
+            this.isConfigured = false;
+        }
+    }
+
+    /**
+     * Setup Mailgun service
+     */
+    setupMailgun() {
+        try {
+            if (!process.env.MAILGUN_API_KEY || !process.env.MAILGUN_DOMAIN) {
+                console.log('⚠️  Mailgun not configured - missing API key or domain');
+                return;
+            }
+
+            const mailgun = new Mailgun(formData);
+            this.mailgun = mailgun.client({
+                username: 'api',
+                key: process.env.MAILGUN_API_KEY,
+                url: 'https://api.mailgun.net' // or https://api.eu.mailgun.net for EU
+            });
+
+            this.isConfigured = true;
+            console.log('📧 Mailgun email service configured successfully');
+
+        } catch (error) {
+            console.error('❌ Failed to setup Mailgun:', error);
+            this.isConfigured = false;
+        }
+    }
+
+    /**
+     * Setup Nodemailer for other providers
+     */
+    setupNodemailer(emailProvider) {
+        try {
             if (emailProvider === 'gmail') {
                 this.transporter = nodemailer.createTransporter({
                     service: 'gmail',
@@ -58,19 +103,19 @@ class EmailAlertService {
             this.isConfigured = !!(process.env.EMAIL_USER && process.env.EMAIL_APP_PASSWORD);
             
             if (this.isConfigured) {
-                console.log('📧 Email alert service configured successfully');
+                console.log(`📧 ${emailProvider} email service configured successfully`);
             } else {
                 console.log('⚠️  Email alerts not configured - missing environment variables');
             }
 
         } catch (error) {
-            console.error('❌ Failed to setup email transporter:', error);
+            console.error('❌ Failed to setup nodemailer:', error);
             this.isConfigured = false;
         }
     }
 
     /**
-     * Send alert email - MAIN METHOD
+     * Send alert email - MAIN METHOD (supports both Mailgun and Nodemailer)
      */
     async sendAlert(alert) {
         if (!this.isConfigured) {
@@ -80,23 +125,66 @@ class EmailAlertService {
 
         try {
             const subject = this.getEmailSubject(alert);
-            const html = this.getEmailHTML(alert);
-            const text = this.getEmailText(alert);
+            const htmlContent = this.getEmailHTML(alert);
+            const textContent = this.getEmailText(alert);
 
+            // Use Mailgun or Nodemailer based on configuration
+            if (this.mailgun && process.env.EMAIL_PROVIDER === 'mailgun') {
+                return await this.sendWithMailgun(subject, htmlContent, textContent);
+            } else {
+                return await this.sendWithNodemailer(subject, htmlContent, textContent);
+            }
+
+        } catch (error) {
+            console.error('❌ Failed to send alert email:', error);
+            return false;
+        }
+    }
+
+    /**
+     * Send email using Mailgun
+     */
+    async sendWithMailgun(subject, html, text) {
+        try {
+            const from = `${process.env.MAILGUN_FROM} <postmaster@${process.env.MAILGUN_DOMAIN}>`;
+            console.log(`📧 Mailgun alert will be sent from: ${from}`);
+            const messageData = {
+                from: from,
+                to: process.env.ALERT_EMAIL || process.env.EMAIL_USER,
+                subject: subject,
+                text: text,
+                html: html
+            };
+
+            const response = await this.mailgun.messages.create(process.env.MAILGUN_DOMAIN, messageData);
+            console.log(`📧 Mailgun alert sent: ${subject} (ID: ${response.id})`);
+            return true;
+
+        } catch (error) {
+            console.error('❌ Mailgun send failed:', error);
+            return false;
+        }
+    }
+
+    /**
+     * Send email using Nodemailer
+     */
+    async sendWithNodemailer(subject, html, text) {
+        try {
             const mailOptions = {
                 from: process.env.EMAIL_USER,
-                to: process.env.ALERT_EMAIL || process.env.EMAIL_USER, // Can send to different email
+                to: process.env.ALERT_EMAIL || process.env.EMAIL_USER,
                 subject,
                 text,
                 html
             };
 
             const result = await this.transporter.sendMail(mailOptions);
-            console.log(`📧 Alert email sent: ${subject}`);
+            console.log(`📧 Nodemailer alert sent: ${subject}`);
             return true;
 
         } catch (error) {
-            console.error('❌ Failed to send alert email:', error);
+            console.error('❌ Nodemailer send failed:', error);
             return false;
         }
     }
@@ -108,64 +196,154 @@ class EmailAlertService {
         const priority = alert.priority === 'CRITICAL' ? '🚨 URGENT' : 
                         alert.priority === 'HIGH' ? '⚡ IMPORTANT' : 
                         alert.priority === 'MEDIUM' ? '📊 ALERT' : '💡 INFO';
-
-        return `${priority}: ${alert.ticker} - ${alert.type}`;
+        
+        return `${priority}: ${alert.type} - ${alert.symbol}`;
     }
 
     /**
-     * Generate HTML email content
+     * Generate HTML email content with professional trading theme
      */
     getEmailHTML(alert) {
-        const priorityColor = alert.priority === 'CRITICAL' ? '#ff4444' : 
-                             alert.priority === 'HIGH' ? '#ff8800' : 
-                             alert.priority === 'MEDIUM' ? '#0088ff' : '#888888';
+        const priorityColor = alert.priority === 'CRITICAL' ? '#dc3545' : 
+                             alert.priority === 'HIGH' ? '#fd7e14' : 
+                             alert.priority === 'MEDIUM' ? '#20c997' : '#6c757d';
 
         return `
         <!DOCTYPE html>
         <html>
         <head>
-            <style>
-                body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #f5f5f5; }
-                .container { background-color: white; padding: 20px; border-radius: 8px; max-width: 600px; margin: 0 auto; }
-                .header { border-left: 4px solid ${priorityColor}; padding-left: 15px; margin-bottom: 20px; }
-                .priority { color: ${priorityColor}; font-weight: bold; font-size: 14px; }
-                .ticker { font-size: 24px; font-weight: bold; margin: 5px 0; }
-                .message { font-size: 16px; margin: 15px 0; line-height: 1.4; }
-                .details { background-color: #f8f9fa; padding: 15px; border-radius: 4px; margin: 15px 0; }
-                .detail-row { display: flex; justify-content: space-between; margin: 5px 0; }
-                .action { background-color: ${priorityColor}; color: white; padding: 10px; border-radius: 4px; margin: 15px 0; }
-                .footer { font-size: 12px; color: #666; margin-top: 20px; border-top: 1px solid #eee; padding-top: 15px; }
-            </style>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Trading Alert</title>
         </head>
-        <body>
-            <div class="container">
-                <div class="header">
-                    <div class="priority">${alert.priority} ALERT</div>
-                    <div class="ticker">${alert.ticker}</div>
-                </div>
+        <body style="margin: 0; padding: 20px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8f9fa;">
+            <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); overflow: hidden;">
                 
-                <div class="message">${alert.message}</div>
-                
-                ${alert.currentPrice || alert.entryPrice ? `
-                <div class="details">
-                    ${alert.currentPrice ? `<div class="detail-row"><span>Current Price:</span><span>$${alert.currentPrice}</span></div>` : ''}
-                    ${alert.entryPrice ? `<div class="detail-row"><span>Entry Price:</span><span>$${alert.entryPrice}</span></div>` : ''}
-                    ${alert.stopLoss ? `<div class="detail-row"><span>Stop Loss:</span><span>$${alert.stopLoss}</span></div>` : ''}
-                    ${alert.target ? `<div class="detail-row"><span>Target:</span><span>$${alert.target}</span></div>` : ''}
-                    ${alert.priceChange ? `<div class="detail-row"><span>Change:</span><span>${alert.priceChange > 0 ? '+' : ''}${alert.priceChange.toFixed(2)}%</span></div>` : ''}
+                <!-- Header -->
+                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center;">
+                    <h1 style="margin: 0; font-size: 28px; font-weight: 600;">📈 Trading Alert</h1>
+                    <p style="margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">Professional Trading System</p>
                 </div>
-                ` : ''}
-                
-                ${alert.action ? `
-                <div class="action">
-                    <strong>Recommended Action:</strong> ${alert.action}
+
+                <!-- Alert Badge -->
+                <div style="text-align: center; margin: -15px 0 20px 0;">
+                    <span style="background: ${priorityColor}; color: white; padding: 8px 20px; border-radius: 20px; font-weight: bold; font-size: 14px;">
+                        ${alert.priority} PRIORITY
+                    </span>
                 </div>
-                ` : ''}
-                
-                <div class="footer">
-                    Alert generated at ${new Date().toLocaleString('en-SG', { timeZone: 'Asia/Singapore' })} SG Time<br>
-                    Ishastra Trading System
+
+                <!-- Content -->
+                <div style="padding: 0 30px 30px 30px;">
+                    
+                    <!-- Main Alert -->
+                    <div style="background: #f8f9fa; border-left: 4px solid ${priorityColor}; padding: 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
+                        <h2 style="margin: 0 0 10px 0; color: #333; font-size: 20px;">${alert.type}</h2>
+                        <p style="margin: 0; font-size: 16px; color: #666; line-height: 1.5;">${alert.message}</p>
+                    </div>
+
+                    <!-- Trade Details -->
+                    <div style="background: #fff; border: 1px solid #e9ecef; border-radius: 8px; padding: 20px; margin: 20px 0;">
+                        <h3 style="margin: 0 0 15px 0; color: #333; font-size: 18px;">📊 Trade Details</h3>
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <tr>
+                                <td style="padding: 8px 0; font-weight: bold; color: #555; width: 40%;">Symbol:</td>
+                                <td style="padding: 8px 0; color: #333; font-size: 16px; font-weight: bold;">${alert.symbol}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px 0; font-weight: bold; color: #555;">Current Price:</td>
+                                <td style="padding: 8px 0; color: #333;">₹${alert.currentPrice || 'N/A'}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px 0; font-weight: bold; color: #555;">Timestamp:</td>
+                                <td style="padding: 8px 0; color: #333;">${new Date(alert.timestamp).toLocaleString()}</td>
+                            </tr>
+                            ${alert.action ? `
+                            <tr>
+                                <td style="padding: 8px 0; font-weight: bold; color: #555;">Action:</td>
+                                <td style="padding: 8px 0; color: #333; font-weight: bold;">${alert.action}</td>
+                            </tr>
+                            ` : ''}
+                            ${alert.confidence ? `
+                            <tr>
+                                <td style="padding: 8px 0; font-weight: bold; color: #555;">Confidence:</td>
+                                <td style="padding: 8px 0; color: #333;">${alert.confidence}%</td>
+                            </tr>
+                            ` : ''}
+                            ${alert.grade ? `
+                            <tr>
+                                <td style="padding: 8px 0; font-weight: bold; color: #555;">Grade:</td>
+                                <td style="padding: 8px 0; color: #333; font-weight: bold;">${alert.grade}</td>
+                            </tr>
+                            ` : ''}
+                        </table>
+                    </div>
+
+                    <!-- Trigger Details -->
+                    ${alert.details && (alert.details.allTriggers || alert.details.newlyMetTriggers) ? `
+                    <div style="background: #e8f5e8; border: 1px solid #28a745; border-radius: 8px; padding: 20px; margin: 20px 0;">
+                        <h3 style="margin: 0 0 15px 0; color: #155724; font-size: 18px;">🎯 Entry Trigger Analysis</h3>
+                        
+                        ${alert.details.newlyActivated ? `
+                        <div style="background: #fff; border: 2px solid #28a745; border-radius: 6px; padding: 15px; margin-bottom: 15px;">
+                            <h4 style="margin: 0 0 10px 0; color: #155724; font-size: 16px;">🚀 ${alert.details.newlyActivated}</h4>
+                            <div style="font-family: 'Courier New', monospace; font-size: 14px; line-height: 1.6; color: #155724;">
+                                ${(alert.details.newlyMetTriggers || []).join('<br>')}
+                            </div>
+                        </div>
+                        ` : ''}
+                        
+                        <div style="background: #fff; border-radius: 6px; padding: 15px;">
+                            <h4 style="margin: 0 0 10px 0; color: #333; font-size: 16px;">📊 Complete Trigger Status</h4>
+                            <div style="font-family: 'Courier New', monospace; font-size: 14px; line-height: 1.8; color: #333;">
+                                ${(alert.details.allTriggers || alert.details.newlyMetTriggers || []).join('<br>')}
+                            </div>
+                        </div>
+                        
+                        ${alert.details.totalProgress ? `
+                        <p style="margin: 15px 0 0 0; color: #155724; font-weight: bold; font-size: 16px;">
+                            📈 Overall Progress: ${alert.details.totalProgress}
+                        </p>
+                        ` : ''}
+                    </div>
+                    ` : ''}
+
+                    <!-- Entry Zone & Stop Loss -->
+                    ${alert.details && (alert.details.entryZone || alert.details.stopLoss) ? `
+                    <div style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 20px; margin: 20px 0;">
+                        <h3 style="margin: 0 0 15px 0; color: #856404; font-size: 18px;">💡 Trading Information</h3>
+                        ${alert.details.entryZone && Object.keys(alert.details.entryZone).length > 0 ? `
+                        <div style="margin-bottom: 10px;">
+                            <strong style="color: #856404;">Entry Zone:</strong>
+                            <span style="color: #333;">${JSON.stringify(alert.details.entryZone, null, 2)}</span>
+                        </div>
+                        ` : ''}
+                        ${alert.details.stopLoss && alert.details.stopLoss !== 'N/A' ? `
+                        <div>
+                            <strong style="color: #856404;">Stop Loss:</strong>
+                            <span style="color: #333;">₹${alert.details.stopLoss}</span>
+                        </div>
+                        ` : ''}
+                    </div>
+                    ` : ''}
+
+                    <!-- Action Required -->
+                    ${alert.priority === 'CRITICAL' ? `
+                    <div style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px; padding: 15px; margin: 20px 0;">
+                        <h4 style="margin: 0 0 10px 0; color: #856404;">⚠️ Immediate Action Required</h4>
+                        <p style="margin: 0; color: #856404;">This is a critical alert that may require immediate attention to your trading positions.</p>
+                    </div>
+                    ` : ''}
+
                 </div>
+
+                <!-- Footer -->
+                <div style="background: #f8f9fa; padding: 20px 30px; text-align: center; border-top: 1px solid #e9ecef;">
+                    <p style="margin: 0; color: #6c757d; font-size: 14px;">
+                        🤖 Automated alert from Professional Trading System<br>
+                        <span style="font-size: 12px;">Generated at ${new Date().toLocaleString()}</span>
+                    </p>
+                </div>
+
             </div>
         </body>
         </html>
@@ -176,56 +354,72 @@ class EmailAlertService {
      * Generate plain text email content (fallback)
      */
     getEmailText(alert) {
-        let text = `${alert.priority} ALERT: ${alert.ticker}\n\n`;
-        text += `${alert.message}\n\n`;
-        
-        if (alert.currentPrice) text += `Current Price: $${alert.currentPrice}\n`;
-        if (alert.entryPrice) text += `Entry Price: $${alert.entryPrice}\n`;
-        if (alert.stopLoss) text += `Stop Loss: $${alert.stopLoss}\n`;
-        if (alert.target) text += `Target: $${alert.target}\n`;
-        if (alert.priceChange) text += `Price Change: ${alert.priceChange > 0 ? '+' : ''}${alert.priceChange.toFixed(2)}%\n`;
-        
-        if (alert.action) text += `\nRecommended Action: ${alert.action}\n`;
-        
-        text += `\nAlert Time: ${new Date().toLocaleString('en-SG', { timeZone: 'Asia/Singapore' })} SG Time`;
-        text += `\nIshastra Trading System`;
-        
-        return text;
+        return `
+TRADING ALERT - ${alert.priority} PRIORITY
+
+${alert.type}
+Symbol: ${alert.symbol}
+Message: ${alert.message}
+
+Current Price: ₹${alert.currentPrice || 'N/A'}
+Timestamp: ${new Date(alert.timestamp).toLocaleString()}
+
+${alert.priority === 'CRITICAL' ? '\n⚠️  IMMEDIATE ACTION REQUIRED ⚠️\n' : ''}
+
+---
+Automated alert from Professional Trading System
+Generated at ${new Date().toLocaleString()}
+        `.trim();
     }
 
     /**
-     * Test email configuration
+     * Send a test email to verify configuration
      */
     async testEmail() {
-        if (!this.isConfigured) {
-            console.log('❌ Email not configured for testing');
-            return false;
-        }
-
         const testAlert = {
-            ticker: 'TEST',
-            type: 'TEST_ALERT',
-            priority: 'LOW',
-            message: 'This is a test email alert from your trading system.',
-            currentPrice: 100.50,
-            action: 'No action required - this is just a test'
+            type: 'System Test Alert',
+            symbol: 'TEST.NS',
+            message: 'This is a test email to verify your email alert configuration is working properly. If you receive this, your trading alerts are ready!',
+            currentPrice: 100.00,
+            priority: 'MEDIUM',
+            timestamp: new Date()
         };
 
-        console.log('📧 Sending test email...');
-        return await this.sendAlert(testAlert);
+        try {
+            const result = await this.sendAlert(testAlert);
+            if (result) {
+                console.log('✅ Test email sent successfully!');
+                return { success: true, message: 'Test email sent successfully' };
+            } else {
+                console.log('❌ Test email failed');
+                return { success: false, message: 'Test email failed to send' };
+            }
+        } catch (error) {
+            console.error('❌ Test email error:', error);
+            return { success: false, message: `Test email error: ${error.message}` };
+        }
     }
 
     /**
      * Verify email configuration without sending
      */
     async verifyConfiguration() {
-        if (!this.isConfigured) {
-            return { success: false, message: 'Email not configured' };
-        }
-
         try {
-            await this.transporter.verify();
-            return { success: true, message: 'Email configuration verified' };
+            if (process.env.EMAIL_PROVIDER === 'mailgun') {
+                const hasMailgunConfig = !!(process.env.MAILGUN_API_KEY && process.env.MAILGUN_DOMAIN);
+                return { 
+                    success: hasMailgunConfig, 
+                    provider: 'mailgun',
+                    message: hasMailgunConfig ? 'Mailgun configured correctly' : 'Missing Mailgun API key or domain' 
+                };
+            } else {
+                const hasNodemailerConfig = !!(process.env.EMAIL_USER && process.env.EMAIL_APP_PASSWORD);
+                return { 
+                    success: hasNodemailerConfig, 
+                    provider: process.env.EMAIL_PROVIDER || 'gmail',
+                    message: hasNodemailerConfig ? 'Email configured correctly' : 'Missing email credentials' 
+                };
+            }
         } catch (error) {
             return { success: false, message: `Email verification failed: ${error.message}` };
         }

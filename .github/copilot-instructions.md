@@ -44,6 +44,7 @@ applyTo: "**"
     - STOP and update the plan
     - Get approval before continuing
     - Do not hard code the value and say it is complete
+    - Do not create the similar fiels elsewhere scan the files and folder first, check if there something common avaialble
                 
 ### REFACTORING GUIDANCE
     When refactoring large files:

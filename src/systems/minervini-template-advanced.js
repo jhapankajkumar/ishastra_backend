@@ -32,6 +32,7 @@
 
 const { getSystemThresholds } = require('../config/trading-thresholds');
 const { SignalStabilityManager } = require('../utils/signal-stability-manager');
+const { TRIGGER_TYPES } = require('../../dist/utils/systemConstants');
 
 class MinerviniTemplateAdvanced {
   constructor() {
@@ -587,7 +588,7 @@ class MinerviniTemplateAdvanced {
       },
       
       // DYNAMIC CONDITIONS (calculated, not hardcoded)
-      triggerConditions: this.calculateTriggerConditions(templateAnalysis, currentPrice, latest, atr),
+      triggerConditions: this.calculateTriggerConditions(templateAnalysis, currentPrice, latest, atr, dailyData),
       
       // MARKET REGIME ADJUSTMENTS
       marketRegimeAdjustments: this.calculateMarketRegimeAdjustments(dailyData, templateAnalysis)
@@ -942,36 +943,44 @@ class MinerviniTemplateAdvanced {
     return 'LOW';
   }
 
-  calculateTriggerConditions(templateAnalysis, currentPrice, latest, atr) {
+  calculateTriggerConditions(templateAnalysis, currentPrice, latest, atr, dailyData) {
     const conditions = [];
     
-    // Volume condition
-    if (latest.volume) {
-      const avgVol = this.calculateAverageVolume([latest]); // Simplified
+    // 🎯 REAL VOLUME TRIGGER: Compare to 20-day average volume
+    if (latest.volume && dailyData.length >= 20) {
+      const avg20DayVolume = this.calculateAverageVolume(dailyData.slice(-20));
+      const volumeThreshold = avg20DayVolume * 1.3; // 30% above 20-day average
       conditions.push({
-        type: 'VOLUME',
-        threshold: avgVol * 1.5,
+        type: TRIGGER_TYPES.VOLUME,
+        threshold: volumeThreshold,
         current: latest.volume,
-        met: latest.volume > avgVol * 1.5
+        met: latest.volume > volumeThreshold,
+        description: `Volume ${latest.volume.toLocaleString()} vs 20-day avg ${avg20DayVolume.toLocaleString()}`
       });
     }
     
-    // Price action condition
+    // 🎯 DYNAMIC BREAKOUT LEVEL: Find actual resistance from recent highs
+    const resistanceLevel = this.findNearestResistance(dailyData, currentPrice);
+    const breakoutBuffer = resistanceLevel * 1.002; // 0.2% above resistance
+    conditions.push({
+      type: TRIGGER_TYPES.BREAKOUT_LEVEL,
+      threshold: breakoutBuffer,
+      current: currentPrice,
+      met: currentPrice >= breakoutBuffer,
+      description: `Price ${currentPrice.toFixed(2)} vs resistance ${resistanceLevel.toFixed(2)}`
+    });
+    
+    // 🎯 ADAPTIVE CANDLE STRENGTH: Based on recent volatility context
+    const recentVolatility = this.calculateVolatility(dailyData.slice(-10));
+    const adaptiveThreshold = Math.max(0.5, Math.min(0.8, 0.65 - (recentVolatility * 2))); // Adjust for volatility
     const candleStrength = latest.high > latest.low ? 
       (latest.close - latest.low) / (latest.high - latest.low) : 0;
     conditions.push({
-      type: 'CANDLE_STRENGTH',
-      threshold: 0.65,
+      type: TRIGGER_TYPES.CANDLE_STRENGTH,
+      threshold: adaptiveThreshold,
       current: candleStrength,
-      met: candleStrength > 0.65
-    });
-    
-    // Breakout condition
-    conditions.push({
-      type: 'BREAKOUT_LEVEL',
-      threshold: currentPrice + atr * 0.5,
-      current: currentPrice,
-      met: false // To be triggered
+      met: candleStrength > adaptiveThreshold,
+      description: `Candle strength ${(candleStrength * 100).toFixed(1)}% vs adaptive threshold ${(adaptiveThreshold * 100).toFixed(1)}%`
     });
     
     return conditions;
@@ -1207,6 +1216,40 @@ class MinerviniTemplateAdvanced {
       console.warn('Fundamental proxy error:', error.message);
       return 50;
     }
+  }
+
+  /**
+   * Find nearest resistance level from recent price action
+   * @param {Array} dailyData - Historical price data
+   * @param {number} currentPrice - Current stock price
+   * @returns {number} Nearest resistance level above current price
+   */
+  findNearestResistance(dailyData, currentPrice) {
+    if (!dailyData || dailyData.length < 20) return currentPrice * 1.02; // Fallback
+    
+    // Look for resistance in last 60 days
+    const recentData = dailyData.slice(-60);
+    const highs = recentData.map(d => d.high);
+    
+    // Find pivot highs (local peaks)
+    const pivotHighs = [];
+    for (let i = 2; i < highs.length - 2; i++) {
+      if (highs[i] > highs[i-1] && highs[i] > highs[i-2] && 
+          highs[i] > highs[i+1] && highs[i] > highs[i+2]) {
+        pivotHighs.push(highs[i]);
+      }
+    }
+    
+    // Find nearest resistance above current price
+    const resistanceLevels = pivotHighs.filter(high => high > currentPrice);
+    
+    if (resistanceLevels.length === 0) {
+      // Use 20-day high if no pivot highs found
+      return Math.max(...recentData.slice(-20).map(d => d.high));
+    }
+    
+    // Return nearest resistance
+    return Math.min(...resistanceLevels);
   }
 
   /**

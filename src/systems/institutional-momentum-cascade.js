@@ -36,6 +36,7 @@
 
 const { getSystemThresholds } = require('../config/trading-thresholds');
 const { SignalStabilityManager } = require('../utils/signal-stability-manager');
+const { TRIGGER_TYPES } = require('../../dist/utils/systemConstants');
 
 class InstitutionalMomentumCascade {
   constructor() {
@@ -711,7 +712,7 @@ class InstitutionalMomentumCascade {
       },
       
       // DYNAMIC CASCADE CONDITIONS
-      cascadeTriggers: this.calculateCascadeTriggers(cascadeAnalysis, currentPrice, latest, atr, momentum),
+      cascadeTriggers: this.calculateCascadeTriggers(cascadeAnalysis, currentPrice, latest, atr, momentum, dailyData),
       
       // MOMENTUM REGIME ADJUSTMENTS
       momentumRegimeAdjustments: this.calculateMomentumRegimeAdjustments(dailyData, cascadeAnalysis, momentum)
@@ -1273,42 +1274,55 @@ class InstitutionalMomentumCascade {
     return 'LOW';
   }
 
-  calculateCascadeTriggers(cascadeAnalysis, currentPrice, latest, atr, momentum) {
+  calculateCascadeTriggers(cascadeAnalysis, currentPrice, latest, atr, momentum, dailyData) {
     const triggers = [];
     
-    // Volume cascade trigger - FIXED: Use proper 20-day average
-    const avgVol = this.calculateAverageVolume([latest]); // Get proper volume baseline
-    const baseline20Day = avgVol; // This should be passed from caller with 20-day data
+    // 🎯 REAL VOLUME CASCADE: Compare to 20-day average, look for institutional flow
+    if (dailyData.length >= 20) {
+      const avg20DayVolume = this.calculateAverageVolume(dailyData.slice(-20));
+      const institutionalThreshold = avg20DayVolume * 1.8; // Higher threshold for institutional flow
+      triggers.push({
+        type: TRIGGER_TYPES.VOLUME,
+        threshold: institutionalThreshold,
+        current: latest.volume,
+        met: latest.volume > institutionalThreshold,
+        description: `Volume ${latest.volume.toLocaleString()} vs institutional threshold ${institutionalThreshold.toLocaleString()}`
+      });
+    }
+    
+    // 🎯 MOMENTUM ACCELERATION: Real momentum vs recent average
+    const recentMomentum = this.calculatePriceMomentum(dailyData.slice(-5), 5);
+    const longerMomentum = this.calculatePriceMomentum(dailyData.slice(-10), 10);
+    const momentumAcceleration = recentMomentum - longerMomentum;
+    const accelerationThreshold = 0.01; // 1% acceleration
     triggers.push({
-      type: 'VOLUME_CASCADE',
-      threshold: baseline20Day * 2.0,
-      current: latest.volume,
-      met: latest.volume > baseline20Day * 2.0
+      type: TRIGGER_TYPES.MOMENTUM_ACCELERATION,
+      threshold: accelerationThreshold,
+      current: momentumAcceleration,
+      met: momentumAcceleration > accelerationThreshold,
+      description: `Momentum acceleration ${(momentumAcceleration * 100).toFixed(2)}% vs threshold ${(accelerationThreshold * 100).toFixed(2)}%`
     });
     
-    // Momentum acceleration trigger
+    // 🎯 DYNAMIC BREAKOUT: Find actual resistance from price structure
+    const resistanceLevel = this.findInstitutionalResistance(dailyData, currentPrice);
+    const breakoutBuffer = resistanceLevel * 1.003; // 0.3% above resistance for institutional move
     triggers.push({
-      type: 'MOMENTUM_ACCELERATION',
-      threshold: 0.015, // 1.5% momentum
-      current: momentum,
-      met: momentum > 0.015
-    });
-    
-    // Price breakout trigger
-    const breakoutLevel = currentPrice + atr * 0.5;
-    triggers.push({
-      type: 'PRICE_BREAKOUT',
-      threshold: breakoutLevel,
+      type: TRIGGER_TYPES.BREAKOUT_LEVEL,
+      threshold: breakoutBuffer,
       current: currentPrice,
-      met: false // To be triggered
+      met: currentPrice >= breakoutBuffer,
+      description: `Price ${currentPrice.toFixed(2)} vs institutional resistance ${resistanceLevel.toFixed(2)}`
     });
     
-    // Cascade grade trigger
+    // 🎯 CASCADE GRADE: Based on actual analysis, not hardcoded
+    const gradeScore = this.getGradeScore(cascadeAnalysis.momentumCascade.grade);
+    const gradeThreshold = 2.5; // Equivalent to 'A' grade
     triggers.push({
-      type: 'CASCADE_GRADE',
-      threshold: 'A',
-      current: cascadeAnalysis.momentumCascade.grade,
-      met: ['A+', 'A'].includes(cascadeAnalysis.momentumCascade.grade)
+      type: TRIGGER_TYPES.CASCADE_GRADE,
+      threshold: gradeThreshold,
+      current: gradeScore,
+      met: gradeScore >= gradeThreshold,
+      description: `Grade ${cascadeAnalysis.momentumCascade.grade} (${gradeScore}) vs threshold ${gradeThreshold}`
     });
     
     return triggers;
@@ -1407,6 +1421,87 @@ class InstitutionalMomentumCascade {
       isDecaying: decay > 0.3, // 30% momentum loss
       severity: decay > 0.5 ? 'HIGH' : decay > 0.3 ? 'MEDIUM' : 'LOW'
     };
+  }
+
+  calculateMomentumDecay(dailyData) {
+    if (!dailyData || dailyData.length < 10) return 0;
+    
+    const recent5 = dailyData.slice(-5);
+    const prior5 = dailyData.slice(-10, -5);
+    
+    const recentMomentum = this.calculatePriceMomentum(recent5, 5);
+    const priorMomentum = this.calculatePriceMomentum(prior5, 5);
+    
+    return priorMomentum - recentMomentum; // Positive value indicates decay
+  }
+
+  /**
+   * Find institutional resistance level from volume-weighted price action
+   * @param {Array} dailyData - Historical price data
+   * @param {number} currentPrice - Current stock price
+   * @returns {number} Institutional resistance level
+   */
+  findInstitutionalResistance(dailyData, currentPrice) {
+    if (!dailyData || dailyData.length < 30) return currentPrice * 1.03; // Fallback
+    
+    // Look for institutional resistance in last 90 days with volume confirmation
+    const recentData = dailyData.slice(-90);
+    const avgVolume = this.calculateAverageVolume(recentData);
+    
+    // Find high-volume resistance levels
+    const volumeWeightedHighs = [];
+    for (let i = 2; i < recentData.length - 2; i++) {
+      const day = recentData[i];
+      const prevDay = recentData[i-1];
+      const nextDay = recentData[i+1];
+      
+      // Check if it's a local high with significant volume
+      if (day.high > prevDay.high && day.high > nextDay.high && 
+          day.volume > avgVolume * 1.2) { // 20% above average volume
+        volumeWeightedHighs.push({
+          price: day.high,
+          volume: day.volume,
+          weight: day.volume / avgVolume
+        });
+      }
+    }
+    
+    if (volumeWeightedHighs.length === 0) {
+      // Use 30-day high if no volume-weighted highs found
+      return Math.max(...recentData.slice(-30).map(d => d.high));
+    }
+    
+    // Find nearest resistance above current price, weighted by volume
+    const resistanceLevels = volumeWeightedHighs
+      .filter(level => level.price > currentPrice)
+      .sort((a, b) => a.price - b.price); // Sort by price ascending
+    
+    if (resistanceLevels.length === 0) {
+      // Use highest volume-weighted level if none above current price
+      const highestVolumeLevel = volumeWeightedHighs
+        .sort((a, b) => b.weight - a.weight)[0];
+      return highestVolumeLevel ? highestVolumeLevel.price : currentPrice * 1.03;
+    }
+    
+    return resistanceLevels[0].price; // Return nearest resistance
+  }
+
+  /**
+   * Convert grade to numeric score for trigger calculations
+   * @param {string} grade - Grade (A+, A, B+, etc.)
+   * @returns {number} Numeric score
+   */
+  getGradeScore(grade) {
+    const gradeScores = {
+      'A+': 4.0,
+      'A': 3.0,
+      'B+': 2.0,
+      'B': 1.0,
+      'C': 0.5,
+      'D': 0.2,
+      'F': 0
+    };
+    return gradeScores[grade] || 0;
   }
 
   createAvoidSignal(reasonCode, message) {

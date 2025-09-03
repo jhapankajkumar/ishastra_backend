@@ -6,14 +6,14 @@ try {
   console.error('❌ Failed to start price refresh cron job:', error.message);
 }
 
-// Start position alerts cron job (monitors open trades)
+// Start unified alert cron job (handles both position and watchlist alerts)
 try {
-  const PositionAlertsCron = require('./cron/positionAlertsCron');
-  const positionAlerts = new PositionAlertsCron();
-  positionAlerts.start();
-  console.log('✅ Position alerts cron job started successfully (11:30 AM - 6:30 PM SG Time)');
+  const UnifiedAlertCron = require('./cron/UnifiedAlertCron');
+  const unifiedAlerts = new UnifiedAlertCron();
+  unifiedAlerts.start();
+  console.log('✅ Unified Alert cron job started successfully (positions + watchlist alerts)');
 } catch (error) {
-  console.error('❌ Failed to start position alerts cron job:', error.message);
+  console.error('❌ Failed to start unified alert cron job:', error.message);
 }
 
 // Start watchlist cron job - SIMPLE DAILY SCAN
@@ -25,29 +25,6 @@ try {
 } catch (error) {
   console.error('❌ Failed to start watchlist cron job:', error.message);
 }
-
-// Start Entry Trigger Monitoring cron job
-try {
-  const EntryTriggerCron = require('./cron/EntryTriggerCron');
-  const entryTriggerCron = new EntryTriggerCron();
-  entryTriggerCron.start();
-  console.log('✅ Entry Trigger Monitoring cron job started successfully (every 15 minutes)');
-} catch (error) {
-  console.error('❌ Failed to start entry trigger cron job:', error.message);
-}
-
-// Start Expert Analysis cron job (NIFTY 200 Core + Satellite)
-// TEMPORARILY DISABLED - Deleted watchlistManager dependency
-/*
-try {
-  const ExpertAnalysisCron = require('./cron/expert-analysis.cron');
-  const expertCron = new ExpertAnalysisCron();
-  expertCron.start();
-  console.log('✅ Expert Analysis cron jobs started successfully');
-} catch (error) {
-  console.error('❌ Failed to start expert analysis cron jobs:', error.message);
-}
-*/
 
 const express = require('express');
 const cors = require('cors');
@@ -91,8 +68,10 @@ app.use('/api/capital', require('./routes/capital.routes'));
 app.use('/api/watchlist', require('./routes/simpleWatchlistRoutes'));
 
 // Alert routes
-
 app.use('/api/alerts', require('./routes/simpleAlertRoutes'));
+
+// Email routes
+app.use('/api/email', require('./routes/emailRoutes'));
 
 // Yahoo Finance API endpoints
 app.get('/api/yahoo/search', async (req, res) => {
