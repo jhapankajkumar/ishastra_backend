@@ -294,7 +294,7 @@ class TradingSystemController {
     // Both systems agree on BUY
     if (minervini.decision === 'BUY' && momentum.decision === 'BUY') {
       return {
-        action: 'BUY',
+        action: 'STRONG_BUY',
         confidence: Math.min(0.95, (minervini.confidence + momentum.confidence) / 2 + 0.10),
         reasoning: 'Both systems bullish - strong confluence'
       };

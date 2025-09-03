@@ -79,6 +79,7 @@ class SimpleWatchlistService {
 
         // Step 2: Analyze all stocks in batches
         const buySignals = [];
+        const strongBuySignals = [];
         const watchSignals = [];
         const batchSize = 10;
 
@@ -94,6 +95,10 @@ class SimpleWatchlistService {
             batchResults.forEach((result, index) => {
                 if (result.status === 'fulfilled' && result.value) {
                     const signal = result.value;
+                    if (signal.decision.action === 'STRONG_BUY') {
+                        strongBuySignals.push(signal);
+                        console.log(`🚀 ${signal.symbol}: ${signal.decision.action} (${(signal.decision.confidence)}%)`);
+                    }
                     if (signal.decision.action === 'BUY') {
                         buySignals.push(signal);
                         console.log(`🚀 ${signal.symbol}: ${signal.decision.action} (${(signal.decision.confidence)}%)`);
@@ -114,10 +119,11 @@ class SimpleWatchlistService {
             if (b.decision.confidence !== a.decision.confidence) {
                 return b.decision.confidence - a.decision.confidence;
             }
-            // Then by grade using your grading system: A+ > A > B > C > D
+            // Then by grade using your grading system: A+ > A > B+ > B  > C > D
             const gradeValue = (grade) => {
-                if (grade === 'A+') return 5;      // 90%+ Excellent
-                if (grade === 'A') return 4;       // 85-89% Very Good
+                if (grade === 'A+') return 6;      // 90%+ Excellent
+                if (grade === 'A') return 5;       // 85-89% Very Good
+                if (grade === 'B+') return 4;       // 75-84% Good
                 if (grade === 'B') return 3;       // 75-84% Good
                 if (grade === 'C') return 2;       // 65-74% Average
                 if (grade === 'D') return 1;       // 55-64% Below Average
@@ -125,12 +131,13 @@ class SimpleWatchlistService {
             };
             return gradeValue(b.decision.grade) - gradeValue(a.decision.grade);
         };
-
+        const sortedStrongBuySignals = strongBuySignals.sort(sortByQuality);
         const sortedBuySignals = buySignals.sort(sortByQuality);
         const sortedWatchSignals = watchSignals.sort(sortByQuality);
 
         // Step 4: Combine signals - BUY first, then WATCH, max 20 total
         const combinedSignals = [
+            ...sortedStrongBuySignals,
             ...sortedBuySignals,
             ...sortedWatchSignals
         ].slice(0, 20);
@@ -173,11 +180,12 @@ class SimpleWatchlistService {
             watchSignals: watchSignals.length,
             watchlistSize: combinedSignals.length,
             breakdown: {
-                buy: combinedSignals.filter(s => s.action === 'BUY').length,
-                watch: combinedSignals.filter(s => s.action === 'WATCH').length
+                strongBuy:combinedSignals.filter(s => s.decision?.action === 'STRONG_BUY').length, 
+                buy: combinedSignals.filter(s => s.decision?.action === 'BUY').length,
+                watch: combinedSignals.filter(s => s.decision?.action === 'WATCH').length
             },
             avgConfidence: combinedSignals.length > 0 ?
-                combinedSignals.reduce((sum, s) => sum + s.confidence, 0) / combinedSignals.length : 0
+                combinedSignals.reduce((sum, s) => sum + (s.decision?.confidence || 0), 0) / combinedSignals.length : 0
         };
     }
 
