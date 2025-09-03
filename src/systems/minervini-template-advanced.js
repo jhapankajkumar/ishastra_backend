@@ -32,7 +32,7 @@
 
 const { getSystemThresholds } = require('../config/trading-thresholds');
 const { SignalStabilityManager } = require('../utils/signal-stability-manager');
-const { TRIGGER_TYPES } = require('../../dist/utils/systemConstants');
+const { TRIGGER_TYPES } = require('../utils/systemConstants');
 
 class MinerviniTemplateAdvanced {
   constructor() {

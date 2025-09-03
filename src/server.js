@@ -8,7 +8,7 @@ try {
 
 // Start unified alert cron job (handles both position and watchlist alerts)
 try {
-  const UnifiedAlertCron = require('./cron/UnifiedAlertCron');
+  const UnifiedAlertCron = require('./cron/unifiedAlertCron');
   const unifiedAlerts = new UnifiedAlertCron();
   unifiedAlerts.start();
   console.log('✅ Unified Alert cron job started successfully (positions + watchlist alerts)');
