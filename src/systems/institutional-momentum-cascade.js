@@ -4,9 +4,9 @@
  * Based on institutional momentum cascade theory for detecting major trend acceleration.
  * Combines multi-timeframe momentum analysis with institutional flow detection.
  * 
- * ANTI-THRASHING PROTECTION:
- * Integrated with SignalStabilityManager to prevent signal flipping on minor price moves.
- * Uses hysteresis, latching, and ATR-relative thresholds for stable signals.
+ * SIMPLE STABILITY PROTECTION:
+ * Integrated with SimpleSwingStability to prevent signal flipping on minor price moves.
+ * Uses 3-bar cooldown and hard stop invalidation for stable swing trading signals.
  * 
  * CONFIGURABLE THRESHOLDS:
  * Thresholds are now managed in src/config/trading-thresholds.js
@@ -30,23 +30,23 @@
  * - AVOID: <4 rules or momentum cascade <50%
  * 
  * Author: Ishastra AI Expert Engine
- * Version: 2.1.0 - Anti-Thrashing Protection
+ * Version: 2.2.0 - Simple Stability Protection
  * Last Updated: 2024
  */
 
 const { getSystemThresholds } = require('../config/trading-thresholds');
-const { SignalStabilityManager } = require('../utils/signal-stability-manager');
+const { SimpleSwingStability } = require('../utils/simple-swing-stability');
 const { TRIGGER_TYPES } = require('../utils/systemConstants');
 
 class InstitutionalMomentumCascade {
   constructor() {
     this.systemId = 'institutional_momentum_cascade';
     this.name = 'Institutional Momentum Cascade (Advanced)';
-    this.version = '2.1.0';
+    this.version = '2.2.0';
     this.description = '6-rule momentum cascade system for institutional trend detection';
 
-    // 🔒 ANTI-THRASHING: Initialize signal stability manager
-    this.stabilityManager = new SignalStabilityManager();
+    // 🔒 SIMPLE STABILITY: Initialize simple swing stability manager
+    this.stabilityManager = new SimpleSwingStability(3); // 3-bar cooldown
 
     // Rule weights for cascade calculation
     this.RULE_WEIGHTS = {
@@ -106,18 +106,24 @@ class InstitutionalMomentumCascade {
         { capital, symbol, entryPrice }
       );
 
-      // 🔒 ANTI-THRASHING: Apply signal stabilization
-      const stabilizedDecision = this.stabilityManager.stabilizeSignal(
+      // 🔒 SIMPLE STABILITY: Apply signal stabilization for swing trading
+      console.log(`  🌊 CASCADE: Raw decision - Action: ${rawDecision.action}, Confidence: ${(rawDecision.confidence * 100).toFixed(1)}%`);
+      
+      // Calculate current bar index (days since start of data)
+      const barIndex = completedDaily.length - 1;
+      
+      const stabilizedDecision = this.stabilityManager.stabilize(
         symbol || 'UNKNOWN',
         {
           action: rawDecision.action,
           confidence: rawDecision.confidence,
           reasoning: rawDecision.reasoning,
-          factors: rawDecision.factors
+          factors: rawDecision.factors,
+          stopLoss: riskAssessment.stopLoss
         },
-        completedDaily,
+        barIndex,
         entryPrice,
-        this.systemId
+        true // isBarClosed = true for EOD analysis
       );
 
       console.log(`  🌊 CASCADE: Raw: ${rawDecision.action}, Stabilized: ${stabilizedDecision.action}${stabilizedDecision.stabilized ? ' [STABILIZED]' : ''}, Confidence: ${(stabilizedDecision.confidence * 100).toFixed(1)}%`);

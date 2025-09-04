@@ -193,7 +193,7 @@ class TradingSystemController {
         const finalResult = {
           action: unifiedDecision.action,
           confidence: unifiedDecision.confidence,
-          reasoning: unifiedDecision.reasoning,
+          // reasoning: unifiedDecision.reasoning,
         };
         
         // Build comprehensive response using the fetched data
@@ -430,7 +430,7 @@ class TradingSystemController {
         action: unifiedAction,
         confidence: confidencePercent,
         grade: grade,
-        reasoning: unifiedDecision.reasoning || 'Analysis complete',
+        reasoning: winningSystem.reasoning || 'Analysis complete',
         systemsAgreement: unifiedDecision.systemsAgreement || 'PARTIAL',
         winningSystem: winningSystemName,
         winningSystemId: winningSystemId

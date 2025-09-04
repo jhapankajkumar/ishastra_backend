@@ -4,9 +4,9 @@
  * Based on Mark Minervini's "Template" methodology from "Think & Trade Like a Champion"
  * Enhanced for institutional traders with strict 8-criteria template validation.
  * 
- * ANTI-THRASHING PROTECTION:
- * Integrated with SignalStabilityManager to prevent signal flipping on minor price moves.
- * Uses hysteresis, latching, and ATR-relative thresholds for stable signals.
+ * SIMPLE STABILITY PROTECTION:
+ * Integrated with SimpleSwingStability to prevent signal flipping on minor price moves.
+ * Uses 3-bar cooldown and hard stop invalidation for stable swing trading signals.
  * 
  * CONFIGURABLE THRESHOLDS:
  * Thresholds are now managed in src/config/trading-thresholds.js
@@ -26,23 +26,23 @@
  * 8. Strong fundamentals (EPS/Revenue growth - proxy via momentum)
  * 
  * Author: Ishastra AI Expert Engine
- * Version: 2.1.0 - Anti-Thrashing Protection
+ * Version: 2.2.0 - Simple Stability Protection
  * Last Updated: 2024
  */
 
 const { getSystemThresholds } = require('../config/trading-thresholds');
-const { SignalStabilityManager } = require('../utils/signal-stability-manager');
+const { SimpleSwingStability } = require('../utils/simple-swing-stability');
 const { TRIGGER_TYPES } = require('../utils/systemConstants');
 
 class MinerviniTemplateAdvanced {
   constructor() {
     this.systemId = 'minervini_template_advanced';
     this.name = 'Minervini Template Advanced (Institutional)';
-    this.version = '2.1.0';
+    this.version = '2.2.0';
     this.description = '8-criteria template system for institutional momentum investing';
     
-    // 🔒 ANTI-THRASHING: Initialize signal stability manager
-    this.stabilityManager = new SignalStabilityManager();
+    // 🔒 SIMPLE STABILITY: Initialize simple swing stability manager
+    this.stabilityManager = new SimpleSwingStability(3); // 3-bar cooldown
   }
 
   /**
@@ -92,20 +92,24 @@ class MinerviniTemplateAdvanced {
         thresholds
       );
 
-      // 🔒 ANTI-THRASHING: Apply signal stabilization
+      // 🔒 SIMPLE STABILITY: Apply signal stabilization for swing trading
       console.log(`  🏛️ TEMPLATE: Raw decision - Action: ${rawDecision.action}, Confidence: ${(rawDecision.confidence * 100).toFixed(1)}%`);
       
-      const stabilizedDecision = this.stabilityManager.stabilizeSignal(
+      // Calculate current bar index (days since start of data)
+      const barIndex = completedDaily.length - 1;
+      
+      const stabilizedDecision = this.stabilityManager.stabilize(
         symbol || 'UNKNOWN',
         {
           action: rawDecision.action,
           confidence: rawDecision.confidence,
           reasoning: rawDecision.reasoning,
-          factors: rawDecision.factors
+          factors: rawDecision.factors,
+          stopLoss: riskAssessment.stopLoss
         },
-        completedDaily,
+        barIndex,
         entryPrice,
-        this.systemId
+        true // isBarClosed = true for EOD analysis
       );
 
       console.log(`  🏛️ TEMPLATE: Raw: ${rawDecision.action}, Stabilized: ${stabilizedDecision.action}${stabilizedDecision.stabilized ? ' [STABILIZED]' : ''}, Confidence: ${(stabilizedDecision.confidence * 100).toFixed(1)}%`);

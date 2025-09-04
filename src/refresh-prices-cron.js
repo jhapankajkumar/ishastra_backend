@@ -7,14 +7,7 @@ const { refreshAllTradePrices } = require('./controllers/trade.controller');
 console.log('📈 Setting up price refresh cron jobs...');
 
 //Fetch all investments and recommendations prices every 15 minutes
-// Every 15 min from 11:30–11:59 Mon–Fri
-cron.schedule('30-59/15 11 * * 1-5', runPriceRefresh, { timezone: "Asia/Singapore" });
-
-// Every 15 min from 12:00–17:59 Mon–Fri
-cron.schedule('*/15 12-17 * * 1-5', runPriceRefresh, { timezone: "Asia/Singapore" });
-
-// Every 15 min from 18:00–18:30 Mon–Fri
-cron.schedule('0-30/15 18 * * 1-5', runPriceRefresh, { timezone: "Asia/Singapore" });
+cron.schedule('*/15 11-19 * * 1-5', runPriceRefresh, { timezone: "Asia/Singapore" });
 
 function runPriceRefresh() {
   setImmediate(() => {
