@@ -300,7 +300,15 @@ class EmailService {
         
         // Ensure tables are fully expanded (remove any max-height restrictions)
         html = html.replace(/max-height:\s*\d+px;?/gi, '');
+        html = html.replace(/max-height:\s*\d+em;?/gi, '');
+        html = html.replace(/max-height:\s*\d+rem;?/gi, '');
+        
+        // ULTRA AGGRESSIVE REMOVAL of ALL overflow properties
         html = html.replace(/overflow:\s*hidden;?/gi, '');
+        html = html.replace(/overflow:\s*auto;?/gi, '');
+        html = html.replace(/overflow:\s*scroll;?/gi, '');
+        html = html.replace(/overflow-x:\s*[^;]+;?/gi, '');
+        html = html.replace(/overflow-y:\s*[^;]+;?/gi, '');
         
         // AGGRESSIVE REMOVAL of Gmail collapse triggers
         html = html.replace(/style="[^"]*white-space:\s*nowrap[^"]*"/gi, '');
@@ -314,6 +322,11 @@ class EmailService {
         html = html.replace(/\.{3,}/g, '');
         html = html.replace(/…/g, '');
         
+        // SUPER AGGRESSIVE: Clean ALL div styles that might have overflow hidden
+        html = html.replace(/(<div[^>]*style="[^"]*?)overflow:\s*hidden;?([^"]*"[^>]*>)/gi, '$1$2');
+        html = html.replace(/(<div[^>]*style="[^"]*?)overflow:\s*auto;?([^"]*"[^>]*>)/gi, '$1$2');
+        html = html.replace(/(<div[^>]*style="[^"]*?)overflow:\s*scroll;?([^"]*"[^>]*>)/gi, '$1$2');
+        
         // Force full content display in tables
         html = html.replace(/(<table[^>]*)style="[^"]*"/gi, '$1style="width: 100%; table-layout: fixed; border-collapse: collapse;"');
         html = html.replace(/(<td[^>]*)style="([^"]*)"([^>]*>)/gi, (match, start, styles, end) => {
@@ -322,7 +335,10 @@ class EmailService {
                 .replace(/white-space:\s*[^;]+;?/gi, '')
                 .replace(/text-overflow:\s*[^;]+;?/gi, '')
                 .replace(/overflow:\s*[^;]+;?/gi, '')
+                .replace(/overflow-x:\s*[^;]+;?/gi, '')
+                .replace(/overflow-y:\s*[^;]+;?/gi, '')
                 .replace(/max-width:\s*[^;]+;?/gi, '')
+                .replace(/max-height:\s*[^;]+;?/gi, '')
                 .replace(/display:\s*-webkit-box;?/gi, '');
             return `${start}style="${cleanStyles}"${end}`;
         });
