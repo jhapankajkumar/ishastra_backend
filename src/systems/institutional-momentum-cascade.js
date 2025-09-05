@@ -463,7 +463,7 @@ class InstitutionalMomentumCascade {
       passed,
       score,
       weight: this.RULE_WEIGHTS.riskAdjustedScore,
-      details: `Risk-adjusted: Quality ${momentumQuality.toFixed(3)}, Win ratio ${(winRatio * 100).toFixed(1)}%, Max DD ${(maxDrawdown * 100).toFixed(1)}%, Trend strength ${trendStrength.toFixed(2)}`
+      details: `Risk-adjusted: Quality ${momentumQuality.toFixed(1)}, Win ratio ${(winRatio * 100).toFixed(1)}%, Max DD ${(maxDrawdown * 100).toFixed(1)}%, Trend strength ${trendStrength.toFixed(1)}` // Simplified precision
     };
   }
 
@@ -873,7 +873,7 @@ class InstitutionalMomentumCascade {
           positionValue = shares * entryPrice;
         }
       } else {
-        console.log(`  ⚠️ CASCADE: Invalid risk per share: ${riskPerShare.toFixed(4)} (entry: ${entryPrice}, stop: ${stopLoss})`);
+        console.log(`  ⚠️ CASCADE: Invalid risk per share: ${riskPerShare.toFixed(2)} (entry: ${entryPrice}, stop: ${stopLoss})`); // Practical precision
       }
     } else {
       console.log(`  ⚠️ CASCADE: Position sizing skipped - recommendation: ${recommendation}, entryPrice: ${entryPrice}, stopLoss: ${stopLoss}, capital: ${capital}`);
@@ -890,7 +890,7 @@ class InstitutionalMomentumCascade {
       positionValue: positionValue,
       riskAmount: riskAmount,
       riskPerShare: Math.round((entryPrice - stopLoss) * 100) / 100,
-      stopDistance: stopLoss > 0 ? Math.round(((entryPrice - stopLoss) / entryPrice) * 10000) / 100 : 0,
+      stopDistance: stopLoss > 0 ? Math.round(((entryPrice - stopLoss) / entryPrice) * 100) / 100 : 0, // Round to 2 decimal places, not 4
       
       // 🎯 UNIFIED SCORING METADATA
       unifiedScoring: {

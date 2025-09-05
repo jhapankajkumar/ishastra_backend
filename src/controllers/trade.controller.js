@@ -4,6 +4,7 @@ const prisma = new PrismaClient();
 const TradeIdGenerator = require('../utils/tradeIdGenerator');
 const CapitalManager = require('../utils/capitalManager');
 const { getQuote } = require('../yahoo');
+const { re } = require('mathjs');
 
 // Get all trades with related data
 exports.getAllTrades = async (req, res) => {
@@ -95,29 +96,32 @@ exports.createTrade = async (req, res) => {
     const trade = await prisma.trade.create({
       data: {
         tradeId: professionalTradeId,
+
+        //Ticker
         ticker: req.body.ticker,
         tickerName: req.body.tickerName,
-        reasonForEntry: req.body.reasonForEntry,
+        direction: req.body.direction || "Long",
+        instrumentType: req.body.instrumentType || "Stocks",
         currency: currency.toUpperCase(),
+        confidence: req.body.setupConfidence ? Number(req.body.setupConfidence) : 60,
+        grade: req.body.grade || "A",
+
+        //Execution
         entryDate: entryDate,
         entryPrice: entryPrice,
         quantity: quantity,
         remainingQuantity: quantity,
-        direction: req.body.direction || "Long",
-        instrumentType: req.body.instrumentType || "Stocks",
-        tradeSetupId: req.body.tradeSetup ? Number(req.body.tradeSetup) : null,
+        stopLoss: req.body.stopLoss ? Number(req.body.stopLoss) : 0,
+        target1: req.body.target1 ? Number(req.body.target1) : 0,
+        target2: req.body.target2 ? Number(req.body.target2) : 0,
+        target3: req.body.target3 ? Number(req.body.target3) : 0,
+        
+        //Entry Details
+        reasonForEntry: req.body.reasonForEntry,
+        entryCommission: req.body.entryCommission ? Number(req.body.entryCommission) : 0,
+        tradeSetupId: req.body.tradeSetup ? Number(req.body.tradeSetup) : 0,
         status: "Open",
-        confidenceRating: req.body.setupConfidence ? Number(req.body.setupConfidence) : null,
-        entryCommission: req.body.entryCommission ? Number(req.body.entryCommission) : null,
-        stopLoss: req.body.stopLoss ? Number(req.body.stopLoss) : null,
-        target1: req.body.target1 ? Number(req.body.target1) : null,
-        target2: req.body.target2 ? Number(req.body.target2) : null,
-        target3: req.body.target3 ? Number(req.body.target3) : null,
-        timeframeUsed: req.body.timeframesUsed || null,
         notes: req.body.notes || null,
-        atrValue: req.body.atrValue ? Number(req.body.atrValue) : null,
-        riskPerTrade: req.body.riskPerTrade,
-        riskPerTradeValue: req.body.riskPerTradeValue ? Number(req.body.riskPerTradeValue) : 0,
       }
     });
 
@@ -461,50 +465,6 @@ exports.addPostAnalysis = async (req, res) => {
   } catch (err) {
     console.error('Error adding post trade analysis:', err);
     res.status(500).json({ error: 'Failed to add post trade analysis', details: err.message });
-  }
-};
-
-exports.getDashboardSummary = async (req, res) => {
-  try {
-    const trades = await prisma.trade.findMany();
-
-    const totalTrades = trades.length;
-    const wins = trades.filter(t => t.rMultiple > 0).length;
-    const winRate = totalTrades ? Math.round((wins / totalTrades) * 100) : 0;
-    const avgR = totalTrades
-      ? (trades.reduce((sum, t) => sum + (t.rMultiple || 0), 0) / totalTrades).toFixed(2)
-      : 0;
-
-    const grossProfit = trades.filter(t => t.rMultiple > 0).reduce((sum, t) => sum + t.rMultiple, 0);
-    const grossLoss = trades.filter(t => t.rMultiple < 0).reduce((sum, t) => sum + t.rMultiple, 0);
-    const profitFactor = grossLoss !== 0 ? Math.abs(grossProfit / grossLoss).toFixed(2) : "∞";
-
-    const expectancy = totalTrades
-      ? (
-          trades.reduce((sum, t) => sum + (t.rMultiple || 0), 0) / totalTrades
-        ).toFixed(2)
-      : 0;
-
-    const avgHoldTimeMs =
-      trades.reduce((sum, t) => {
-        if (t.entryDate && t.exitDate) {
-          return sum + (new Date(t.exitDate) - new Date(t.entryDate));
-        }
-        return sum;
-      }, 0) / (totalTrades || 1);
-    const avgHoldTimeDays = avgHoldTimeMs ? Math.round(avgHoldTimeMs / (1000 * 60 * 60 * 24)) : 0;
-
-    res.json({
-      totalTrades,
-      winRate,
-      avgR,
-      profitFactor,
-      expectancy,
-      avgHoldTime: `${avgHoldTimeDays}d`
-    });
-  } catch (error) {
-    console.error('Error generating dashboard summary:', error);
-    res.status(500).json({ error: 'Failed to generate dashboard summary', details: error.message });
   }
 };
 

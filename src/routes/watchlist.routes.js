@@ -6,9 +6,9 @@
 
 const express = require('express');
 const router = express.Router();
-const SimpleWatchlistController = require('../controllers/simpleWatchlistController');
+const WatchlistController = require('../controllers/watchlist.controller');
 
-const controller = new SimpleWatchlistController();
+const controller = new WatchlistController();
 
 // GET current watchlist
 router.get('/', controller.getWatchlist.bind(controller));

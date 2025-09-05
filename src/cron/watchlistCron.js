@@ -7,11 +7,11 @@
 
 const cron = require('node-cron');
 const moment = require('moment-timezone');
-const SimpleWatchlistService = require('../services/simpleWatchlistService');
+const WatchlistService = require('../services/watchlist.service');
 
 class WatchlistCron {
     constructor() {
-        this.watchlistService = new SimpleWatchlistService();
+        this.watchlistService = new WatchlistService();
     }
 
     /**

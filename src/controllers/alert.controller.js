@@ -8,9 +8,9 @@
  */
 
 const { PrismaClient } = require('@prisma/client');
-const EntryTriggerService = require('../services/EntryTriggerService');
+const EntryTriggerService = require('../services/watchlist.trigger.service');
 
-class SimpleAlertController {
+class AlertController {
     constructor() {
         this.db = new PrismaClient();
         this.entryTriggerService = new EntryTriggerService();
@@ -234,7 +234,7 @@ class SimpleAlertController {
             console.log('🎯 Getting watchlist entry alerts...');
             
             // Check entry triggers for all watchlist stocks
-            const entryTriggers = await this.entryTriggerService.checkEntryTriggers();
+            const entryTriggers = await this.entryTriggerService.getWatchlistTriggers();
             
             // Count different types of triggers based on actual EntryTriggerService response
             const triggerCounts = {
@@ -295,4 +295,4 @@ class SimpleAlertController {
 
 }
 
-module.exports = SimpleAlertController;
+module.exports = AlertController;

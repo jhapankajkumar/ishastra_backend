@@ -5,11 +5,11 @@
  * Just daily scans and watchlist display.
  */
 
-const SimpleWatchlistService = require('../services/simpleWatchlistService');
+const WatchlistService = require('../services/watchlist.service');
 
-class SimpleWatchlistController {
+class WatchlistController {
     constructor() {
-        this.watchlistService = new SimpleWatchlistService();
+        this.watchlistService = new WatchlistService();
     }
 
     /**
@@ -61,4 +61,4 @@ class SimpleWatchlistController {
     }
 }
 
-module.exports = SimpleWatchlistController;
+module.exports = WatchlistController;

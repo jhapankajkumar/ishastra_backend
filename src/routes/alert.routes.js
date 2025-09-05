@@ -12,9 +12,9 @@
  */
 
 const express = require('express');
-const SimpleAlertController = require('../controllers/simpleAlertController');
-const EntryTriggerService = require('../services/EntryTriggerService');
-const EmailAlertService = require('../services/emailAlertService');
+const SimpleAlertController = require('../controllers/alert.controller');
+const EntryTriggerService = require('../services/watchlist.trigger.service');
+const EmailAlertService = require('../services/email.service');
 
 const router = express.Router();
 const alertController = new SimpleAlertController();

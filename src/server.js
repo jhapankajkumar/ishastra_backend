@@ -1,30 +1,30 @@
 // Start price refresh cron job (runs every 15 minutes during trading hours)
-try {
-  require('./refresh-prices-cron');
-  console.log('✅ Price refresh cron job started successfully (11:30 AM - 6:30 PM SG Time)');
-} catch (error) {
-  console.error('❌ Failed to start price refresh cron job:', error.message);
-}
+// try {
+//   require('./refresh-prices-cron');
+//   console.log('✅ Price refresh cron job started successfully (11:30 AM - 6:30 PM SG Time)');
+// } catch (error) {
+//   console.error('❌ Failed to start price refresh cron job:', error.message);
+// }
 
 // Start unified alert cron job (handles both position and watchlist alerts)
-try {
-  const UnifiedAlertCron = require('./cron/unifiedAlertCron');
-  const unifiedAlerts = new UnifiedAlertCron();
-  unifiedAlerts.start();
-  console.log('✅ Unified Alert cron job started successfully (positions + watchlist alerts)');
-} catch (error) {
-  console.error('❌ Failed to start unified alert cron job:', error.message);
-}
+// try {
+//   const UnifiedAlertCron = require('./cron/unifiedAlertCron');
+//   const unifiedAlerts = new UnifiedAlertCron();
+//   unifiedAlerts.start();
+//   console.log('✅ Unified Alert cron job started successfully (positions + watchlist alerts)');
+// } catch (error) {
+//   console.error('❌ Failed to start unified alert cron job:', error.message);
+// }
 
 // Start watchlist cron job - SIMPLE DAILY SCAN
-try {
-  const WatchlistCron = require('./cron/watchlistCron');
-  const watchlistCron = new WatchlistCron();
-  watchlistCron.start();
-  console.log('✅ Daily Watchlist cron job started successfully (9:30 AM IST)');
-} catch (error) {
-  console.error('❌ Failed to start watchlist cron job:', error.message);
-}
+// try {
+//   const WatchlistCron = require('./cron/watchlistCron');
+//   const watchlistCron = new WatchlistCron();
+//   watchlistCron.start();
+//   console.log('✅ Daily Watchlist cron job started successfully (9:30 AM IST)');
+// } catch (error) {
+//   console.error('❌ Failed to start watchlist cron job:', error.message);
+// }
 
 const express = require('express');
 const cors = require('cors');
@@ -65,13 +65,13 @@ app.use('/api/trading', require('./routes/signal-analysis.routes'));
 app.use('/api/capital', require('./routes/capital.routes'));
 
 // Watchlist routes
-app.use('/api/watchlist', require('./routes/simpleWatchlistRoutes'));
+app.use('/api/watchlist', require('./routes/watchlist.routes'));
 
 // Alert routes
-app.use('/api/alerts', require('./routes/simpleAlertRoutes'));
+app.use('/api/alerts', require('./routes/alert.routes'));
 
 // Email routes
-app.use('/api/email', require('./routes/emailRoutes'));
+app.use('/api/email', require('./routes/email.routes'));
 
 // Yahoo Finance API endpoints
 app.get('/api/yahoo/search', async (req, res) => {

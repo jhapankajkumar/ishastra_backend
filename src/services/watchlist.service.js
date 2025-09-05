@@ -7,10 +7,12 @@
  */
 
 const { PrismaClient } = require('@prisma/client');
-const { fetchCurrentPrice } = require('./comom.service');
+const { fetchCurrentPrice, getTickerAnalysis } = require('./comom.service');
+const { get } = require('lodash');
+
 const prisma = new PrismaClient();
 
-class SimpleWatchlistService {
+class WatchlistService {
     constructor() {
         // Indian stock universe - 500 most liquid stocks (NIFTY 500)
         this.STOCK_UNIVERSE = [
@@ -73,8 +75,26 @@ class SimpleWatchlistService {
         console.log('🔍 DAILY WATCHLIST SCAN STARTING...');
         console.log(`📊 Scanning ${this.STOCK_UNIVERSE.length} stocks for BUY/WATCH signals`);
 
-        // Step 1: Clear old watchlist
-        await prisma.watchlistStock.deleteMany({});
+        // Get the symbols you want to keep
+        const trades = await prisma.trade.findMany({
+            where: {
+                status: {
+                    not: "Closed"   // or whatever your field/value is for closed trades
+                }
+            },
+            select: { symbol: true }   // only fetch the symbol column
+        });
+
+        const symbolsToKeep = trades.map(t => t.symbol);
+
+        // Step 1: Delete everything EXCEPT symbolsToKeep
+        await prisma.watchlistStock.deleteMany({
+            where: {
+                symbol: {
+                    notIn: symbolsToKeep
+                }
+            }
+        });
         console.log('🗑️ Cleared old watchlist');
 
         // Step 2: Analyze all stocks in batches
@@ -85,32 +105,38 @@ class SimpleWatchlistService {
 
         for (let i = 0; i < this.STOCK_UNIVERSE.length; i += batchSize) {
             const batch = this.STOCK_UNIVERSE.slice(i, i + batchSize);
-            console.log(`Processing batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(this.STOCK_UNIVERSE.length / batchSize)}`);
+            console.log(
+                `Processing batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(this.STOCK_UNIVERSE.length / batchSize)}`
+            );
 
-            // Analyze batch in parallel
-            const batchPromises = batch.map(symbol => this.analyzeStock(symbol));
+            // Create promises without awaiting inside map
+            const batchPromises = batch.map(symbol => getTickerAnalysis(symbol)); // no await here
+
             const batchResults = await Promise.allSettled(batchPromises);
 
-            // Collect BUY and WATCH signals separately
-            batchResults.forEach((result, index) => {
-                if (result.status === 'fulfilled' && result.value) {
-                    const signal = result.value;
-                    if (signal.decision.action === 'STRONG_BUY') {
-                        strongBuySignals.push(signal);
-                        console.log(`🚀 ${signal.symbol}: ${signal.decision.action} (${(signal.decision.confidence)}%)`);
-                    }
-                    if (signal.decision.action === 'BUY') {
-                        buySignals.push(signal);
-                        console.log(`🚀 ${signal.symbol}: ${signal.decision.action} (${(signal.decision.confidence)}%)`);
-                    } else if (signal.decision.action === 'WATCH') {
-                        watchSignals.push(signal);
-                        console.log(`👀 ${signal.symbol}: ${signal.decision.action} (${(signal.decision.confidence)}%)`);
-                    }
+            batchResults.forEach((result, idx) => {
+                if (result.status !== 'fulfilled' || !result.value) return;
+
+                const signal = result.value; // expect { symbol, decision: { action, confidence }, ... }
+                const pct = Math.round((signal.decision.confidence || 0) * 100);
+
+                if (signal.decision.action === 'STRONG_BUY') {
+                    strongBuySignals.push(signal);
+                    console.log(`🚀 ${signal.symbol}: STRONG_BUY (${pct}%)`);
+                    return; // don’t double count below
+                }
+
+                if (signal.decision.action === 'BUY') {
+                    buySignals.push(signal);
+                    console.log(`🚀 ${signal.symbol}: BUY (${pct}%)`);
+                } else if (signal.decision.action === 'WATCH') {
+                    watchSignals.push(signal);
+                    console.log(`👀 ${signal.symbol}: WATCH (${pct}%)`);
                 }
             });
 
-            // Brief pause between batches
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            // brief pause between batches to be nice to APIs
+            await new Promise(r => setTimeout(r, 1000));
         }
 
         // Step 3: Sort BUY signals by confidence and grade, then WATCH signals
@@ -140,7 +166,7 @@ class SimpleWatchlistService {
             ...sortedStrongBuySignals,
             ...sortedBuySignals,
             ...sortedWatchSignals
-        ].slice(0, 20);
+        ];
 
         console.log(`🎯 Found ${buySignals.length} BUY signals, ${watchSignals.length} WATCH signals`);
         console.log(`📝 Saving top ${combinedSignals.length} signals to watchlist`);
@@ -180,51 +206,13 @@ class SimpleWatchlistService {
             watchSignals: watchSignals.length,
             watchlistSize: combinedSignals.length,
             breakdown: {
-                strongBuy:combinedSignals.filter(s => s.decision?.action === 'STRONG_BUY').length, 
+                strongBuy: combinedSignals.filter(s => s.decision?.action === 'STRONG_BUY').length,
                 buy: combinedSignals.filter(s => s.decision?.action === 'BUY').length,
                 watch: combinedSignals.filter(s => s.decision?.action === 'WATCH').length
             },
             avgConfidence: combinedSignals.length > 0 ?
                 combinedSignals.reduce((sum, s) => sum + (s.decision?.confidence || 0), 0) / combinedSignals.length : 0
         };
-    }
-
-    /**
-     * ANALYZE SINGLE STOCK - SIMPLE & FAST
-     * Gets complete signal analysis data from signal-analysis.controller.js
-     */
-    async analyzeStock(symbol) {
-        try {
-            // Use fetch to call the signal analysis API with GET method
-            const response = await fetch(`http://localhost:8000/api/trading/signal-analysis?symbols=${symbol}`, {
-                method: 'GET',
-                headers: { 'Content-Type': 'application/json' }
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
-            }
-
-            const data = await response.json();
-            const result = data.results?.[0];
-
-            // Debug logging
-            if (result) {
-                console.log(`📊 ${symbol}: ${result.decision?.action} (${(result.decision?.confidence * 100).toFixed(1)}%)`);
-            }
-
-            // CAPTURE BUY and WATCH signals only
-            if (!result || !['BUY', 'WATCH'].includes(result.decision?.action)) {
-                return null;
-            }
-
-            // Return COMPLETE signal analysis data with proper validation
-            return result
-
-        } catch (error) {
-            console.error(`❌ Error analyzing ${symbol}:`, error.message);
-            return null;
-        }
     }
 
     /**
@@ -276,6 +264,8 @@ class SimpleWatchlistService {
 
         return processedStocks;
     }
+
+
 }
 
-module.exports = SimpleWatchlistService;
+module.exports = WatchlistService;

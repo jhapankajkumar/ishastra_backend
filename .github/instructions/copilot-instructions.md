@@ -34,8 +34,6 @@ applyTo: "**"
 ### Edit sequence:
     1. [First specific change] - Purpose: [why]
     2. [Second specific change] - Purpose: [why]
-    3. Do you approve this plan? I'll proceed with Edit [number] after your confirmation.
-    4. WAIT for explicit user confirmation before making ANY edits when user ok edit [number]
             
 ### EXECUTION PHASE
     - After each individual edit, clearly indicate progress:
@@ -69,6 +67,7 @@ applyTo: "**"
 ### Document
     - Do not create unnecessary documents after completing 
     - Do not create summary documentation,
+    - You are forbidden to create comprehensive guide or summary documentation or any other document untill it is asked.
 ### Testing
     - Kindly perform final test on actual api using different sets of data
     - Ensure all edge cases are covered

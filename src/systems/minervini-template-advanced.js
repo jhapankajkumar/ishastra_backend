@@ -521,9 +521,9 @@ class MinerviniTemplateAdvanced {
       targets: targets.map(t => Math.round(t * 100) / 100),
       riskReward: Math.round(riskReward * 100) / 100, // FIXED: Always return number, not object
       atr: Math.round(atr * 100) / 100,
-      riskPercentage: Math.round(riskPercentage * 10000) / 100,
-      nextResistance: nextResistance ? Math.round(nextResistance * 100) / 100 : null,
-      volatility: Math.round(volatility * 10000) / 100 // As percentage
+      riskPercentage: Math.round(riskPercentage * 100) / 100, // Round to 2 decimal places, not 4
+      nextResistance: nextResistance ? Math.round(nextResistance) : null, // Round to nearest dollar
+      volatility: Math.round(volatility * 100) / 100 // Round to 2 decimal places, not 4
     };
   }
 
@@ -742,7 +742,7 @@ class MinerviniTemplateAdvanced {
           positionValue = shares * entryPrice;
         }
       } else {
-        console.log(`  ⚠️ TEMPLATE: Invalid risk per share: ${riskPerShare.toFixed(4)} (entry: ${entryPrice}, stop: ${stopLoss})`);
+        console.log(`  ⚠️ TEMPLATE: Invalid risk per share: ${riskPerShare.toFixed(2)} (entry: ${entryPrice}, stop: ${stopLoss})`); // Practical precision
       }
     } else {
       console.log(`  ⚠️ TEMPLATE: Position sizing skipped - recommendation: ${recommendation}, entryPrice: ${entryPrice}, stopLoss: ${stopLoss}, capital: ${capital}`);
@@ -759,7 +759,7 @@ class MinerviniTemplateAdvanced {
       positionValue: positionValue,
       riskAmount: riskAmount,
       riskPerShare: Math.round((entryPrice - stopLoss) * 100) / 100,
-      stopDistance: stopLoss > 0 ? Math.round(((entryPrice - stopLoss) / entryPrice) * 10000) / 100 : 0,
+      stopDistance: stopLoss > 0 ? Math.round(((entryPrice - stopLoss) / entryPrice) * 100) / 100 : 0, // Round to 2 decimal places, not 4
       riskReward: riskReward,
     };
   }

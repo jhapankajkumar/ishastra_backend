@@ -4,7 +4,7 @@
 
 const express = require('express');
 const router = express.Router();
-const EmailAlertService = require('../services/emailAlertService');
+const EmailAlertService = require('../services/email.service');
 
 const emailService = new EmailAlertService();
 
@@ -70,11 +70,11 @@ router.get('/verify', async (req, res) => {
 /**
  * Send a custom trading alert (for testing)
  * POST /api/email/alert
- * Body: { symbol, type, message, priority, currentPrice }
+ * Body: { symbol, type, message, priority, currentPrice, triggerConditions, action, confidence, grade, batchedAlerts }
  */
 router.post('/alert', async (req, res) => {
     try {
-        const { symbol, type, message, priority = 'MEDIUM', currentPrice } = req.body;
+        const { symbol, type, message, priority = 'MEDIUM', currentPrice, ...additionalFields } = req.body;
         
         if (!symbol || !type || !message) {
             return res.status(400).json({
@@ -89,7 +89,8 @@ router.post('/alert', async (req, res) => {
             message,
             priority,
             currentPrice,
-            timestamp: new Date()
+            timestamp: new Date(),
+            ...additionalFields  // This includes triggerConditions, action, confidence, grade, batchedAlerts, etc.
         };
 
         const result = await emailService.sendAlert(alert);

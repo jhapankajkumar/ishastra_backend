@@ -5,7 +5,6 @@ const multer = require('multer');
 const upload = multer({ dest: 'uploads/' });
 
 router.get('/', tradeController.getAllTrades);
-router.get('/dashboard/summary', tradeController.getDashboardSummary);
 
 router.post(
   '/',

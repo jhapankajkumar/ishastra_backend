@@ -106,13 +106,6 @@ model TradeTransaction {
   exitTacticId     Int?
   createdAt        DateTime @default(now())
   
-  // Exit Transaction Outcome Fields (null for entry transactions)
-  outcome           String?    // "WIN", "LOSS", "BREAKEVEN" - only for exits
-  pnlAmount         Float?     // Profit/Loss in dollars - only for exits
-  pnlPercent        Float?     // Profit/Loss percentage - only for exits
-  entryPrice        Float?     // For exit transactions - original entry price
-  daysHeld          Int?       // For exit transactions - days position was held
-  
   trade            Trade    @relation(fields: [tradeId], references: [id], onDelete: Cascade)
 }
 
