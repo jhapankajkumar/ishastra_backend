@@ -33,7 +33,7 @@ class AlertController {
                     entryPrice: true,
                     currentPrice: true,
                     createdAt: true,
-                    analysis: true  // Add analysis field for exit levels
+                    systemAnalysisResult: true  // Add analysis field for exit levels
                 }
             });
             
