@@ -257,33 +257,61 @@ class MinerviniTemplateAdvanced {
     totalScore += rule3Score;
     if (rule3) reasoning.push('Rule 3: 150 SMA > 200 SMA (trend hierarchy validated)');
 
+    // --- Optional: define helper variables for strongVolume, RS, fundamentalsStrong
+    // Calculate breakoutVolume and avgVolume for strongVolume
+    const recentVolumes = [
+      dailyData[dailyData.length - 1]?.volume || 0,
+      dailyData[dailyData.length - 2]?.volume || 0,
+      dailyData[dailyData.length - 3]?.volume || 0
+    ];
+    const avgVolume = this.calculateAverageVolume(dailyData.slice(-50));
+    const breakoutVolume = recentVolumes[0];
+    const strongVolume = breakoutVolume >= 2.0 * avgVolume;
+    const RS = this.calculateRelativeStrength(dailyData, currentPrice, thresholds);
+    const fundamentalScore = this.calculateFundamentalProxy(dailyData, currentPrice);
+    const fundamentalsStrong = fundamentalScore >= 75;
+
     // --- RULE 4: Price within X% of 52-week high (Not extended, BUY/WATCH impact: High)
     const distanceFromHigh = (high52Week - currentPrice) / high52Week;
-    const rule4 = distanceFromHigh <= thresholds.criterion4_high_proximity_threshold;
+    // Patch: dynamic threshold for criterion4_high_proximity_threshold
+    const criterion4_high_proximity_threshold = (strongVolume && RS > 80 && fundamentalsStrong) ? 0.25 : 0.20;
+    const rule4 = distanceFromHigh <= criterion4_high_proximity_threshold;
     const rule4Score = rule4 ? (1.0 - distanceFromHigh * 2) : 0.0;
     criteria.criterion4 = {
       passed: rule4,
       value: distanceFromHigh * 100,
-      threshold: thresholds.criterion4_high_proximity_threshold * 100,
+      threshold: criterion4_high_proximity_threshold * 100,
       score: rule4Score,
       details: `Rule 4: Price $${currentPrice.toFixed(2)} is ${(distanceFromHigh * 100).toFixed(1)}% from 52-week high $${high52Week.toFixed(2)}`
     };
     totalScore += rule4Score;
-    if (rule4) reasoning.push(`Rule 4: Within ${(thresholds.criterion4_high_proximity_threshold * 100).toFixed(0)}% of 52-week high (${(distanceFromHigh * 100).toFixed(1)}% away)`);
+    if (rule4) reasoning.push(`Rule 4: Within ${(criterion4_high_proximity_threshold * 100).toFixed(0)}% of 52-week high (${(distanceFromHigh * 100).toFixed(1)}% away)`);
 
     // --- RULE 5: Price is Y% above 52-week low (Avoids weak bases, BUY/WATCH impact: Medium)
     const distanceFromLow = (currentPrice - low52Week) / low52Week;
-    const rule5 = distanceFromLow >= thresholds.criterion5_low_distance_threshold;
-    const rule5Score = rule5 ? Math.min(1.0, distanceFromLow / 0.5) : 0.0;
+    let rule5 = distanceFromLow >= thresholds.criterion5_low_distance_threshold;
+    let rule5Score = rule5 ? Math.min(1.0, distanceFromLow / 0.5) : 0.0;
+    // Patch: Make rule5 non-blocking, adjust confidence and reasons if not passed
+    let rule5_passed = true;
+    let rule5_confidence_penalty = 0;
+    let rule5_reason = '';
+    if (!rule5) {
+      rule5_confidence_penalty = 0.05;
+      rule5_reason = "Price still close to recent lows (riskier setup)";
+    }
     criteria.criterion5 = {
-      passed: rule5,
+      passed: rule5_passed,
       value: distanceFromLow * 100,
       threshold: thresholds.criterion5_low_distance_threshold * 100,
       score: rule5Score,
       details: `Rule 5: Price $${currentPrice.toFixed(2)} is ${(distanceFromLow * 100).toFixed(1)}% above 52-week low $${low52Week.toFixed(2)}`
     };
     totalScore += rule5Score;
-    if (rule5) reasoning.push(`Rule 5: Strong recovery: ${(distanceFromLow * 100).toFixed(1)}% above 52-week low`);
+    if (rule5) {
+      reasoning.push(`Rule 5: Strong recovery: ${(distanceFromLow * 100).toFixed(1)}% above 52-week low`);
+    } else {
+      reasoning.push(rule5_reason);
+    }
 
     // --- RULE 6: RS Rating > 70 (Relative strength, BUY/WATCH impact: High)
     const relativeStrength = this.calculateRelativeStrength(dailyData, currentPrice, thresholds);
@@ -300,46 +328,66 @@ class MinerviniTemplateAdvanced {
     if (rule6) reasoning.push(`Rule 6: Exceptional relative strength vs benchmark: ${relativeStrength.toFixed(1)}`);
 
     // --- RULE 7: Volume surge > 50% (Institutional footprint, BUY/WATCH impact: High)
+    // Patch: Use recentVolumes check for volume breakout
+    // Use avgVolume from above
+    const todayVolume = recentVolumes[0];
+    const yesterdayVolume = recentVolumes[1];
+    const twoDaysAgoVolume = recentVolumes[2];
+    const volumeBreakout = [todayVolume, yesterdayVolume, twoDaysAgoVolume].some(v => v >= 1.6 * avgVolume);
     const volumeAnalysis = this.analyzeBreakoutVolume(dailyData, currentPrice, thresholds);
-    const rule7 = volumeAnalysis.hasVolumeBreakout;
-    const rule7Score = rule7 ? Math.min(1.0, volumeAnalysis.volumeRatio / 2.0) : volumeAnalysis.volumeRatio / thresholds.criterion7_volume_multiplier;
+    const rule7 = volumeBreakout;
+    const rule7Score = rule7 ? Math.min(1.0, (todayVolume / avgVolume) / 2.0) : (todayVolume / avgVolume) / thresholds.criterion7_volume_multiplier;
     criteria.criterion7 = {
       passed: rule7,
-      value: volumeAnalysis.volumeRatio,
-      threshold: thresholds.criterion7_volume_multiplier,
+      value: todayVolume / avgVolume,
+      threshold: 1.6, // hardcoded for this new logic
       score: rule7Score,
-      details: `Rule 7: Breakout volume ${volumeAnalysis.volumeRatio.toFixed(2)}x avg ${rule7 ? '≥' : '<'} ${thresholds.criterion7_volume_multiplier}x on ${volumeAnalysis.breakoutDaysAgo} days ago`
+      details: `Rule 7: Recent volume ${todayVolume.toLocaleString()} vs avg ${avgVolume.toLocaleString()} (${(todayVolume / avgVolume).toFixed(2)}x)`
     };
     totalScore += rule7Score;
-    if (rule7) reasoning.push(`Rule 7: Strong volume breakout: ${volumeAnalysis.volumeRatio.toFixed(2)}x average on price breakout`);
+    if (rule7) reasoning.push(`Rule 7: Strong volume breakout: ${(todayVolume / avgVolume).toFixed(2)}x average in recent days`);
 
     // --- RULE 8: EPS or Sales momentum (proxy) (Growth leadership, BUY/WATCH impact: Medium)
-    const fundamentalProxy = this.calculateFundamentalProxy(dailyData, currentPrice);
-    const rule8 = fundamentalProxy > thresholds.criterion8_fundamental_score;
-    const rule8Score = rule8 ? (fundamentalProxy - 40) / 60 : fundamentalProxy / thresholds.criterion8_fundamental_score;
+    // Patch: downgrade effect to confidence only
+    const fundamentalProxy = fundamentalScore;
+    let rule8 = fundamentalProxy > thresholds.criterion8_fundamental_score;
+    let rule8Score = rule8 ? (fundamentalProxy - 40) / 60 : fundamentalProxy / thresholds.criterion8_fundamental_score;
+    let rule8_passed = true;
+    let rule8_confidence_penalty = 0;
+    let rule8_reason = '';
+    if (fundamentalProxy < 60) {
+      rule8_passed = true;
+      rule8_confidence_penalty = 0.1;
+      rule8_reason = "Weak fundamentals; price action may be speculative";
+    }
     criteria.criterion8 = {
-      passed: rule8,
+      passed: rule8_passed,
       value: fundamentalProxy,
       threshold: thresholds.criterion8_fundamental_score,
       score: rule8Score,
       details: `Rule 8: Fundamental proxy ${fundamentalProxy.toFixed(1)} ${rule8 ? '>' : '≤'} ${thresholds.criterion8_fundamental_score} (momentum-based estimate)`
     };
     totalScore += rule8Score;
-    if (rule8) reasoning.push(`Rule 8: Strong fundamental proxy: ${fundamentalProxy.toFixed(1)}/100`);
+    if (rule8) {
+      reasoning.push(`Rule 8: Strong fundamental proxy: ${fundamentalProxy.toFixed(1)}/100`);
+    } else if (rule8_reason) {
+      reasoning.push(rule8_reason);
+    }
 
     // Calculate overall metrics
     const overallScore = totalScore / 8.0; // Normalize to 0-1
     const passedCriteria = Object.values(criteria).filter(c => c.passed).length;
 
     // Compose rule variables for external use (for final decision logic)
+    // Patch: use rule5_passed and rule8_passed for external logic
     criteria.rule1 = rule1;
     criteria.rule2 = rule2;
     criteria.rule3 = rule3;
     criteria.rule4 = rule4;
-    criteria.rule5 = rule5;
+    criteria.rule5 = rule5_passed;
     criteria.rule6 = rule6;
     criteria.rule7 = rule7;
-    criteria.rule8 = rule8;
+    criteria.rule8 = rule8_passed;
 
     let templateGrade = 'F';
     let confidence = 0;
@@ -368,6 +416,11 @@ class MinerviniTemplateAdvanced {
       confidence = 0.25;
     }
 
+    // Apply confidence penalties for rule5 and rule8 if not passed
+    if (rule5_confidence_penalty) confidence -= rule5_confidence_penalty;
+    if (rule8_confidence_penalty) confidence -= rule8_confidence_penalty;
+    if (confidence < 0) confidence = 0;
+
     // console.log(`  🏛️ TEMPLATE: Score ${(overallScore * 100).toFixed(1)}% (${passedCriteria}/8 criteria), Grade: ${templateGrade}`);
 
     return {
@@ -377,7 +430,7 @@ class MinerviniTemplateAdvanced {
       confidence,
       reasoning,
       // Expose rule variables for external logic (for clarity)
-      rule1, rule2, rule3, rule4, rule5, rule6, rule7, rule8
+      rule1, rule2, rule3, rule4, rule5: rule5_passed, rule6, rule7, rule8: rule8_passed
     };
   }
 
@@ -428,8 +481,18 @@ class MinerviniTemplateAdvanced {
     if (passedRules >= 6) {
       decision = 'WATCH';
     }
+    // Patch: BUY decision logic checks for non-negotiable rules (1,2,3,4,6,7)
     if (rule1 && rule2 && rule3 && rule4 && rule6 && rule7) {
-      decision = 'BUY';  // Key institutional-quality signals present
+      decision = 'BUY';
+    }
+    // Patch: WATCH downgrade logic for strong template but weak trend
+    if (
+      templateAnalysis.templateGrade === 'A+' &&
+      rule6 && rule7 && rule4 && rule8 &&
+      (!rule1 || !rule2)
+    ) {
+      decision = 'WATCH';
+      reasoning.push("Strong breakout, but trend not yet confirmed. Wait for SMA150/200 alignment.");
     }
     reasoning.push('Failed Rules: --------------');
     if (!rule1) reasoning.push("Rule 1 : Price is not above or SMA150 is not rising.");
@@ -536,7 +599,7 @@ class MinerviniTemplateAdvanced {
     const wasAdjusted = actualTarget > originalResistanceTarget;
 
     if (wasAdjusted) {
-      console.log(`  🎯 R/R ENFORCEMENT: Target adjusted from ${originalResistanceTarget.toFixed(2)} to ${actualTarget.toFixed(2)} for minimum 2.5:1 R/R`);
+      // console.log(`  🎯 R/R ENFORCEMENT: Target adjusted from ${originalResistanceTarget.toFixed(2)} to ${actualTarget.toFixed(2)} for minimum 2.5:1 R/R`);
     }
 
     const riskPercentage = (currentPrice - stopLoss) / currentPrice;
@@ -774,7 +837,7 @@ class MinerviniTemplateAdvanced {
     }
 
     // 🎯 UNIFIED SCORING DEBUG INFO
-    console.log(`  🎯 UNIFIED SCORING: Template ${templateAnalysis.templateGrade}(${templateScore}) + Signal ${signalQualityGrade}(${signalScore}) = ${totalScore.toFixed(1)} → ${recommendation}`);
+    // console.log(`  🎯 UNIFIED SCORING: Template ${templateAnalysis.templateGrade}(${templateScore}) + Signal ${signalQualityGrade}(${signalScore}) = ${totalScore.toFixed(1)} → ${recommendation}`);
 
     return {
       recommendation,
@@ -918,7 +981,7 @@ class MinerviniTemplateAdvanced {
       return false;
     }
 
-    console.log(`  ✅ MINERVINI: Data validation passed - ${series.daily.length} days, SMA150: ${!!hasSMA150}, SMA200: ${!!hasSMA200}`);
+    // console.log(`  ✅ MINERVINI: Data validation passed - ${series.daily.length} days, SMA150: ${!!hasSMA150}, SMA200: ${!!hasSMA200}`);
     return true;
   }
 

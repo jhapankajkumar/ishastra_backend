@@ -123,24 +123,24 @@ const THRESHOLD_CONFIGS = {
     
     institutional_momentum_cascade: {
       // MODERATE Weekly momentum analysis (75% of ULTRA)
-      weekly_momentum_threshold: 12.0,            // 12% weekly momentum (75% of 15% = 11.25%, rounded to 12%)
+      weekly_momentum_threshold: 10.0,            // 12% weekly momentum (75% of 15% = 11.25%, rounded to 12%)
       weekly_roc_threshold: 4.5,                  // 4.5% ROC threshold (75% of 6% = 4.5%)
       weekly_confirmations_threshold: 2,          // 2 weekly confirmations (75% of 3 = 2.25, rounded to 2)
       
       // MODERATE Daily momentum analysis  
-      rsi_momentum_threshold: 65,                 // 65 RSI (75% of 75 = 56, rounded to 65)
-      volume_expansion_threshold: 1.6,            // 1.6x volume expansion (75% of 2.0 = 1.5, rounded to 1.6)
+      rsi_momentum_threshold: 60,                 // 65 RSI (75% of 75 = 56, rounded to 65)
+      volume_expansion_threshold: 1.4,            // 1.6x volume expansion (75% of 2.0 = 1.5, rounded to 1.6)
       
       // MODERATE Price structure analysis
       breakout_buffer: 1.005,                     // 0.5% above breakout (75% of 1% = 0.75%, use 0.5%)
-      structure_confirmations: 3,                 // 3 structure confirmations (75% of 4 = 3)
+      structure_confirmations: 2,                 // 3 structure confirmations (75% of 4 = 3)
       
       // MODERATE Institutional flow analysis
       accumulation_ratio_threshold: 0.70,         // 70% accumulation (75% of 80% = 60%, rounded to 70%)
       body_ratio_threshold: 0.65,                 // 65% body ratio (75% of 75% = 56%, rounded to 65%)
-      large_volume_multiplier: 2.0,               // 2.0x volume days (75% of 2.5 = 1.875, rounded to 2.0)
+      large_volume_multiplier: 1.8,               // 2.0x volume days (75% of 2.5 = 1.875, rounded to 2.0)
       large_volume_days_threshold: 3,             // 3 large volume days (75% of 4 = 3)
-      correlation_threshold: 0.50,                // 50% price-volume correlation (75% of 60% = 45%, rounded to 50%)
+      correlation_threshold: 0.45,                // 50% price-volume correlation (75% of 60% = 45%, rounded to 50%)
       
       // MODERATE Risk-adjusted momentum analysis
       momentum_quality_threshold: 0.20,           // 20% momentum quality (75% of 25% = 19%, rounded to 20%)

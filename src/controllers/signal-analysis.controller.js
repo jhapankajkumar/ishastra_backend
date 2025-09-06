@@ -15,8 +15,7 @@ class TradingSystemController {
     // Initialize all trading systems
     this.systems = {
       // 🏛️ NEW INSTITUTIONAL SYSTEMS
-      'minervini_template_advanced': new MinerviniTemplateAdvanced(),
-      'institutional_momentum_cascade': new InstitutionalMomentumCascade()
+      'minervini_template_advanced': new MinerviniTemplateAdvanced()
     };
     // 🚨 REMOVED: Complex system analyzer dependency
     // this.systemAnalyzer = new SingleSystemAnalyzer(generateExpertAIDecision);
@@ -62,7 +61,6 @@ class TradingSystemController {
   
     const CORE_SYSTEMS = [
       'minervini_template_advanced',
-      'institutional_momentum_cascade'
     ];
     
     const supportedSystems = CORE_SYSTEMS.filter(sys => this.systems[sys]);
@@ -162,7 +160,7 @@ class TradingSystemController {
             systemResults[systemId] = systemAnalysis;
             systemFinalResults[systemId] = systemAnalysis;
 
-            console.log(`✅ SIMPLE: ${systemId} analysis complete: ${systemAnalysis.decision} (${Math.round(systemAnalysis.confidence * 100)}%)`);
+            // console.log(`✅ SIMPLE: ${systemId} analysis complete: ${systemAnalysis.decision} (${Math.round(systemAnalysis.confidence * 100)}%)`);
 
           } catch (systemError) {
             console.error(`❌ ${systemId} analysis failed:`, systemError.message);
@@ -289,7 +287,7 @@ class TradingSystemController {
     const minervini = minerviniResult || { decision: 'HOLD', confidence: 0 };
     const momentum = momentumResult || { decision: 'HOLD', confidence: 0 };
 
-    console.log(`  🗳️  SIMPLE VOTE: Minervini=${minervini.decision}(${Math.round(minervini.confidence * 100)}%), Momentum=${momentum.decision}(${Math.round(momentum.confidence * 100)}%)`);
+    // console.log(`  🗳️  SIMPLE VOTE: Minervini=${minervini.decision}(${Math.round(minervini.confidence * 100)}%), Momentum=${momentum.decision}(${Math.round(momentum.confidence * 100)}%)`);
 
     // Both systems agree on BUY
     if (minervini.decision === 'BUY' && momentum.decision === 'BUY') {
