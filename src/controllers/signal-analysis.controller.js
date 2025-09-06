@@ -91,7 +91,7 @@ class TradingSystemController {
           const currency = symbol.includes('.NS') ? 'INR' : 'USD';
           const capitalData = await CapitalManager.getCapital(currency);
           remainingCapital = capitalData ? capitalData.remaining : remainingCapital;
-          console.log(`  💰 CAPITAL: Using ${currency} capital: ${remainingCapital.toLocaleString()} (from DB)`);
+          // console.log(`  💰 CAPITAL: Using ${currency} capital: ${remainingCapital.toLocaleString()} (from DB)`);
         } catch (error) {
           console.log(`  ⚠️ CAPITAL: Using fallback capital: $${remainingCapital.toLocaleString()} (DB error: ${error.message})`);
         }
@@ -162,10 +162,10 @@ class TradingSystemController {
             systemResults[systemId] = systemAnalysis;
             systemFinalResults[systemId] = systemAnalysis;
 
-            console.log(`    ✅ SIMPLE: ${systemId} analysis complete: ${systemAnalysis.decision} (${Math.round(systemAnalysis.confidence * 100)}%)`);
+            console.log(`✅ SIMPLE: ${systemId} analysis complete: ${systemAnalysis.decision} (${Math.round(systemAnalysis.confidence * 100)}%)`);
 
           } catch (systemError) {
-            console.error(`    ❌ ${systemId} analysis failed:`, systemError.message);
+            console.error(`❌ ${systemId} analysis failed:`, systemError.message);
             systemResults[systemId] = {
               decision: 'ERROR',
               error: systemError.message,
@@ -430,7 +430,7 @@ class TradingSystemController {
         action: unifiedAction,
         confidence: confidencePercent,
         grade: grade,
-        reasoning: winningSystem.reasoning || 'Analysis complete',
+        reasoning: winningSystem?.reasoning || 'Analysis complete',
         systemsAgreement: unifiedDecision.systemsAgreement || 'PARTIAL',
         winningSystem: winningSystemName,
         winningSystemId: winningSystemId

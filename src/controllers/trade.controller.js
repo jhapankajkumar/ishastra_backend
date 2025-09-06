@@ -39,14 +39,13 @@ exports.getAllTrades = async (req, res) => {
 // Add Trade (Entry only)
 exports.createTrade = async (req, res) => {
   try {
-    //console.log('🔍 Create Trade Request Body:', req.body);
+    console.log('🔍 Create Trade Request Body:', req.body);
     //console.log('📁 Create Trade Files:', req.files);
     //console.log('📅 Entry Date Value:', req.body.entryDate, typeof req.body.entryDate);
 
-    const quantity = Number(req.body.entryFilledShares);
-    const entryPrice = Number(req.body.entryOrderPrice);
     const currency = req.body.currency || "INR"; // Default to INR if not specified
-
+    const entryPrice = Number(req.body.entryPrice)
+    const quantity = Number(req.body.quantity);
     // Generate a unique professional trade ID
     let professionalTradeId;
     let isUnique = false;
@@ -64,6 +63,7 @@ exports.createTrade = async (req, res) => {
     if (!isUnique) {
       return res.status(500).json({ error: 'Failed to generate a unique tradeId after multiple attempts.' });
     }
+
 
     // Validate and parse entry date (required field)
     if (!req.body.entryDate || req.body.entryDate === 'undefined' || req.body.entryDate.trim() === '') {
@@ -90,8 +90,7 @@ exports.createTrade = async (req, res) => {
       });
     }
 
-    // Allocate capital before creating trade
-    await CapitalManager.allocateCapital(currency, tradeAmount);
+    
 
     const trade = await prisma.trade.create({
       data: {
@@ -122,6 +121,7 @@ exports.createTrade = async (req, res) => {
         tradeSetupId: req.body.tradeSetup ? Number(req.body.tradeSetup) : 0,
         status: "Open",
         notes: req.body.notes || null,
+        systemAnalysisResult: req.body.systemAnalysisResult || null 
       }
     });
 
@@ -162,7 +162,8 @@ exports.createTrade = async (req, res) => {
       );
     }
 
-    //console.log(`✅ Trade created successfully with capital allocation: ${tradeAmount} ${currency}`);
+    // Allocate capital after creating trade
+    await CapitalManager.allocateCapital(currency, tradeAmount);
 
     res.status(201).json({ 
       message: "Trade created successfully", 
@@ -228,6 +229,7 @@ exports.updateTradeExit = async (req, res) => {
     const releaseAmount = CapitalManager.calculateTradeAmount(exitPrice, exitQty);
     const currency = currentTrade.currency || 'USD';
 
+    console.log(`💰 Releasing capital for partial exit: ${releaseAmount} ${currency || 'USD'}`);
     // Create transaction record
     await prisma.tradeTransaction.create({
       data: {
@@ -349,6 +351,7 @@ exports.partialExitTrade = async (req, res) => {
 
     // Calculate capital to release for this exit
     const releaseAmount = CapitalManager.calculateTradeAmount(exitPrice, exitQty);
+    console.log(`💰 Releasing capital for partial exit: ${releaseAmount} ${currentTrade.currency || 'USD'}`) ;
     const currency = currentTrade.currency || 'USD';
 
     // Create transaction record

@@ -116,7 +116,7 @@ class CapitalManager {
         }
       });
 
-      //console.log(`✅ Released ${amount} ${upperCurrency}. Remaining: ${updatedCapital.remaining} ${upperCurrency}`);
+      console.log(`✅ Released ${amount} ${upperCurrency}. Remaining: ${updatedCapital.remaining} ${upperCurrency}`);
       return updatedCapital;
     } catch (error) {
       console.error(`Error releasing capital for ${currency}:`, error);

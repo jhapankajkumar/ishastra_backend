@@ -90,7 +90,7 @@ class InstitutionalMomentumCascade {
         return this.createAvoidSignal('INVALID_PRICE', 'Invalid current price for Cascade analysis');
       }
 
-      console.log(`  🌊 CASCADE: Analyzing ${symbol || 'stock'} at $${entryPrice.toFixed(2)}`);
+      // console.log(`  🌊 CASCADE: Analyzing ${symbol || 'stock'} at $${entryPrice.toFixed(2)}`);
 
       // Execute the 6-rule Cascade analysis
       const cascadeAnalysis = this.executeCascadeAnalysis(completedDaily, weeklyData, indicators, entryPrice, thresholds);
@@ -107,7 +107,7 @@ class InstitutionalMomentumCascade {
       );
 
       // 🔒 SIMPLE STABILITY: Apply signal stabilization for swing trading
-      console.log(`  🌊 CASCADE: Raw decision - Action: ${rawDecision.action}, Confidence: ${(rawDecision.confidence * 100).toFixed(1)}%`);
+      // console.log(`  🌊 CASCADE: Raw decision - Action: ${rawDecision.action}, Confidence: ${(rawDecision.confidence * 100).toFixed(1)}%`);
       
       // Calculate current bar index (days since start of data)
       const barIndex = completedDaily.length - 1;
@@ -126,7 +126,7 @@ class InstitutionalMomentumCascade {
         true // isBarClosed = true for EOD analysis
       );
 
-      console.log(`  🌊 CASCADE: Raw: ${rawDecision.action}, Stabilized: ${stabilizedDecision.action}${stabilizedDecision.stabilized ? ' [STABILIZED]' : ''}, Confidence: ${(stabilizedDecision.confidence * 100).toFixed(1)}%`);
+      // console.log(`  🌊 CASCADE: Raw: ${rawDecision.action}, Stabilized: ${stabilizedDecision.action}${stabilizedDecision.stabilized ? ' [STABILIZED]' : ''}, Confidence: ${(stabilizedDecision.confidence * 100).toFixed(1)}%`);
 
       // Calculate signal quality for gate engine integration
       const signalQuality = this.calculateSignalQuality(stabilizedDecision.confidence, cascadeAnalysis);
@@ -172,7 +172,7 @@ class InstitutionalMomentumCascade {
    * Execute the 6-rule Institutional Momentum Cascade analysis
    */
   executeCascadeAnalysis(dailyData, weeklyData, indicators, currentPrice, thresholds) {
-    console.log(`  🌊 CASCADE: Executing 6-rule momentum cascade validation...`);
+    // console.log(`  🌊 CASCADE: Executing 6-rule momentum cascade validation...`);
 
     const rules = {};
     const reasoning = [];
@@ -241,7 +241,7 @@ class InstitutionalMomentumCascade {
     const scoreWeightedConfidence = weightedScore;
     const confidence = (ruleCompletionRatio * 0.4 + scoreWeightedConfidence * 0.6);
 
-    console.log(`  🌊 CASCADE: Score ${(weightedScore * 100).toFixed(1)}% (${passedRules}/6 rules), Cascade: ${momentumCascade.grade}`);
+    // console.log(`  🌊 CASCADE: Score ${(weightedScore * 100).toFixed(1)}% (${passedRules}/6 rules), Cascade: ${momentumCascade.grade}`);
 
     return {
       rules,

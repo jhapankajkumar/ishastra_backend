@@ -17,7 +17,7 @@ const { getHistorical } = require('../yahoo');
  */
 async function getSimpleTechnicalData(symbol) {
   try {
-    console.log(`📊 SIMPLE: Fetching basic technical data for ${symbol}...`);
+    // console.log(`📊 SIMPLE: Fetching basic technical data for ${symbol}...`);
     
     // Validate symbol
     const validatedSymbol = symbol.trim().toUpperCase();
@@ -47,7 +47,7 @@ async function getSimpleTechnicalData(symbol) {
     // Calculate basic indicators only (what systems need)
     const basicIndicators = calculateBasicIndicators(ohlcData);
     
-    console.log(`✅ SIMPLE: Fetched ${ohlcData.length} data points for ${symbol} (current: $${currentPrice.toFixed(2)})`);
+    // console.log(`✅ SIMPLE: Fetched ${ohlcData.length} data points for ${symbol} (current: $${currentPrice.toFixed(2)})`);
     
     // Return simple structure matching what systems expect
     return {

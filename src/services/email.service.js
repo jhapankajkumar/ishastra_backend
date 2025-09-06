@@ -50,7 +50,7 @@ class EmailService {
                 this.templates.critical = fs.readFileSync(criticalPath, 'utf8');
             }
             
-            console.log('📧 Professional email templates loaded successfully');
+            // console.log('📧 Professional email templates loaded successfully');
         } catch (error) {
             console.error('❌ Failed to load email templates:', error.message);
             // Fallback to built-in templates if professional ones fail
@@ -87,7 +87,7 @@ class EmailService {
             });
 
             this.isConfigured = true;
-            console.log('📧 Mailgun email service configured successfully');
+            // console.log('📧 Mailgun email service configured successfully');
 
         } catch (error) {
             console.error('❌ Failed to setup Mailgun:', error);

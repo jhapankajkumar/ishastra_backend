@@ -1,20 +1,20 @@
-// Start price refresh cron job (runs every 15 minutes during trading hours)
-// try {
-//   require('./refresh-prices-cron');
-//   console.log('✅ Price refresh cron job started successfully (11:30 AM - 6:30 PM SG Time)');
-// } catch (error) {
-//   console.error('❌ Failed to start price refresh cron job:', error.message);
-// }
+//Start price refresh cron job (runs every 15 minutes during trading hours)
+try {
+  require('./refresh-prices-cron');
+  console.log('✅ Price refresh cron job started successfully (11:30 AM - 6:30 PM SG Time)');
+} catch (error) {
+  console.error('❌ Failed to start price refresh cron job:', error.message);
+}
 
-// Start unified alert cron job (handles both position and watchlist alerts)
-// try {
-//   const UnifiedAlertCron = require('./cron/unifiedAlertCron');
-//   const unifiedAlerts = new UnifiedAlertCron();
-//   unifiedAlerts.start();
-//   console.log('✅ Unified Alert cron job started successfully (positions + watchlist alerts)');
-// } catch (error) {
-//   console.error('❌ Failed to start unified alert cron job:', error.message);
-// }
+//Start unified alert cron job (handles both position and watchlist alerts)
+try {
+  const AlertCron = require('./cron/alert.cron');
+  const alertCron = new AlertCron();
+  alertCron.start();
+  console.log('✅ Unified Alert cron job started successfully (positions + watchlist alerts)');
+} catch (error) {
+  console.error('❌ Failed to start unified alert cron job:', error.message);
+}
 
 // Start watchlist cron job - SIMPLE DAILY SCAN
 // try {

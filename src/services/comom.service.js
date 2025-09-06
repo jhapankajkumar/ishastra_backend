@@ -1,5 +1,4 @@
 const yahoo = require('../yahoo');
-
 // Helper function to fetch current price
 const fetchCurrentPrice = async (ticker) => {
   try {

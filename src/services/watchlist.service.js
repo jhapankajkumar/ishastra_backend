@@ -17,53 +17,81 @@ class WatchlistService {
         // Indian stock universe - 500 most liquid stocks (NIFTY 500)
         this.STOCK_UNIVERSE = [
             // NIFTY 50 - Top tier
-            "RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "INFY.NS", "HINDUNILVR.NS",
-            "ICICIBANK.NS", "KOTAKBANK.NS", "SBIN.NS", "BHARTIARTL.NS", "ITC.NS",
-            "ASIANPAINT.NS", "LT.NS", "AXISBANK.NS", "MARUTI.NS", "TITAN.NS",
-            "NESTLEIND.NS", "ULTRACEMCO.NS", "BAJFINANCE.NS", "SUNPHARMA.NS", "TECHM.NS",
-            "WIPRO.NS", "ONGC.NS", "TATAMOTORS.NS", "COALINDIA.NS", "NTPC.NS",
-            "POWERGRID.NS", "HCLTECH.NS", "BAJAJFINSV.NS", "DRREDDY.NS", "GRASIM.NS",
-            "CIPLA.NS", "EICHERMOT.NS", "TATASTEEL.NS", "JSWSTEEL.NS", "HINDALCO.NS",
-            "ADANIPORTS.NS", "INDUSINDBK.NS", "BRITANNIA.NS", "DIVISLAB.NS", "APOLLOHOSP.NS",
-            "HEROMOTOCO.NS", "BPCL.NS", "IOC.NS", "GAIL.NS", "TATACONSUM.NS",
-            "MUTHOOTFIN.NS", "GODREJCP.NS", "BAJAJ-AUTO.NS", "ADANIENT.NS", "MARICO.NS",
-            "M&M.NS", "SHREECEM.NS", "PIDILITIND.NS", "DABUR.NS",
+            // "RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "INFY.NS", "HINDUNILVR.NS",
+            // "ICICIBANK.NS", "KOTAKBANK.NS", "SBIN.NS", "BHARTIARTL.NS", "ITC.NS",
+            // "ASIANPAINT.NS", "LT.NS", "AXISBANK.NS", "MARUTI.NS", "TITAN.NS",
+            // "NESTLEIND.NS", "ULTRACEMCO.NS", "BAJFINANCE.NS", "SUNPHARMA.NS", "TECHM.NS",
+            // "WIPRO.NS", "ONGC.NS", "TATAMOTORS.NS", "COALINDIA.NS", "NTPC.NS",
+            // "POWERGRID.NS", "HCLTECH.NS", "BAJAJFINSV.NS", "DRREDDY.NS", "GRASIM.NS",
+            // "CIPLA.NS", "EICHERMOT.NS", "TATASTEEL.NS", "JSWSTEEL.NS", "HINDALCO.NS",
+            // "ADANIPORTS.NS", "INDUSINDBK.NS", "BRITANNIA.NS", "DIVISLAB.NS", "APOLLOHOSP.NS",
+            // "HEROMOTOCO.NS", "BPCL.NS", "IOC.NS", "GAIL.NS", "TATACONSUM.NS",
+            // "MUTHOOTFIN.NS", "GODREJCP.NS", "BAJAJ-AUTO.NS", "ADANIENT.NS", "MARICO.NS",
+            // "M&M.NS", "SHREECEM.NS", "PIDILITIND.NS", "DABUR.NS",
 
-            // NIFTY Next 50 + Mid Cap 150 + Small Cap 250
-            "360ONE.NS", "3MINDIA.NS", "ABB.NS", "ACC.NS", "AIAENG.NS", "APLAPOLLO.NS",
-            "AUBANK.NS", "AWL.NS", "AADHARHFC.NS", "AARTIIND.NS", "AAVAS.NS", "ABBOTINDIA.NS",
-            "ACE.NS", "ADANIENSOL.NS", "ADANIGREEN.NS", "ADANIPOWER.NS", "ATGL.NS", "ABCAPITAL.NS",
-            "ABFRL.NS", "AEGISLOG.NS", "AFFLE.NS", "AJANTPHARM.NS", "ALKEM.NS", "ALKYLAMINE.NS",
-            "AMBER.NS", "AMBUJACEM.NS", "ANGELONE.NS", "APARINDS.NS", "APOLLOTYRE.NS", "APTUS.NS",
-            "ASHOKLEY.NS", "ASTERDM.NS", "ASTRAZEN.NS", "ASTRAL.NS", "ATUL.NS", "AUROFIN.NS",
-            "BASF.NS", "BATAINDIA.NS", "BEL.NS", "BERGEPAINT.NS", "BDL.NS", "BLS.NS",
-            "BSE.NS", "BALKRISIND.NS", "BALRAMCHIN.NS", "BANDHANBNK.NS", "BANKBARODA.NS",
-            "BANKINDIA.NS", "MAHABANK.NS", "CENTRALBK.NS", "CANBK.NS", "BHARATFORG.NS",
-            "BHEL.NS", "BIOCON.NS", "BIRLACORPN.NS", "BSOFT.NS",
-            "BLUEDART.NS", "BLUESTARCO.NS", "BBTC.NS", "BOSCHLTD.NS",
-            "CCL.NS", "CESC.NS", "CGPOWER.NS", "CUB.NS",
-            "COCHINSHIP.NS", "CADILAHC.NS", "CHOLAFIN.NS", "CROMPTON.NS", "CUMMINSIND.NS",
-            "DALBHARAT.NS", "DEEPAKNTR.NS", "DIXON.NS", "LALPATHLAB.NS",
-            "EIDPARRY.NS", "EIHOTEL.NS", "EPL.NS", "ESCORTS.NS", "EXIDEIND.NS", "FDC.NS", "NYKAA.NS",
-            "FEDERALBNK.NS", "FORTIS.NS", "GLENMARK.NS", "GMRINFRA.NS", "GODREJPROP.NS", "GRANULES.NS", "GSPL.NS",
-            "HEG.NS", "HDFCAMC.NS", "HDFCLIFE.NS", "HAVELLS.NS", "HEXAWARE.NS", "HINDCOPPER.NS", "HINDPETRO.NS", "HINDZINC.NS", "POWERINDIA.NS", "HONAUT.NS", "HUDCO.NS",
-            "ICICIGI.NS", "ICICIPRULI.NS", "IDFCFIRSTB.NS", "IEX.NS", "INDHOTEL.NS", "IOB.NS", "IRCTC.NS", "ITI.NS",
-            "INDIACEM.NS", "INDIANB.NS", "INDIAMART.NS", "INDIGO.NS", "INDUSTOWER.NS",
-            "INGERRAND.NS", "INOXLEISUR.NS", "INTELLECT.NS", "ISEC.NS", "IPCALAB.NS",
-            "JKCEMENT.NS", "JKLAKSHMI.NS", "JMFINANCIL.NS",
-            "JINDALSTEL.NS", "JUBLFOOD.NS", "JUBILANT.NS", "JUSTDIAL.NS", "JYOTHYLAB.NS",
-            "KPITTECH.NS", "KEI.NS", "KNRCON.NS", "KRBL.NS",
-            "L&TFH.NS", "LAXMIMACH.NS", "LICHSGFIN.NS", "LTIM.NS", "LTTS.NS", "LAURUSLABS.NS", "LEMONTREE.NS", "LUPIN.NS", "MRF.NS",
-            "LSC.NS", "MFSL.NS", "MAXHEALTH.NS", "MAZDOCK.NS", "METROPOLIS.NS", "MINDACORP.NS", "MINDTREE.NS", "MPHASIS.NS", "MCX.NS",
-            "NATIONALUM.NS", "NBCC.NS", "NCC.NS", "NEOGEN.NS", "NETWORK18.NS", "NMDC.NS",
-            "NAVINFLUOR.NS", "NAZARA.NS", "NIACL.NS", "NIITLTD.NS", "NLCINDIA.NS",
-            "NOCIL.NS", "NUVOCO.NS", "OBEROIRLTY.NS", "OFSS.NS", "OIL.NS", "PAYTM.NS", "PAGEIND.NS", "PERSISTENT.NS", "PETRONET.NS",
-            "PFIZER.NS", "PEL.NS", "POLYCAB.NS", "POLYMED.NS", "POONAWALLA.NS", "PFC.NS", "PRAJIND.NS", "PRESTIGE.NS",
-            "PGHH.NS", "PURVA.NS", "QUESS.NS", "RBLBANK.NS", "RECLTD.NS", "ROUTE.NS", "RPOWER.NS", "RVNL.NS", "SAIL.NS",
-            "SBICARD.NS", "SBILIFE.NS", "SHRIRAMFIN.NS", "SIEMENS.NS", "SRF.NS", "MOTHERSON.NS", "SOLARINDS.NS", "SONACOMS.NS",
-            "SOUTHBANK.NS", "STARHEALTH.NS", "SUNTV.NS", "SYNGENE.NS", "TVSMOTOR.NS", "TMB.NS", "TANLA.NS", "TATACOMM.NS", "TATAPOWER.NS",
-            "RAMCOCEM.NS", "THERMAX.NS", "THYROCARE.NS", "TIINDIA.NS", "TORNTPHARM.NS", "TORNTPOWER.NS", "TRENT.NS", "TRIDENT.NS", "TRIVENI.NS", "UJJIVAN.NS",
-            "UPL.NS", "UTIAMC.NS", "VOLTAS.NS", "WOCKPHARMA.NS", "YESBANK.NS", "ZEEL.NS", "ZENSARTECH.NS", "ZENTEC.NS", "ZYDUSLIFE.NS", "ECLERX.NS"
+            // // NIFTY Next 50 + Mid Cap 150 + Small Cap 250
+            // "360ONE.NS", "3MINDIA.NS", "ABB.NS", "ACC.NS", "AIAENG.NS", "APLAPOLLO.NS",
+            // "AUBANK.NS", "AWL.NS", "AADHARHFC.NS", "AARTIIND.NS", "AAVAS.NS", "ABBOTINDIA.NS",
+            // "ACE.NS", "ADANIENSOL.NS", "ADANIGREEN.NS", "ADANIPOWER.NS", "ATGL.NS", "ABCAPITAL.NS",
+            // "ABFRL.NS", "AEGISLOG.NS", "AFFLE.NS", "AJANTPHARM.NS", "ALKEM.NS", "ALKYLAMINE.NS",
+            // "AMBER.NS", "AMBUJACEM.NS", "ANGELONE.NS", "APARINDS.NS", "APOLLOTYRE.NS", "APTUS.NS",
+            // "ASHOKLEY.NS", "ASTERDM.NS", "ASTRAZEN.NS", "ASTRAL.NS", "ATUL.NS", "AUROFIN.NS",
+            // "BASF.NS", "BATAINDIA.NS", "BEL.NS", "BERGEPAINT.NS", "BDL.NS", "BLS.NS",
+            // "BSE.NS", "BALKRISIND.NS", "BALRAMCHIN.NS", "BANDHANBNK.NS", "BANKBARODA.NS",
+            // "BANKINDIA.NS", "MAHABANK.NS", "CENTRALBK.NS", "CANBK.NS", "BHARATFORG.NS",
+            // "BHEL.NS", "BIOCON.NS", "BIRLACORPN.NS", "BSOFT.NS",
+            // "BLUEDART.NS", "BLUESTARCO.NS", "BBTC.NS", "BOSCHLTD.NS",
+            // "CCL.NS", "CESC.NS", "CGPOWER.NS", "CUB.NS",
+            // "COCHINSHIP.NS", "CADILAHC.NS", "CHOLAFIN.NS", "CROMPTON.NS", "CUMMINSIND.NS",
+            // "DALBHARAT.NS", "DEEPAKNTR.NS", "DIXON.NS", "LALPATHLAB.NS",
+            // "EIDPARRY.NS", "EIHOTEL.NS", "EPL.NS", "ESCORTS.NS", "EXIDEIND.NS", "FDC.NS", "NYKAA.NS",
+            // "FEDERALBNK.NS", "FORTIS.NS", "GLENMARK.NS", "GMRINFRA.NS", "GODREJPROP.NS", "GRANULES.NS", "GSPL.NS",
+            // "HEG.NS", "HDFCAMC.NS", "HDFCLIFE.NS", "HAVELLS.NS", "HEXAWARE.NS", "HINDCOPPER.NS", "HINDPETRO.NS", "HINDZINC.NS", "POWERINDIA.NS", "HONAUT.NS", "HUDCO.NS",
+            // "ICICIGI.NS", "ICICIPRULI.NS", "IDFCFIRSTB.NS", "IEX.NS", "INDHOTEL.NS", "IOB.NS", "IRCTC.NS", "ITI.NS",
+            // "INDIACEM.NS", "INDIANB.NS", "INDIAMART.NS", "INDIGO.NS", "INDUSTOWER.NS",
+            // "INGERRAND.NS", "INOXLEISUR.NS", "INTELLECT.NS", "ISEC.NS", "IPCALAB.NS",
+            // "JKCEMENT.NS", "JKLAKSHMI.NS", "JMFINANCIL.NS",
+            // "JINDALSTEL.NS", "JUBLFOOD.NS", "JUBILANT.NS", "JUSTDIAL.NS", "JYOTHYLAB.NS",
+            // "KPITTECH.NS", "KEI.NS", "KNRCON.NS", "KRBL.NS",
+            // "L&TFH.NS", "LAXMIMACH.NS", "LICHSGFIN.NS", "LTIM.NS", "LTTS.NS", "LAURUSLABS.NS", "LEMONTREE.NS", "LUPIN.NS", "MRF.NS",
+            // "LSC.NS", "MFSL.NS", "MAXHEALTH.NS", "MAZDOCK.NS", "METROPOLIS.NS", "MINDACORP.NS", "MINDTREE.NS", "MPHASIS.NS", "MCX.NS",
+            // "NATIONALUM.NS", "NBCC.NS", "NCC.NS", "NEOGEN.NS", "NETWORK18.NS", "NMDC.NS",
+            // "NAVINFLUOR.NS", "NAZARA.NS", "NIACL.NS", "NIITLTD.NS", "NLCINDIA.NS",
+            // "NOCIL.NS", "NUVOCO.NS", "OBEROIRLTY.NS", "OFSS.NS", "OIL.NS", "PAYTM.NS", "PAGEIND.NS", "PERSISTENT.NS", "PETRONET.NS",
+            // "PFIZER.NS", "PEL.NS", "POLYCAB.NS", "POLYMED.NS", "POONAWALLA.NS", "PFC.NS", "PRAJIND.NS", "PRESTIGE.NS",
+            // "PGHH.NS", "PURVA.NS", "QUESS.NS", "RBLBANK.NS", "RECLTD.NS", "ROUTE.NS", "RPOWER.NS", "RVNL.NS", "SAIL.NS",
+            // "SBICARD.NS", "SBILIFE.NS", "SHRIRAMFIN.NS", "SIEMENS.NS", "SRF.NS", "MOTHERSON.NS", "SOLARINDS.NS", "SONACOMS.NS",
+            // "SOUTHBANK.NS", "STARHEALTH.NS", "SUNTV.NS", "SYNGENE.NS", "TVSMOTOR.NS", "TMB.NS", "TANLA.NS", "TATACOMM.NS", "TATAPOWER.NS",
+            // "RAMCOCEM.NS", "THERMAX.NS", "THYROCARE.NS", "TIINDIA.NS", "TORNTPHARM.NS", "TORNTPOWER.NS", "TRENT.NS", "TRIDENT.NS", "TRIVENI.NS", "UJJIVAN.NS",
+            // "UPL.NS", "UTIAMC.NS", "VOLTAS.NS", "WOCKPHARMA.NS", "YESBANK.NS", "ZEEL.NS", "ZENSARTECH.NS", "ZENTEC.NS", "ZYDUSLIFE.NS", "ECLERX.NS"
+
+            // S&P 500 Stocks
+
+            "MMM","AOS","ABT","ABBV","ACN","ADBE","AMD","AES","AFL","A","APD","AKAM","ALK","ALL","GOOGL","GOOG","MO","AMZN","AMCR","AEE",
+  "AAL","AEP","AXP","AIG","AMT","AWK","AMP","ABC","AME","AMGN","APH","ADI","ANSS","ANTM","AON","APA","AAPL","AMAT","APTV",
+  "ADM","ARNC","ANET","AJG","AIZ","T","ATO","ADSK","ADP","AZO","AVB","AVY","BKR","BLL","BAC","BK","BAX","BDX","BRK.B",
+  "BBY","BIO","BIIB","BLK","BA","BKNG","AVGO","BWA","BXP","BSX","BMY","AVY","COG","CDNS","CPB","COF","CAH","KMX","CCL","CARR",
+  "CTLT","CAT","CBOE","CBRE","CDW","CE","CNC","CNP","CDAY","CERN","CF","SCHW","CHTR","CVX","CMG","CB","CHD","CI","CINF",
+  "CTAS","CSCO","C","CFG","CTXS","CLX","CME","CMS","KO","CTSH","CL","CMCSA","CMA","CAG","COP","ED","STZ","COO","CPRT","GLW",
+  "CTVA","COST","COTY","CCI","CSX","CMI","CVS","DHI","DHR","DRI","DVA","DE","DAL","XRAY","DVN","DXCM","FANG","DLR","DFS",
+  "DISCA","DISCK","DISH","DG","DLTR","D","DPZ","DOV","DOW","DTE","DUK","DRE","DD","DXC","EMN","ETN","EBAY","ECL","EIX","EW",
+  "EA","ETR","EOG","EFX","EQIX","EQR","ESS","EL","ETSY","RE","EXC","EXPE","EXPD","EXR","XOM","FFIV","FB","FAST","FRT","FDX",
+  "FIS","FITB","FRC","FE","FISV","FLT","FMC","F","FTNT","FTV","FBHS","FOXA","FOXA","BEN","FCX","GPS","GRMN","IT","GD",
+  "GE","GIS","GM","GPC","GILD","GL","GPN","GS","GWW","HAL","HBI","HOG","HIG","HAS","HCA","PEAK","HSIC","HSY","HES","HPE",
+  "HLT","HOLX","HD","HON","HRL","HST","HPQ","HUM","HBAN","HII","IEX","IDXX","INFO","ITW","ILMN","INCY","IR","INTC","ICE",
+  "IBM","IP","IPG","IFF","INTU","ISRG","IVZ","IPGP","IQV","IRM","JKHY","J","JBHT","JNJ","JCI","JPM","JNPR","KSU","K","KEY",
+  "KEYS","KMB","KIM","KMI","KLAC","KHC","KR","LHX","LH","LRCX","LW","LLY","LNC","LIN","LYV","LKQ","LMT","L","LULU","LH",
+  "MRO","MPC","MKTX","MCHP","MCD","MCK","MDT","MRK","MET","MTD","MGM","MCHP","MU","MSFT","MA","MHK","TAP","MDLZ","MNST",
+  "MCO","MS","MOS","MSI","MSCI","NDAQ","NTAP","NFLX","NWL","NEM","NWS","NWSA","NEE","NLSN","NKE","NCLH","NTRS","NOC","NLOK",
+  "NCLH","NOV","NRG","NUE","NVDA","NVR","ORLY","OXY","ODFL","OMC","OKE","ORCL","OGN","PCAR","PKG","PH","PAYX","PAYC","PYPL","PNR",
+  "PBCT","PEP","PKI","PRGO","PFE","PM","PSX","PNW","PXD","PNC","PNR","PRU","PG","PGR","PLD","PRU","PEG","PSA","PHM","PVH",
+  "QRVO","PWR","QCOM","DGX","RL","RTX","O","REG","REGN","RF","RSG","RMD","RHI","ROK","COL","ROP","ROST","RCL","CRM","SBAC",
+  "SLB","STX","SEE","SRE","NOW","SHW","SPG","SWKS","SLG","SNA","SO","LUV","SPGI","SWK","SBUX","STT","STE","SYK","SIVB",
+  "SYMC","SYY","TMUS","TROW","TTWO","TPR","TGT","TEL","TDY","TFX","TER","TSLA","TXN","TXT","TMO","TJX","TSCO","TT","TDG","TRV",
+  "TRMB","TFC","TWTR","TYL","TSN","UDR","ULTA","USB","UAA","UA","UNP","UAL","UNH","UPS","URI","UHS","VAR","VFC","VLO","VTR",
+  "VRSN","VRSK","VZ","VRTX","VIAC","V","VNO","VMC","WAB","WMT","WBA","DIS","WM","WAT","WEC","WFC","WELL","WDC","WU","WRK",
+  "WY","WHR","WMB","WLTW","WYNN","XEL","XLNX","XOM","XRAY","XYL","YUM","ZBRA","ZBH","ZION","ZTS"
+
         ];
     }
 
@@ -82,10 +110,10 @@ class WatchlistService {
                     not: "Closed"   // or whatever your field/value is for closed trades
                 }
             },
-            select: { symbol: true }   // only fetch the symbol column
+            select: { ticker: true }   // only fetch the ticker column
         });
 
-        const symbolsToKeep = trades.map(t => t.symbol);
+        const symbolsToKeep = trades.map(t => t.ticker);
 
         // Step 1: Delete everything EXCEPT symbolsToKeep
         await prisma.watchlistStock.deleteMany({
@@ -236,19 +264,12 @@ class WatchlistService {
 
             // Fetch current price if not available or is zero
             let currentPrice = stock.currentPrice;
-            if (currentPrice == null || currentPrice === 0) {
-                try {
-                    currentPrice = await fetchCurrentPrice(stock.symbol);
-                    // Optionally update the database with the new price
-                    await prisma.watchlistStock.update({
-                        where: { symbol: stock.symbol },
-                        data: { currentPrice: currentPrice }
-                    });
-                } catch (error) {
-                    console.error(`❌ Error fetching price for ${stock.symbol}:`, error);
-                    currentPrice = stock.currentPrice || 0; // Fallback to stored price
-                }
-            }
+            currentPrice = await fetchCurrentPrice(stock.symbol);
+            // Optionally update the database with the new price
+            await prisma.watchlistStock.update({
+                where: { symbol: stock.symbol },
+                data: { currentPrice: currentPrice }
+            });
 
             return {
                 symbol: stock.symbol,

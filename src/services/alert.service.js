@@ -8,13 +8,11 @@
  * - Email notifications
  */
 
-const SimpleAlertService = require('./simpleAlertService');
 const WatchlistTriggerService = require('./watchlist.trigger.service');
 const EmailService = require('./email.service');
 
 class AlertService {
   constructor() {
-    this.positionAlerts = new SimpleAlertService();
     this.watchlistTriggers = new WatchlistTriggerService();
     this.emailService = new EmailService();
   }
