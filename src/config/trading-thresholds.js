@@ -13,7 +13,7 @@
 
 // Current active configuration
 // 🎯 ACTIVE CONFIGURATION - Change this one line to transform the entire system!
-const ACTIVE_CONFIG = 'SELECTIVE';  // Testing SELECTIVE for BUY signals
+const ACTIVE_CONFIG = 'ULTRA_SELECTIVE';  // Testing SELECTIVE for BUY signals
 
 const THRESHOLD_CONFIGS = {
   
@@ -42,53 +42,6 @@ const THRESHOLD_CONFIGS = {
       grade_C: 0.55,                              // 55%+ = C
       
       // Only A+ grades can BUY
-      buy_allowed_cascades: ['A+', 'A']
-    },
-    
-    institutional_momentum_cascade: {
-      // ULTRA-STRICT Weekly momentum analysis (100% - most restrictive)
-      weekly_momentum_threshold: 15.0,            // 15% weekly momentum (explosive)
-      weekly_roc_threshold: 6.0,                  // 6% ROC threshold (ultra-high)
-      weekly_confirmations_threshold: 3,          // All 3 weekly confirmations required
-      
-      // ULTRA-STRICT Daily momentum analysis  
-      rsi_momentum_threshold: 75,                 // 75 RSI (ultra-high momentum)
-      volume_expansion_threshold: 2.0,            // 2.0x volume expansion (exceptional)
-      
-      // ULTRA-STRICT Price structure analysis
-      breakout_buffer: 1.01,                      // 1% above breakout (clear breakout)
-      structure_confirmations: 4,                 // All 4 structure confirmations required
-      
-      // ULTRA-STRICT Institutional flow analysis
-      accumulation_ratio_threshold: 0.80,         // 80% accumulation (heavy institutional)
-      body_ratio_threshold: 0.75,                 // 75% body ratio (strong candles)
-      large_volume_multiplier: 2.5,               // 2.5x volume days (exceptional)
-      large_volume_days_threshold: 4,             // 4+ large volume days required
-      correlation_threshold: 0.60,                // 60% price-volume correlation (very strong)
-      
-      // ULTRA-STRICT Risk-adjusted momentum analysis
-      momentum_quality_threshold: 0.25,           // 25% momentum quality (high Sharpe)
-      win_ratio_threshold: 0.80,                  // 80% win ratio (very consistent)
-      max_drawdown_threshold: 0.04,               // 4% max drawdown (very low risk)
-      trend_strength_threshold: 0.60,             // 60% trend strength (very strong)
-      
-      // ULTRA-STRICT Cascade trigger analysis
-      momentum_sync_threshold: 0.02,              // 2% momentum sync (tight alignment)
-      recent_acceleration_threshold: 0.020,       // 2% acceleration (strong momentum)
-      trigger_confirmations: 4,                   // All 4 trigger confirmations required
-      
-      // ULTRA-STRICT Decision thresholds
-      buy_min_score: 0.85,                        // 85%+ required for BUY
-      watch_min_score: 0.70,                      // 70%+ required for WATCH
-      
-      // ULTRA-STRICT Cascade boundaries
-      cascade_A_plus: 0.90,                       // 90%+ = A+
-      cascade_A: 0.85,                            // 85%+ = A
-      cascade_B_plus: 0.75,                       // 75%+ = B+
-      cascade_B: 0.65,                            // 65%+ = B
-      cascade_C: 0.55,                            // 55%+ = C
-      
-      // Only A+ cascades can BUY
       buy_allowed_cascades: ['A+', 'A']
     }
   },
@@ -119,53 +72,6 @@ const THRESHOLD_CONFIGS = {
       
       // A+ and A grades can BUY
       buy_allowed_grades: ['A+', 'A', 'B+']
-    },
-    
-    institutional_momentum_cascade: {
-      // MODERATE Weekly momentum analysis (75% of ULTRA)
-      weekly_momentum_threshold: 10.0,            // 12% weekly momentum (75% of 15% = 11.25%, rounded to 12%)
-      weekly_roc_threshold: 4.5,                  // 4.5% ROC threshold (75% of 6% = 4.5%)
-      weekly_confirmations_threshold: 2,          // 2 weekly confirmations (75% of 3 = 2.25, rounded to 2)
-      
-      // MODERATE Daily momentum analysis  
-      rsi_momentum_threshold: 60,                 // 65 RSI (75% of 75 = 56, rounded to 65)
-      volume_expansion_threshold: 1.4,            // 1.6x volume expansion (75% of 2.0 = 1.5, rounded to 1.6)
-      
-      // MODERATE Price structure analysis
-      breakout_buffer: 1.005,                     // 0.5% above breakout (75% of 1% = 0.75%, use 0.5%)
-      structure_confirmations: 2,                 // 3 structure confirmations (75% of 4 = 3)
-      
-      // MODERATE Institutional flow analysis
-      accumulation_ratio_threshold: 0.70,         // 70% accumulation (75% of 80% = 60%, rounded to 70%)
-      body_ratio_threshold: 0.65,                 // 65% body ratio (75% of 75% = 56%, rounded to 65%)
-      large_volume_multiplier: 1.8,               // 2.0x volume days (75% of 2.5 = 1.875, rounded to 2.0)
-      large_volume_days_threshold: 3,             // 3 large volume days (75% of 4 = 3)
-      correlation_threshold: 0.45,                // 50% price-volume correlation (75% of 60% = 45%, rounded to 50%)
-      
-      // MODERATE Risk-adjusted momentum analysis
-      momentum_quality_threshold: 0.20,           // 20% momentum quality (75% of 25% = 19%, rounded to 20%)
-      win_ratio_threshold: 0.70,                  // 70% win ratio (75% of 80% = 60%, rounded to 70%)
-      max_drawdown_threshold: 0.06,               // 6% max drawdown (75% of 4% = 3%, but 6% is more reasonable)
-      trend_strength_threshold: 0.50,             // 50% trend strength (75% of 60% = 45%, rounded to 50%)
-      
-      // MODERATE Cascade trigger analysis
-      momentum_sync_threshold: 0.03,              // 3% momentum sync (75% of 2% = 1.5%, but 3% is more reasonable)
-      recent_acceleration_threshold: 0.015,       // 1.5% acceleration (75% of 2% = 1.5%)
-      trigger_confirmations: 3,                   // 3 trigger confirmations (75% of 4 = 3)
-      
-      // MODERATE Decision thresholds
-      buy_min_score: 0.75,                        // 75%+ required for BUY
-      watch_min_score: 0.60,                      // 60%+ required for WATCH
-      
-      // MODERATE Cascade boundaries
-      cascade_A_plus: 0.85,                       // 85%+ = A+
-      cascade_A: 0.75,                            // 75%+ = A
-      cascade_B_plus: 0.65,                       // 65%+ = B+
-      cascade_B: 0.55,                            // 55%+ = B
-      cascade_C: 0.45,                            // 45%+ = C
-      
-      // Only A+ and A cascades can BUY
-      buy_allowed_cascades: ['A+', 'A', 'B+']
     }
   },
   
@@ -195,53 +101,6 @@ const THRESHOLD_CONFIGS = {
       
       // A+, A, and B+ grades can BUY (for more opportunities in RELAXED)
       buy_allowed_grades: ['A+', 'A', 'B+']
-    },
-    
-    institutional_momentum_cascade: {
-      // TIGHTENED RELAXED Weekly momentum analysis (85% of SELECTIVE instead of 60%)
-      weekly_momentum_threshold: 10.0,            // 10% weekly momentum (85% of 12% = 10.2%, rounded to 10%)
-      weekly_roc_threshold: 4.0,                  // 4% ROC threshold (85% of 4.5% = 3.8%, rounded to 4%)
-      weekly_confirmations_threshold: 2,          // 2 weekly confirmations (same as SELECTIVE)
-      
-      // TIGHTENED RELAXED Daily momentum analysis  
-      rsi_momentum_threshold: 60,                 // 60 RSI (85% of 65 = 55, rounded to 60)
-      volume_expansion_threshold: 1.4,            // 1.4x volume expansion (85% of 1.6 = 1.36, rounded to 1.4)
-      
-      // TIGHTENED RELAXED Price structure analysis
-      breakout_buffer: 1.00,                      // Same as SELECTIVE (no buffer below breakout)
-      structure_confirmations: 2,                 // 2 structure confirmations (85% of 3 = 2.55, rounded to 2)
-      
-      // TIGHTENED RELAXED Institutional flow analysis
-      accumulation_ratio_threshold: 0.65,         // 65% accumulation (85% of 70% = 59.5%, rounded to 65%)
-      body_ratio_threshold: 0.55,                 // 55% body ratio (85% of 65% = 55%)
-      large_volume_multiplier: 1.8,               // 1.8x volume days (85% of 2.0 = 1.7, rounded to 1.8)
-      large_volume_days_threshold: 2,             // 2 large volume days (85% of 3 = 2.55, rounded to 2)
-      correlation_threshold: 0.45,                // 45% price-volume correlation (85% of 50% = 42.5%, rounded to 45%)
-      
-      // TIGHTENED RELAXED Risk-adjusted momentum analysis
-      momentum_quality_threshold: 0.17,           // 17% momentum quality (85% of 20% = 17%)
-      win_ratio_threshold: 0.65,                  // 65% win ratio (85% of 70% = 59.5%, rounded to 65%)
-      max_drawdown_threshold: 0.08,               // 8% max drawdown (85% of 6% = 5.1%, but 8% is more reasonable)
-      trend_strength_threshold: 0.45,             // 45% trend strength (85% of 50% = 42.5%, rounded to 45%)
-      
-      // TIGHTENED RELAXED Cascade trigger analysis
-      momentum_sync_threshold: 0.04,              // 4% momentum sync (85% of 3% = 2.55%, rounded to 4%)
-      recent_acceleration_threshold: 0.012,       // 1.2% acceleration (85% of 1.5% = 1.275%, rounded to 1.2%)
-      trigger_confirmations: 2,                   // 2 trigger confirmations (85% of 3 = 2.55, rounded to 2)
-      
-      // TIGHTENED RELAXED Decision thresholds
-      buy_min_score: 0.65,                        // 65%+ required for BUY (TIGHTENED from 60%)
-      watch_min_score: 0.50,                      // 50%+ required for WATCH (TIGHTENED from 45%)
-      
-      // TIGHTENED RELAXED Cascade boundaries
-      cascade_A_plus: 0.80,                       // 80%+ = A+ (TIGHTENED from 75%)
-      cascade_A: 0.70,                            // 70%+ = A (TIGHTENED from 65%)
-      cascade_B_plus: 0.60,                       // 60%+ = B+ (TIGHTENED from 55%)
-      cascade_B: 0.50,                            // 50%+ = B (TIGHTENED from 45%)
-      cascade_C: 0.40,                            // 40%+ = C (TIGHTENED from 35%)
-      
-      // A+, A, and B+ cascades can BUY (for more opportunities in RELAXED)
-      buy_allowed_cascades: ['A+', 'A', 'B+']
     }
   }
 };

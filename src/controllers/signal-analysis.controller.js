@@ -6,7 +6,8 @@
  */
 
 const MinerviniTemplateAdvanced = require('../systems/minervini-template-advanced');
-const InstitutionalMomentumCascade = require('../systems/institutional-momentum-cascade');
+const ElderTripleScreen = require('../systems/elder-triple-screen');
+// const InstitutionalMomentumCascade = require('../systems/institutional-momentum-cascade');
 const { getSimpleTechnicalData } = require('../utils/simpleTechnicalDataFetcher');
 const CapitalManager = require('../utils/capitalManager');
 
@@ -15,7 +16,8 @@ class TradingSystemController {
     // Initialize all trading systems
     this.systems = {
       // 🏛️ NEW INSTITUTIONAL SYSTEMS
-      'minervini_template_advanced': new MinerviniTemplateAdvanced()
+      'minervini_template_advanced': new MinerviniTemplateAdvanced(),
+      // 'elder_triple_screen': new ElderTripleScreen()
     };
     // 🚨 REMOVED: Complex system analyzer dependency
     // this.systemAnalyzer = new SingleSystemAnalyzer(generateExpertAIDecision);
@@ -61,6 +63,7 @@ class TradingSystemController {
   
     const CORE_SYSTEMS = [
       'minervini_template_advanced',
+      // 'elder_triple_screen'
     ];
     
     const supportedSystems = CORE_SYSTEMS.filter(sys => this.systems[sys]);
@@ -97,17 +100,9 @@ class TradingSystemController {
         // 🚨 SIMPLE MODE: Basic technical data only (no complex AI analysis)
         
         const technicalData = await getSimpleTechnicalData(symbol);
-        
-        if (!technicalData || !technicalData.ohlcData || technicalData.ohlcData.length === 0) {
+        if (!technicalData || !technicalData.historical || technicalData.historical.length === 0) {
           throw new Error(`Failed to fetch technical data for ${symbol}`);
         }
-        
-
-        // Create simple analysis context (no complex AI signals)
-        const analysisContext = {
-          technical: technicalData,
-        };
-
         // Phase 2: 🚨 SIMPLE MODE - Run only 2 core systems
 
         const systemResults = {};
@@ -116,22 +111,6 @@ class TradingSystemController {
         for (const systemId of supportedSystems) {
 
           try {
-            // 🚨 EMERGENCY FIX: Convert technical data to format systems expect
-            let systemData;
-            
-            if (systemId === 'minervini_template_advanced' || systemId === 'institutional_momentum_cascade') {
-              // 🎯 CRITICAL: Systems need structured format {indicators, series}
-              systemData = {
-                indicators: technicalData.indicators,
-                series: {
-                  daily: technicalData.ohlcData
-                }
-              };
-            } else {
-              // Fallback - use technical data directly
-              systemData = technicalData;
-            }
-
             // 🚨 SIMPLE: Run system analysis directly (skip complex gate engine for now)
             const systemInstance = this.systems[systemId];
             
@@ -141,12 +120,10 @@ class TradingSystemController {
               const options = {
                 capital: remainingCapital,
                 symbol: symbol,
-                currentPrice: technicalData?.currentPrice || technicalData?.latestPrice,
-                // 🚨 REMOVED: aiSignals (no complex AI analysis)
-                // aiSignals: analysisContext.aiSignals || []
+                currentPrice: technicalData?.latestPrice,
               };
               
-              systemAnalysis = await systemInstance.analyze(systemData, options);
+              systemAnalysis = await systemInstance.analyze(technicalData, options);
               
               // Normalize the response to match expected structure
               if (systemAnalysis && systemAnalysis.action) {
@@ -182,20 +159,10 @@ class TradingSystemController {
         
         // Get the 2 system results
         const minerviniResult = systemResults['minervini_template_advanced'] || { decision: 'HOLD', confidence: 0 };
-        const momentumResult = systemResults['institutional_momentum_cascade'] || { decision: 'HOLD', confidence: 0 };
-        
+        const elderResult = systemResults['elder_triple_screen'] || { decision: 'HOLD', confidence: 0 };
+
         // 🚨 SIMPLE VOTING LOGIC - No complex weighting
-        const unifiedDecision = this.simpleVote(minerviniResult, momentumResult);
-        
-        // 🚨 SIMPLE MODE: Create simple final result (no complex gate engine)
-        const finalResult = {
-          action: unifiedDecision.action,
-          confidence: unifiedDecision.confidence,
-          // reasoning: unifiedDecision.reasoning,
-        };
-        
-        // Build comprehensive response using the fetched data
-        const gateResult = finalResult.gateEngine || {};
+        const unifiedDecision = this.simpleVote(minerviniResult, elderResult);
 
         // Build enhanced analysis result with all trading information
         const analysisResult = await this.buildEnhancedTradingResponse({
@@ -203,9 +170,7 @@ class TradingSystemController {
           technicalData,
           systemResults,
           supportedSystems,
-          finalResult,
           unifiedDecision,
-          analysisContext
         });
         return analysisResult;
 
@@ -244,80 +209,44 @@ class TradingSystemController {
 
     return response
   }
-  // Calculate EMA - fixed version
-  calculateEMA(data, period) {
-    if (!data || data.length === 0) return [];
-    if (period <= 0) return [];
-
-    // Ensure we have valid numeric data
-    const validData = data.filter(val => typeof val === 'number' && !isNaN(val));
-    if (validData.length === 0) return [];
-
-    // Adjust period if we don't have enough data
-    const effectivePeriod = Math.min(period, validData.length);
-    if (effectivePeriod === 1) {
-      return [validData[validData.length - 1]];
-    }
-
-    const k = 2 / (effectivePeriod + 1);
-    const ema = [];
-
-    // Start with SMA
-    let sum = 0;
-    for (let i = 0; i < effectivePeriod; i++) {
-      sum += validData[i];
-    }
-    const sma = sum / effectivePeriod;
-    ema.push(sma);
-
-    // Continue with EMA
-    for (let i = effectivePeriod; i < validData.length; i++) {
-      const prevEMA = ema[ema.length - 1];
-      const currentValue = validData[i];
-      const newEMA = currentValue * k + prevEMA * (1 - k);
-      ema.push(newEMA);
-    }
-
-    return ema;
-  }
 
 
   // 🚨 SIMPLE: 2-system voting method (replaces complex unified decision)
-  simpleVote(minerviniResult, momentumResult) {
+  simpleVote(minerviniResult, elderResult) {
     const minervini = minerviniResult || { decision: 'HOLD', confidence: 0 };
-    const momentum = momentumResult || { decision: 'HOLD', confidence: 0 };
+    const elder = elderResult || { decision: 'HOLD', confidence: 0 };
 
-    // console.log(`  🗳️  SIMPLE VOTE: Minervini=${minervini.decision}(${Math.round(minervini.confidence * 100)}%), Momentum=${momentum.decision}(${Math.round(momentum.confidence * 100)}%)`);
+    // console.log(`  🗳️  SIMPLE VOTE: Minervini=${minervini.decision}(${Math.round(minervini.confidence * 100)}%), Elder=${elder.decision}(${Math.round(elder.confidence * 100)}%)`);
 
     // Both systems agree on BUY
-    if (minervini.decision === 'BUY' && momentum.decision === 'BUY') {
+    if (minervini.decision === 'BUY' && elder.decision === 'BUY') {
       return {
         action: 'STRONG_BUY',
-        confidence: Math.min(0.95, (minervini.confidence + momentum.confidence) / 2 + 0.10),
+        confidence: Math.min(0.95, (minervini.confidence + elder.confidence) / 2 + 0.10),
         reasoning: 'Both systems bullish - strong confluence'
       };
     }
 
     // Both systems agree on AVOID
-    if (minervini.decision === 'AVOID' && momentum.decision === 'AVOID') {
+    if (minervini.decision === 'AVOID' && elderResult.decision === 'AVOID') {
       return {
         action: 'AVOID',
-        confidence: Math.min(0.70, (minervini.confidence + momentum.confidence) / 2),
+        confidence: Math.min(0.70, (minervini.confidence + elderResult.confidence) / 2),
         reasoning: 'Both systems avoid entry - no signal to buy'
       };
     }
 
     // One BUY, one HOLD/WATCH - check confidence levels
-    if ((minervini.decision === 'BUY' && (momentum.decision === 'HOLD'|| momentum.decision === 'WATCH')) ||
-        ((minervini.decision === 'HOLD' || minervini.decision === 'WATCH') && momentum.decision === 'BUY')) {
-      const buySystem = minervini.decision === 'BUY' ? minervini : momentum;
-      
+    if ((minervini.decision === 'BUY' && (elderResult.decision === 'HOLD'|| elderResult.decision === 'WATCH')) ||
+        ((minervini.decision === 'HOLD' || minervini.decision === 'WATCH') && elderResult.decision === 'BUY')) {
+      const buySystem = minervini.decision === 'BUY' ? minervini : elderResult;
+
       // 🎯 IMPROVED: If BUY system has high confidence (>70%), honor the BUY signal
       if (buySystem.confidence >= 0.70) {
         return {
           action: 'BUY',
           confidence: Math.min(0.85, buySystem.confidence),
-          reasoning: `Strong ${buySystem.systemId === 'minervini_template_advanced' ? 'Template' : 'Momentum'} BUY signal (${Math.round(buySystem.confidence * 100)}%) with supporting system confirmation`
+          reasoning: `Strong ${buySystem.systemId === 'minervini_template_advanced' ? 'Template' : 'Elder'} BUY signal (${Math.round(buySystem.confidence * 100)}%) with supporting system confirmation`
         };
       }
       
@@ -330,7 +259,7 @@ class TradingSystemController {
     }
 
     // Both have low confidence
-    if (minervini.confidence < 0.60 && momentum.confidence < 0.60) {
+    if (minervini.confidence < 0.60 && elderResult.confidence < 0.60) {
       return {
         action: 'HOLD',
         confidence: 0.30,
@@ -339,7 +268,7 @@ class TradingSystemController {
     }
 
     // Default: Follow the stronger system
-    if (minervini.confidence > momentum.confidence) {
+    if (minervini.confidence > elderResult.confidence) {
       return {
         action: minervini.decision,
         confidence: Math.min(0.80, minervini.confidence),
@@ -347,9 +276,9 @@ class TradingSystemController {
       };
     } else {
       return {
-        action: momentum.decision,
-        confidence: Math.min(0.80, momentum.confidence),
-        reasoning: `Following momentum system (${Math.round(momentum.confidence * 100)}% confidence)`
+        action: elderResult.decision,
+        confidence: Math.min(0.80, elderResult.confidence),
+        reasoning: `Following Elder system (${Math.round(elderResult.confidence * 100)}% confidence)`
       };
     }
   }
@@ -387,19 +316,11 @@ class TradingSystemController {
     const winningSystem = this.identifyWinningSystem(systemResults, unifiedDecision);
     let execution = {};
 
-    if (winningSystem && (unifiedAction === 'BUY' || unifiedAction === 'SELL' || unifiedAction === 'WATCH')) {
+    if (winningSystem && (unifiedAction === 'BUY' || unifiedAction === 'WATCH')) {
       // ✅ FIXED: Safe access with null checks
       execution = winningSystem.execution || {};
-      
-      console.log(`🎯 Using winning system: ${winningSystem.systemId} for ${unifiedAction}`);
-    } else if (winningSystem) {
-      // ✅ FIXED: Safe fallback when winningSystem exists but action doesn't match
-      execution = winningSystem.execution || {};
-      
-      console.log(`⚠️ Using winning system: ${winningSystem.systemId} as fallback for ${unifiedAction}`);
+      console.log(`🚀 ${symbol} : SEPA:  ${unifiedAction}`);
     } else {
-      // ✅ FIXED: Safe fallback when no winning system found
-      console.log(`⚠️ No winning system found for ${symbol}, using default execution/riskReward`);
       execution = null;
     }
 
