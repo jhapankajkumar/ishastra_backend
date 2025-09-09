@@ -3,6 +3,8 @@ const cron = require('node-cron');
 const { refreshAllInvestmentPrices } = require('./controllers/investment.controller');
 const { refreshAllRecommendationPrices } = require('./controllers/recommendation.controller');
 const { refreshAllTradePrices } = require('./controllers/trade.controller');
+const WatchlistController = require('./controllers/watchlist.controller');
+const controller = new WatchlistController();
 
 console.log('📈 Setting up price refresh cron jobs...');
 
@@ -21,6 +23,9 @@ function runPriceRefresh() {
       refreshAllTradePrices({}, {
         json: (msg) => console.log(`[CRON] Price refresh (trades):`, msg)
       });
+      controller.refreshAllWatchlistPrices({}, {
+        json: (msg) => console.log(`[CRON] Price refresh (watchlist):`, msg)
+      });
     } catch (err) {
       console.error('[CRON] Error refreshing prices:', err.message);
     }
@@ -38,6 +43,10 @@ setTimeout(() => {
     });
     refreshAllTradePrices({}, {
       json: (msg) => console.log(`[STARTUP] Price refresh (trades):`, msg?.message || 'completed')
+    });
+
+    controller.refreshAllWatchlistPrices({}, {
+      json: (msg) => console.log(`[STARTUP] Price refresh (watchlist):`, msg?.message || 'completed')
     });
   } catch (err) {
     console.error('[STARTUP] Error refreshing investment prices:', err.message);

@@ -4,7 +4,9 @@
  * NO CONFUSION. NO MULTIPLE METHODS. NO BULLSHIT.
  * Just daily scans and watchlist display.
  */
-
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
+const { fetchCurrentPrice } = require('../services/comom.service');
 const WatchlistService = require('../services/watchlist.service');
 
 class WatchlistController {
@@ -59,6 +61,53 @@ class WatchlistController {
             });
         }
     }
+
+    // Refresh all watchlist prices (manual endpoint)
+    async refreshAllWatchlistPrices(req, res) {
+      try {
+        const watchlist = await prisma.watchlistStock.findMany();
+        let updatedCount = 0;
+
+        const updates = watchlist.map(async (item) => {
+          try {
+            let currentPrice = item.currentPrice;
+            currentPrice = await fetchCurrentPrice(item.symbol);
+            const data = {};
+            if (currentPrice != null) {
+              data.currentPrice = currentPrice;
+            }
+            if (data.currentPrice != null) {
+              await prisma.watchlistStock.update({
+                where: { symbol: item.symbol },
+                data,
+              });
+              updatedCount++;
+            }
+          } catch (err) {
+            console.error(`[ERROR] Updating ${item.symbol}:`, err.message);
+          }
+        });
+    
+        await Promise.allSettled(updates);
+        //console.log(`[CRON] Updated ${updatedCount} investments`);
+    
+    
+        res.json({
+          success: true,
+          message: `Prices refreshed for ${updatedCount} watchlist items.`
+        });
+      } catch (error) {
+        console.error('Error refreshing watchlist prices:', error);
+        if (res?.status) {
+          res.status(500).json({
+            success: false,
+            message: 'Failed to refresh watchlist prices',
+            error: error.message
+          });
+          return;
+        }
+      }
+    };
 }
 
 module.exports = WatchlistController;

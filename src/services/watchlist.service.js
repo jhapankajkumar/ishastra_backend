@@ -254,8 +254,8 @@ class WatchlistService {
             try {
                 const watchlistData = {
                     symbol: signal.symbol,
-                    currentPrice: signal.price || 0,
-                    entryPrice: signal.price || 0,
+                    currentPrice: signal.currentPrice || 0,
+                    entryPrice: signal.currentPrice || 0,
                     currency: signal.symbol.includes('.NS') ? 'INR' : 'USD',
                     market: signal.symbol.includes('.NS') ? 'IN' : 'US',
 
@@ -320,17 +320,17 @@ class WatchlistService {
                 console.error(`❌ Error parsing JSON for ${stock.symbol}:`, error);
             }
 
-            // Fetch current price if not available or is zero
-            let currentPrice = stock.currentPrice;
-            currentPrice = await fetchCurrentPrice(stock.symbol);
-            // Optionally update the database with the new price
-            await prisma.watchlistStock.update({
-                where: { symbol: stock.symbol },
-                data: { currentPrice: currentPrice }
-            });
+            // // Fetch current price if not available or is zero
+            // let currentPrice = stock.currentPrice;
+            // currentPrice = await fetchCurrentPrice(stock.symbol);
+            // // Optionally update the database with the new price
+            // await prisma.watchlistStock.update({
+            //     where: { symbol: stock.symbol },
+            //     data: { currentPrice: currentPrice }
+            // });
             return {
                 symbol: stock.symbol,
-                price: currentPrice,
+                price: stock.currentPrice,
                 entryPrice: stock.entryPrice,
                 market: stock.market,
                 currency: stock.currency,
