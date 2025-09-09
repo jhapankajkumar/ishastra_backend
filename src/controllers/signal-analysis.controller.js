@@ -319,7 +319,6 @@ class TradingSystemController {
     if (winningSystem && (unifiedAction === 'BUY' || unifiedAction === 'WATCH')) {
       // ✅ FIXED: Safe access with null checks
       execution = winningSystem.execution || {};
-      console.log(`🚀 ${symbol} : SEPA:  ${unifiedAction}`);
     } else {
       execution = null;
     }
@@ -356,7 +355,9 @@ class TradingSystemController {
       },
 
       execution: execution,
+      technical: technicalData.indicators.latest,
       systems: systemResults,
+      
       // 🚨 DELETED: systems object - eliminated redundancy and confusion
     };
   }

@@ -206,7 +206,7 @@ model WatchlistStock {
   currentPrice    Float    // Price when analyzed
   currency        String?  @default("USD") // 'USD' or 'INR'
   market          String?  // 'US' or 'IN' 
-  
+  entryPrice      Float   @default(0) // Price when analyzed
   // Execution Data (JSON from signal-analysis.controller.js)
   decision        String?
   

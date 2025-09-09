@@ -7,7 +7,7 @@ const { refreshAllTradePrices } = require('./controllers/trade.controller');
 console.log('📈 Setting up price refresh cron jobs...');
 
 //Fetch all investments and recommendations prices every 15 minutes
-cron.schedule('*/15 11-19 * * 1-5', runPriceRefresh, { timezone: "Asia/Singapore" });
+cron.schedule('*/15 * * * 1-5', runPriceRefresh, { timezone: "Asia/Singapore" });
 
 function runPriceRefresh() {
   setImmediate(() => {
@@ -33,10 +33,14 @@ console.log('✅ Price refresh cron jobs scheduled successfully');
 setTimeout(() => {
   try {
     console.log('🔄 Running startup price refresh...');
-    refreshAllInvestmentPrices({}, { 
-      json: (msg) => console.log(`[STARTUP] Price refresh (investments):`, msg?.message || 'completed') 
+    refreshAllInvestmentPrices({}, {
+      json: (msg) => console.log(`[STARTUP] Price refresh (investments):`, msg?.message || 'completed')
+    });
+    refreshAllTradePrices({}, {
+      json: (msg) => console.log(`[STARTUP] Price refresh (trades):`, msg?.message || 'completed')
     });
   } catch (err) {
     console.error('[STARTUP] Error refreshing investment prices:', err.message);
   }
 }, 5000); // Delay 5 seconds to let server fully start
+

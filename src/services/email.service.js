@@ -112,9 +112,7 @@ class EmailService {
             // Use Mailgun or Nodemailer based on configuration
             if (this.mailgun && process.env.EMAIL_PROVIDER === 'mailgun') {
                 return await this.sendWithMailgun(subject, htmlContent, textContent);
-            } else {
-                return await this.sendWithNodemailer(subject, htmlContent, textContent);
-            }
+            } 
 
         } catch (error) {
             console.error('❌ Failed to send alert email:', error);

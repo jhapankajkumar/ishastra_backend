@@ -7,14 +7,12 @@
  */
 
 const { PrismaClient } = require('@prisma/client');
-const EmailAlertService = require('./email.service');
 const { TRIGGER_TYPES } = require('../utils/systemConstants');
 const { getTickerAnalysis } = require('./comom.service');
 const prisma = new PrismaClient();
 
 class WatchlistTriggerService {
     constructor() {
-        this.emailAlertService = new EmailAlertService();
         // Track trigger states to avoid duplicate alerts
         this.triggerStates = new Map();
     }
@@ -93,12 +91,14 @@ class WatchlistTriggerService {
         }
 
         if (!execution?.entryStrategy?.triggerConditions) {
+            console.error(`❌ Error No existing trigger Conditions for ${stock.symbol}`);
             return; // No trigger conditions to monitor
         }
 
         // Get current analysis to check updated trigger conditions
         const currentAnalysis = await getTickerAnalysis(stock.symbol);
         if (!currentAnalysis?.execution?.entryStrategy?.triggerConditions) {
+            console.error(`❌ Error No Trigger Conditions for ${currentAnalysis.symbol}`);
             return;
         }
         const oldTriggers = execution.entryStrategy.triggerConditions;
@@ -124,10 +124,7 @@ class WatchlistTriggerService {
             }
         });
 
-        console.log("Newly met:", newlyMet);
-        console.log("Old triggers (mutated):", oldTriggers);
-
-        if (changed && !isCronjob) {
+        if (changed && isCronjob) {
             await prisma.watchlistStock.update({
                 where: { id: stock.id },
                 data: {
@@ -140,8 +137,6 @@ class WatchlistTriggerService {
                     })
                 }
             });
-        } else {
-            console.log(`ℹ️ No trigger changes for ${stock.symbol}, skipping DB update`);
         }
 
         if (isCronjob) {
@@ -161,11 +156,13 @@ class WatchlistTriggerService {
     /**
      * SEND ENTRY TRIGGER ALERT EMAIL
      */
-    async sendEntryTriggerAlert(stock, newlyMetTriggers) {
+    async getEntryTriggerAlert(stock, newlyMetTriggers) {
         try {
             let decision = null;
+            let execution
             try {
                 decision = stock.decision ? JSON.parse(stock.decision) : null;
+                execution = stock.execution ? JSON.parse(stock.execution) : null;
             } catch (error) {
                 console.error(`❌ Error parsing decision for ${stock.symbol}`);
                 return;
@@ -176,8 +173,10 @@ class WatchlistTriggerService {
                 `• ${trigger.type}: ${this.formatTriggerValue(trigger)} ✅ NEW`
             );
 
+            console.log('Newly met trigger details:', newlyMetTriggerDetails);
+
             // Format ALL trigger conditions (both met and unmet) for complete overview
-            const allTriggerDetails = stock.execution.entryStrategy.triggerConditions.map(trigger => {
+            const allTriggerDetails = execution.entryStrategy.triggerConditions.map(trigger => {
                 const status = trigger.met ? '✅' : '❌';
                 const isNew = newlyMetTriggers.some(newTrigger =>
                     newTrigger.type === trigger.type && newTrigger.current === trigger.current
@@ -186,8 +185,8 @@ class WatchlistTriggerService {
                 return `• ${trigger.type}: ${this.formatTriggerValue(trigger)} ${status}${newLabel}`;
             });
 
-            const totalMetTriggers = stock.execution.entryStrategy.triggerConditions.filter(t => t.met).length;
-            const totalTriggers = stock.execution.entryStrategy.triggerConditions.length;
+            const totalMetTriggers = execution.entryStrategy.triggerConditions.filter(t => t.met).length;
+            const totalTriggers = execution.entryStrategy.triggerConditions.length;
 
             const alertData = {
                 type: 'ENTRY_TRIGGER',
@@ -195,21 +194,16 @@ class WatchlistTriggerService {
                 symbol: stock.symbol,
                 currentPrice: stock.currentPrice,
                 action: decision?.action || 'BUY',
-                confidence: decision?.confidence || 0,
-                grade: decision?.grade || 'N/A',
                 message: `Entry triggers activated for ${stock.symbol}`,
                 details: {
                     newlyMetTriggers: newlyMetTriggerDetails,
                     allTriggers: allTriggerDetails,
                     totalProgress: `${totalMetTriggers}/${totalTriggers} triggers met`,
                     newlyActivated: `${newlyMetTriggers.length} new trigger(s) activated`,
-                    entryZone: stock.execution?.entryStrategy?.entryZone || {},
-                    stopLoss: stock.execution?.exitStrategy?.stopLoss?.initial || 'N/A'
                 }
             };
 
-            await this.emailAlertService.sendAlert(alertData);
-            console.log(`📧 Entry trigger alert sent for ${stock.symbol} (${newlyMetTriggers.length} new triggers)`);
+            return alertData;
 
         } catch (error) {
             console.error(`❌ Error sending entry trigger alert for ${stock.symbol}:`, error.message);

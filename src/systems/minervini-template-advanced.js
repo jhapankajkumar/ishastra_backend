@@ -84,7 +84,7 @@ class MinerviniTemplateAdvanced {
       const riskAssessment = this.assessRisk(templateAnalysis, completedDaily, entryPrice, indicators);
 
       // Generate final decision WITHOUT AI enhancement (AI handled by Gate Engine)
-      const rawDecision = this.makeFinalDecision(templateAnalysis,riskAssessment,completedDaily,
+      const rawDecision = this.makeFinalDecision(templateAnalysis, riskAssessment, completedDaily,
         { capital, symbol, entryPrice },
         thresholds
       );
@@ -502,14 +502,33 @@ class MinerviniTemplateAdvanced {
    */
   assessRisk(templateAnalysis, dailyData, currentPrice, indicators) {
     const latest = dailyData[dailyData.length - 1];
-    const atr = indicators.atr;
+    const atr = Number(indicators.atr).toFixed(2);
     const support = indicators.support; //Calculated via findNextSupportLevel
     const nextResistance = indicators.resistance; //Calculated via findNextResistanceLevel
 
-    // Template-based stop loss: 7-8% or key support level
-    const percentStop = currentPrice * 0.925; // 7.5% stop
-    const atrStop = currentPrice - (atr * 2.0); // 2 ATR stop
-    const stopLoss = support || Math.min(percentStop, atrStop);
+    const percentStop = currentPrice * 0.925;
+    const atrStop = currentPrice - (atr * 2.0);
+
+    // Apply buffer to support, and validate it
+    const supportBuffer = 0.98;
+
+    const supportDifference = Number((((currentPrice - support) / currentPrice) * 1000).toFixed(2));
+    const useSupport = support && (currentPrice - support) / currentPrice > 0.03;
+    const bufferedSupport = useSupport ? support * supportBuffer : null;
+
+    const stopLoss = bufferedSupport || Math.min(percentStop, atrStop);
+
+    const stopDistance = stopLoss > 0 ? Number(((currentPrice - stopLoss) / currentPrice) * 100).toFixed(2) : 0;
+    // console.log(`  🏛️ TEMPLATE: Stop Loss at $${stopLoss.toFixed(2)} (${stopDistance} ‰ below current price)`);
+    // if (stopDistance < 5) {
+    //   console.log(`    Current Price: ${currentPrice}
+    // Percent Stop: $${percentStop.toFixed(2)},
+    // ATR Stop: ATR: ${atr} ATR Stop $${atrStop.toFixed(2)},
+    // Support: ${support} : Difference ${supportDifference}%
+    // Buffered Support: ${bufferedSupport ? bufferedSupport : 0}%
+    // Stop Loss: $${stopLoss.toFixed(2)}`);
+    // }
+
 
     // FIXED: Dynamic targets based on nearest resistance levels and ATR
     const riskAmount = currentPrice - stopLoss;
@@ -517,7 +536,7 @@ class MinerviniTemplateAdvanced {
     // Calculate dynamic targets based on volatility and recent price action
     const volatility = this.calculateVolatility(dailyData.slice(-10));
     const recentHigh = Math.max(...dailyData.slice(-20).map(d => d.high));
-    
+
 
     // TRULY DYNAMIC: Use resistance, volatility, and ATR to determine targets
     let target1, target2, target3;
@@ -682,9 +701,9 @@ class MinerviniTemplateAdvanced {
 
       // DYNAMIC TARGET MANAGEMENT
       targets: {
-        conservative: dynamicTargets.conservative,
-        moderate: dynamicTargets.moderate,
-        aggressive: dynamicTargets.aggressive,
+        conservative: riskAssessment.targets[0],
+        moderate: riskAssessment.targets[1],
+        aggressive: riskAssessment.targets[2],
         scalingMethod: dynamicTargets.scalingMethod
       },
 
@@ -805,6 +824,7 @@ class MinerviniTemplateAdvanced {
     // 🎯 UNIFIED SCORING DEBUG INFO
     // console.log(`  🎯 UNIFIED SCORING: Template ${templateAnalysis.templateGrade}(${templateScore}) + Signal ${signalQualityGrade}(${signalScore}) = ${totalScore.toFixed(1)} → ${recommendation}`);
 
+    const stopDistance = stopLoss > 0 ? Number(((entryPrice - stopLoss) / entryPrice) * 100).toFixed(2) : 0;
     return {
       recommendation,
       riskPercent,
@@ -813,7 +833,7 @@ class MinerviniTemplateAdvanced {
       positionValue: positionValue,
       riskAmount: riskAmount,
       riskPerShare: Math.round((entryPrice - stopLoss) * 100) / 100,
-      stopDistance: stopLoss > 0 ? Math.round(((entryPrice - stopLoss) / entryPrice) * 100) / 100 : 0, // Round to 2 decimal places, not 4
+      stopDistance: stopDistance,
       riskReward: riskReward,
     };
   }
@@ -1008,19 +1028,6 @@ class MinerviniTemplateAdvanced {
       current: currentPrice,
       met: currentPrice >= breakoutBuffer,
       description: `Price ${currentPrice.toFixed(2)} vs resistance ${resistanceLevel.toFixed(2)}`
-    });
-
-    // 🎯 ADAPTIVE CANDLE STRENGTH: Based on recent volatility context
-    const recentVolatility = this.calculateVolatility(dailyData.slice(-10));
-    const adaptiveThreshold = Math.max(0.5, Math.min(0.8, 0.65 - (recentVolatility * 2))); // Adjust for volatility
-    const candleStrength = latest.high > latest.low ?
-      (latest.close - latest.low) / (latest.high - latest.low) : 0;
-    conditions.push({
-      type: TRIGGER_TYPES.CANDLE_STRENGTH,
-      threshold: adaptiveThreshold,
-      current: candleStrength,
-      met: candleStrength > adaptiveThreshold,
-      description: `Candle strength ${(candleStrength * 100).toFixed(1)}% vs adaptive threshold ${(adaptiveThreshold * 100).toFixed(1)}%`
     });
 
     return conditions;

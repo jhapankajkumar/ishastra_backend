@@ -10,6 +10,8 @@
 
 const WatchlistTriggerService = require('./watchlist.trigger.service');
 const EmailService = require('./email.service');
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
 
 class AlertService {
   constructor() {
@@ -23,8 +25,7 @@ class AlertService {
    */
   async checkPositionAlerts() {
     try {
-      console.log('🔍 Checking position alerts...');
-
+      
       const alerts = await this.getPositionAlerts();
 
       // Filter only actionable alerts
@@ -70,8 +71,6 @@ class AlertService {
       const stopLoss = trade.stopLoss || 0;
       const entryPrice = trade.entryPrice || 0;
       const percentGain = entryPrice > 0 ? ((currentPrice - entryPrice) / entryPrice) * 100 : 0;
-
-      console.log(`📊 ${trade.ticker}: Price $${currentPrice}, Entry $${entryPrice}, Stop $${stopLoss}, Gain ${percentGain.toFixed(1)}%`);
 
       // ALERT 1: STOP LOSS HIT
       if (currentPrice <= stopLoss && stopLoss > 0) {

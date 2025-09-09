@@ -35,17 +35,17 @@ class WatchlistService {
             "ACE.NS", "ADANIENSOL.NS", "ADANIGREEN.NS", "ADANIPOWER.NS", "ATGL.NS", "ABCAPITAL.NS",
             "ABFRL.NS", "AEGISLOG.NS", "AFFLE.NS", "AJANTPHARM.NS", "ALKEM.NS", "ALKYLAMINE.NS",
             "AMBER.NS", "AMBUJACEM.NS", "ANGELONE.NS", "APARINDS.NS", "APOLLOTYRE.NS", "APTUS.NS",
-            "ASHOKLEY.NS", "ASTERDM.NS", "ASTRAZEN.NS", "ASTRAL.NS", "ATUL.NS", "AUROFIN.NS",
+            "ASHOKLEY.NS", "ASTERDM.NS", "ASTRAZEN.NS", "ASTRAL.NS", "ATUL.NS",
             "BASF.NS", "BATAINDIA.NS", "BEL.NS", "BERGEPAINT.NS", "BDL.NS", "BLS.NS",
             "BSE.NS", "BALKRISIND.NS", "BALRAMCHIN.NS", "BANDHANBNK.NS", "BANKBARODA.NS",
             "BANKINDIA.NS", "MAHABANK.NS", "CENTRALBK.NS", "CANBK.NS", "BHARATFORG.NS",
             "BHEL.NS", "BIOCON.NS", "BIRLACORPN.NS", "BSOFT.NS",
             "BLUEDART.NS", "BLUESTARCO.NS", "BBTC.NS", "BOSCHLTD.NS",
             "CCL.NS", "CESC.NS", "CGPOWER.NS", "CUB.NS",
-            "COCHINSHIP.NS", "CADILAHC.NS", "CHOLAFIN.NS", "CROMPTON.NS", "CUMMINSIND.NS",
+            "COCHINSHIP.NS", "CHOLAFIN.NS", "CROMPTON.NS", "CUMMINSIND.NS",
             "DALBHARAT.NS", "DEEPAKNTR.NS", "DIXON.NS", "LALPATHLAB.NS",
             "EIDPARRY.NS", "EIHOTEL.NS", "EPL.NS", "ESCORTS.NS", "EXIDEIND.NS", "FDC.NS", "NYKAA.NS",
-            "FEDERALBNK.NS", "FORTIS.NS", "GLENMARK.NS", "GMRINFRA.NS", "GODREJPROP.NS", "GRANULES.NS", "GSPL.NS",
+            "FEDERALBNK.NS", "FORTIS.NS", "GLENMARK.NS", "GODREJPROP.NS", "GRANULES.NS", "GSPL.NS",
             "HEG.NS", "HDFCAMC.NS", "HDFCLIFE.NS", "HAVELLS.NS", "HEXAWARE.NS", "HINDCOPPER.NS", "HINDPETRO.NS", "HINDZINC.NS", "POWERINDIA.NS", "HONAUT.NS", "HUDCO.NS",
             "ICICIGI.NS", "ICICIPRULI.NS", "IDFCFIRSTB.NS", "IEX.NS", "INDHOTEL.NS", "IOB.NS", "IRCTC.NS", "ITI.NS",
             "INDIACEM.NS", "INDIANB.NS", "INDIAMART.NS", "INDIGO.NS", "INDUSTOWER.NS",
@@ -179,11 +179,22 @@ class WatchlistService {
                 `Processing batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(this.STOCK_UNIVERSE.length / batchSize)}`
             );
 
-            // Create promises without awaiting inside map
-            const batchPromises = batch.map(symbol => getTickerAnalysis(symbol)); // no await here
+            // ✅ Remove symbols that are already in active trades
+            const filteredBatch = batch.filter(symbol => {
+                if (symbolsToKeep.includes(symbol)) {
+                    console.log(`Skipping ${symbol} - already in active trades`);
+                    return false; // exclude this symbol
+                }
+                return true; // keep it
+            });
+
+            if (filteredBatch.length === 0) {
+                console.log("No valid symbols in this batch, moving on...");
+                continue;
+            }
+            const batchPromises = filteredBatch.map(symbol => getTickerAnalysis(symbol)); // no await here
 
             const batchResults = await Promise.allSettled(batchPromises);
-
             batchResults.forEach((result, idx) => {
                 if (result.status !== 'fulfilled' || !result.value) return;
 
@@ -192,16 +203,13 @@ class WatchlistService {
 
                 if (signal.decision.action === 'STRONG_BUY') {
                     strongBuySignals.push(signal);
-                    console.log(`🚀 ${signal.symbol}: STRONG_BUY (${pct}%)`);
-                    return; // don’t double count below
+                    return; 
                 }
 
                 if (signal.decision.action === 'BUY') {
                     buySignals.push(signal);
-                    console.log(`🚀 ${signal.symbol}: BUY (${pct}%)`);
                 } else if (signal.decision.action === 'WATCH') {
                     watchSignals.push(signal);
-                    console.log(`👀 ${signal.symbol}: WATCH (${pct}%)`);
                 }
             });
 
@@ -247,6 +255,7 @@ class WatchlistService {
                 const watchlistData = {
                     symbol: signal.symbol,
                     currentPrice: signal.price || 0,
+                    entryPrice: signal.price || 0,
                     currency: signal.symbol.includes('.NS') ? 'INR' : 'USD',
                     market: signal.symbol.includes('.NS') ? 'IN' : 'US',
 
@@ -290,7 +299,14 @@ class WatchlistService {
      */
     async getWatchlist() {
         const stocks = await prisma.watchlistStock.findMany({});
-
+        const symbolsToKeep = stocks.map(s => s.symbol);
+        const trades = await prisma.trade.findMany({
+            where: { ticker: { in: symbolsToKeep } },
+            select: { ticker: true },
+            distinct: ['ticker']
+        });
+        
+        const symbolsInTrades = trades.map(t => t.ticker);
         // Process all stocks with async operations
         const processedStocks = await Promise.all(stocks.map(async (stock) => {
             // Parse JSON data safely
@@ -312,12 +328,13 @@ class WatchlistService {
                 where: { symbol: stock.symbol },
                 data: { currentPrice: currentPrice }
             });
-
             return {
                 symbol: stock.symbol,
                 price: currentPrice,
+                entryPrice: stock.entryPrice,
                 market: stock.market,
                 currency: stock.currency,
+                inTrade: symbolsInTrades.includes(stock.symbol) ? true : false,
                 // Parsed JSON data for frontend display
                 decision,
                 execution,

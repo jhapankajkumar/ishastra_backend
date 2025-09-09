@@ -13,6 +13,7 @@ const WatchlistTriggerService = require('../services/watchlist.trigger.service')
 const AlertService = require('../services/alert.service');
 const { getTickerAnalysis } = require('../services/comom.service');
 const { PrismaClient } = require('@prisma/client');
+const EmailAlertService = require('../services/email.service');
 
 const prisma = new PrismaClient();
 
@@ -21,6 +22,7 @@ class AlertCron {
         this.watchlistTriggerService = new WatchlistTriggerService();
         this.alertService = new AlertService();
         this.isRunning = false;
+        this.emailAlertService = new EmailAlertService();
     }
 
     /**
@@ -39,6 +41,8 @@ class AlertCron {
 
         alertJob.start();
         console.log('📅 Alerts scheduled: Every 15 min during market hours (Mon-Fri)');
+
+        // this.runAlertCheck();
     }
 
     /**
@@ -108,27 +112,38 @@ class AlertCron {
      * CHECK WATCHLIST ENTRY TRIGGERS AND SEND EMAILS
      */
     async checkWatchlistTriggers() {
-        console.log('🎯 Checking watchlist entry triggers...');
+        console.log('📊 Checking watchlist entry triggers...');
 
         // Get triggered stocks (no emails sent yet)
         const watchlistResult = await this.watchlistTriggerService.getBuyWatchList();
-
+        const alerts = [];
         if (watchlistResult && watchlistResult.length > 0) {
-            console.log(`📧 Processing ${watchlistResult.length} triggered stocks for emails`);
-
             // Send individual emails for each triggered stock
             for (const stock of watchlistResult) {
                 try {
                     const {triggers, currentAnalysis} = await this.watchlistTriggerService.getUpdatedTriggers(stock, true);
+                    // Ensure triggers is always an array
+                    const safeTriggers = Array.isArray(triggers) ? triggers : [];
                     // Get stock data and current analysis for email
-                    if (currentAnalysis) {
+                    if (currentAnalysis && safeTriggers.length > 0) {
                         stock.currentPrice = currentAnalysis.currentPrice;
-                        await this.watchlistTriggerService.sendEntryTriggerAlert(stock, triggers);
-                        console.log(`📧 Entry trigger email sent for ${stock.symbol}`);
-                    }
+                        const alert = await this.watchlistTriggerService.getEntryTriggerAlert(stock, safeTriggers);
+                        alerts.push(alert);
+                    } 
                 } catch (emailError) {
                     console.error(`❌ Failed to send email for ${stock.symbol}:`, emailError.message);
                 }
+            }
+            if (alerts.length > 0) {
+                const batchAlert = {
+                    symbol: "MULTIPLE",
+                    type: "BATCHED_ALERTS",
+                    message: "Enhanced trading alerts with detailed trigger analysis",
+                    priority: "MEDIUM",
+                    timestamp: new Date(),
+                    batchedAlerts: alerts
+                };
+                await this.alertService.emailService.sendAlert(batchAlert);
             }
         } else {
             console.log('📋 No entry triggers found');
