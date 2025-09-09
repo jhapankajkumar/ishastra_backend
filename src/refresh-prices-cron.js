@@ -4,6 +4,8 @@ const { refreshAllInvestmentPrices } = require('./controllers/investment.control
 const { refreshAllRecommendationPrices } = require('./controllers/recommendation.controller');
 const { refreshAllTradePrices } = require('./controllers/trade.controller');
 const WatchlistController = require('./controllers/watchlist.controller');
+const { refreshPrices } = require('./services/comom.service');
+const { ref } = require('process');
 const controller = new WatchlistController();
 
 console.log('📈 Setting up price refresh cron jobs...');
@@ -14,18 +16,21 @@ cron.schedule('*/15 * * * 1-5', runPriceRefresh, { timezone: "Asia/Singapore" })
 function runPriceRefresh() {
   setImmediate(() => {
     try {
-      refreshAllInvestmentPrices({}, {
-        json: (msg) => console.log(`[CRON] Price refresh (investments):`, msg)
-      });
-      refreshAllRecommendationPrices({}, {
-        json: (msg) => console.log(`[CRON] Price refresh (recommendations):`, msg)
-      });
-      refreshAllTradePrices({}, {
-        json: (msg) => console.log(`[CRON] Price refresh (trades):`, msg)
-      });
-      controller.refreshAllWatchlistPrices({}, {
-        json: (msg) => console.log(`[CRON] Price refresh (watchlist):`, msg)
-      });
+      // refreshAllInvestmentPrices({}, {
+      //   json: (msg) => console.log(`[CRON] Price refresh (investments):`, msg)
+      // });
+      // refreshAllRecommendationPrices({}, {
+      //   json: (msg) => console.log(`[CRON] Price refresh (recommendations):`, msg)
+      // });
+      // refreshAllTradePrices({}, {
+      //   json: (msg) => console.log(`[CRON] Price refresh (trades):`, msg)
+      // });
+      // controller.refreshAllWatchlistPrices({}, {
+      //   json: (msg) => console.log(`[CRON] Price refresh (watchlist):`, msg)
+      // });
+
+      refreshPrices();
+
     } catch (err) {
       console.error('[CRON] Error refreshing prices:', err.message);
     }
@@ -38,16 +43,17 @@ console.log('✅ Price refresh cron jobs scheduled successfully');
 setTimeout(() => {
   try {
     console.log('🔄 Running startup price refresh...');
-    refreshAllInvestmentPrices({}, {
-      json: (msg) => console.log(`[STARTUP] Price refresh (investments):`, msg?.message || 'completed')
-    });
-    refreshAllTradePrices({}, {
-      json: (msg) => console.log(`[STARTUP] Price refresh (trades):`, msg?.message || 'completed')
-    });
+    refreshPrices();
+    // refreshAllInvestmentPrices({}, {
+    //   json: (msg) => console.log(`[STARTUP] Price refresh (investments):`, msg?.message || 'completed')
+    // });
+    // refreshAllTradePrices({}, {
+    //   json: (msg) => console.log(`[STARTUP] Price refresh (trades):`, msg?.message || 'completed')
+    // });
 
-    controller.refreshAllWatchlistPrices({}, {
-      json: (msg) => console.log(`[STARTUP] Price refresh (watchlist):`, msg?.message || 'completed')
-    });
+    // controller.refreshAllWatchlistPrices({}, {
+    //   json: (msg) => console.log(`[STARTUP] Price refresh (watchlist):`, msg?.message || 'completed')
+    // });
   } catch (err) {
     console.error('[STARTUP] Error refreshing investment prices:', err.message);
   }

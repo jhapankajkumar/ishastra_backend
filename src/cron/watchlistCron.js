@@ -21,7 +21,7 @@ class WatchlistCron {
         // Run daily at 9:30 AM IST (Monday to Friday)
         // Cron format: minute hour day month dayOfWeek
         // 9:30 AM IST = 4:00 AM UTC (approximately)
-        cron.schedule('03 10 * * 1-5', async () => {
+        cron.schedule('00 10 * * 1-5', async () => {
             console.log('⏰ DAILY WATCHLIST CRON TRIGGERED - 9:30 AM SGT');
 
             try {
