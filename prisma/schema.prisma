@@ -44,6 +44,7 @@ model Trade {
   instrumentType     String?   // Stocks, Options, Futures
   currency           String?   @default("USD") // 'USD' or 'INR'
   currentPrice       Float?    // Latest fetched price
+  lastDayPrice       Float? 
   
   //Trade System 
   tradeSetupId       Int? //Minervini/Momentum/Elder
@@ -216,3 +217,18 @@ model WatchlistStock {
   // Timestamps
   createdAt         DateTime @default(now())
 }
+
+
+model BacktestTrade {
+   id          Int      @id @default(autoincrement())
+   symbol      String
+   entryDate   DateTime
+   exitDate    DateTime
+   entryPrice  Float
+   exitPrice   Float
+   stopLoss    Float
+   target      Float
+   reason      String  // 'STOP' | 'TARGET' | 'TIME'
+   RMultiple   Float
+   system      String?
+ }

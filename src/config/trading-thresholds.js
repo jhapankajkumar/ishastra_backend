@@ -13,7 +13,7 @@
 
 // Current active configuration
 // 🎯 ACTIVE CONFIGURATION - Change this one line to transform the entire system!
-const ACTIVE_CONFIG = 'ULTRA_SELECTIVE';  // Testing SELECTIVE for BUY signals
+const ACTIVE_CONFIG = 'ULTRA_SELECTIVE';  // Testing ULTRA_SELECTIVE for BUY signals
 
 const THRESHOLD_CONFIGS = {
   
@@ -27,7 +27,7 @@ const THRESHOLD_CONFIGS = {
       criterion4_high_proximity_threshold: 0.25,  // 25% from 52-week high (ultra-strict)
       criterion5_low_distance_threshold: 0.40,    // 40% above 52-week low (ultra-strict)
       criterion6_relative_strength: 80,           // 80 RS (ultra-elite)
-      criterion7_volume_multiplier: 2.0,          // 2.0x volume (exceptional)
+      criterion7_volume_multiplier: 1.6,          // 2.0x volume (exceptional)
       criterion8_fundamental_score: 75,           // 75 score (top-tier)
       
       // ULTRA-STRICT Decision thresholds

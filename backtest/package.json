@@ -1,0 +1,16 @@
+{
+  "name": "ishastra-backtest",
+  "version": "1.0.0",
+  "description": "Backtesting system for Ishastra trading strategies",
+  "main": "runBacktest.js",
+  "scripts": {
+    "backtest": "node runBacktest.js",
+    "test-single": "node runBacktest.js AAPL 2023-01-01 2024-01-01",
+    "test-multiple": "node runBacktest.js AAPL,MSFT,GOOGL 2022-01-01 2024-01-01"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.0.0"
+  },
+  "author": "Ishastra Team",
+  "license": "MIT"
+}

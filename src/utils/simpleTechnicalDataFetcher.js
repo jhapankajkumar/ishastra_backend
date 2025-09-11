@@ -8,7 +8,7 @@
  * - Basic indicators (no complex AI analysis)
  */
 
-const { getHistorical } = require('../yahoo');
+const { getHistorical } = require('../yahoo'); // self import for internal reuse
 
 /**
  * Simple technical data fetch - no complex analysis
@@ -122,6 +122,36 @@ function calculateBasicIndicators(ohlcData) {
     volume: volumes[volumes.length - 1] || 0
   };
   
+  // Derived signals for breakout-pullback setup
+  const is52WeekHighBreakout = closes[closes.length - 1] >= Math.max(...closes.slice(-252));
+  const brokeResistanceRecently = brokeKeyResistanceRecently(ohlcData, latest.price);
+  const recentVolumeSpike = volumes[volumes.length - 1] > (volumes.slice(-20).reduce((a, b) => a + b, 0) / 20) * 1.5;
+  const recentCandleRange = ohlcData.slice(-3).map(d => d.high - d.low);
+  const pastAvgRange = ohlcData.slice(-20).map(d => d.high - d.low);
+  const avgRecentRange = recentCandleRange.reduce((a, b) => a + b, 0) / 3;
+  const avgPastRange = pastAvgRange.reduce((a, b) => a + b, 0) / 20;
+  const isVolatilityContracting = avgRecentRange < avgPastRange;
+  const isNearEMA13 = Math.abs(latest.price - latest.ema13) / latest.ema13 <= 0.05;
+  const isNearBreakoutZone = resistance && Math.abs(latest.price - resistance) / resistance <= 0.05;
+  const macdBullish = latest.macd > latest.macdSignal && latest.macdHistogram > 0;
+  const isBreakoutConfirmed = is52WeekHighBreakout || brokeResistanceRecently;
+  const hasTightPullbackAfterBreakout = isTightPullbackAfterBreakout(ohlcData, isBreakoutConfirmed);
+
+
+  // Distribution candle = big red candle (>2%) on high volume in last 5 candles
+  let hasDistributionCandle = false;
+  for (let i = ohlcData.length - 5; i < ohlcData.length; i++) {
+    const candle = ohlcData[i];
+    const dropPct = (candle.close - candle.open) / candle.open;
+    if (dropPct < -0.02 && candle.volume > (volumes.slice(-20).reduce((a, b) => a + b, 0) / 20) * 1.5) {
+      hasDistributionCandle = true;
+      break;
+    }
+  }
+
+  // Trend check: EMA13 > EMA26 and price > EMA50
+  const emaTrendOk = latest.ema13 > latest.ema26 && latest.price > latest.ema50;
+  
   return {
       ema10,
       ema13,
@@ -138,8 +168,32 @@ function calculateBasicIndicators(ohlcData) {
       stochastic,
       support,
       resistance,
-      latest
+      latest,
+      // ✅ Breakout Setup Flags
+      is52WeekHighBreakout,
+      brokeResistanceRecently, // now using external helper method
+      recentVolumeSpike,
+      isVolatilityContracting,
+      isNearEMA13,
+      isNearBreakoutZone,
+      macdBullish,
+      hasDistributionCandle,
+      emaTrendOk,
+      hasTightPullbackAfterBreakout
   };
+}
+
+function detectBreakoutPullbackSetup(indicators) {
+  return (
+    (indicators.is52WeekHighBreakout || indicators.brokeResistanceRecently) &&
+    indicators.recentVolumeSpike &&
+    indicators.isVolatilityContracting &&
+    indicators.isNearEMA13 &&
+    indicators.isNearBreakoutZone &&
+    indicators.macdBullish &&
+    !indicators.hasDistributionCandle &&
+    indicators.emaTrendOk
+  );
 }
 
 /**
@@ -367,6 +421,89 @@ function findNextResistanceLevel(dailyData, currentPrice) {
   }
 }
 
+/**
+ * 🔍 Detect if stock broke key horizontal resistance in last 3–10 candles
+ * Used for detecting breakout that is NOT a 52-week high
+ * 
+ * @param {Array} ohlcData - Full OHLC data
+ * @param {number} currentPrice - Latest close
+ * @returns {boolean} True if broke resistance recently
+ */
+function brokeKeyResistanceRecently(ohlcData, currentPrice) {
+  try {
+    if (!ohlcData || ohlcData.length < 100) return false;
+
+    // Step 1: Get resistance level from 10+ candles ago
+    const resistanceLookback = ohlcData.slice(0, -10);
+    const resistanceLevel = findNextResistanceLevel(resistanceLookback, currentPrice);
+
+    if (!resistanceLevel) return false;
+
+    // Step 2: Check candles from 10 to 3 bars ago for breakout
+    const breakoutZone = ohlcData.slice(-15, -3);
+    return breakoutZone.some(candle => candle.close > resistanceLevel);
+  } catch (e) {
+    console.warn('Resistance breakout detection failed:', e.message);
+    return false;
+  }
+}
+
+/**
+ * 🧠 Enhanced Resistance Level Detection (Advanced Version)
+ * Finds multiple strong resistance zones using clustering, frequency, and volume context.
+ * Does NOT affect current target logic. For future usage in scoring, visualization, etc.
+ * 
+ * @param {Array} ohlcData - Full historical OHLC data
+ * @param {number} currentPrice - Current close price
+ * @returns {Array} Array of strong resistance zones with meta info
+ */
+function findStrongResistanceLevels(ohlcData, currentPrice) {
+  try {
+    if (!ohlcData || ohlcData.length < 100) return [];
+
+    const swingHighs = [];
+    const volumeProfile = {};
+
+    for (let i = 2; i < ohlcData.length - 2; i++) {
+      const c = ohlcData[i];
+      const prev1 = ohlcData[i - 1];
+      const prev2 = ohlcData[i - 2];
+      const next1 = ohlcData[i + 1];
+      const next2 = ohlcData[i + 2];
+
+      if (c.high > Math.max(prev1.high, prev2.high, next1.high, next2.high)) {
+        swingHighs.push(c.high);
+        const priceBucket = Math.round(c.high / 10) * 10; // Bucket by ₹10 or $10 range
+        volumeProfile[priceBucket] = (volumeProfile[priceBucket] || 0) + c.volume;
+      }
+    }
+
+    // Cluster and score resistance zones
+    const clusters = {};
+    for (const price of swingHighs) {
+      const bucket = Math.round(price / 10) * 10;
+      clusters[bucket] = clusters[bucket] || { count: 0, totalVolume: 0, price };
+      clusters[bucket].count++;
+      clusters[bucket].totalVolume += volumeProfile[bucket] || 0;
+    }
+
+    const resistanceZones = Object.values(clusters)
+      .filter(z => z.price > currentPrice * 1.01) // Only above current price
+      .sort((a, b) => b.count - a.count) // Most hits first
+      .map(z => ({
+        level: z.price,
+        hits: z.count,
+        volumeScore: z.totalVolume,
+        score: z.count + z.totalVolume / 100000  // Basic scoring formula
+      }));
+
+    return resistanceZones;
+  } catch (e) {
+    console.warn('Enhanced resistance calc failed:', e.message);
+    return [];
+  }
+}
+
 function findNextSupportLevel(dailyData, currentPrice) {
   try {
     if (dailyData.length < 20) return null;
@@ -404,9 +541,56 @@ function findNextSupportLevel(dailyData, currentPrice) {
   }
 }
 
+function isTightPullbackAfterBreakout(ohlcData, isBreakoutConfirmed) {
+  try {
+    if (!isBreakoutConfirmed) return false;
+
+    // Lookback 10 candles to find breakout candle
+    const recent = ohlcData.slice(-10);
+    const breakoutIndex = ohlcData.length - recent.length;
+
+    // Find breakout candle (highest close with volume spike)
+    let breakoutCandleIndex = -1;
+    const closes = recent.map(d => d.close);
+    const volumes = recent.map(d => d.volume || 0);
+    const avgVolume = volumes.reduce((a, b) => a + b, 0) / volumes.length;
+
+    for (let i = 0; i < recent.length; i++) {
+      if (closes[i] >= Math.max(...closes.slice(0, i + 1)) && volumes[i] > avgVolume * 1.2) {
+        breakoutCandleIndex = breakoutIndex + i;
+        break;
+      }
+    }
+
+    if (breakoutCandleIndex === -1) return false;
+
+    // Pullback = next 3–7 candles after breakout
+    const pullback = ohlcData.slice(breakoutCandleIndex + 1, breakoutCandleIndex + 8);
+    if (pullback.length < 3) return false;
+
+    let validCount = 0;
+    for (const candle of pullback) {
+      const body = Math.abs(candle.close - candle.open);
+      const range = candle.high - candle.low;
+      const isTight = (range > 0) && (body / range < 0.3);
+      const isRed = candle.close < candle.open;
+
+      if (isTight || isRed) validCount++;
+    }
+
+    return validCount >= 3;
+  } catch (err) {
+    console.warn('Pullback tightness check failed:', err.message);
+    return false;
+  }
+}
+
 module.exports = {
   getSimpleTechnicalData,
   calculateBasicIndicators,
   findNextResistanceLevel,
-  findNextSupportLevel  
+  findNextSupportLevel,
+  findStrongResistanceLevels,
+  brokeKeyResistanceRecently, // <-- NEW
+  detectBreakoutPullbackSetup
 };

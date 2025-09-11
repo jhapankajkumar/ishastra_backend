@@ -26,6 +26,7 @@ class SimpleSwingStability {
    * @returns {Object} Stabilized signal
    */
   stabilize(symbol, rawSignal, barIndex, currentPrice, isBarClosed = true) {
+    return rawSignal;
     const prev = this.last.get(symbol);
     
     // Rule 1: Don't flip signals intrabar

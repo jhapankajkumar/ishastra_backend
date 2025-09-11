@@ -73,6 +73,9 @@ app.use('/api/alerts', require('./routes/alert.routes'));
 // Email routes
 app.use('/api/email', require('./routes/email.routes'));
 
+// Backtest routes
+app.use('/api/backtest', require('./routes/backtest.routes'));
+
 // Yahoo Finance API endpoints
 app.get('/api/yahoo/search', async (req, res) => {
   try {

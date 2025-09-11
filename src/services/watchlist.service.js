@@ -10,6 +10,7 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const { fetchCurrentPrice, getTickerAnalysis } = require('./comom.service');
 const { get } = require('lodash');
+const { getSimpleTechnicalData, detectBreakoutPullbackSetup } = require('../utils/simpleTechnicalDataFetcher');
 
 
 class WatchlistService {
@@ -135,6 +136,67 @@ class WatchlistService {
             "RBLX", "ZI", "CPNG", "BABA", "JD", "PDD", "BIDU", "BILI", "NIO", "XPEV",
             "LI", "RIVN", "LCID", "CCIV", "SPCE", "ARKK", "ARKG", "ARKQ", "ARKW", "PRNT"
         ];
+
+        this.DELISTED_STOCKS = [
+  "HEXAWARE.NS",
+  "INOXLEISUR.NS",
+  "ISEC.NS",
+  "JUBILANT.NS",
+  "L&TFH.NS",
+  "LAXMIMACH.NS",
+  "LSC.NS",
+  "MINDTREE.NS",
+  "UJJIVAN.NS",
+  "ABC",
+  "ANTM",
+  "ARNC",
+  "BLL",
+  "BRK.B",
+  "COG",
+  "CTLT",
+  "CDAY",
+  "CERN",
+  "CTXS",
+  "DFS",
+  "DISCA",
+  "DISCK",
+  "DISH",
+  "DRE",
+  "RE",
+  "FRC",
+  "FISV",
+  "FLT",
+  "FBHS",
+  "GPS",
+  "PEAK",
+  "JNPR",
+  "KSU",
+  "MRO",
+  "NLSN",
+  "NLOK",
+  "PBCT",
+  "PKI",
+  "PXD",
+  "COL",
+  "SIVB",
+  "SYMC",
+  "TWTR",
+  "VAR",
+  "VIAC",
+  "WRK",
+  "WLTW",
+  "XLNX",
+  "BRK.A",
+  "STOR",
+  "WORK",
+  "SQ",
+  "UNITY",
+  "ZI",
+  "CCIV"
+];
+        this.STOCK_UNIVERSE = this.STOCK_UNIVERSE.filter(s => !this.DELISTED_STOCKS.includes(s));
+
+        console.log(`🧮 WatchlistService initialized with ${this.STOCK_UNIVERSE.length} stocks`);
     }
 
     /**
@@ -143,9 +205,8 @@ class WatchlistService {
      */
     async runDailyScan() {
         console.log('🔍 DAILY WATCHLIST SCAN STARTING...');
-        const distinctSymbols = Array.from(new Set(this.STOCK_UNIVERSE.distinct));
+        const distinctSymbols = Array.from(new Set(this.STOCK_UNIVERSE));
         console.log(`📊 Scanning ${distinctSymbols.length} stocks for BUY/WATCH signals`);
-
         // Get the symbols you want to keep
         const trades = await prisma.trade.findMany({
             where: {
@@ -346,6 +407,48 @@ class WatchlistService {
         return processedStocks;
     }
 
+    async runBreakoutScan() {
+
+        console.log('🔍 DAILY BREAKOUT SCAN STARTING...');
+        const distinctSymbols = Array.from(new Set(this.STOCK_UNIVERSE));
+        console.log(`📊 Scanning ${distinctSymbols.length} stocks for Breakout signals`);
+
+
+        // Step 2: Analyze all stocks in batches
+        const breakOutSignals = [];
+        const batchSize = 10;
+
+        for (let i = 0; i < distinctSymbols.length; i += batchSize) {
+            const batch = distinctSymbols.slice(i, i + batchSize);
+            console.log(`Processing batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(distinctSymbols.length / batchSize)}`);
+
+            const batchPromises = batch.map(symbol => getSimpleTechnicalData(symbol)); // no await here
+
+            const batchResults = await Promise.allSettled(batchPromises);
+            batchResults.forEach((result, idx) => {
+                if (result.status !== 'fulfilled' || !result.value) return;
+
+                const technicalData = result.value; // expect { symbol, decision: { action, confidence }, ... }
+                const isBreakout = detectBreakoutPullbackSetup(technicalData.indicators);
+                console.log(technicalData.symbol, isBreakout);
+                if (isBreakout) {
+                    breakOutSignals.push({
+                        symbol: technicalData.symbol,
+                        isBreakout,
+                    });
+                    return;
+                }
+            });
+
+            // brief pause between batches to be nice to APIs
+            await new Promise(r => setTimeout(r, 1000));
+        }
+
+        console.log('✅ DAILY BREAKOUT SCAN COMPLETE');
+        return {
+            breakouts: breakOutSignals
+        };
+    }
 
 }
 

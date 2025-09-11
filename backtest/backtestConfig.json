@@ -1,0 +1,86 @@
+{
+  "description": "Ishastra Backtesting Configuration",
+  "version": "1.0.0",
+  "backtest": {
+    "symbols": [
+      "AAPL", "MSFT", "GOOGL", "AMZN", "TSLA",
+      "NVDA", "META", "NFLX", "AMD", "CRM",
+      "RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "INFY.NS", "ICICIBANK.NS"
+    ],
+    "dateRange": {
+      "startDate": "2019-01-01",
+      "endDate": "2024-12-31",
+      "comment": "5-year backtest period"
+    },
+    "markets": {
+      "US": {
+        "currency": "USD", 
+        "capital": 100000,
+        "symbols": ["AAPL", "MSFT", "GOOGL", "AMZN", "TSLA", "NVDA", "META", "NFLX", "AMD", "CRM"]
+      },
+      "India": {
+        "currency": "INR",
+        "capital": 10000000,
+        "symbolSuffix": ".NS",
+        "symbols": ["RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "INFY.NS", "ICICIBANK.NS"]
+      }
+    },
+    "systems": {
+      "enabled": ["minervini_template_advanced"],
+      "disabled": ["elder_triple_screen"],
+      "comment": "Currently only Minervini system is active"
+    },
+    "execution": {
+      "maxHoldDays": 22,
+      "entryMethod": "execution.entryStrategy.entryZone.optimal",
+      "stopLossMethod": "execution.exitStrategy.stopLoss.initial", 
+      "targetMethod": "execution.targets.moderate",
+      "positionSizing": "execution.positionSizing.shares"
+    },
+    "filters": {
+      "minDataPoints": 252,
+      "skipWeekends": true,
+      "minTradeGap": 5,
+      "comment": "Minimum 1 year of data, skip overlapping trades"
+    },
+    "performance": {
+      "maxSymbols": 50,
+      "batchSize": 100,
+      "parallelProcessing": false,
+      "comment": "Performance and resource limits"
+    }
+  },
+  "dataSource": {
+    "directory": "./data/candles/",
+    "format": "JSON",
+    "expectedFields": ["date", "open", "high", "low", "close", "volume"],
+    "dateFormat": "YYYY-MM-DD or ISO 8601"
+  },
+  "output": {
+    "database": {
+      "table": "BacktestTrade",
+      "fields": [
+        "symbol", "entryDate", "exitDate", "entryPrice", "exitPrice",
+        "stopLoss", "target", "reason", "RMultiple", "system"
+      ]
+    },
+    "logs": {
+      "directory": "./logs/",
+      "format": "backtest-YYYY-MM-DDTHH-mm-ss.log",
+      "includeProgress": true,
+      "includeTrades": true
+    },
+    "reports": {
+      "summary": true,
+      "bySystem": true,
+      "bySymbol": true,
+      "exportCSV": false
+    }
+  },
+  "riskManagement": {
+    "maxRiskPerTrade": 0.02,
+    "maxDrawdown": 0.20,
+    "positionSizingModel": "fixed_shares",
+    "comment": "Risk management rules (not implemented yet)"
+  }
+}

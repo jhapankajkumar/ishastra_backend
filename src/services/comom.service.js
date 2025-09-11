@@ -1,6 +1,7 @@
 const yahoo = require('../yahoo');
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
+const moment = require('moment-timezone');
 // Helper function to fetch current price
 const fetchCurrentPrice = async (ticker) => {
   try {
@@ -62,43 +63,68 @@ const refreshPrices = async () => {
 
    const prices = await Promise.all(
      Array.from(allSymbols).map(async (symbol) => {
-       const price = await fetchCurrentPrice(symbol);
-       return { symbol, price };
+       const quote = await yahoo.getQuote(symbol);
+       return { symbol, quote };
      })
    );
 
-   for (const trade of trades) {
-       const price = prices.find(p => p.symbol === trade.ticker)?.price || 0;
-       await prisma.trade.update({
-           where: { id: trade.id },
-           data: { currentPrice: price }
-       });
-   }
+   await Promise.all([
+    ...trades.map(trade => {
+      const quote = prices.find(p => p.symbol === trade.ticker)?.quote || {};
+      const data = {};
+        if (quote?.regularMarketPrice != null) {
+          data.currentPrice = quote.regularMarketPrice;
+        }
+        if (quote?.regularMarketPreviousClose != null) {
+          data.lastDayPrice = quote.regularMarketPreviousClose;
+        }
+      return prisma.trade.update({
+        where: { id: trade.id },
+        data
+      });
+    }),
+    ...investment.map(inv => {
+      const quote = prices.find(p => p.symbol === inv.ticker)?.quote || {};
+      const data = {};
+      if (quote?.regularMarketPrice != null) {
+        data.currentPrice = quote.regularMarketPrice;
+      }
+      if (quote?.regularMarketPreviousClose != null) {
+        data.lastDayPrice = quote.regularMarketPreviousClose;
+      }
+      return prisma.investment.update({
+        where: { id: inv.id },
+        data
+      });
+    }),
+    ...recommendations.map(rec => {
+      const quote = prices.find(p => p.symbol === rec.ticker)?.quote || {};
+      const data = {};
+      if (quote?.regularMarketPrice != null) {
+        data.currentPrice = quote.regularMarketPrice;
+      }
+      return prisma.recommendation.update({
+        where: { id: rec.id },
+        data
+      });
+    }),
+    ...watchlist.map(item => {
+      const quote = prices.find(p => p.symbol === item.symbol)?.quote || {};
+      const data = {};
+      if (quote?.regularMarketPrice != null) {
+        data.currentPrice = quote.regularMarketPrice;
+      }
+      return prisma.watchlistStock.update({
+        where: { id: item.id },
+        data
+      });
+    })
+  ]);
 
-   for (const inv of investment) {
-       const price = prices.find(p => p.symbol === inv.ticker)?.price || 0;
-       await prisma.investment.update({
-           where: { id: inv.id },
-           data: { currentPrice: price }
-       });
-   }
+  const now = moment().tz('Asia/Singapore');
 
-   for (const rec of recommendations) {
-       const price = prices.find(p => p.symbol === rec.ticker)?.price || 0;
-       await prisma.recommendation.update({
-           where: { id: rec.id },
-           data: { currentPrice: price }
-       });
-   }
+  console.log(`Prices refreshed at : at ${now.format('YYYY-MM-DD HH:mm')} SGT`, prices.length, 'tickers updated.');
 
-   for (const item of watchlist) {
-       const price = prices.find(p => p.symbol === item.symbol)?.price || 0;
-       await prisma.watchlistStock.update({
-           where: { id: item.id },
-           data: { currentPrice: price }
-       });
-   }
-   console.log('Prices refreshed:', prices);
 };
 
 module.exports = { fetchCurrentPrice, getTickerAnalysis, refreshPrices };

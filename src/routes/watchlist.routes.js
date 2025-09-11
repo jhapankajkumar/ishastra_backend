@@ -16,4 +16,7 @@ router.get('/', controller.getWatchlist.bind(controller));
 // POST trigger daily scan
 router.post('/daily-scan', controller.runDailyScan.bind(controller));
 
+// POST trigger breakout scan
+router.post('/breakout-scan', controller.runBreakoutScan.bind(controller));
+
 module.exports = router;

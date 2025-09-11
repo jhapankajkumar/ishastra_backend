@@ -62,6 +62,27 @@ class WatchlistController {
         }
     }
 
+    async runBreakoutScan(req, res) {
+      try {
+          console.log('🔍 Manual breakout scan triggered via API') ;
+          const result = await this.watchlistService.runBreakoutScan();
+          
+          res.json({
+              success: true,
+              message: 'Breakout scan completed',
+              result
+          });
+
+      } catch (error) {
+          console.error('Error running breakout scan:', error);
+          res.status(500).json({
+              success: false,
+              error: 'Breakout scan failed',
+              details: error.message
+          });
+      }
+  }
+
     // Refresh all watchlist prices (manual endpoint)
     async refreshAllWatchlistPrices(req, res) {
       try {

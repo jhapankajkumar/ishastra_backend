@@ -71,6 +71,8 @@ class AlertService {
       const stopLoss = trade.stopLoss || 0;
       const entryPrice = trade.entryPrice || 0;
       const percentGain = entryPrice > 0 ? ((currentPrice - entryPrice) / entryPrice) * 100 : 0;
+      const analysisResult = trade.systemAnalysisResult ? JSON.parse(trade.systemAnalysisResult) : null;
+      const execution = analysisResult?.execution || null;
 
       // ALERT 1: STOP LOSS HIT
       if (currentPrice <= stopLoss && stopLoss > 0) {
@@ -87,6 +89,10 @@ class AlertService {
             quantity: trade.quantity
           }
         });
+        const stopLoss = execution?.exitStrategy?.stopLoss;
+        execution?.exitStrategy?.stopLoss = {
+          ...stopLoss, alerted: true
+        } 
       }
 
       // ALERT 2: 15% GAIN = TAKE PROFITS
@@ -131,7 +137,14 @@ class AlertService {
             profitToLock: Math.round((currentPrice - entryPrice) * sharesToSell)
           }
         });
+
+        const targets = execution?.exitStrategy?.targets;
+        execution?.exitStrategy?.targets = {
+          ...targets, alerted: true
+        }
       }
+
+      console.log(`${execution?.exitStrategy?.stopLoss?.alerted} - ${execution?.exitStrategy?.targets?.alerted }`);
 
       // NO OTHER ALERTS - TRUST YOUR SYSTEM
     }
@@ -152,7 +165,8 @@ class AlertService {
         quantity: true,
         stopLoss: true,
         createdAt: true,
-        entryDate: true
+        entryDate: true,
+        systemAnalysisResult: true
       }
     });
   }

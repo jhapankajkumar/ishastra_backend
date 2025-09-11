@@ -32,7 +32,7 @@ class AlertCron {
         console.log('🚨 Starting Alert Cron...');
 
         // Run every 15 minutes during market hours
-        const alertJob = cron.schedule('*/15 * * * 1-5', async () => {
+        const alertJob = cron.schedule('*/01 * * * 1-5', async () => {
             await this.runAlertCheck();
         }, {
             timezone: 'Asia/Singapore',
@@ -67,37 +67,28 @@ class AlertCron {
                 return;
             }
 
-            // Market hours: 9:30 AM to 7:00 PM Singapore time
-            const isMarketHours = (
-                (currentHour > 9 || (currentHour === 9 && currentMinute >= 30)) &&
-                currentHour < 19
-            );
-
-            if (!isMarketHours) {
-                console.log(`⏰ Outside market hours (${now.format('HH:mm')} SGT) - skipping alerts`);
-                return;
-            }
-
             console.log(`🔍 Alert check started at ${now.format('YYYY-MM-DD HH:mm')} SGT`);
 
-            // Check which alerts to run based on time
-            const checkWatchlist = this.isWatchlistTime(currentHour, currentMinute);
-            const checkPositions = this.isPositionTime(currentHour, currentMinute);
+            // // Check which alerts to run based on time
+            // const checkWatchlist = this.isWatchlistTime(currentHour, currentMinute);
+            // const checkPositions = this.isPositionTime(currentHour, currentMinute);
 
-            if (!checkWatchlist && !checkPositions) {
-                console.log(`⏰ Outside specific alert hours - skipping`);
-                return;
-            }
+            // if (!checkWatchlist && !checkPositions) {
+            //     console.log(`⏰ Outside specific alert hours - skipping`);
+            //     return;
+            // }
 
-            // 📧 CHECK WATCHLIST ENTRY TRIGGERS
-            if (checkWatchlist) {
-                await this.checkWatchlistTriggers();
-            }
+            // // 📧 CHECK WATCHLIST ENTRY TRIGGERS
+            // if (checkWatchlist) {
+            //     await this.checkWatchlistTriggers();
+            // }
 
-            // 📧 CHECK POSITION ALERTS  
-            if (checkPositions) {
-                await this.checkPositionAlerts();
-            }
+            // // 📧 CHECK POSITION ALERTS  
+            // if (checkPositions) {
+                
+            // }
+            await this.checkPositionAlerts();
+            await this.checkWatchlistTriggers();
 
             console.log('✅ Alert check completed');
 
@@ -176,7 +167,7 @@ class AlertCron {
                         timestamp: new Date()
                     };
 
-                    await this.alertService.emailService.sendAlert(alertData);
+                    // await this.alertService.emailService.sendAlert(alertData);
                     console.log(`📧 Position alert email sent for ${alert.ticker}`);
                 } catch (emailError) {
                     console.error(`❌ Failed to send position email for ${alert.ticker}:`, emailError.message);

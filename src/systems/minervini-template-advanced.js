@@ -30,6 +30,7 @@
  * Last Updated: 2024
  */
 
+const { Console } = require('console');
 const { getSystemThresholds } = require('../config/trading-thresholds');
 const { SimpleSwingStability } = require('../utils/simple-swing-stability');
 const { TRIGGER_TYPES } = require('../utils/systemConstants');
@@ -90,7 +91,6 @@ class MinerviniTemplateAdvanced {
       );
 
       // 🔒 SIMPLE STABILITY: Apply signal stabilization for swing trading
-      // console.log(`  🏛️ TEMPLATE: Raw decision - Action: ${rawDecision.action}, Confidence: ${(rawDecision.confidence * 100).toFixed(1)}%`);
 
       // Calculate current bar index (days since start of data)
       const barIndex = completedDaily.length - 1;
@@ -109,8 +109,6 @@ class MinerviniTemplateAdvanced {
         true // isBarClosed = true for EOD analysis
       );
 
-      // console.log(`  🏛️ TEMPLATE: Raw: ${rawDecision.action}, Stabilized: ${stabilizedDecision.action}${stabilizedDecision.stabilized ? ' [STABILIZED]' : ''}, Confidence: ${(stabilizedDecision.confidence * 100).toFixed(1)}%`);
-
       // Calculate signal quality for gate engine integration
       const signalQuality = this.calculateSignalQuality(stabilizedDecision.confidence, templateAnalysis);
 
@@ -118,7 +116,7 @@ class MinerviniTemplateAdvanced {
       const execution = this.buildExecutionPlan(stabilizedDecision, riskAssessment, templateAnalysis, entryPrice, capital, completedDaily, indicators);
 
       // Calculate unified display grade (Template + Signal combined for user display)
-      const unifiedGrade = this.calculateUnifiedDisplayGrade(templateAnalysis.templateGrade, signalQuality.grade);
+      const unifiedGrade = this.calculateUnifiedDisplayGrade(templateAnalysis, signalQuality.grade);
 
       return {
         system: this.systemId,
@@ -270,10 +268,18 @@ class MinerviniTemplateAdvanced {
 
     // --- RULE 4: Price within X% of 52-week high (Not extended, BUY/WATCH impact: High)
     const distanceFromHigh = (high52Week - currentPrice) / high52Week;
-    // Patch: dynamic threshold for criterion4_high_proximity_threshold
+    const brokeKeyResistanceRecently = indicators?.brokeKeyResistanceRecently || false;
     const criterion4_high_proximity_threshold = (strongVolume && RS > 80 && fundamentalsStrong) ? 0.25 : 0.20;
-    const rule4 = distanceFromHigh <= criterion4_high_proximity_threshold;
+    const isNear52WHigh = distanceFromHigh <= criterion4_high_proximity_threshold;
+    const rule4 = isNear52WHigh || brokeKeyResistanceRecently;
     const rule4Score = rule4 ? 1.0 : 0.0;
+    let rule4_reason = '';
+    if (rule4) {
+      if (brokeKeyResistanceRecently) {
+        reasoning.push("Broke key resistance within last 3–10 bars");
+      }
+    }
+
     criteria.criterion4 = {
       passed: rule4,
       value: distanceFromHigh * 100,
@@ -327,22 +333,20 @@ class MinerviniTemplateAdvanced {
     // --- RULE 7: Volume surge > 50% (Institutional footprint, BUY/WATCH impact: High)
     // Patch: Use recentVolumes check for volume breakout
     // Use avgVolume from above
-    const todayVolume = recentVolumes[0];
-    const yesterdayVolume = recentVolumes[1];
-    const twoDaysAgoVolume = recentVolumes[2];
-    const volumeBreakout = [todayVolume, yesterdayVolume, twoDaysAgoVolume].some(v => v >= 1.6 * avgVolume);
     const volumeAnalysis = this.analyzeBreakoutVolume(dailyData, currentPrice, thresholds);
-    const rule7 = volumeBreakout;
-    const rule7Score = rule7 ? Math.min(1.0, (todayVolume / avgVolume) / 2.0) : (todayVolume / avgVolume) / thresholds.criterion7_volume_multiplier;
+    const rule7 = volumeAnalysis.hasVolumeBreakout;
+    const rule7Score = rule7
+      ? Math.min(1.0, volumeAnalysis.volumeRatio / 2.0)
+      : volumeAnalysis.volumeRatio / thresholds.criterion7_volume_multiplier;
     criteria.criterion7 = {
       passed: rule7,
-      value: todayVolume / avgVolume,
+      value: volumeAnalysis.volumeRatio,
       threshold: 1.6, // hardcoded for this new logic
       score: rule7Score,
-      details: `Rule 7: Recent volume ${todayVolume.toLocaleString()} vs avg ${avgVolume.toLocaleString()} (${(todayVolume / avgVolume).toFixed(2)}x)`
+      details: `Rule 7: Volume breakout detected ${volumeAnalysis.hasVolumeBreakout ? '✅' : '❌'}: ${volumeAnalysis.volumeRatio.toFixed(2)}x avg, ${volumeAnalysis.breakoutDaysAgo} bars ago`
     };
     totalScore += rule7Score;
-    if (rule7) reasoning.push(`Rule 7: Strong volume breakout: ${(todayVolume / avgVolume).toFixed(2)}x average in recent days`);
+    if (rule7) reasoning.push(`Rule 7: Breakout bar had ${volumeAnalysis.volumeRatio.toFixed(2)}x volume, ${volumeAnalysis.breakoutDaysAgo} bars ago`);
 
     // --- RULE 8: EPS or Sales momentum (proxy) (Growth leadership, BUY/WATCH impact: Medium)
     // Patch: downgrade effect to confidence only
@@ -369,6 +373,79 @@ class MinerviniTemplateAdvanced {
       reasoning.push(`Rule 8: Strong fundamental proxy: ${fundamentalProxy.toFixed(1)}/100`);
     } else if (rule8_reason) {
       reasoning.push(rule8_reason);
+    }
+
+    // === BREAKOUT QUALITY DETECTION (Rule 7 extension)
+    const latestCandle = dailyData[dailyData.length - 1];
+    const candleRange = latestCandle.high - latestCandle.low;
+    const closeInTop30 = (latestCandle.close >= latestCandle.low + 0.7 * candleRange);
+
+    const breakoutScore =
+      (rule7 ? 0.4 : 0) +
+      (closeInTop30 ? 0.3 : 0) +
+      (rule4 ? 0.3 : 0);
+    const breakoutQualityPassed = breakoutScore >= 0.6;
+    const breakoutQualityReason = [];
+    if (!rule4) breakoutQualityReason.push("Price did not break base resistance or isn't near 52-week high");
+    if (!rule7) breakoutQualityReason.push("No volume breakout");
+    if (!closeInTop30) breakoutQualityReason.push("Close not in top 30% of range");
+
+    criteria.breakoutQuality = {
+      passed: breakoutQualityPassed,
+      value: closeInTop30,
+      threshold: 'close in top 30% + volume breakout + resistance break',
+      score: breakoutQualityPassed ? 1.0 : 0.0,
+      details: breakoutQualityPassed
+        ? "Breakout Quality: Strong (Volume + Resistance + Top-close)"
+        : `Breakout Quality: Weak – ${breakoutQualityReason.join(', ')}`
+    };
+    if (breakoutQualityPassed) {
+      reasoning.push("✅ Breakout quality strong: Closed in top 30% with volume spike and resistance break");
+    } else {
+      reasoning.push(`⚠️ Breakout quality weak: ${breakoutQualityReason.join(', ')}`);
+    }
+
+    // === PATTERN QUALITY DETECTION (VCP / Tight Base / Volume Dry-Up)
+    const last20 = dailyData.slice(-20);
+    const closingPrices = last20.map(d => d.close);
+    const volumes = last20.map(d => d.volume);
+
+    const range = Math.max(...closingPrices) - Math.min(...closingPrices);
+    const avgClose = closingPrices.reduce((a, b) => a + b, 0) / closingPrices.length;
+    const tightBase = range / avgClose < 0.06; // <6% range
+
+
+    const vcpContraction = this.detectVcpContraction(last20);
+
+    const avgVolFirstHalf = volumes.slice(0, 10).reduce((a, b) => a + b, 0) / 10;
+    const avgVolLastHalf = volumes.slice(10).reduce((a, b) => a + b, 0) / 10;
+    const volumeDryUp = avgVolLastHalf < avgVolFirstHalf * 0.65;
+
+    const patternQualityScore =
+      (tightBase ? 0.33 : 0) +
+      (vcpContraction ? 0.33 : 0) +
+      (volumeDryUp ? 0.34 : 0);
+
+    const patternGrade =
+      patternQualityScore >= 0.90 ? 'A+' :
+        patternQualityScore >= 0.70 ? 'A' :
+          patternQualityScore >= 0.50 ? 'B' :
+            patternQualityScore >= 0.30 ? 'C' : 'F';
+
+    criteria.patternQuality = {
+      passed: patternQualityScore >= 0.5,
+      score: patternQualityScore,
+      grade: patternGrade,
+      details: `Tight Base: ${tightBase}, VCP: ${vcpContraction}, Volume Dry-Up: ${volumeDryUp}`
+    };
+
+    if (tightBase) reasoning.push("Pattern: 3-week tight base (<6% range)");
+    if (vcpContraction) reasoning.push("Pattern: VCP-style price contraction");
+    if (volumeDryUp) reasoning.push("Pattern: Volume dry-up before breakout");
+    if (patternQualityScore >= 0.5) {
+      reasoning.push(`✅ Pattern quality strong: Grade ${patternGrade}`);
+    } else {
+      reasoning.push(`⚠️ Weak pattern quality: Grade ${patternGrade}`);
     }
 
     // Calculate overall metrics
@@ -418,7 +495,6 @@ class MinerviniTemplateAdvanced {
     if (rule8_confidence_penalty) confidence -= rule8_confidence_penalty;
     if (confidence < 0) confidence = 0;
 
-    // console.log(`  🏛️ TEMPLATE: Score ${(overallScore * 100).toFixed(1)}% (${passedCriteria}/8 criteria), Grade: ${templateGrade}`);
 
     return {
       criteria,
@@ -438,26 +514,39 @@ class MinerviniTemplateAdvanced {
     const { confidence, reasoning, overallScore, criteria, rule1, rule2, rule3, rule4, rule5, rule6, rule7, rule8 } = templateAnalysis;
     const { riskReward } = riskAssessment;
 
+    let patternQuality = criteria.patternQuality?.score || 0;
     // Use rule variables for new decision logic
     const passedRules = [rule1, rule2, rule3, rule4, rule5, rule6, rule7, rule8].filter(Boolean).length;
 
+    // === BREAKOUT QUALITY GATING
+    let breakoutQualityPassed = criteria.breakoutQuality?.passed;
+
     let decision = 'REJECTED';
-    if (passedRules >= 6) {
-      decision = 'WATCH';
-    }
-    // Patch: BUY decision logic checks for non-negotiable rules (1,2,3,4,6,7)
-    if (rule1 && rule2 && rule3 && rule4 && rule6 && rule7) {
-      decision = 'BUY';
-    }
-    // Patch: WATCH downgrade logic for strong template but weak trend
-    if (
-      templateAnalysis.templateGrade === 'A+' &&
-      rule6 && rule7 && rule4 && rule8 &&
-      (!rule1 || !rule2)
+    // Strict BUY gating logic: enforce hard rule validation for a BUY signal
+    
+    if (rule1 && rule2 && rule3 && rule4 && rule6 && rule7 &&
+      confidence >= 0.85 &&
+      // riskAssessment.riskPercentage <= 0.08 &&
+      riskAssessment.riskReward >= 2.5 &&
+      breakoutQualityPassed
     ) {
+      decision = 'BUY';
+    } else  if (passedRules >= 6) {
       decision = 'WATCH';
-      reasoning.push("Strong breakout, but trend not yet confirmed. Wait for SMA150/200 alignment.");
-    }
+    } 
+
+
+    // if (rule1 && rule2 && rule3 && confidence >= 0.85) {
+    //   console.log({
+    //     rule1, rule2, rule3, rule4, rule6, rule7, breakoutQualityPassed,
+    //     confidence: confidence.toFixed(2),
+    //     risk: riskAssessment.riskPercentage,
+    //     rr: riskAssessment.riskReward,
+    //     pattern: patternQuality.toFixed(2)
+    //   });
+    // }
+
+  
     reasoning.push('Failed Rules: --------------');
     if (!rule1) reasoning.push("Rule 1 : Price is not above or SMA150 is not rising.");
     if (!rule2) reasoning.push("Rule 2 : Price is not above or SMA200 is not rising.");
@@ -467,6 +556,7 @@ class MinerviniTemplateAdvanced {
     if (!rule6) reasoning.push("Rule 6 : Relative Strength is below threshold.");
     if (!rule7) reasoning.push("Rule 7 : Volume breakout is insufficient.");
     if (!rule8) reasoning.push("Rule 8 : Fundamental score is weak.");
+    if (!breakoutQualityPassed) reasoning.push("Breakout quality did not meet 3-point validation (volume, resistance, close strength).");
 
     // Compose reasoning
     let finalConfidence = confidence;
@@ -516,22 +606,15 @@ class MinerviniTemplateAdvanced {
     const useSupport = support && (currentPrice - support) / currentPrice > 0.03;
     const bufferedSupport = useSupport ? support * supportBuffer : null;
 
-    const stopLoss = bufferedSupport || Math.min(percentStop, atrStop);
+    // Structural/ATR stop logic with 8% max cap
+    const candidateStopLoss = bufferedSupport || Math.min(percentStop, atrStop);
+    const maxAllowedStop = currentPrice * 0.92; // 8% max stop
+    const stopLoss = Math.max(candidateStopLoss, maxAllowedStop);
 
     const stopDistance = stopLoss > 0 ? Number(((currentPrice - stopLoss) / currentPrice) * 100).toFixed(2) : 0;
-    // console.log(`  🏛️ TEMPLATE: Stop Loss at $${stopLoss.toFixed(2)} (${stopDistance} ‰ below current price)`);
-    // if (stopDistance < 5) {
-    //   console.log(`    Current Price: ${currentPrice}
-    // Percent Stop: $${percentStop.toFixed(2)},
-    // ATR Stop: ATR: ${atr} ATR Stop $${atrStop.toFixed(2)},
-    // Support: ${support} : Difference ${supportDifference}%
-    // Buffered Support: ${bufferedSupport ? bufferedSupport : 0}%
-    // Stop Loss: $${stopLoss.toFixed(2)}`);
-    // }
-
-
-    // FIXED: Dynamic targets based on nearest resistance levels and ATR
+    
     const riskAmount = currentPrice - stopLoss;
+    const riskPercentage = (currentPrice - stopLoss) / currentPrice;
 
     // Calculate dynamic targets based on volatility and recent price action
     const volatility = this.calculateVolatility(dailyData.slice(-10));
@@ -587,7 +670,6 @@ class MinerviniTemplateAdvanced {
       // console.log(`  🎯 R/R ENFORCEMENT: Target adjusted from ${originalResistanceTarget.toFixed(2)} to ${actualTarget.toFixed(2)} for minimum 2.5:1 R/R`);
     }
 
-    const riskPercentage = (currentPrice - stopLoss) / currentPrice;
 
     return {
       stopLoss: Math.round(stopLoss * 100) / 100,
@@ -725,6 +807,9 @@ class MinerviniTemplateAdvanced {
     const { capital = 100000, entryPrice = 100 } = capitalInfo;
     const { stopLoss = 0, riskReward = 1 } = riskAssessment;
 
+    const patternScore = (templateAnalysis.criteria?.patternQuality?.score || 0) >= 0.85 ? 1.0 :
+      (templateAnalysis.criteria?.patternQuality?.score || 0) >= 0.7 ? 0.5 : 0;
+
     // Calculate Signal Quality Grade for unified scoring
     const signalQuality = this.calculateSignalQuality(confidence, templateAnalysis);
     const signalQualityGrade = signalQuality.grade;
@@ -746,7 +831,7 @@ class MinerviniTemplateAdvanced {
 
     // Confidence multiplier for edge cases
     const confidenceMultiplier = confidence > 0.8 ? 1.1 : confidence < 0.6 ? 0.9 : 1.0;
-    const finalScore = totalScore * confidenceMultiplier;
+    const finalScore = totalScore * confidenceMultiplier + patternScore;
 
     let recommendation = 'AVOID';
     let riskPercent = 0;
@@ -794,8 +879,6 @@ class MinerviniTemplateAdvanced {
       riskPercent = 0;
       maxPosition = 0;
     }
-
-    // Calculate actual position sizing
     let shares = 0;
     let positionValue = 0;
     let riskAmount = 0;
@@ -818,7 +901,7 @@ class MinerviniTemplateAdvanced {
         console.log(`  ⚠️ TEMPLATE: Invalid risk per share: ${riskPerShare.toFixed(2)} (entry: ${entryPrice}, stop: ${stopLoss})`); // Practical precision
       }
     } else {
-      console.log(`  ⚠️ TEMPLATE: Position sizing skipped - recommendation: ${recommendation}, entryPrice: ${entryPrice}, stopLoss: ${stopLoss}, capital: ${capital}`);
+      // console.log(`  ⚠️ TEMPLATE: Position sizing skipped - recommendation: ${recommendation}, entryPrice: ${entryPrice}, stopLoss: ${stopLoss}, capital: ${capital}`);
     }
 
     // 🎯 UNIFIED SCORING DEBUG INFO
@@ -902,7 +985,7 @@ class MinerviniTemplateAdvanced {
    * Calculate unified display grade combining Template Grade + Signal Quality Grade
    * This is for display purposes only and matches the position sizing logic
    */
-  calculateUnifiedDisplayGrade(templateGrade, signalGrade) {
+  calculateUnifiedDisplayGrade(templateAnalysis, signalGrade) {
     const gradePoints = {
       'A+': 3,
       'A': 2.5,
@@ -913,9 +996,11 @@ class MinerviniTemplateAdvanced {
       'F': 0
     };
 
-    const templateScore = gradePoints[templateGrade] || 0;
+    const patternPoints = (templateAnalysis.criteria?.patternQuality?.score || 0) >= 0.85 ? 1 :
+      (templateAnalysis.criteria?.patternQuality?.score || 0) >= 0.7 ? 0.5 : 0;
+    const templateScore = gradePoints[templateAnalysis.templateGrade] || 0;
     const signalScore = gradePoints[signalGrade] || 0;
-    const totalScore = templateScore + signalScore;
+    const totalScore = templateScore + signalScore + patternPoints;
 
     // Convert combined score to unified grade
     if (totalScore >= 5.5) return 'A+';      // FULL territory (A+ + A or better)
@@ -1204,6 +1289,7 @@ class MinerviniTemplateAdvanced {
 
       // Calculate 50-day average volume
       const avgVolume = this.calculateAverageVolume(dailyData.slice(-50));
+      // console.log(`  🔍 Avg 50-day volume: ${avgVolume.toLocaleString()}`);
 
       // Look for recent price breakouts (within last 10 days)
       const recentData = dailyData.slice(-10);
@@ -1297,6 +1383,72 @@ class MinerviniTemplateAdvanced {
 
     // Return nearest resistance
     return Math.min(...resistanceLevels);
+  }
+
+  // --- VCP Contraction: ATR or BBW contraction in last 10 candles
+  calculateATR(data, period = 14) {
+    if (!data || data.length < period + 1) return Array(data.length).fill(0);
+    const atrs = [];
+    for (let i = 0; i < data.length; i++) {
+      if (i < period) {
+        atrs.push(0);
+      } else {
+        let sum = 0;
+        for (let j = i - period + 1; j <= i; j++) {
+          const high = data[j].high;
+          const low = data[j].low;
+          const prevClose = data[j - 1]?.close ?? data[j].close;
+          const tr = Math.max(
+            high - low,
+            Math.abs(high - prevClose),
+            Math.abs(low - prevClose)
+          );
+          sum += tr;
+        }
+        atrs.push(sum / period);
+      }
+    }
+    return atrs;
+  }
+  calculateBollingerBandWidth(data, period = 20) {
+    if (!data || data.length < period) return Array(data.length).fill(0);
+    const bbws = [];
+    for (let i = 0; i < data.length; i++) {
+      if (i < period - 1) {
+        bbws.push(0);
+      } else {
+        const slice = data.slice(i - period + 1, i + 1);
+        const closes = slice.map(c => c.close);
+        const mean = closes.reduce((a, b) => a + b, 0) / period;
+        const std = Math.sqrt(closes.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / period);
+        const upper = mean + 2 * std;
+        const lower = mean - 2 * std;
+        const width = (upper - lower) / mean;
+        bbws.push(width);
+      }
+    }
+    return bbws;
+  }
+  detectVcpContraction(data) {
+    const atrList = this.calculateATR(data, 14);
+    const bbWidthList = this.calculateBollingerBandWidth(data, 20);
+    const recentATR = atrList.slice(-10);
+    const recentBBW = bbWidthList.slice(-10);
+    let atrContractionSteps = 0;
+    for (let i = 1; i < recentATR.length; i++) {
+      if (recentATR[i] < recentATR[i - 1]) atrContractionSteps++;
+    }
+    let bbwContractionSteps = 0;
+    for (let i = 1; i < recentBBW.length; i++) {
+      if (recentBBW[i] < recentBBW[i - 1]) bbwContractionSteps++;
+    }
+    const atrContracting = atrContractionSteps >= 3;
+    const bbwContracting = bbwContractionSteps >= 3;
+    const contraction = atrContracting || bbwContracting;
+    // console.log(
+    //   `🔍 VCP Contraction Check → ATR Steps: ${atrContractionSteps}, BBW Steps: ${bbwContractionSteps} → Result: ${contraction}`
+    // );
+    return contraction;
   }
 }
 
