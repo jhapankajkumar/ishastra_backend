@@ -71,7 +71,8 @@ class WatchlistCron {
                 // But keep it simple - just log the error
             }
         }, {
-            timezone: "Asia/Singapore"
+            timezone: "Asia/Singapore",
+            scheduled: true // <-- This means the job will start automatically! 
         });
 
         console.log('🕒 Watchlist cron job scheduled for 9:30 AM SGT (Mon-Fri)');

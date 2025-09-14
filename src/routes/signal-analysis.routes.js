@@ -31,13 +31,12 @@ const tradingController = new TradingSystemController();
  */
 router.get('/signal-analysis', async (req, res) => {
   // Convert query parameters to req.body format for compatibility with existing controller
-  const symbols = req.query.symbols ? req.query.symbols.split(',').map(s => s.trim().toUpperCase()) : [];
-  const systems = req.query.systems ? 
-    req.query.systems.split(',').map(s => s.trim()) : 
-    [SYSTEM_IDS.MINERVINI_TEMPLATE_ADVANCED, SYSTEM_IDS.INSTITUTIONAL_MOMENTUM_CASCADE];
-
-  req.body = { symbols, systems };
   await tradingController.analyzeTradingSystem(req, res);
+});
+
+router.get('/chart', async (req, res) => {
+  // Convert query parameters to req.body format for compatibility with existing controller
+  await tradingController.getChartData(req, res);
 });
 
 module.exports = router;

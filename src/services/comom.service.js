@@ -18,7 +18,7 @@ const fetchCurrentPrice = async (ticker) => {
 */
 const getTickerAnalysis = async (symbol) => {
     try {
-        const response = await fetch(`http://localhost:8000/api/trading/signal-analysis?symbols=${symbol}`, {
+        const response = await fetch(`http://localhost:8000/api/trading/signal-analysis?symbol=${symbol}`, {
             method: 'GET',
             headers: { 'Content-Type': 'application/json' }
         });
@@ -28,7 +28,7 @@ const getTickerAnalysis = async (symbol) => {
         }
 
         const data = await response.json();
-        return data.results?.[0];
+        return data.result;
     } catch (error) {
         console.error(`❌ Error fetching current analysis for ${symbol}:`, error.message);
         return null;

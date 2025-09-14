@@ -40,28 +40,6 @@ class IshastraBacktest {
 
             // ✅ STEP 1: GENERATE SIGNAL FIRST
             await this.logger.logProgress('� Generating signal analysis...');
-            // const signalAnalysis = await this.signalController.getStockAnalysis([symbol]);
-
-            // if (!signalAnalysis.success || !signalAnalysis.results || signalAnalysis.results.length === 0) {
-            //     throw new Error('Failed to generate signal analysis');
-            // }
-
-            // const result = signalAnalysis.results[0];
-            // const decision = result.decision;
-
-            // await this.logger.logProgress(`Signal: ${decision.action} (${decision.confidence}% confidence)`);
-
-            // // ✅ STEP 2: CHECK IF BUY/STRONG_BUY SIGNAL
-            // if (decision.action !== 'BUY' && decision.action !== 'STRONG_BUY') {
-            //     await this.logger.logProgress(`⚠️ No BUY signal for ${symbol}, skipping backtest`);
-            //     return {
-            //         success: true,
-            //         symbol,
-            //         signal: decision,
-            //         trades: [],
-            //         message: 'No BUY signal - backtest skipped'
-            //     };
-            // }
 
             // ✅ STEP 3: FETCH 5-YEAR HISTORICAL DATA
             await this.logger.logProgress('📈 Fetching 5-year historical data...');

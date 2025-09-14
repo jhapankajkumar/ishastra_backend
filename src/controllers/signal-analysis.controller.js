@@ -10,17 +10,42 @@ const ElderTripleScreen = require('../systems/elder-triple-screen');
 // const InstitutionalMomentumCascade = require('../systems/institutional-momentum-cascade');
 const { getSimpleTechnicalData } = require('../utils/simpleTechnicalDataFetcher');
 const CapitalManager = require('../utils/capitalManager');
+const yahoo = require('../yahoo');
 
 class TradingSystemController {
   constructor() {
     // Initialize all trading systems
     this.systems = {
-      // 🏛️ NEW INSTITUTIONAL SYSTEMS
       'minervini_template_advanced': new MinerviniTemplateAdvanced(),
-      // 'elder_triple_screen': new ElderTripleScreen()
     };
     // 🚨 REMOVED: Complex system analyzer dependency
     // this.systemAnalyzer = new SingleSystemAnalyzer(generateExpertAIDecision);
+  }
+
+  /**
+   * Get historical chart data for a specific stock symbol
+   */
+  async getChartData(req, res ) {
+    const { symbol } = req.query;
+    console.log(`📈 Fetching chart data for ${symbol}...`)  ;
+    try {
+      const historicalData = await yahoo.getHistorical(symbol, '5y');
+      if (!historicalData || historicalData.length === 0) {
+        throw new Error(`Failed to fetch historical data for ${symbol}`);
+      }
+      const response = {
+        success: true,
+        symbol,
+        data: historicalData
+      };
+      res.json(response);
+    } catch (error) {
+      console.error(`❌ Error fetching chart data for ${symbol}:`, error.message);
+      res.status(500).json({
+        success: false,
+        error: error.message
+      });
+    }
   }
 
   /**
@@ -30,20 +55,20 @@ class TradingSystemController {
   async analyzeTradingSystem(req, res) {
     try {
       const {
-        symbols
-      } = req.body;
-      
-      if (!symbols || !Array.isArray(symbols) || symbols.length === 0) {
+        symbol,
+        isRequiredChartData = false
+      } = req.query;
+      if (!symbol) {
         return res.status(400).json({
           success: false,
-          error: 'symbols array is required',
+          error: 'symbol is required',
           example: {
-            symbols: ['AAPL', 'MSFT', 'GOOGL'],
+            symbol: 'AAPL',
           }
         });
       }
 
-      const response = await this.getStockAnalysis(symbols);
+      const response = await this.getStockAnalysis(symbol, isRequiredChartData);
 
       res.json(response);
 
@@ -53,19 +78,16 @@ class TradingSystemController {
         success: false,
         error: error.message,
         timestamp: new Date().toISOString(),
-        system: this.systems.join(', '),
       });
     }
   }
 
-  async getStockAnalysis(symbols) {
-    // 🚨 EMERGENCY REFACTOR: Force only the 2 BEST systems regardless of input
-  
+  async getStockAnalysis(symbol, isRequiredChartData = false) {
+
     const CORE_SYSTEMS = [
       'minervini_template_advanced',
-      // 'elder_triple_screen'
     ];
-    
+
     const supportedSystems = CORE_SYSTEMS.filter(sys => this.systems[sys]);
 
     if (supportedSystems.length === 0) {
@@ -78,136 +100,112 @@ class TradingSystemController {
     }
 
 
-    // PERFORMANCE OPTIMIZATION: Limit symbols and process in parallel
-    const maxSymbols = 10; // Limit for performance
-    const limitedSymbols = symbols.slice(0, maxSymbols);
-
-    // Process all symbols in parallel instead of sequential
-    const symbolPromises = limitedSymbols.map(async (symbol) => {
+    try {
+      // � CAPITAL: Get real capital from database
+      let remainingCapital = 100000; // Fallback
       try {
-        // � CAPITAL: Get real capital from database
-        let remainingCapital = 100000; // Fallback
-        try {
-          // Determine currency based on symbol
-          const currency = symbol.includes('.NS') ? 'INR' : 'USD';
-          const capitalData = await CapitalManager.getCapital(currency);
-          remainingCapital = capitalData ? capitalData.remaining : remainingCapital;
-          // console.log(`  💰 CAPITAL: Using ${currency} capital: ${remainingCapital.toLocaleString()} (from DB)`);
-        } catch (error) {
-          console.log(`  ⚠️ CAPITAL: Using fallback capital: $${remainingCapital.toLocaleString()} (DB error: ${error.message})`);
-        }
-
-        // 🚨 SIMPLE MODE: Basic technical data only (no complex AI analysis)
-        
-        const technicalData = await getSimpleTechnicalData(symbol);
-        if (!technicalData || !technicalData.historical || technicalData.historical.length === 0) {
-          throw new Error(`Failed to fetch technical data for ${symbol}`);
-        }
-        // Phase 2: 🚨 SIMPLE MODE - Run only 2 core systems
-
-        const systemResults = {};
-        const systemFinalResults = {};
-
-        for (const systemId of supportedSystems) {
-
-          try {
-            // 🚨 SIMPLE: Run system analysis directly (skip complex gate engine for now)
-            const systemInstance = this.systems[systemId];
-            
-            let systemAnalysis;
-            if (systemInstance && typeof systemInstance.analyze === 'function') {
-              // Call the system's analyze method directly
-              const options = {
-                capital: remainingCapital,
-                symbol: symbol,
-                currentPrice: technicalData?.latestPrice,
-              };
-              
-              systemAnalysis = await systemInstance.analyze(technicalData, options);
-              
-              // Normalize the response to match expected structure
-              if (systemAnalysis && systemAnalysis.action) {
-                systemAnalysis.decision = systemAnalysis.action;
-                systemAnalysis.confidence = systemAnalysis.confidence || 0;
-              }
-            } else {
-              throw new Error(`System ${systemId} not found or invalid`);
-            }
-
-            systemResults[systemId] = systemAnalysis;
-            systemFinalResults[systemId] = systemAnalysis;
-
-            // console.log(`✅ SIMPLE: ${systemId} analysis complete: ${systemAnalysis.decision} (${Math.round(systemAnalysis.confidence * 100)}%)`);
-
-          } catch (systemError) {
-            console.error(`❌ ${systemId} analysis failed:`, systemError.message);
-            systemResults[systemId] = {
-              decision: 'ERROR',
-              error: systemError.message,
-              confidence: 0
-            };
-            systemFinalResults[systemId] = {
-              action: 'AVOID',
-              confidence: 0,
-              error: systemError.message
-            };
-          }
-        }
-
-        // Phase 3: 🚨 SIMPLE MODE - Create simple 2-system vote
-        
-        
-        // Get the 2 system results
-        const minerviniResult = systemResults['minervini_template_advanced'] || { decision: 'HOLD', confidence: 0 };
-        const elderResult = systemResults['elder_triple_screen'] || { decision: 'HOLD', confidence: 0 };
-
-        // 🚨 SIMPLE VOTING LOGIC - No complex weighting
-        const unifiedDecision = this.simpleVote(minerviniResult, elderResult);
-
-        // Build enhanced analysis result with all trading information
-        const analysisResult = await this.buildEnhancedTradingResponse({
-          symbol,
-          technicalData,
-          systemResults,
-          supportedSystems,
-          unifiedDecision,
-        });
-        return analysisResult;
-
+        // Determine currency based on symbol
+        const currency = symbol.includes('.NS') ? 'INR' : 'USD';
+        const capitalData = await CapitalManager.getCapital(currency);
+        remainingCapital = capitalData ? capitalData.remaining : remainingCapital;
+        // console.log(`  💰 CAPITAL: Using ${currency} capital: ${remainingCapital.toLocaleString()} (from DB)`);
       } catch (error) {
-        console.error(`  ❌ Error analyzing ${symbol}:`, error.message);
-        throw { symbol, error: error.message, timestamp: new Date().toISOString() };
+        console.log(`  ⚠️ CAPITAL: Using fallback capital: $${remainingCapital.toLocaleString()} (DB error: ${error.message})`);
       }
-    });
 
-    // Wait for all symbols to complete (parallel processing)
-    const symbolResults = await Promise.allSettled(symbolPromises);
+      // 🚨 SIMPLE MODE: Basic technical data only (no complex AI analysis)
 
-    const results = [];
-    const errors = [];
-
-    symbolResults.forEach((result, index) => {
-      if (result.status === 'fulfilled') {
-        results.push(result.value);
-      } else {
-        const symbol = limitedSymbols[index];
-        errors.push({
-          symbol,
-          error: result.reason?.error || result.reason?.message || 'Unknown error',
-          timestamp: new Date().toISOString()
-        });
+      const technicalData = await getSimpleTechnicalData(symbol);
+      if (!technicalData || !technicalData.historical || technicalData.historical.length === 0) {
+        throw new Error(`Failed to fetch technical data for ${symbol}`);
       }
-    });
+      // Phase 2: 🚨 SIMPLE MODE - Run only 2 core systems
 
-    // Build comprehensive API response
-    const response = {
-      success: true,
-      timestamp: new Date().toISOString(),
-      results,
-      errors: errors.length > 0 ? errors : undefined,
-    };
+      const systemResults = {};
+      const systemFinalResults = {};
 
-    return response
+      for (const systemId of supportedSystems) {
+        try {
+          // 🚨 SIMPLE: Run system analysis directly (skip complex gate engine for now)
+          const systemInstance = this.systems[systemId];
+
+          let systemAnalysis;
+          if (systemInstance && typeof systemInstance.analyze === 'function') {
+            // Call the system's analyze method directly
+            const options = {
+              capital: remainingCapital,
+              symbol: symbol,
+              currentPrice: technicalData?.latestPrice,
+            };
+
+            systemAnalysis = await systemInstance.analyze(technicalData, options);
+
+            // Normalize the response to match expected structure
+            if (systemAnalysis && systemAnalysis.action) {
+              systemAnalysis.decision = systemAnalysis.action;
+              systemAnalysis.confidence = systemAnalysis.confidence || 0;
+            }
+          } else {
+            throw new Error(`System ${systemId} not found or invalid`);
+          }
+
+          systemResults[systemId] = systemAnalysis;
+          systemFinalResults[systemId] = systemAnalysis;
+
+          // console.log(`✅ SIMPLE: ${systemId} analysis complete: ${systemAnalysis.decision} (${Math.round(systemAnalysis.confidence * 100)}%)`);
+
+        } catch (systemError) {
+          console.error(`❌ ${systemId} analysis failed:`, systemError.message);
+          systemResults[systemId] = {
+            decision: 'ERROR',
+            error: systemError.message,
+            confidence: 0
+          };
+          systemFinalResults[systemId] = {
+            action: 'AVOID',
+            confidence: 0,
+            error: systemError.message
+          };
+        }
+      }
+
+      // Phase 3: 🚨 SIMPLE MODE - Create simple 2-system vote
+
+
+      // Get the 2 system results
+      const minerviniResult = systemResults['minervini_template_advanced'] || { decision: 'HOLD', confidence: 0 };
+
+      // 🚨 SIMPLE VOTING LOGIC - No complex weighting
+      const unifiedDecision = this.simpleVote(minerviniResult, { decision: 'HOLD', confidence: 0 });
+
+      // Build enhanced analysis result with all trading information
+      const analysisResult = await this.buildEnhancedTradingResponse({
+        symbol,
+        technicalData,
+        systemResults,
+        supportedSystems,
+        unifiedDecision,
+      });
+      // return analysisResult;
+      const result = {
+        ...analysisResult,
+        historicalData: isRequiredChartData ? technicalData.historical : null
+      }
+
+
+      // Build comprehensive API response
+      const response = {
+        success: true,
+        timestamp: new Date().toISOString(),
+        result
+      };
+
+      return response
+
+    } catch (error) {
+      console.error(`  ❌ Error analyzing ${symbol}:`, error.message);
+      throw { symbol, error: error.message, timestamp: new Date().toISOString() };
+    }
   }
 
 
@@ -237,8 +235,8 @@ class TradingSystemController {
     }
 
     // One BUY, one HOLD/WATCH - check confidence levels
-    if ((minervini.decision === 'BUY' && (elderResult.decision === 'HOLD'|| elderResult.decision === 'WATCH')) ||
-        ((minervini.decision === 'HOLD' || minervini.decision === 'WATCH') && elderResult.decision === 'BUY')) {
+    if ((minervini.decision === 'BUY' && (elderResult.decision === 'HOLD' || elderResult.decision === 'WATCH')) ||
+      ((minervini.decision === 'HOLD' || minervini.decision === 'WATCH') && elderResult.decision === 'BUY')) {
       const buySystem = minervini.decision === 'BUY' ? minervini : elderResult;
 
       // 🎯 IMPROVED: If BUY system has high confidence (>70%), honor the BUY signal
@@ -249,7 +247,7 @@ class TradingSystemController {
           reasoning: `Strong ${buySystem.systemId === 'minervini_template_advanced' ? 'Template' : 'Elder'} BUY signal (${Math.round(buySystem.confidence * 100)}%) with supporting system confirmation`
         };
       }
-      
+
       // 🎯 CONSERVATIVE: Lower confidence BUY signals with mixed systems → WATCH
       return {
         action: 'WATCH',
@@ -325,7 +323,7 @@ class TradingSystemController {
 
     // 🎯 SIMPLIFIED: Extract grade with clear hierarchy and single log
     let grade = this.getGrade(unifiedConfidence); // Fallback
-    
+
     // Check in order of preference: signalQuality > system-specific grades
     if (winningSystem?.grade) {
       grade = winningSystem.grade;
@@ -357,7 +355,7 @@ class TradingSystemController {
       execution: execution,
       technical: technicalData.indicators.latest,
       systems: systemResults,
-      
+
       // 🚨 DELETED: systems object - eliminated redundancy and confusion
     };
   }

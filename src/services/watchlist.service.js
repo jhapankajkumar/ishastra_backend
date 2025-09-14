@@ -195,8 +195,6 @@ class WatchlistService {
   "CCIV"
 ];
         this.STOCK_UNIVERSE = this.STOCK_UNIVERSE.filter(s => !this.DELISTED_STOCKS.includes(s));
-
-        console.log(`🧮 WatchlistService initialized with ${this.STOCK_UNIVERSE.length} stocks`);
     }
 
     /**

@@ -39,6 +39,9 @@ async function getSimpleTechnicalData(symbol) {
     
     // Get current price
     const latestPrice = ohlcData[ohlcData.length - 1].close;
+    if (!latestPrice || latestPrice <= 0) {
+      throw new Error(`Invalid latest price for ${validatedSymbol}: ${latestPrice}`);
+    }
 
     // Calculate basic indicators only (what systems need)
     const basicIndicators = calculateBasicIndicators(ohlcData);
@@ -85,6 +88,7 @@ function calculateBasicIndicators(ohlcData) {
   // 🚨 EMERGENCY FIX: Add missing SMA150 and SMA200 for Minervini Template
   const sma150 = calculateSMA(closes, 150);
   const sma200 = calculateSMA(closes, 200);
+  const sma50 = calculateSMA(closes, 50); // for potential future use
   
   // Calculate basic RSI
   const rsi = calculateRSI(closes, 14);
@@ -112,6 +116,7 @@ function calculateBasicIndicators(ohlcData) {
     ema200: ema200[ema200.length - 1] || null,
     sma150: sma150[sma150.length - 1] || null,  // 🚨 EMERGENCY FIX
     sma200: sma200[sma200.length - 1] || null,  // 🚨 EMERGENCY FIX
+    sma50: sma50[sma50.length - 1] || null,
     rsi: rsi[rsi.length - 1] || 50,
     macd: macd.MACD || 0,
     macdSignal: macd.signal || 0,
@@ -162,6 +167,7 @@ function calculateBasicIndicators(ohlcData) {
       ema200,
       sma150,  // 🚨 EMERGENCY FIX
       sma200,  // 🚨 EMERGENCY FIX
+      sma50,
       rsi,
       macd,
       atr,

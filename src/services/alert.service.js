@@ -89,10 +89,9 @@ class AlertService {
             quantity: trade.quantity
           }
         });
-        const stopLoss = execution?.exitStrategy?.stopLoss;
-        execution?.exitStrategy?.stopLoss = {
-          ...stopLoss, alerted: true
-        } 
+        if (execution?.exitStrategy?.stopLoss) {
+          execution.exitStrategy.stopLoss.alerted = true;
+        }
       }
 
       // ALERT 2: 15% GAIN = TAKE PROFITS
@@ -138,13 +137,12 @@ class AlertService {
           }
         });
 
-        const targets = execution?.exitStrategy?.targets;
-        execution?.exitStrategy?.targets = {
-          ...targets, alerted: true
+         if (execution?.exitStrategy?.targets) {
+          execution.exitStrategy.targets.alerted = true;
         }
       }
 
-      console.log(`${execution?.exitStrategy?.stopLoss?.alerted} - ${execution?.exitStrategy?.targets?.alerted }`);
+      // console.log(`${execution?.exitStrategy?.stopLoss?.alerted} - ${execution?.exitStrategy?.targets?.alerted }`);
 
       // NO OTHER ALERTS - TRUST YOUR SYSTEM
     }

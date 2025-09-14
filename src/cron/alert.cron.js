@@ -30,17 +30,15 @@ class AlertCron {
      */
     start() {
         console.log('🚨 Starting Alert Cron...');
-
         // Run every 15 minutes during market hours
-        const alertJob = cron.schedule('*/01 * * * 1-5', async () => {
+        const alertJob = cron.schedule('*/15 * * * 1-5', async () => {
             await this.runAlertCheck();
         }, {
             timezone: 'Asia/Singapore',
-            scheduled: false
+            scheduled: true // <-- This means the job will start automatically!
         });
 
         alertJob.start();
-        console.log('📅 Alerts scheduled: Every 15 min during market hours (Mon-Fri)');
 
         // this.runAlertCheck();
     }
@@ -68,25 +66,6 @@ class AlertCron {
             }
 
             console.log(`🔍 Alert check started at ${now.format('YYYY-MM-DD HH:mm')} SGT`);
-
-            // // Check which alerts to run based on time
-            // const checkWatchlist = this.isWatchlistTime(currentHour, currentMinute);
-            // const checkPositions = this.isPositionTime(currentHour, currentMinute);
-
-            // if (!checkWatchlist && !checkPositions) {
-            //     console.log(`⏰ Outside specific alert hours - skipping`);
-            //     return;
-            // }
-
-            // // 📧 CHECK WATCHLIST ENTRY TRIGGERS
-            // if (checkWatchlist) {
-            //     await this.checkWatchlistTriggers();
-            // }
-
-            // // 📧 CHECK POSITION ALERTS  
-            // if (checkPositions) {
-                
-            // }
             await this.checkPositionAlerts();
             await this.checkWatchlistTriggers();
 

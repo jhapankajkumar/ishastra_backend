@@ -170,6 +170,16 @@ class MinerviniTemplateAdvanced {
   executeTemplateAnalysis(dailyData, indicators, currentPrice, thresholds) {
     // console.log(`  🏛️ TEMPLATE: Executing 8-criteria template validation...`);
 
+    /*
+      1 Price > 150-day and 200-day moving averages
+      2 150-day MA > 200-day MA
+      3 200-day MA trending up for ≥1 month
+      4 50-day MA > 150-day and 200-day MA
+      5 Price > 50-day MA
+      6 Price ≥ 30% above 52-week low
+      7 Price within 25% of 52-week high
+      8 RS ranking ≥ 70 (ideally 80–90)
+    */
     const criteria = {};
     const reasoning = [];
     let totalScore = 0;
@@ -177,14 +187,15 @@ class MinerviniTemplateAdvanced {
     // 🚨 EMERGENCY FIX: Get SMA data from correct location (arrays or latest values)
     const sma150 = indicators?.sma150 || [];
     const sma200 = indicators?.sma200 || [];
+    const sma50 = indicators?.sma50 || [];
 
     // Handle both array format and single value format
-    let currentSMA150, currentSMA200, prevSMA150, prevSMA200;
+    let currentSMA150, currentSMA200, prevSMA150, prevSMA200, currentSMA50;
 
     if (sma150.length > 0) {
       // Array format
       currentSMA150 = sma150[sma150.length - 1];
-      prevSMA150 = sma150[sma150.length - 10] || currentSMA150; // 10 days ago
+      prevSMA150 = sma150[sma150.length - 30] || currentSMA150; // 30 days ago
     } else {
       // Single value format from latest
       currentSMA150 = indicators.latest?.sma150;
@@ -194,18 +205,24 @@ class MinerviniTemplateAdvanced {
     if (sma200.length > 0) {
       // Array format
       currentSMA200 = sma200[sma200.length - 1];
-      prevSMA200 = sma200[sma200.length - 10] || currentSMA200; // 10 days ago
+      prevSMA200 = sma200[sma200.length - 30] || currentSMA200; // 30 days ago
     } else {
       // Single value format from latest
       currentSMA200 = indicators.latest?.sma200;
       prevSMA200 = currentSMA200; // Fallback for trend calculation
     }
 
+    if (sma50.length > 0) {
+      currentSMA50 = sma50[sma50.length - 1];
+    } else {
+      currentSMA50 = indicators.latest?.sma50;
+    }
+
     // console.log(`  🏛️ TEMPLATE: SMA150=${currentSMA150?.toFixed(2)}, SMA200=${currentSMA200?.toFixed(2)}, Price=${currentPrice?.toFixed(2)}`);
 
     // Fallback if still no data
-    if (!currentSMA150 || !currentSMA200) {
-      return this.createAvoidSignal('MISSING_SMA', 'Missing SMA150/SMA200 data for Template analysis');
+    if (!currentSMA150 || !currentSMA200 || !currentSMA50) {
+      return this.createAvoidSignal('MISSING_SMA', 'Missing SMA150/SMA200/SMA50 data for Template analysis');
     }
 
     // Calculate 52-week high/low
@@ -213,167 +230,119 @@ class MinerviniTemplateAdvanced {
     const high52Week = Math.max(...last252Days.map(d => d.high));
     const low52Week = Math.min(...last252Days.map(d => d.low));
 
-    // --- RULE 1: Price > 150 SMA && 150 SMA trending up (Medium-term strength, BUY/WATCH impact: High)
-    const rule1 = currentPrice > currentSMA150 && currentSMA150 > prevSMA150;
+    const sma150Slope = (currentSMA150 - prevSMA150) / prevSMA150;
+    const sma200Slope = (currentSMA200 - prevSMA200) / prevSMA200;
+    // console.log('  🏛️ TEMPLATE: SMA150 slope:', (sma150Slope * 100).toFixed(2) + '%, SMA200 slope:', (sma200Slope * 100).toFixed(2) + '%');
+
+    // ****************** TEMPLATE RULE VALIDATIONS ********************
+    // --- RULE 1: Price > 150-day and 200-day moving averages
+    const rule1 = currentPrice > currentSMA150 && currentPrice > currentSMA200;
     const rule1Score = rule1 ? 1.0 : 0.0;
     criteria.criterion1 = {
       passed: rule1,
-      value: currentPrice,
-      threshold: currentSMA150,
       score: rule1Score,
-      details: `Rule 1: Price $${currentPrice.toFixed(2)} ${rule1 ? '>' : '≤'} SMA150 $${currentSMA150?.toFixed(2)}, SMA150 trending ${currentSMA150 > prevSMA150 ? 'UP' : 'DOWN'}`
     };
     totalScore += rule1Score;
-    if (rule1) reasoning.push('Rule 1: Price above rising 150-day SMA (medium-term strength)');
+    
 
-    // --- RULE 2: Price > 200 SMA && 200 SMA trending up (Long-term trend, BUY/WATCH impact: High)
-    const rule2 = currentPrice > currentSMA200 && currentSMA200 > prevSMA200;
+    // --- RULE 2: 150-day MA > 200-day MA
+    const rule2 = currentSMA150 > currentSMA200
     const rule2Score = rule2 ? 1.0 : 0.0;
     criteria.criterion2 = {
       passed: rule2,
-      value: currentPrice,
-      threshold: currentSMA200,
       score: rule2Score,
-      details: `Rule 2: Price $${currentPrice.toFixed(2)} ${rule2 ? '>' : '≤'} SMA200 $${currentSMA200?.toFixed(2)}, SMA200 trending ${currentSMA200 > prevSMA200 ? 'UP' : 'DOWN'}`
     };
     totalScore += rule2Score;
     if (rule2) reasoning.push('Rule 2: Price above rising 200-day SMA (long-term trend)');
 
-    // --- RULE 3: 150 SMA > 200 SMA (MA hierarchy, BUY/WATCH impact: Medium)
-    const rule3 = currentSMA150 > currentSMA200;
+    // --- RULE 3: 200-day MA trending up for ≥1 month
+    const rule3 = currentSMA200 > prevSMA200 && currentSMA150 > prevSMA150 && sma200Slope > 0.05 && sma150Slope > 0.01;
     const rule3Score = rule3 ? 1.0 : 0.0;
     criteria.criterion3 = {
       passed: rule3,
-      value: currentSMA150,
-      threshold: currentSMA200,
       score: rule3Score,
-      details: `Rule 3: SMA150 $${currentSMA150?.toFixed(2)} ${rule3 ? '>' : '≤'} SMA200 $${currentSMA200?.toFixed(2)}`
     };
     totalScore += rule3Score;
-    if (rule3) reasoning.push('Rule 3: 150 SMA > 200 SMA (trend hierarchy validated)');
+    if (rule3) reasoning.push('Rule 3: 200-day MA trending up for ≥1 month (long-term trend)');
 
-    // --- Optional: define helper variables for strongVolume, RS, fundamentalsStrong
-    // Calculate breakoutVolume and avgVolume for strongVolume
-    const recentVolumes = [
-      dailyData[dailyData.length - 1]?.volume || 0,
-      dailyData[dailyData.length - 2]?.volume || 0,
-      dailyData[dailyData.length - 3]?.volume || 0
-    ];
-    const avgVolume = this.calculateAverageVolume(dailyData.slice(-50));
-    const breakoutVolume = recentVolumes[0];
-    const strongVolume = breakoutVolume >= 2.0 * avgVolume;
-    const RS = this.calculateMomentumScore(dailyData, currentPrice, thresholds);
-    const fundamentalScore = this.calculateFundamentalProxy(dailyData, currentPrice);
-    const fundamentalsStrong = fundamentalScore >= 75;
+    // --- RULE 4: 50-day MA > 150-day and 200-day MA
+    const rule4 = currentSMA50 > currentSMA150 && currentSMA50 > currentSMA200;
+    const rule4Score = rule4 ? 1.0 : 0.0;
+    criteria.criterion4 = {
+      passed: rule4,
+      score: rule4Score,
+    };
+    totalScore += rule4Score;
+    if (rule4) reasoning.push('Rule 4: 50-day MA > 150-day and 200-day MA (short-term trend)');
 
-    // --- RULE 4: Price within X% of 52-week high (Not extended, BUY/WATCH impact: High)
+    // --- RULE 5: Price > 50-day MA
+    const rule5 = currentPrice > currentSMA50;
+    const rule5Score = rule5 ? 1.0 : 0.0;
+    criteria.criterion5 = {
+      passed: rule5,
+      score: rule5Score,
+    };
+    totalScore += rule5Score;
+    if (rule5) reasoning.push('Rule 5: Price > 50-day MA (short-term trend)');
+
+    // --- RULE 6: Price ≥ 30% above 52-week low
+    const distanceFromLow = (currentPrice - low52Week) / low52Week;
+    let rule6 = distanceFromLow >= thresholds.low_distance_threshold;
+    let rule6Score = rule6 ? Math.min(1.0, distanceFromLow / 0.5) : 0.0;
+    criteria.criterion6 = {
+      passed: rule6,
+      score: rule6Score,
+    };
+    totalScore += rule6Score;
+    if (rule6) reasoning.push(`Rule 6: Strong recovery: ${(distanceFromLow * 100).toFixed(1)}% above 52-week low`);
+
+    // --- RULE 7: Price within 25% of 52-week high
     const distanceFromHigh = (high52Week - currentPrice) / high52Week;
     const brokeKeyResistanceRecently = indicators?.brokeKeyResistanceRecently || false;
-    const criterion4_high_proximity_threshold = (strongVolume && RS > 80 && fundamentalsStrong) ? 0.25 : 0.20;
-    const isNear52WHigh = distanceFromHigh <= criterion4_high_proximity_threshold;
-    const rule4 = isNear52WHigh || brokeKeyResistanceRecently;
-    const rule4Score = rule4 ? 1.0 : 0.0;
-    let rule4_reason = '';
-    if (rule4) {
+    const isNear52WHigh = distanceFromHigh <= thresholds.high_proximity_threshold;
+
+    const rule7 = isNear52WHigh || brokeKeyResistanceRecently;
+    const rule7Score = rule7 ? 1.0 : 0.0;
+    if (rule7) {
       if (brokeKeyResistanceRecently) {
         reasoning.push("Broke key resistance within last 3–10 bars");
       }
     }
-
-    criteria.criterion4 = {
-      passed: rule4,
-      value: distanceFromHigh * 100,
-      threshold: criterion4_high_proximity_threshold * 100,
-      score: rule4Score,
-      details: `Rule 4: Price $${currentPrice.toFixed(2)} is ${(distanceFromHigh * 100).toFixed(1)}% from 52-week high $${high52Week.toFixed(2)}`
-    };
-    totalScore += rule4Score;
-    if (rule4) reasoning.push(`Rule 4: Within ${(criterion4_high_proximity_threshold * 100).toFixed(0)}% of 52-week high (${(distanceFromHigh * 100).toFixed(1)}% away)`);
-
-    // --- RULE 5: Price is Y% above 52-week low (Avoids weak bases, BUY/WATCH impact: Medium)
-    const distanceFromLow = (currentPrice - low52Week) / low52Week;
-    let rule5 = distanceFromLow >= thresholds.criterion5_low_distance_threshold;
-    let rule5Score = rule5 ? Math.min(1.0, distanceFromLow / 0.5) : 0.0;
-    // Patch: Make rule5 non-blocking, adjust confidence and reasons if not passed
-    let rule5_passed = true;
-    let rule5_confidence_penalty = 0;
-    let rule5_reason = '';
-    if (!rule5) {
-      rule5_confidence_penalty = 0.05;
-      rule5_reason = "Price still close to recent lows (riskier setup)";
-    }
-    criteria.criterion5 = {
-      passed: rule5_passed,
-      value: distanceFromLow * 100,
-      threshold: thresholds.criterion5_low_distance_threshold * 100,
-      score: rule5Score,
-      details: `Rule 5: Price $${currentPrice.toFixed(2)} is ${(distanceFromLow * 100).toFixed(1)}% above 52-week low $${low52Week.toFixed(2)}`
-    };
-    totalScore += rule5Score;
-    if (rule5) {
-      reasoning.push(`Rule 5: Strong recovery: ${(distanceFromLow * 100).toFixed(1)}% above 52-week low`);
-    } else {
-      reasoning.push(rule5_reason);
-    }
-
-    // --- RULE 6: Momentum Score (proxy for RS), BUY/WATCH impact: High
-    const momentumScore = this.calculateMomentumScore(dailyData, currentPrice, thresholds);
-    const rule6 = momentumScore > thresholds.criterion6_relative_strength;
-    const rule6Score = rule6 ? (momentumScore - 50) / 50 : momentumScore / thresholds.criterion6_relative_strength;
-    criteria.criterion6 = {
-      passed: rule6,
-      value: momentumScore,
-      threshold: thresholds.criterion6_relative_strength,
-      score: rule6Score,
-      details: `Rule 6: Momentum Score ${momentumScore.toFixed(1)} ${rule6 ? '>' : '≤'} ${thresholds.criterion6_relative_strength} (vs benchmark over 6 months)`
-    };
-    totalScore += rule6Score;
-    if (rule6) reasoning.push(`Rule 6: Exceptional momentum vs benchmark: ${momentumScore.toFixed(1)}`);
-
-    // --- RULE 7: Volume surge > 50% (Institutional footprint, BUY/WATCH impact: High)
-    // Patch: Use recentVolumes check for volume breakout
-    // Use avgVolume from above
-    const volumeAnalysis = this.analyzeBreakoutVolume(dailyData, currentPrice, thresholds);
-    const rule7 = volumeAnalysis.hasVolumeBreakout;
-    const rule7Score = rule7
-      ? Math.min(1.0, volumeAnalysis.volumeRatio / 2.0)
-      : volumeAnalysis.volumeRatio / thresholds.criterion7_volume_multiplier;
     criteria.criterion7 = {
       passed: rule7,
-      value: volumeAnalysis.volumeRatio,
-      threshold: 1.6, // hardcoded for this new logic
+      value: distanceFromHigh * 100,
       score: rule7Score,
-      details: `Rule 7: Volume breakout detected ${volumeAnalysis.hasVolumeBreakout ? '✅' : '❌'}: ${volumeAnalysis.volumeRatio.toFixed(2)}x avg, ${volumeAnalysis.breakoutDaysAgo} bars ago`
     };
     totalScore += rule7Score;
-    if (rule7) reasoning.push(`Rule 7: Breakout bar had ${volumeAnalysis.volumeRatio.toFixed(2)}x volume, ${volumeAnalysis.breakoutDaysAgo} bars ago`);
+    if (rule7) reasoning.push(`Rule 7: Within ${(thresholds.high_proximity_threshold * 100).toFixed(0)}% of 52-week high (${(distanceFromHigh * 100).toFixed(1)}% away)`);
 
-    // --- RULE 8: EPS or Sales momentum (proxy) (Growth leadership, BUY/WATCH impact: Medium)
-    // Patch: downgrade effect to confidence only
-    const fundamentalProxy = fundamentalScore;
-    let rule8 = fundamentalProxy > thresholds.criterion8_fundamental_score;
-    let rule8Score = rule8 ? (fundamentalProxy - 40) / 60 : fundamentalProxy / thresholds.criterion8_fundamental_score;
-    let rule8_passed = true;
-    let rule8_confidence_penalty = 0;
-    let rule8_reason = '';
-    if (fundamentalProxy < 60) {
-      rule8_passed = true;
-      rule8_confidence_penalty = 0.1;
-      rule8_reason = "Weak fundamentals; price action may be speculative";
-    }
+    // --- RULE 8: RS ranking ≥ 70 (ideally 80–90)
+    const momentumScore = this.calculateMomentumScore(dailyData, currentPrice, thresholds);
+    const rule8 = momentumScore > thresholds.relative_strength;
+    const rule8Score = rule8 ? (momentumScore - 50) / 50 : momentumScore / thresholds.relative_strength;
     criteria.criterion8 = {
-      passed: rule8_passed,
-      value: fundamentalProxy,
-      threshold: thresholds.criterion8_fundamental_score,
+      passed: rule8,
       score: rule8Score,
-      details: `Rule 8: Fundamental proxy ${fundamentalProxy.toFixed(1)} ${rule8 ? '>' : '≤'} ${thresholds.criterion8_fundamental_score} (momentum-based estimate)`
     };
     totalScore += rule8Score;
-    if (rule8) {
-      reasoning.push(`Rule 8: Strong fundamental proxy: ${fundamentalProxy.toFixed(1)}/100`);
-    } else if (rule8_reason) {
-      reasoning.push(rule8_reason);
-    }
+    if (rule8) reasoning.push(`Rule 8: Exceptional momentum vs benchmark: ${momentumScore.toFixed(1)}`);
+
+    // ****************** TEMPLATE RULE VALIDATIONS FINISH ********************
+
+    //*******************Entry Criteria *******************/
+
+    // --- RULE 9: Volume ≥ 50% above avgage on breakout day
+    const volumeAnalysis = this.analyzeBreakoutVolume(dailyData, currentPrice, thresholds);
+    const hasVolumeBreakout = volumeAnalysis.hasVolumeBreakout;
+    const volumeScore = hasVolumeBreakout
+      ? Math.min(1.0, volumeAnalysis.volumeRatio / 2.0)
+      : volumeAnalysis.volumeRatio / thresholds.volume_multiplier;
+    criteria.volume = {
+      passed: hasVolumeBreakout,
+      value: volumeAnalysis.volumeRatio,
+      score: volumeScore,
+    };
+    if (hasVolumeBreakout) reasoning.push(`Rule 9: Breakout bar had ${volumeAnalysis.volumeRatio.toFixed(2)}x volume, ${volumeAnalysis.breakoutDaysAgo} bars ago`);
 
     // === BREAKOUT QUALITY DETECTION (Rule 7 extension)
     const latestCandle = dailyData[dailyData.length - 1];
@@ -381,29 +350,19 @@ class MinerviniTemplateAdvanced {
     const closeInTop30 = (latestCandle.close >= latestCandle.low + 0.7 * candleRange);
 
     const breakoutScore =
-      (rule7 ? 0.4 : 0) +
+      (hasVolumeBreakout ? 0.4 : 0) +
       (closeInTop30 ? 0.3 : 0) +
-      (rule4 ? 0.3 : 0);
+      (rule7 ? 0.3 : 0);
     const breakoutQualityPassed = breakoutScore >= 0.6;
     const breakoutQualityReason = [];
-    if (!rule4) breakoutQualityReason.push("Price did not break base resistance or isn't near 52-week high");
-    if (!rule7) breakoutQualityReason.push("No volume breakout");
+    if (!rule7) breakoutQualityReason.push("Price did not break base resistance or isn't near 52-week high");
+    if (!hasVolumeBreakout) breakoutQualityReason.push("No volume breakout");
     if (!closeInTop30) breakoutQualityReason.push("Close not in top 30% of range");
 
     criteria.breakoutQuality = {
       passed: breakoutQualityPassed,
-      value: closeInTop30,
-      threshold: 'close in top 30% + volume breakout + resistance break',
       score: breakoutQualityPassed ? 1.0 : 0.0,
-      details: breakoutQualityPassed
-        ? "Breakout Quality: Strong (Volume + Resistance + Top-close)"
-        : `Breakout Quality: Weak – ${breakoutQualityReason.join(', ')}`
     };
-    if (breakoutQualityPassed) {
-      reasoning.push("✅ Breakout quality strong: Closed in top 30% with volume spike and resistance break");
-    } else {
-      reasoning.push(`⚠️ Breakout quality weak: ${breakoutQualityReason.join(', ')}`);
-    }
 
     // === PATTERN QUALITY DETECTION (VCP / Tight Base / Volume Dry-Up)
     const last20 = dailyData.slice(-20);
@@ -413,10 +372,7 @@ class MinerviniTemplateAdvanced {
     const range = Math.max(...closingPrices) - Math.min(...closingPrices);
     const avgClose = closingPrices.reduce((a, b) => a + b, 0) / closingPrices.length;
     const tightBase = range / avgClose < 0.06; // <6% range
-
-
     const vcpContraction = this.detectVcpContraction(last20);
-
     const avgVolFirstHalf = volumes.slice(0, 10).reduce((a, b) => a + b, 0) / 10;
     const avgVolLastHalf = volumes.slice(10).reduce((a, b) => a + b, 0) / 10;
     const volumeDryUp = avgVolLastHalf < avgVolFirstHalf * 0.65;
@@ -458,10 +414,10 @@ class MinerviniTemplateAdvanced {
     criteria.rule2 = rule2;
     criteria.rule3 = rule3;
     criteria.rule4 = rule4;
-    criteria.rule5 = rule5_passed;
+    criteria.rule5 = rule5;
     criteria.rule6 = rule6;
     criteria.rule7 = rule7;
-    criteria.rule8 = rule8_passed;
+    criteria.rule8 = rule8;
 
     let templateGrade = 'F';
     let confidence = 0;
@@ -490,12 +446,6 @@ class MinerviniTemplateAdvanced {
       confidence = 0.25;
     }
 
-    // Apply confidence penalties for rule5 and rule8 if not passed
-    if (rule5_confidence_penalty) confidence -= rule5_confidence_penalty;
-    if (rule8_confidence_penalty) confidence -= rule8_confidence_penalty;
-    if (confidence < 0) confidence = 0;
-
-
     return {
       criteria,
       overallScore,
@@ -503,7 +453,7 @@ class MinerviniTemplateAdvanced {
       confidence,
       reasoning,
       // Expose rule variables for external logic (for clarity)
-      rule1, rule2, rule3, rule4, rule5: rule5_passed, rule6, rule7, rule8: rule8_passed
+      rule1, rule2, rule3, rule4, rule5, rule6, rule7, rule8
     };
   }
 
@@ -514,21 +464,18 @@ class MinerviniTemplateAdvanced {
     const { confidence, reasoning, overallScore, criteria, rule1, rule2, rule3, rule4, rule5, rule6, rule7, rule8 } = templateAnalysis;
     const { riskReward } = riskAssessment;
 
-    let patternQuality = criteria.patternQuality?.score || 0;
+    
     // Use rule variables for new decision logic
     const passedRules = [rule1, rule2, rule3, rule4, rule5, rule6, rule7, rule8].filter(Boolean).length;
 
     // === BREAKOUT QUALITY GATING
+    let volumeQuality = criteria.volume?.passed;
     let breakoutQualityPassed = criteria.breakoutQuality?.passed;
+    let patternQuality = criteria.patternQuality?.passed;
 
     let decision = 'REJECTED';
-    // Strict BUY gating logic: enforce hard rule validation for a BUY signal
-    
-    if (rule1 && rule2 && rule3 && rule4 && rule6 && rule7 &&
-      confidence >= 0.85 &&
-      // riskAssessment.riskPercentage <= 0.08 &&
-      riskAssessment.riskReward >= 2.5 &&
-      breakoutQualityPassed
+    if (rule1 && rule2 && rule3 && rule4 && rule6 && rule7 && rule8 && confidence >= 0.85 &&
+      volumeQuality && (patternQuality || breakoutQualityPassed)
     ) {
       decision = 'BUY';
     } else  if (passedRules >= 6) {
@@ -548,14 +495,14 @@ class MinerviniTemplateAdvanced {
 
   
     reasoning.push('Failed Rules: --------------');
-    if (!rule1) reasoning.push("Rule 1 : Price is not above or SMA150 is not rising.");
-    if (!rule2) reasoning.push("Rule 2 : Price is not above or SMA200 is not rising.");
-    if (!rule3) reasoning.push("Rule 3 : SMA150 is not above SMA200 — trend hierarchy missing.");
-    if (!rule4) reasoning.push("Rule 4 : Price is more than 25% below 52-week high.");
-    if (!rule5) reasoning.push("Rule 5 : Price is less than 30% above 52-week low.");
-    if (!rule6) reasoning.push("Rule 6 : Relative Strength is below threshold.");
-    if (!rule7) reasoning.push("Rule 7 : Volume breakout is insufficient.");
-    if (!rule8) reasoning.push("Rule 8 : Fundamental score is weak.");
+    if (!rule1) reasoning.push("Rule 1 : Price is not above both SMA150 and SMA200.");
+    if (!rule2) reasoning.push("Rule 2 : SMA150 is not above SMA200 — trend hierarchy missing.");
+    if (!rule3) reasoning.push("Rule 3 : 200-day or 150-day SMA is not trending up for ≥1 month.");
+    if (!rule4) reasoning.push("Rule 4 : 50-day MA is not above both 150-day and 200-day MA.");
+    if (!rule5) reasoning.push("Rule 5 : Price is not above 50-day MA.");
+    if (!rule6) reasoning.push("Rule 6 : Price is less than 30% above 52-week low.");
+    if (!rule7) reasoning.push("Rule 7 : Price is not within 25% of 52-week high or did not break key resistance.");
+    if (!rule8) reasoning.push("Rule 8 : Relative Strength momentum is below threshold.");
     if (!breakoutQualityPassed) reasoning.push("Breakout quality did not meet 3-point validation (volume, resistance, close strength).");
 
     // Compose reasoning
@@ -1301,8 +1248,7 @@ class MinerviniTemplateAdvanced {
         const candle = recentData[i];
         const isPriceBreakout = candle.close > priorHigh;
         const volumeRatio = candle.volume / avgVolume;
-        const isVolumeBreakout = volumeRatio >= thresholds.criterion7_volume_multiplier;
-
+        const isVolumeBreakout = volumeRatio >= thresholds.volume_multiplier;
         if (isPriceBreakout && isVolumeBreakout) {
           bestBreakout = {
             hasBreakout: true,

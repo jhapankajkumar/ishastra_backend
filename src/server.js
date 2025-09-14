@@ -1,30 +1,32 @@
-//Start price refresh cron job (runs every 15 minutes during trading hours)
-try {
-  require('./refresh-prices-cron');
-  console.log('✅ Price refresh cron job started successfully (11:30 AM - 6:30 PM SG Time)');
-} catch (error) {
-  console.error('❌ Failed to start price refresh cron job:', error.message);
-}
 
 //Start unified alert cron job (handles both position and watchlist alerts)
 try {
   const AlertCron = require('./cron/alert.cron');
-  const alertCron = new AlertCron();
-  alertCron.start();
-  console.log('✅ Unified Alert cron job started successfully (positions + watchlist alerts)');
+  const alertCronInstance = new AlertCron();
+  alertCronInstance.start();
 } catch (error) {
-  console.error('❌ Failed to start unified alert cron job:', error.message);
+  console.error('❌ Failed to start unified alert cron job:', error);
 }
 
 // Start watchlist cron job - SIMPLE DAILY SCAN
-// try {
-//   const WatchlistCron = require('./cron/watchlistCron');
-//   const watchlistCron = new WatchlistCron();
-//   watchlistCron.start();
-//   console.log('✅ Daily Watchlist cron job started successfully (9:30 AM IST)');
-// } catch (error) {
-//   console.error('❌ Failed to start watchlist cron job:', error.message);
-// }
+try {
+  const WatchlistCron = require('./cron/watchlist.cron');
+  const watchlistCron = new WatchlistCron();
+  watchlistCron.start();
+  console.log('✅ Daily Watchlist cron job started successfully (9:30 AM IST)');
+} catch (error) {
+  console.error('❌ Failed to start watchlist cron job:', error.message);
+}
+
+// Start Price Refresh cron job
+try {
+  const PriceRefreshCron = require('./cron/price.refresh.cron');
+  const priceRefreshCron = new PriceRefreshCron();
+  priceRefreshCron.start();
+  console.log('✅ Daily Price Refresh cron job started successfully');
+} catch (error) {
+  console.error('❌ Failed to start price refresh cron job:', error.message);
+}
 
 const express = require('express');
 const cors = require('cors');
