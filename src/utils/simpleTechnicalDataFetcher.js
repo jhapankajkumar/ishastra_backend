@@ -85,10 +85,15 @@ function calculateBasicIndicators(ohlcData) {
   const ema50 = calculateEMA(closes, 50);
   const ema200 = calculateEMA(closes, 200);
   
+  
   // 🚨 EMERGENCY FIX: Add missing SMA150 and SMA200 for Minervini Template
+  const sma13 = calculateSMA(closes, 13);
+  const sma20 = calculateSMA(closes, 20);
+  const sma26 = calculateSMA(closes, 26);
+  const sma50 = calculateSMA(closes, 50);
   const sma150 = calculateSMA(closes, 150);
   const sma200 = calculateSMA(closes, 200);
-  const sma50 = calculateSMA(closes, 50); // for potential future use
+   // for potential future use
   
   // Calculate basic RSI
   const rsi = calculateRSI(closes, 14);
@@ -114,6 +119,9 @@ function calculateBasicIndicators(ohlcData) {
     ema40: ema40[ema40.length - 1] || null,
     ema50: ema50[ema50.length - 1] || null,
     ema200: ema200[ema200.length - 1] || null,
+    sma13: sma13[sma13.length - 1] || null,
+    sma20: sma20[sma20.length - 1] || null,
+    sma26: sma26[sma26.length - 1] || null,
     sma150: sma150[sma150.length - 1] || null,  // 🚨 EMERGENCY FIX
     sma200: sma200[sma200.length - 1] || null,  // 🚨 EMERGENCY FIX
     sma50: sma50[sma50.length - 1] || null,

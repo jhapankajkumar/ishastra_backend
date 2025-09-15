@@ -150,7 +150,7 @@ function getSupportResistance(quotes, lookback = 20) {
 
 app.get('/api/yahoo/indicator', async (req, res) => {
   try {
-    const { getLatestEMAValues } = require('./utils/technicalIndicators');
+    const { calculateBasicIndicators } = require('./utils/simpleTechnicalDataFetcher');
 
     const period1 = Math.floor((Date.now() - 90 * 24 * 60 * 60 * 1000) / 1000); // 90 days ago for EMA50
     const period2 = Math.floor(Date.now() / 1000); // now
@@ -174,67 +174,27 @@ app.get('/api/yahoo/indicator', async (req, res) => {
       //console.log(`Indicator data for ${symbol}: last date =`, hist[hist.length - 1].date);
     }
     
-    // Calculate ATR (14-day default) - keeping for internal use but not exposing
-    let atr = calculateATR(hist, 14);
-    if (atr !== null && atr !== undefined) {
-      atr = Number(atr.toFixed(2)); // 2 decimals
-    }
-    
-    // Calculate EMA values and other indicators
-    const quotes = hist.map(quote => ({
-      date: quote.date,
-      close: quote.close || 0
-    }));
-    
-    const emaValues = getLatestEMAValues(quotes);
-    
-    // Calculate support and resistance (last 20 periods)
-    ({support, resistance} = getSupportResistance(hist));
-
-    // Helper function for RSI signal (inline since we can't import from routes)
-    function getRSISignalLocal(rsi) {
-      if (!rsi || rsi === undefined) return 'insufficient_data';
-      if (rsi >= 70) return 'overbought';
-      if (rsi <= 30) return 'oversold';
-      if (rsi >= 50) return 'bullish_momentum';
-      return 'bearish_momentum';
-    }
-    
-    // Helper function for EMA alignment (inline since we can't import from routes)
-    function getEMAAlignmentLocal(values) {
-      const { ema13, ema20, ema26, ema50 } = values;
-      if (!ema13 || !ema20 || !ema26 || !ema50) return 'insufficient_data';
-      const bullishAlignment = ema13 > ema20 && ema20 > ema26 && ema26 > ema50;
-      const bearishAlignment = ema13 < ema20 && ema20 < ema26 && ema26 < ema50;
-      if (bullishAlignment) return 'bullish_aligned';
-      if (bearishAlignment) return 'bearish_aligned';
-      return 'mixed_signals';
+    const indicators = calculateBasicIndicators(hist);
+    if (!indicators) {
+      return res.status(500).json({ error: 'Failed to calculate indicators' });
     }
     
     res.json({
       symbol: symbol.toUpperCase(),
-      date: emaValues.date,
-      currentPrice: emaValues.price,
-      ema13: emaValues.ema13,
-      ema20: emaValues.ema20,
-      ema26: emaValues.ema26,
-      ema50: emaValues.ema50,
-      sma13: emaValues.sma13,
-      sma20: emaValues.sma20,
-      sma26: emaValues.sma26,
-      sma50: emaValues.sma50,
-      rsi14: emaValues.rsi14,
-      support: support,
-      resistance: resistance,
-      atr14: atr,
-      trend: {
-        overall: emaValues.ema20 && emaValues.ema50 ? 
-          (emaValues.ema20 > emaValues.ema50 ? 'bullish' : 'bearish') : 'insufficient_data',
-        shortTerm: emaValues.price && emaValues.ema20 ?
-          (emaValues.price > emaValues.ema20 ? 'above_ema20' : 'below_ema20') : 'insufficient_data',
-        emaAlignment: getEMAAlignmentLocal(emaValues),
-        rsiSignal: getRSISignalLocal(emaValues.rsi14)
-      }
+      date: indicators.date,
+      currentPrice: indicators.price,
+      ema13: indicators.latest.ema13,
+      ema20: indicators.latest.ema20,
+      ema26: indicators.latest.ema26,
+      ema50: indicators.latest.ema50,
+      sma13: indicators.latest.sma13,
+      sma20: indicators.latest.sma20,
+      sma26: indicators.latest.sma26,
+      sma50: indicators.latest.sma50,
+      rsi14: indicators.latest.rsi,
+      support: indicators.support,
+      resistance: indicators.resistance,
+      atr14: indicators.atr
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
