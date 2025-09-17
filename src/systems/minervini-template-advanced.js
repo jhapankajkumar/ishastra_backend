@@ -256,7 +256,7 @@ class MinerviniTemplateAdvanced {
     if (rule2) reasoning.push('Rule 2: Price above rising 200-day SMA (long-term trend)');
 
     // --- RULE 3: 200-day MA trending up for ≥1 month
-    const rule3 = currentSMA200 > prevSMA200 && currentSMA150 > prevSMA150 && sma200Slope > 0.05 && sma150Slope > 0.01;
+    const rule3 = currentSMA200 > prevSMA200 && currentSMA150 > prevSMA150 && sma200Slope > 0.01 && sma150Slope > 0.01;
     const rule3Score = rule3 ? 1.0 : 0.0;
     criteria.criterion3 = {
       passed: rule3,
