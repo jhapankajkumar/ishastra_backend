@@ -146,7 +146,7 @@ class AlertCron {
                         timestamp: new Date()
                     };
 
-                    // await this.alertService.emailService.sendAlert(alertData);
+                    await this.alertService.emailService.sendAlert(alertData);
                     console.log(`📧 Position alert email sent for ${alert.ticker}`);
                 } catch (emailError) {
                     console.error(`❌ Failed to send position email for ${alert.ticker}:`, emailError.message);

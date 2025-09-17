@@ -11,6 +11,7 @@
 const WatchlistTriggerService = require('./watchlist.trigger.service');
 const EmailService = require('./email.service');
 const { PrismaClient } = require('@prisma/client');
+const e = require('express');
 const prisma = new PrismaClient();
 
 class AlertService {
@@ -73,6 +74,15 @@ class AlertService {
       const percentGain = entryPrice > 0 ? ((currentPrice - entryPrice) / entryPrice) * 100 : 0;
       const analysisResult = trade.systemAnalysisResult ? JSON.parse(trade.systemAnalysisResult) : null;
       const execution = analysisResult?.execution || null;
+      if (!execution) {
+        console.log(`⚠️ No execution data for trade ${trade.ticker}`);
+        continue;
+      }
+      if (execution?.exitStrategy?.stopLoss?.alerted || execution?.exitStrategy?.targets?.alerted) {
+        // console.log(`ℹ️ Alerts already sent for ${trade.ticker}, skipping`);
+        continue; // Skip if both alerts already sent
+      }
+      let isAlerted = false;
 
       // ALERT 1: STOP LOSS HIT
       if (currentPrice <= stopLoss && stopLoss > 0) {
@@ -90,6 +100,7 @@ class AlertService {
           }
         });
         if (execution?.exitStrategy?.stopLoss) {
+          isAlerted = true;
           execution.exitStrategy.stopLoss.alerted = true;
         }
       }
@@ -116,8 +127,8 @@ class AlertService {
         });
       }
 
-      // ALERT 3: 8% GAIN = PARTIAL PROFITS
-      else if (percentGain >= 8) {
+      // ALERT 3: 10% GAIN = PARTIAL PROFITS
+      else if (percentGain >= 10) {
         const sharesToSell = Math.floor(trade.quantity * 0.3); // 30%
         const remainingShares = trade.quantity - sharesToSell;
 
@@ -138,8 +149,18 @@ class AlertService {
         });
 
          if (execution?.exitStrategy?.targets) {
+          isAlerted = true;
           execution.exitStrategy.targets.alerted = true;
         }
+      }
+
+      if (isAlerted && (execution?.exitStrategy?.stopLoss?.alerted || execution?.exitStrategy?.targets?.alerted)) {
+        await prisma.trade.update({
+          where: { id: trade.id },
+          data: {
+            systemAnalysisResult: JSON.stringify(analysisResult)
+          }
+        });
       }
 
       // console.log(`${execution?.exitStrategy?.stopLoss?.alerted} - ${execution?.exitStrategy?.targets?.alerted }`);
