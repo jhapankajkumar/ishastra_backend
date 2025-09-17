@@ -68,30 +68,30 @@ class WatchlistService {
 
             // S&P 500 Stocks
 
-                        "MMM","AOS","ABT","ABBV","ACN","ADBE","AMD","AES","AFL","A","APD","AKAM","ALK","ALL","GOOGL","GOOG","MO","AMZN","AMCR","AEE",
-              "AAL","AEP","AXP","AIG","AMT","AWK","AMP","ABC","AME","AMGN","APH","ADI","ANSS","ANTM","AON","APA","AAPL","AMAT","APTV",
-              "ADM","ARNC","ANET","AJG","AIZ","T","ATO","ADSK","ADP","AZO","AVB","AVY","BKR","BLL","BAC","BK","BAX","BDX","BRK.B",
-              "BBY","BIO","BIIB","BLK","BA","BKNG","AVGO","BWA","BXP","BSX","BMY","AVY","COG","CDNS","CPB","COF","CAH","KMX","CCL","CARR",
-              "CTLT","CAT","CBOE","CBRE","CDW","CE","CNC","CNP","CDAY","CERN","CF","SCHW","CHTR","CVX","CMG","CB","CHD","CI","CINF",
-              "CTAS","CSCO","C","CFG","CTXS","CLX","CME","CMS","KO","CTSH","CL","CMCSA","CMA","CAG","COP","ED","STZ","COO","CPRT","GLW",
-              "CTVA","COST","COTY","CCI","CSX","CMI","CVS","DHI","DHR","DRI","DVA","DE","DAL","XRAY","DVN","DXCM","FANG","DLR","DFS",
-              "DISCA","DISCK","DISH","DG","DLTR","D","DPZ","DOV","DOW","DTE","DUK","DRE","DD","DXC","EMN","ETN","EBAY","ECL","EIX","EW",
-              "EA","ETR","EOG","EFX","EQIX","EQR","ESS","EL","ETSY","RE","EXC","EXPE","EXPD","EXR","XOM","FFIV","FB","FAST","FRT","FDX",
-              "FIS","FITB","FRC","FE","FISV","FLT","FMC","F","FTNT","FTV","FBHS","FOXA","FOXA","BEN","FCX","GPS","GRMN","IT","GD",
-              "GE","GIS","GM","GPC","GILD","GL","GPN","GS","GWW","HAL","HBI","HOG","HIG","HAS","HCA","PEAK","HSIC","HSY","HES","HPE",
-              "HLT","HOLX","HD","HON","HRL","HST","HPQ","HUM","HBAN","HII","IEX","IDXX","INFO","ITW","ILMN","INCY","IR","INTC","ICE",
-              "IBM","IP","IPG","IFF","INTU","ISRG","IVZ","IPGP","IQV","IRM","JKHY","J","JBHT","JNJ","JCI","JPM","JNPR","KSU","K","KEY",
-              "KEYS","KMB","KIM","KMI","KLAC","KHC","KR","LHX","LH","LRCX","LW","LLY","LNC","LIN","LYV","LKQ","LMT","L","LULU","LH",
-              "MRO","MPC","MKTX","MCHP","MCD","MCK","MDT","MRK","MET","MTD","MGM","MCHP","MU","MSFT","MA","MHK","TAP","MDLZ","MNST",
-              "MCO","MS","MOS","MSI","MSCI","NDAQ","NTAP","NFLX","NWL","NEM","NWS","NWSA","NEE","NLSN","NKE","NCLH","NTRS","NOC","NLOK",
-              "NCLH","NOV","NRG","NUE","NVDA","NVR","ORLY","OXY","ODFL","OMC","OKE","ORCL","OGN","PCAR","PKG","PH","PAYX","PAYC","PYPL","PNR",
-              "PBCT","PEP","PKI","PRGO","PFE","PM","PSX","PNW","PXD","PNC","PNR","PRU","PG","PGR","PLD","PRU","PEG","PSA","PHM","PVH",
-              "QRVO","PWR","QCOM","DGX","RL","RTX","O","REG","REGN","RF","RSG","RMD","RHI","ROK","COL","ROP","ROST","RCL","CRM","SBAC",
-              "SLB","STX","SEE","SRE","NOW","SHW","SPG","SWKS","SLG","SNA","SO","LUV","SPGI","SWK","SBUX","STT","STE","SYK","SIVB",
-              "SYMC","SYY","TMUS","TROW","TTWO","TPR","TGT","TEL","TDY","TFX","TER","TSLA","TXN","TXT","TMO","TJX","TSCO","TT","TDG","TRV",
-              "TRMB","TFC","TWTR","TYL","TSN","UDR","ULTA","USB","UAA","UA","UNP","UAL","UNH","UPS","URI","UHS","VAR","VFC","VLO","VTR",
-              "VRSN","VRSK","VZ","VRTX","VIAC","V","VNO","VMC","WAB","WMT","WBA","DIS","WM","WAT","WEC","WFC","WELL","WDC","WU","WRK",
-              "WY","WHR","WMB","WLTW","WYNN","XEL","XLNX","XOM","XRAY","XYL","YUM","ZBRA","ZBH","ZION","ZTS",
+            "MMM", "AOS", "ABT", "ABBV", "ACN", "ADBE", "AMD", "AES", "AFL", "A", "APD", "AKAM", "ALK", "ALL", "GOOGL", "GOOG", "MO", "AMZN", "AMCR", "AEE",
+            "AAL", "AEP", "AXP", "AIG", "AMT", "AWK", "AMP", "ABC", "AME", "AMGN", "APH", "ADI", "ANSS", "ANTM", "AON", "APA", "AAPL", "AMAT", "APTV",
+            "ADM", "ARNC", "ANET", "AJG", "AIZ", "T", "ATO", "ADSK", "ADP", "AZO", "AVB", "AVY", "BKR", "BLL", "BAC", "BK", "BAX", "BDX", "BRK.B",
+            "BBY", "BIO", "BIIB", "BLK", "BA", "BKNG", "AVGO", "BWA", "BXP", "BSX", "BMY", "AVY", "COG", "CDNS", "CPB", "COF", "CAH", "KMX", "CCL", "CARR",
+            "CTLT", "CAT", "CBOE", "CBRE", "CDW", "CE", "CNC", "CNP", "CDAY", "CERN", "CF", "SCHW", "CHTR", "CVX", "CMG", "CB", "CHD", "CI", "CINF",
+            "CTAS", "CSCO", "C", "CFG", "CTXS", "CLX", "CME", "CMS", "KO", "CTSH", "CL", "CMCSA", "CMA", "CAG", "COP", "ED", "STZ", "COO", "CPRT", "GLW",
+            "CTVA", "COST", "COTY", "CCI", "CSX", "CMI", "CVS", "DHI", "DHR", "DRI", "DVA", "DE", "DAL", "XRAY", "DVN", "DXCM", "FANG", "DLR", "DFS",
+            "DISCA", "DISCK", "DISH", "DG", "DLTR", "D", "DPZ", "DOV", "DOW", "DTE", "DUK", "DRE", "DD", "DXC", "EMN", "ETN", "EBAY", "ECL", "EIX", "EW",
+            "EA", "ETR", "EOG", "EFX", "EQIX", "EQR", "ESS", "EL", "ETSY", "RE", "EXC", "EXPE", "EXPD", "EXR", "XOM", "FFIV", "FB", "FAST", "FRT", "FDX",
+            "FIS", "FITB", "FRC", "FE", "FISV", "FLT", "FMC", "F", "FTNT", "FTV", "FBHS", "FOXA", "FOXA", "BEN", "FCX", "GPS", "GRMN", "IT", "GD",
+            "GE", "GIS", "GM", "GPC", "GILD", "GL", "GPN", "GS", "GWW", "HAL", "HBI", "HOG", "HIG", "HAS", "HCA", "PEAK", "HSIC", "HSY", "HES", "HPE",
+            "HLT", "HOLX", "HD", "HON", "HRL", "HST", "HPQ", "HUM", "HBAN", "HII", "IEX", "IDXX", "INFO", "ITW", "ILMN", "INCY", "IR", "INTC", "ICE",
+            "IBM", "IP", "IPG", "IFF", "INTU", "ISRG", "IVZ", "IPGP", "IQV", "IRM", "JKHY", "J", "JBHT", "JNJ", "JCI", "JPM", "JNPR", "KSU", "K", "KEY",
+            "KEYS", "KMB", "KIM", "KMI", "KLAC", "KHC", "KR", "LHX", "LH", "LRCX", "LW", "LLY", "LNC", "LIN", "LYV", "LKQ", "LMT", "L", "LULU", "LH",
+            "MRO", "MPC", "MKTX", "MCHP", "MCD", "MCK", "MDT", "MRK", "MET", "MTD", "MGM", "MCHP", "MU", "MSFT", "MA", "MHK", "TAP", "MDLZ", "MNST",
+            "MCO", "MS", "MOS", "MSI", "MSCI", "NDAQ", "NTAP", "NFLX", "NWL", "NEM", "NWS", "NWSA", "NEE", "NLSN", "NKE", "NCLH", "NTRS", "NOC", "NLOK",
+            "NCLH", "NOV", "NRG", "NUE", "NVDA", "NVR", "ORLY", "OXY", "ODFL", "OMC", "OKE", "ORCL", "OGN", "PCAR", "PKG", "PH", "PAYX", "PAYC", "PYPL", "PNR",
+            "PBCT", "PEP", "PKI", "PRGO", "PFE", "PM", "PSX", "PNW", "PXD", "PNC", "PNR", "PRU", "PG", "PGR", "PLD", "PRU", "PEG", "PSA", "PHM", "PVH",
+            "QRVO", "PWR", "QCOM", "DGX", "RL", "RTX", "O", "REG", "REGN", "RF", "RSG", "RMD", "RHI", "ROK", "COL", "ROP", "ROST", "RCL", "CRM", "SBAC",
+            "SLB", "STX", "SEE", "SRE", "NOW", "SHW", "SPG", "SWKS", "SLG", "SNA", "SO", "LUV", "SPGI", "SWK", "SBUX", "STT", "STE", "SYK", "SIVB",
+            "SYMC", "SYY", "TMUS", "TROW", "TTWO", "TPR", "TGT", "TEL", "TDY", "TFX", "TER", "TSLA", "TXN", "TXT", "TMO", "TJX", "TSCO", "TT", "TDG", "TRV",
+            "TRMB", "TFC", "TWTR", "TYL", "TSN", "UDR", "ULTA", "USB", "UAA", "UA", "UNP", "UAL", "UNH", "UPS", "URI", "UHS", "VAR", "VFC", "VLO", "VTR",
+            "VRSN", "VRSK", "VZ", "VRTX", "VIAC", "V", "VNO", "VMC", "WAB", "WMT", "WBA", "DIS", "WM", "WAT", "WEC", "WFC", "WELL", "WDC", "WU", "WRK",
+            "WY", "WHR", "WMB", "WLTW", "WYNN", "XEL", "XLNX", "XOM", "XRAY", "XYL", "YUM", "ZBRA", "ZBH", "ZION", "ZTS",
 
 
             // // Technology
@@ -138,62 +138,62 @@ class WatchlistService {
         ];
 
         this.DELISTED_STOCKS = [
-  "HEXAWARE.NS",
-  "INOXLEISUR.NS",
-  "ISEC.NS",
-  "JUBILANT.NS",
-  "L&TFH.NS",
-  "LAXMIMACH.NS",
-  "LSC.NS",
-  "MINDTREE.NS",
-  "UJJIVAN.NS",
-  "ABC",
-  "ANTM",
-  "ARNC",
-  "BLL",
-  "BRK.B",
-  "COG",
-  "CTLT",
-  "CDAY",
-  "CERN",
-  "CTXS",
-  "DFS",
-  "DISCA",
-  "DISCK",
-  "DISH",
-  "DRE",
-  "RE",
-  "FRC",
-  "FISV",
-  "FLT",
-  "FBHS",
-  "GPS",
-  "PEAK",
-  "JNPR",
-  "KSU",
-  "MRO",
-  "NLSN",
-  "NLOK",
-  "PBCT",
-  "PKI",
-  "PXD",
-  "COL",
-  "SIVB",
-  "SYMC",
-  "TWTR",
-  "VAR",
-  "VIAC",
-  "WRK",
-  "WLTW",
-  "XLNX",
-  "BRK.A",
-  "STOR",
-  "WORK",
-  "SQ",
-  "UNITY",
-  "ZI",
-  "CCIV"
-];
+            "HEXAWARE.NS",
+            "INOXLEISUR.NS",
+            "ISEC.NS",
+            "JUBILANT.NS",
+            "L&TFH.NS",
+            "LAXMIMACH.NS",
+            "LSC.NS",
+            "MINDTREE.NS",
+            "UJJIVAN.NS",
+            "ABC",
+            "ANTM",
+            "ARNC",
+            "BLL",
+            "BRK.B",
+            "COG",
+            "CTLT",
+            "CDAY",
+            "CERN",
+            "CTXS",
+            "DFS",
+            "DISCA",
+            "DISCK",
+            "DISH",
+            "DRE",
+            "RE",
+            "FRC",
+            "FISV",
+            "FLT",
+            "FBHS",
+            "GPS",
+            "PEAK",
+            "JNPR",
+            "KSU",
+            "MRO",
+            "NLSN",
+            "NLOK",
+            "PBCT",
+            "PKI",
+            "PXD",
+            "COL",
+            "SIVB",
+            "SYMC",
+            "TWTR",
+            "VAR",
+            "VIAC",
+            "WRK",
+            "WLTW",
+            "XLNX",
+            "BRK.A",
+            "STOR",
+            "WORK",
+            "SQ",
+            "UNITY",
+            "ZI",
+            "CCIV"
+        ];
         this.STOCK_UNIVERSE = this.STOCK_UNIVERSE.filter(s => !this.DELISTED_STOCKS.includes(s));
     }
 
@@ -205,27 +205,6 @@ class WatchlistService {
         console.log('🔍 DAILY WATCHLIST SCAN STARTING...');
         const distinctSymbols = Array.from(new Set(this.STOCK_UNIVERSE));
         console.log(`📊 Scanning ${distinctSymbols.length} stocks for BUY/WATCH signals`);
-        // Get the symbols you want to keep
-        const trades = await prisma.trade.findMany({
-            where: {
-                status: {
-                    not: "Closed"   // or whatever your field/value is for closed trades
-                }
-            },
-            select: { ticker: true }   // only fetch the ticker column
-        });
-
-        const symbolsToKeep = trades.map(t => t.ticker);
-
-        // Step 1: Delete everything EXCEPT symbolsToKeep
-        await prisma.watchlistStock.deleteMany({
-            where: {
-                symbol: {
-                    notIn: symbolsToKeep
-                }
-            }
-        });
-        console.log('🗑️ Cleared old watchlist');
 
         // Step 2: Analyze all stocks in batches
         const buySignals = [];
@@ -241,10 +220,6 @@ class WatchlistService {
 
             // ✅ Remove symbols that are already in active trades
             const filteredBatch = batch.filter(symbol => {
-                if (symbolsToKeep.includes(symbol)) {
-                    console.log(`Skipping ${symbol} - already in active trades`);
-                    return false; // exclude this symbol
-                }
                 return true; // keep it
             });
 
@@ -263,7 +238,7 @@ class WatchlistService {
 
                 if (signal.decision.action === 'STRONG_BUY') {
                     strongBuySignals.push(signal);
-                    return; 
+                    return;
                 }
 
                 if (signal.decision.action === 'BUY') {
@@ -308,6 +283,47 @@ class WatchlistService {
 
         console.log(`🎯 Found ${buySignals.length} BUY signals, ${watchSignals.length} WATCH signals`);
         console.log(`📝 Saving top ${combinedSignals.length} signals to watchlist`);
+
+
+        // Step 1: Get active trades (not closed)
+        const trades = await prisma.trade.findMany({
+            where: {
+                status: {
+                    not: "Closed"
+                }
+            },
+            select: { ticker: true }
+        });
+        const symbolsInTrades = trades.map(t => t.ticker);
+
+        const validSignalSymbols = combinedSignals.map(s => s.symbol);
+
+        // Step 3: Fetch current Watchlist entries
+        const currentWatchlist = await prisma.watchlistStock.findMany({
+            select: { symbol: true }
+        });
+        const currentWatchlistSymbols = currentWatchlist.map(w => w.symbol);
+
+        // Step 4: Determine which symbols to remove
+        const symbolsToRemove = currentWatchlistSymbols.filter(symbol => {
+            const isInNewScan = validSignalSymbols.includes(symbol);
+            return !isInNewScan; // Not in active trade OR not in BUY/WATCH
+        });
+
+        // Step 5: Remove those from watchlist
+        if (symbolsToRemove.length > 0) {
+            await prisma.watchlistStock.deleteMany({
+                where: {
+                    symbol: {
+                        in: symbolsToRemove
+                    }
+                }
+            });
+            console.log(`🗑️ Removed ${symbolsToRemove.length} symbols from watchlist.`);
+        } else {
+            console.log('✅ No symbols to remove from watchlist.');
+        }
+        console.log('🗑️ Cleared old watchlist');
 
         // Step 5: Save to database with COMPLETE signal analysis data
         for (const signal of combinedSignals) {
@@ -365,7 +381,7 @@ class WatchlistService {
             select: { ticker: true },
             distinct: ['ticker']
         });
-        
+
         const symbolsInTrades = trades.map(t => t.ticker);
         // Process all stocks with async operations
         const processedStocks = await Promise.all(stocks.map(async (stock) => {

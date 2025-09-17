@@ -64,6 +64,8 @@ const refreshPrices = async () => {
    const prices = await Promise.all(
      Array.from(allSymbols).map(async (symbol) => {
        const quote = await yahoo.getQuote(symbol);
+       console.log(`Current price for ${symbol}:`, quote?.regularMarketPrice);
+       console.log(`Last price for ${symbol}:`, quote?.regularMarketPreviousClose);
        return { symbol, quote };
      })
    );
@@ -126,5 +128,5 @@ const refreshPrices = async () => {
   console.log(`Prices refreshed at : at ${now.format('YYYY-MM-DD HH:mm')} SGT`, prices.length, 'tickers updated.');
 
 };
-
+refreshPrices();
 module.exports = { fetchCurrentPrice, getTickerAnalysis, refreshPrices };
