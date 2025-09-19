@@ -30,17 +30,31 @@ class AlertCron {
      */
     start() {
         console.log('🚨 Starting Alert Cron...');
-        // Run every 15 minutes during market hours
-        const alertJob = cron.schedule('*/15 * * * 1-5', async () => {
-            await this.runAlertCheck();
-        }, {
-            timezone: 'Asia/Singapore',
-            scheduled: true // <-- This means the job will start automatically!
-        });
+
+        const alertJob = cron.schedule(
+            '*/15 * * * 1-6',  // every 15 min, Mon–Sat
+            async () => {
+                const now = moment().tz('Asia/Singapore');
+                const day = now.day(); // Sunday=0, Monday=1 ... Saturday=6
+                const hour = now.hour();
+                const minute = now.minute();
+
+                // Monday: skip before 11:00
+                if (day === 1 && hour < 11) return;
+
+                // Saturday: skip after 09:00
+                if (day === 6 && (hour > 9 || (hour === 9 && minute > 0))) return;
+
+                // Otherwise run the job
+                await this.runAlertCheck();
+            },
+            {
+                timezone: 'Asia/Singapore',
+                scheduled: true
+            }
+        );
 
         alertJob.start();
-
-        // this.runAlertCheck();
     }
 
     /**
@@ -91,7 +105,7 @@ class AlertCron {
             // Send individual emails for each triggered stock
             for (const stock of watchlistResult) {
                 try {
-                    const {triggers, currentAnalysis} = await this.watchlistTriggerService.getUpdatedTriggers(stock, true);
+                    const { triggers, currentAnalysis } = await this.watchlistTriggerService.getUpdatedTriggers(stock, true);
                     // Ensure triggers is always an array
                     const safeTriggers = Array.isArray(triggers) ? triggers : [];
                     // Get stock data and current analysis for email
@@ -99,7 +113,7 @@ class AlertCron {
                         stock.currentPrice = currentAnalysis.currentPrice;
                         const alert = await this.watchlistTriggerService.getEntryTriggerAlert(stock, safeTriggers);
                         alerts.push(alert);
-                    } 
+                    }
                 } catch (emailError) {
                     console.error(`❌ Failed to send email for ${stock.symbol}:`, emailError.message);
                 }
