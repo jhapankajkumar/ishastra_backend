@@ -144,7 +144,7 @@ class MinerviniTemplateAdvanced {
       };
 
     } catch (error) {
-      console.error('  🏛️ TEMPLATE: Analysis error:', error.message);
+      console.error(`  🏛️ TEMPLATE: Analysis error: ${options.symbol} `, error.message);
       return this.createAvoidSignal('ANALYSIS_ERROR', `Template analysis failed: ${error.message}`);
     }
   }
@@ -218,21 +218,25 @@ class MinerviniTemplateAdvanced {
       currentSMA50 = indicators.latest?.sma50;
     }
 
-    // console.log(`  🏛️ TEMPLATE: SMA150=${currentSMA150?.toFixed(2)}, SMA200=${currentSMA200?.toFixed(2)}, Price=${currentPrice?.toFixed(2)}`);
-
     // Fallback if still no data
     if (!currentSMA150 || !currentSMA200 || !currentSMA50) {
       return this.createAvoidSignal('MISSING_SMA', 'Missing SMA150/SMA200/SMA50 data for Template analysis');
     }
 
-    // Calculate 52-week high/low
-    const last252Days = dailyData.slice(-252); // 1 year
-    const high52Week = Math.max(...last252Days.map(d => d.high));
-    const low52Week = Math.min(...last252Days.map(d => d.low));
+    let totalDaily = dailyData.length;
+    let maxLength = 252;
+    // Calculate 26-week high/low
+    if (totalDaily <= 252) {
+      maxLength = totalDaily; // Use available data if less than 252 days
+    }
+    
+    const lastMaxDays = dailyData.slice(-maxLength); // 1 year
+    const highMaxWeek = Math.max(...lastMaxDays.map(d => d.high));
+    const lowMaxWeek = Math.min(...lastMaxDays.map(d => d.low));
 
     const sma150Slope = (currentSMA150 - prevSMA150) / prevSMA150;
     const sma200Slope = (currentSMA200 - prevSMA200) / prevSMA200;
-    // console.log('  🏛️ TEMPLATE: SMA150 slope:', (sma150Slope * 100).toFixed(2) + '%, SMA200 slope:', (sma200Slope * 100).toFixed(2) + '%');
+    
 
     // ****************** TEMPLATE RULE VALIDATIONS ********************
     // --- RULE 1: Price > 150-day and 200-day moving averages
@@ -243,7 +247,6 @@ class MinerviniTemplateAdvanced {
       score: rule1Score,
     };
     totalScore += rule1Score;
-    
 
     // --- RULE 2: 150-day MA > 200-day MA
     const rule2 = currentSMA150 > currentSMA200
@@ -286,7 +289,7 @@ class MinerviniTemplateAdvanced {
     if (rule5) reasoning.push('Rule 5: Price > 50-day MA (short-term trend)');
 
     // --- RULE 6: Price ≥ 30% above 52-week low
-    const distanceFromLow = (currentPrice - low52Week) / low52Week;
+    const distanceFromLow = (currentPrice - lowMaxWeek) / lowMaxWeek;
     let rule6 = distanceFromLow >= thresholds.low_distance_threshold;
     let rule6Score = rule6 ? Math.min(1.0, distanceFromLow / 0.5) : 0.0;
     criteria.criterion6 = {
@@ -297,11 +300,12 @@ class MinerviniTemplateAdvanced {
     if (rule6) reasoning.push(`Rule 6: Strong recovery: ${(distanceFromLow * 100).toFixed(1)}% above 52-week low`);
 
     // --- RULE 7: Price within 25% of 52-week high
-    const distanceFromHigh = (high52Week - currentPrice) / high52Week;
+    const isNearRecentHigh = this.dynamicHighProximity(dailyData, currentPrice, thresholds);
+    const distanceFromHigh = (highMaxWeek - currentPrice) / highMaxWeek;
     const brokeKeyResistanceRecently = indicators?.brokeKeyResistanceRecently || false;
     const isNear52WHigh = distanceFromHigh <= thresholds.high_proximity_threshold;
 
-    const rule7 = isNear52WHigh || brokeKeyResistanceRecently;
+    const rule7 = isNearRecentHigh.passed || brokeKeyResistanceRecently;
     const rule7Score = rule7 ? 1.0 : 0.0;
     if (rule7) {
       if (brokeKeyResistanceRecently) {
@@ -364,23 +368,43 @@ class MinerviniTemplateAdvanced {
       score: breakoutQualityPassed ? 1.0 : 0.0,
     };
 
-    // === PATTERN QUALITY DETECTION (VCP / Tight Base / Volume Dry-Up)
-    const last20 = dailyData.slice(-20);
-    const closingPrices = last20.map(d => d.close);
-    const volumes = last20.map(d => d.volume);
-
-    const range = Math.max(...closingPrices) - Math.min(...closingPrices);
+    // === PATTERN QUALITY DETECTION (VCP / Tight Base / Volume Dry-Up) [IMPROVED LOGIC]
+    const last30 = dailyData.slice(-30);
+    const closingPrices = last30.map(d => d.close);
+    const volumes = last30.map(d => d.volume);
+    // Tight Base: stddev of close, normalized by average close (<3% is tight)
     const avgClose = closingPrices.reduce((a, b) => a + b, 0) / closingPrices.length;
-    const tightBase = range / avgClose < 0.06; // <6% range
-    const vcpContraction = this.detectVcpContraction(last20);
-    const avgVolFirstHalf = volumes.slice(0, 10).reduce((a, b) => a + b, 0) / 10;
-    const avgVolLastHalf = volumes.slice(10).reduce((a, b) => a + b, 0) / 10;
-    const volumeDryUp = avgVolLastHalf < avgVolFirstHalf * 0.65;
+    const stdDev = Math.sqrt(closingPrices.map(c => (c - avgClose) ** 2).reduce((a, b) => a + b, 0) / closingPrices.length);
+    const tightBaseRatio = stdDev / avgClose;
+    const tightBase = tightBaseRatio < 0.03;
 
+    // VCP contraction: numeric score 0-1 based on contraction steps (max 10)
+    const vcpContractionScore = this.detectVcpContraction(last30); // now returns 0-1 score
+    const vcpContraction = vcpContractionScore >= 0.3; // treat 3+ steps as "present"
+
+    // Volume Dry-Up: use median volume, compare first 15 vs last 15, and last 5 vs 20
+    function median(arr) {
+      if (!arr || arr.length === 0) return 0;
+      const sorted = [...arr].sort((a, b) => a - b);
+      const mid = Math.floor(sorted.length / 2);
+      return sorted.length % 2 === 0
+        ? (sorted[mid - 1] + sorted[mid]) / 2
+        : sorted[mid];
+    }
+    const firstHalfVol = volumes.slice(0, 15);
+    const lastHalfVol = volumes.slice(15);
+    const medianVolFirstHalf = median(firstHalfVol);
+    const medianVolLastHalf = median(lastHalfVol);
+    const medianVolLast5 = median(volumes.slice(-5));
+    const medianVolLast20 = median(volumes.slice(-20));
+    // For dry-up: last15 median < 70% of first15 median, AND last5 median < 70% of last20 median
+    const volumeDryUp = (medianVolLastHalf < medianVolFirstHalf * 0.7) && (medianVolLast5 < medianVolLast20 * 0.7);
+
+    // Pattern Quality Weighted Score
     const patternQualityScore =
-      (tightBase ? 0.33 : 0) +
-      (vcpContraction ? 0.33 : 0) +
-      (volumeDryUp ? 0.34 : 0);
+      (tightBase ? 0.3 : 0) +
+      (vcpContraction ? 0.4 : 0) +
+      (volumeDryUp ? 0.3 : 0);
 
     const patternGrade =
       patternQualityScore >= 0.90 ? 'A+' :
@@ -392,16 +416,63 @@ class MinerviniTemplateAdvanced {
       passed: patternQualityScore >= 0.5,
       score: patternQualityScore,
       grade: patternGrade,
-      details: `Tight Base: ${tightBase}, VCP: ${vcpContraction}, Volume Dry-Up: ${volumeDryUp}`
+      details: {
+        tightBase: { value: tightBase, stdDev: stdDev, ratio: tightBaseRatio },
+        vcpContraction: { score: vcpContractionScore },
+        volumeDryUp: {
+          value: volumeDryUp,
+          medianVolFirstHalf,
+          medianVolLastHalf,
+          medianVolLast5,
+          medianVolLast20
+        },
+        scoreBreakdown: {
+          tightBase: tightBase ? 0.3 : 0,
+          vcpContraction: vcpContractionScore * 0.4,
+          volumeDryUp: volumeDryUp ? 0.3 : 0
+        },
+        patternQualityScore
+      }
     };
 
-    if (tightBase) reasoning.push("Pattern: 3-week tight base (<6% range)");
-    if (vcpContraction) reasoning.push("Pattern: VCP-style price contraction");
-    if (volumeDryUp) reasoning.push("Pattern: Volume dry-up before breakout");
-    if (patternQualityScore >= 0.5) {
-      reasoning.push(`✅ Pattern quality strong: Grade ${patternGrade}`);
+    if (tightBase) {
+      reasoning.push(
+        `✅ Tight base detected: ${(tightBaseRatio * 100).toFixed(2)}% stddev of close (<3% threshold)`
+      );
     } else {
-      reasoning.push(`⚠️ Weak pattern quality: Grade ${patternGrade}`);
+      reasoning.push(
+        `⚠️ No tight base: ${(tightBaseRatio * 100).toFixed(2)}% stddev of close (≥3% threshold)`
+      );
+    }
+
+    if (vcpContraction) {
+      reasoning.push(
+        `✅ VCP contraction detected: Score ${(vcpContractionScore).toFixed(2)} (≥0.3 threshold)`
+      );
+    } else {
+      reasoning.push(
+        `⚠️ No VCP contraction: Score ${(vcpContractionScore).toFixed(2)} (<0.3 threshold)`
+      );
+    }
+
+    if (volumeDryUp) {
+      reasoning.push(
+        `✅ Volume dry-up confirmed: Median last 15/first 15 = ${medianVolLastHalf}/${medianVolFirstHalf}, last 5/20 = ${medianVolLast5}/${medianVolLast20}`
+      );
+    } else {
+      reasoning.push(
+        `⚠️ No clear volume dry-up: Median`
+      );
+    }
+
+    if (patternQualityScore >= 0.5) {
+      reasoning.push(
+        `✅ Pattern quality strong → Grade ${patternGrade} (Score ${(patternQualityScore * 100).toFixed(0)}%)`
+      );
+    } else {
+      reasoning.push(
+        `⚠️ Weak pattern quality → Grade ${patternGrade} (Score ${(patternQualityScore * 100).toFixed(0)}%)`
+      );
     }
 
     // Calculate overall metrics
@@ -457,6 +528,35 @@ class MinerviniTemplateAdvanced {
     };
   }
 
+  //Rule 7 helper: High proximity to 52-week high or breakout
+  dynamicHighProximity(dailyData, currentPrice, thresholds) {
+    const lookbacks = [
+      { days: 252, label: "52-week" },
+      { days: 180, label: "180-day" },
+      { days: 90, label: "90-day" }
+    ];
+
+    for (let { days, label } of lookbacks) {
+      const periodData = dailyData.slice(-days);
+      if (periodData.length === 0) continue;
+
+      const high = Math.max(...periodData.map(d => d.high));
+      const distance = (high - currentPrice) / high;
+
+      if (distance <= thresholds.high_proximity_threshold) {
+        return {
+          passed: true,
+          reasoning: `Within ${(thresholds.high_proximity_threshold * 100).toFixed(0)}% of ${label} high (${(distance * 100).toFixed(1)}% away)`
+        };
+      }
+    }
+
+    return {
+      passed: false,
+      reasoning: `Too far from 52W/180D/90D highs`
+    };
+  }
+
   /**
    * Make final trading decision based on Template analysis (using rule block logic)
    */
@@ -464,7 +564,7 @@ class MinerviniTemplateAdvanced {
     const { confidence, reasoning, overallScore, criteria, rule1, rule2, rule3, rule4, rule5, rule6, rule7, rule8 } = templateAnalysis;
     const { riskReward } = riskAssessment;
 
-    
+
     // Use rule variables for new decision logic
     const passedRules = [rule1, rule2, rule3, rule4, rule5, rule6, rule7, rule8].filter(Boolean).length;
 
@@ -478,9 +578,9 @@ class MinerviniTemplateAdvanced {
       volumeQuality && (patternQuality || breakoutQualityPassed)
     ) {
       decision = 'BUY';
-    } else  if (passedRules >= 6) {
+    } else if (passedRules >= 6) {
       decision = 'WATCH';
-    } 
+    }
 
 
     // if (rule1 && rule2 && rule3 && confidence >= 0.85) {
@@ -493,7 +593,7 @@ class MinerviniTemplateAdvanced {
     //   });
     // }
 
-  
+
     reasoning.push('Failed Rules: --------------');
     if (!rule1) reasoning.push("Rule 1 : Price is not above both SMA150 and SMA200.");
     if (!rule2) reasoning.push("Rule 2 : SMA150 is not above SMA200 — trend hierarchy missing.");
@@ -559,7 +659,6 @@ class MinerviniTemplateAdvanced {
     const stopLoss = Math.max(candidateStopLoss, maxAllowedStop);
 
     const stopDistance = stopLoss > 0 ? Number(((currentPrice - stopLoss) / currentPrice) * 100).toFixed(2) : 0;
-    
     const riskAmount = currentPrice - stopLoss;
     const riskPercentage = (currentPrice - stopLoss) / currentPrice;
 
@@ -826,6 +925,10 @@ class MinerviniTemplateAdvanced {
       riskPercent = 0;
       maxPosition = 0;
     }
+
+    //Making maximum position size 10% of capital for risk management
+    riskPercent = 1.0;
+    maxPosition = 10;
     let shares = 0;
     let positionValue = 0;
     let riskAmount = 0;
@@ -1376,6 +1479,7 @@ class MinerviniTemplateAdvanced {
     return bbws;
   }
   detectVcpContraction(data) {
+    // Returns a numeric score between 0 and 1 based on contraction steps (max 10)
     const atrList = this.calculateATR(data, 14);
     const bbWidthList = this.calculateBollingerBandWidth(data, 20);
     const recentATR = atrList.slice(-10);
@@ -1388,14 +1492,103 @@ class MinerviniTemplateAdvanced {
     for (let i = 1; i < recentBBW.length; i++) {
       if (recentBBW[i] < recentBBW[i - 1]) bbwContractionSteps++;
     }
-    const atrContracting = atrContractionSteps >= 3;
-    const bbwContracting = bbwContractionSteps >= 3;
-    const contraction = atrContracting || bbwContracting;
+    // Use the higher of the two contraction step counts
+    const contractionSteps = Math.max(atrContractionSteps, bbwContractionSteps);
+    // Score: 0 to 1 (max 10 steps)
+    const score = Math.max(0, Math.min(1, contractionSteps / 10));
     // console.log(
-    //   `🔍 VCP Contraction Check → ATR Steps: ${atrContractionSteps}, BBW Steps: ${bbwContractionSteps} → Result: ${contraction}`
+    //   `🔍 VCP Contraction Score → ATR Steps: ${atrContractionSteps}, BBW Steps: ${bbwContractionSteps} → Score: ${score}`
     // );
-    return contraction;
+    return score;
   }
+
+  /**
+  * Generate watchlist candidates based on Minervini's 3 key watchlist criteria.
+  * Criteria:
+  * 1. Solid prior uptrend: price > 50 and 150 MA, and 50 > 150 > 200 MA.
+  * 2. Shallow correction (<30%): drawdown from recent 60-day high is less than 30%.
+  * 3. Reclaiming 20-day MA: latest close > 20-day MA.
+  * @param {Array} dailyData - Historical daily OHLCV data (array of candles)
+  * @param {Object} indicators - Object containing arrays or latest values for SMAs
+  * @returns {Object} { passed, criteria, reasoning }
+  */
+  generateWatchlistCandidates(data) {
+
+    const { indicators, historical } = data;
+    // Validate required data
+    if (!this.validateData(indicators, historical)) {
+      return this.createAvoidSignal('INVALID_DATA', 'Insufficient data for Template analysis');
+    }
+
+    // Defensive checks
+    if (!historical || historical.length < 61) {
+      return {
+        passed: false,
+        criteria: {
+          solidUptrend: false,
+          shallowCorrection: false,
+          reclaim20MA: false,
+        },
+        reasoning: ['Insufficient daily data (need at least 61 days)'],
+      };
+    }
+
+    // Extract latest close and MAs
+    const latest = historical[historical.length - 1];
+    const close = latest.close;
+    const sma20 = indicators?.latest?.sma20;
+    const sma50 = indicators?.latest?.sma50;
+    const sma150 = indicators?.latest?.sma150;
+    const sma200 = indicators?.latest?.sma200;
+
+    // 1. Solid prior uptrend: price > 50 and 150 MA, and 50 > 150 > 200
+    const solidUptrend =
+      close > sma50 &&
+      close > sma150 &&
+      sma50 > sma150 &&
+      sma150 > sma200;
+
+    // 2. Shallow correction: drawdown from recent 60-day high < 30%
+    const recent60 = historical.slice(-60);
+    const high60 = Math.max(...recent60.map(d => d.high));
+    const drawdown = high60 > 0 ? (high60 - close) / high60 : 0;
+    const shallowCorrection = drawdown < 0.3;
+
+    // 3. Reclaiming 20-day MA: close > 20MA
+    const reclaim20MA = close > sma20;
+
+    // Compose reasoning
+    const reasoning = [];
+    reasoning.push(
+      solidUptrend
+        ? `Solid uptrend: Close ($${close.toFixed(2)}) > SMA50 ($${sma50?.toFixed(2)}), SMA150 ($${sma150?.toFixed(2)}), and SMA50 > SMA150 > SMA200 ($${sma50?.toFixed(2)} > $${sma150?.toFixed(2)} > $${sma200?.toFixed(2)})`
+        : `No solid uptrend: Close ($${close.toFixed(2)}) vs SMA50 ($${sma50?.toFixed(2)}), SMA150 ($${sma150?.toFixed(2)}), SMA50 ($${sma50?.toFixed(2)}) vs SMA150 ($${sma150?.toFixed(2)}), SMA150 ($${sma150?.toFixed(2)}) vs SMA200 ($${sma200?.toFixed(2)})`
+    );
+    reasoning.push(
+      shallowCorrection
+        ? `Shallow correction: Drawdown from 60-day high ($${high60.toFixed(2)}) is ${(drawdown * 100).toFixed(1)}% (<30%)`
+        : `Deep correction: Drawdown from 60-day high ($${high60.toFixed(2)}) is ${(drawdown * 100).toFixed(1)}% (needs <30%)`
+    );
+    reasoning.push(
+      reclaim20MA
+        ? `Reclaimed 20-day MA: Close ($${close.toFixed(2)}) > SMA20 ($${sma20?.toFixed(2)})`
+        : `Not above 20-day MA: Close ($${close.toFixed(2)}) <= SMA20 ($${sma20?.toFixed(2)})`
+    );
+
+    // Compose criteria object
+    const criteria = {
+      solidUptrend,
+      shallowCorrection,
+      reclaim20MA,
+    };
+    const passed = solidUptrend && shallowCorrection && reclaim20MA;
+    return {
+      passed,
+      criteria,
+      reasoning,
+    };
+  }
+
 }
 
 module.exports = MinerviniTemplateAdvanced;

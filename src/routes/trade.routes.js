@@ -39,5 +39,6 @@ router.put(
 router.get('/:id', tradeController.getTradeById);
 router.get('/:id/transactions', tradeController.getTradeTransactions);
 router.delete('/:id', tradeController.deleteTrade);
+router.post('/stock-split', tradeController.updateStockSplit);
 
 module.exports = router;

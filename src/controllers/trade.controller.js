@@ -90,7 +90,7 @@ exports.createTrade = async (req, res) => {
       });
     }
 
-    
+
 
     const trade = await prisma.trade.create({
       data: {
@@ -114,14 +114,14 @@ exports.createTrade = async (req, res) => {
         target1: req.body.target1 ? Number(req.body.target1) : 0,
         target2: req.body.target2 ? Number(req.body.target2) : 0,
         target3: req.body.target3 ? Number(req.body.target3) : 0,
-        
+
         //Entry Details
         reasonForEntry: req.body.reasonForEntry,
         entryCommission: req.body.entryCommission ? Number(req.body.entryCommission) : 0,
         tradeSetupId: req.body.tradeSetup ? Number(req.body.tradeSetup) : 0,
         status: "Open",
         notes: req.body.notes || null,
-        systemAnalysisResult: req.body.systemAnalysisResult || null 
+        systemAnalysisResult: req.body.systemAnalysisResult || null
       }
     });
 
@@ -165,8 +165,8 @@ exports.createTrade = async (req, res) => {
     // Allocate capital after creating trade
     await CapitalManager.allocateCapital(currency, tradeAmount);
 
-    res.status(201).json({ 
-      message: "Trade created successfully", 
+    res.status(201).json({
+      message: "Trade created successfully",
       trade,
       capitalAllocated: {
         amount: tradeAmount,
@@ -176,12 +176,12 @@ exports.createTrade = async (req, res) => {
 
   } catch (error) {
     console.error('❌ Error creating trade:', error);
-    
+
     // If it's a capital allocation error, provide specific message
     if (error.message.includes('capital') || error.message.includes('Capital')) {
-      return res.status(400).json({ 
-        error: 'Capital allocation failed', 
-        details: error.message 
+      return res.status(400).json({
+        error: 'Capital allocation failed',
+        details: error.message
       });
     }
 
@@ -202,7 +202,7 @@ exports.updateTradeExit = async (req, res) => {
     }
 
     const tradeId = Number(id);
-    
+
     // Get current trade to validate
     const currentTrade = await prisma.trade.findUnique({
       where: { id: tradeId }
@@ -220,7 +220,7 @@ exports.updateTradeExit = async (req, res) => {
     if (exitQty <= 0) {
       return res.status(400).json({ error: "Exit quantity must be greater than 0" });
     }
-    
+
     if (exitQty > (currentTrade.remainingQuantity || currentTrade.quantity)) {
       return res.status(400).json({ error: "Cannot exit more shares than remaining" });
     }
@@ -281,7 +281,7 @@ exports.updateTradeExit = async (req, res) => {
         filePath: file.path,
       }));
       await Promise.all(
-        exitImages.map(imageData => 
+        exitImages.map(imageData =>
           prisma.tradeImage.create({ data: imageData })
         )
       );
@@ -302,9 +302,9 @@ exports.updateTradeExit = async (req, res) => {
 
     // If it's a capital release error, provide specific message
     if (err.message.includes('capital') || err.message.includes('Capital')) {
-      return res.status(400).json({ 
-        error: 'Capital release failed', 
-        details: err.message 
+      return res.status(400).json({
+        error: 'Capital release failed',
+        details: err.message
       });
     }
 
@@ -327,7 +327,7 @@ exports.partialExitTrade = async (req, res) => {
     const tradeId = Number(id);
     const exitQty = Number(exitQuantity);
     const exitPrice = Number(exitOrderPrice);
-    
+
     // Get current trade to validate
     const currentTrade = await prisma.trade.findUnique({
       where: { id: tradeId },
@@ -344,14 +344,14 @@ exports.partialExitTrade = async (req, res) => {
     if (exitQty <= 0) {
       return res.status(400).json({ error: "Exit quantity must be greater than 0" });
     }
-    
+
     if (exitQty > currentRemaining) {
       return res.status(400).json({ error: "Cannot exit more shares than remaining" });
     }
 
     // Calculate capital to release for this exit
     const releaseAmount = CapitalManager.calculateTradeAmount(exitPrice, exitQty);
-    console.log(`💰 Releasing capital for partial exit: ${releaseAmount} ${currentTrade.currency || 'USD'}`) ;
+    console.log(`💰 Releasing capital for partial exit: ${releaseAmount} ${currentTrade.currency || 'USD'}`);
     const currency = currentTrade.currency || 'USD';
 
     // Create transaction record
@@ -405,7 +405,7 @@ exports.partialExitTrade = async (req, res) => {
         filePath: file.path,
       }));
       await Promise.all(
-        exitImages.map(imageData => 
+        exitImages.map(imageData =>
           prisma.tradeImage.create({ data: imageData })
         )
       );
@@ -426,9 +426,9 @@ exports.partialExitTrade = async (req, res) => {
 
     // If it's a capital release error, provide specific message
     if (err.message.includes('capital') || err.message.includes('Capital')) {
-      return res.status(400).json({ 
-        error: 'Capital release failed', 
-        details: err.message 
+      return res.status(400).json({
+        error: 'Capital release failed',
+        details: err.message
       });
     }
 
@@ -458,7 +458,7 @@ exports.addPostAnalysis = async (req, res) => {
         filePath: file.path,
       }));
       await Promise.all(
-        postImages.map(imageData => 
+        postImages.map(imageData =>
           prisma.tradeImage.create({ data: imageData })
         )
       );
@@ -534,7 +534,7 @@ exports.deleteTrade = async (req, res) => {
     if (remainingQty > 0) {
       const releaseAmount = CapitalManager.calculateTradeAmount(trade.entryPrice, remainingQty);
       const currency = trade.currency || 'USD';
-      
+
       try {
         await CapitalManager.releaseCapital(currency, releaseAmount);
         //console.log(`💰 Released capital: ${releaseAmount} ${currency} for deleted trade ${trade.tradeId}`);
@@ -568,15 +568,15 @@ exports.deleteTrade = async (req, res) => {
     res.status(204).send(); // No content response for successful deletion
   } catch (error) {
     console.error('Error deleting trade:', error);
-    
+
     // Handle specific Prisma errors
     if (error.code === 'P2025') {
       return res.status(404).json({ error: 'Trade not found' });
     }
-    
-    res.status(500).json({ 
-      error: 'Failed to delete trade', 
-      details: error.message 
+
+    res.status(500).json({
+      error: 'Failed to delete trade',
+      details: error.message
     });
   }
 };
@@ -599,9 +599,9 @@ exports.getTradeTransactions = async (req, res) => {
     res.json(transactions);
   } catch (error) {
     console.error('Error fetching trade transactions:', error);
-    res.status(500).json({ 
-      error: 'Failed to fetch trade transactions', 
-      details: error.message 
+    res.status(500).json({
+      error: 'Failed to fetch trade transactions',
+      details: error.message
     });
   }
 };
@@ -650,5 +650,58 @@ exports.refreshAllTradePrices = async (req, res) => {
       });
       return;
     }
+  }
+};
+
+//Update the buy average after stock split
+exports.updateStockSplit = async (req, res) => {
+  try {
+    const { symbol, splitRatio } = req.body;
+
+
+    if (!splitRatio || isNaN(splitRatio) || splitRatio <= 0) {
+      return res.status(400).json({ error: 'Invalid split ratio' });
+    }
+
+    const trades = await prisma.trade.findMany({
+      where: { ticker: symbol.toUpperCase(), status: 'Open' }
+    });
+
+    if (!trades || trades.length === 0) {
+      return res.status(404).json({ error: 'Trade not found' });
+    }
+
+    for (const t of trades) {
+      // Calculate new entry price and quantity
+      const newEntryPrice = t.entryPrice / splitRatio;
+      const newQuantity = t.quantity * splitRatio;
+      const newRemainingQuantity = t.remainingQuantity ? t.remainingQuantity * splitRatio : newQuantity;
+      const target1 = t.target1 ? t.target1 / splitRatio : null;
+      const target2 = t.target2 ? t.target2 / splitRatio : null;
+      const target3 = t.target3 ? t.target3 / splitRatio : null;
+      const stopLoss = t.stopLoss ? t.stopLoss / splitRatio : null;
+      // Log the changes
+      // console.log(`  🔄 Trade ${t.tradeId}: Price ${t.entryPrice} -> ${newEntryPrice.toFixed(2)}, Qty ${t.quantity} -> ${newQuantity}, Remaining Qty: ${t.remainingQuantity} -> ${newRemainingQuantity}`);
+      const updatedTrade = await prisma.trade.update({
+        where: { id: t.id },
+        data: {
+          entryPrice: newEntryPrice,
+          quantity: newQuantity,
+          remainingQuantity: newRemainingQuantity,
+          target1: target1,
+          target2: target2,
+          target3: target3,
+          stopLoss: stopLoss
+        }
+      });
+    }
+
+    res.json({
+      message: 'Trade updated for stock split',
+      trade: "updatedTrade"
+    });
+  } catch (error) {
+    console.error('Error updating trade for stock split:', error);
+    res.status(500).json({ error: 'Failed to update trade', details: error.message });
   }
 };
