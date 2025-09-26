@@ -81,7 +81,7 @@ class AlertCron {
 
             console.log(`🔍 Alert check started at ${now.format('YYYY-MM-DD HH:mm')} SGT`);
             await this.checkPositionAlerts();
-            await this.checkWatchlistTriggers();
+            // await this.checkWatchlistTriggers();
 
             console.log('✅ Alert check completed');
 

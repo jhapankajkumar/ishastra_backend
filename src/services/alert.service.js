@@ -98,11 +98,12 @@ class AlertService {
           }
         });
       }
-
-      if (execution?.exitStrategy?.stopLoss?.alerted || execution?.exitStrategy?.targets?.alerted) {
+      
+      // console.log(`🔔 Checking trade ${trade.ticker}: Current Price ${currentPrice}, Stop Loss ${stopLoss}, Entry ${entryPrice}`);
+      if (execution?.exitStrategy?.stopLoss?.alerted) {
         continue; // Skip if both alerts already sent
       }
-
+      
       let isAlerted = false;
       // ALERT 1: STOP LOSS HIT
       if (currentPrice <= stopLoss && stopLoss > 0) {
