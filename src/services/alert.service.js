@@ -82,7 +82,7 @@ class AlertService {
       const positionSizing = execution?.positionSizing || {};
       const riskPerShare = entryPrice - initialStopLoss;
       const rMultiple = (currentPrice - stopLoss) / (riskPerShare || 1);
-      const isAboveBreakeven = stopLoss > entryPrice;
+      const isAboveBreakeven = stopLoss >= entryPrice;
       if (Number.isFinite(rMultiple) && (rMultiple >= 2.0 || (isAboveBreakeven && rMultiple >= 1.5))) {
          let multiplier = 1
           if (rMultiple >= 3.0) multiplier = 2
