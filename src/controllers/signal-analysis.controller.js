@@ -101,16 +101,15 @@ class TradingSystemController {
 
 
     try {
-      // � CAPITAL: Get real capital from database
-      let remainingCapital = 100000; // Fallback
+      // Determine currency based on symbol
+      const currency = symbol.includes('.NS') ? 'INR' : 'USD';
+      // 🚨 CAPITAL: Get real capital from database
+      let accountCapital = currency === 'INR' ? 10000000 : 100000; // Fallback
       try {
-        // Determine currency based on symbol
-        const currency = symbol.includes('.NS') ? 'INR' : 'USD';
         const capitalData = await CapitalManager.getCapital(currency);
-        remainingCapital = capitalData ? capitalData.remaining : remainingCapital;
-        // console.log(`  💰 CAPITAL: Using ${currency} capital: ${remainingCapital.toLocaleString()} (from DB)`);
+        accountCapital = capitalData ? capitalData.total : accountCapital;
       } catch (error) {
-        console.log(`  ⚠️ CAPITAL: Using fallback capital: $${remainingCapital.toLocaleString()} (DB error: ${error.message})`);
+        console.log(`  ⚠️ CAPITAL: Using fallback capital: $${accountCapital.toLocaleString()} (DB error: ${error.message})`);
       }
 
       // 🚨 SIMPLE MODE: Basic technical data only (no complex AI analysis)
@@ -133,7 +132,7 @@ class TradingSystemController {
           if (systemInstance && typeof systemInstance.analyze === 'function') {
             // Call the system's analyze method directly
             const options = {
-              capital: remainingCapital,
+              capital: accountCapital,
               symbol: symbol,
               currentPrice: technicalData?.latestPrice,
             };

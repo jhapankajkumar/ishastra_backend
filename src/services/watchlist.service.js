@@ -718,9 +718,10 @@ class WatchlistService {
 
                 if (signal.decision.action === 'BUY') {
                     buySignals.push(signal);
-                } else if (signal.decision.action === 'WATCH') {
-                    watchSignals.push(signal);
-                }
+                } 
+                // else if (signal.decision.action === 'WATCH') {
+                //     watchSignals.push(signal);
+                // }
             });
 
             // brief pause between batches to be nice to APIs
@@ -937,6 +938,18 @@ class WatchlistService {
         return {
             breakouts: breakOutSignals
         };
+    }
+
+    async deleteFromWatchlist(symbol) {
+        try {
+            await prisma.watchlistStock.delete({
+                where: { symbol }
+            });
+            return { success: true, message: `Deleted ${symbol} from watchlist` };
+        } catch (error) {
+            console.error(`❌ Error deleting ${symbol} from watchlist:`, error);
+            return { success: false, message: `Error deleting ${symbol} from watchlist` };
+        }
     }
 
 }

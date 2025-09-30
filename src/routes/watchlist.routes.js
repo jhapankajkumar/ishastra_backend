@@ -19,4 +19,10 @@ router.post('/daily-scan', controller.runDailyScan.bind(controller));
 // POST trigger breakout scan
 router.post('/breakout-scan', controller.runBreakoutScan.bind(controller));
 
+// DELETE from watchlist
+router.post('/remove/', controller.deleteFromWatchlist.bind(controller));
+
+// POST refresh stock
+router.post('/refresh/', controller.refreshStock.bind(controller));
+
 module.exports = router;

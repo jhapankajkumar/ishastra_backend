@@ -932,13 +932,14 @@ class MinerviniTemplateAdvanced {
     let shares = 0;
     let positionValue = 0;
     let riskAmount = 0;
-
+    
+    
     if (recommendation !== 'AVOID' && entryPrice > 0 && stopLoss > 0 && capital > 0) {
-      riskAmount = capital * (riskPercent / 100);
+      const maxRiskAmount = capital * (riskPercent / 100);
       const riskPerShare = entryPrice - stopLoss;
 
       if (riskPerShare > 0) {
-        shares = Math.floor(riskAmount / riskPerShare);
+        shares = Math.floor(maxRiskAmount / riskPerShare);
         positionValue = shares * entryPrice;
 
         // Ensure position doesn't exceed max allocation
@@ -958,6 +959,8 @@ class MinerviniTemplateAdvanced {
     // console.log(`  🎯 UNIFIED SCORING: Template ${templateAnalysis.templateGrade}(${templateScore}) + Signal ${signalQualityGrade}(${signalScore}) = ${totalScore.toFixed(1)} → ${recommendation}`);
 
     const stopDistance = stopLoss > 0 ? Number(((entryPrice - stopLoss) / entryPrice) * 100).toFixed(2) : 0;
+    const riskPerShare = Math.round((entryPrice - stopLoss) * 100) / 100;
+    riskAmount = shares * riskPerShare;
     return {
       recommendation,
       riskPercent,
@@ -965,7 +968,7 @@ class MinerviniTemplateAdvanced {
       shares: Math.max(0, shares),
       positionValue: positionValue,
       riskAmount: riskAmount,
-      riskPerShare: Math.round((entryPrice - stopLoss) * 100) / 100,
+      riskPerShare: riskPerShare,
       stopDistance: stopDistance,
       riskReward: riskReward,
     };
