@@ -718,7 +718,7 @@ class WatchlistService {
 
                 if (signal.decision.action === 'BUY') {
                     buySignals.push(signal);
-                } 
+                }
                 // else if (signal.decision.action === 'WATCH') {
                 //     watchSignals.push(signal);
                 // }
@@ -751,7 +751,7 @@ class WatchlistService {
         const sortedWatchSignals = watchSignals.sort(sortByQuality);
 
         // Step 4: Combine signals - BUY first, then WATCH, max 20 total
-        const combinedSignals = [
+        let combinedSignals = [
             ...sortedStrongBuySignals,
             ...sortedBuySignals,
             ...sortedWatchSignals.slice(0, 10)
@@ -774,32 +774,12 @@ class WatchlistService {
 
         const validSignalSymbols = combinedSignals.map(s => s.symbol);
 
-        // Step 3: Fetch current Watchlist entries
-        const currentWatchlist = await prisma.watchlistStock.findMany({
-            select: { symbol: true }
-        });
-        const currentWatchlistSymbols = currentWatchlist.map(w => w.symbol);
-
-        // Step 4: Determine which symbols to remove
-        const symbolsToRemove = currentWatchlistSymbols.filter(symbol => {
-            const isInNewScan = validSignalSymbols.includes(symbol);
-            return !isInNewScan; // Not in active trade OR not in BUY/WATCH
-        });
-
         // Step 5: Remove those from watchlist
-        if (symbolsToRemove.length > 0) {
-            await prisma.watchlistStock.deleteMany({
-                where: {
-                    symbol: {
-                        in: symbolsToRemove
-                    }
-                }
-            });
-            console.log(`🗑️ Removed ${symbolsToRemove.length} symbols from watchlist.`);
-        } else {
-            console.log('✅ No symbols to remove from watchlist.');
-        }
+        await prisma.watchlistStock.deleteMany({});
         console.log('🗑️ Cleared old watchlist');
+
+        combinedSignals = combinedSignals.filter(s => !symbolsInTrades.includes(s.symbol));
+        console.log(`✅ ${combinedSignals.length} signals after removing active trades.`);
 
         // Step 5: Save to database with COMPLETE signal analysis data
         for (const signal of combinedSignals) {
