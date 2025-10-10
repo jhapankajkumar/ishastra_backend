@@ -35,16 +35,9 @@ const getTickerAnalysis = async (symbol) => {
     }
 };
 
-const refreshPrices = async () => {
 
-    const trades = await prisma.trade.findMany({
-        select: { ticker: true, id: true }
-    });
-
-    const watchlist = await prisma.watchlistStock.findMany({
-        select: { symbol: true, id: true }
-    });
-
+const refreshOtherPrices = async () => {
+  
     const investment = await prisma.investment.findMany({
         select: { ticker: true, id: true }
     });
@@ -55,8 +48,6 @@ const refreshPrices = async () => {
     });
 
     const allSymbols = new Set([
-        ...trades.map(trade => trade.ticker),
-        ...watchlist.map(item => item.symbol),
         ...investment.map(item => item.ticker),
         ...recommendations.map(item => item.ticker)
     ]);
@@ -69,20 +60,6 @@ const refreshPrices = async () => {
    );
 
    await Promise.all([
-    ...trades.map(trade => {
-      const quote = prices.find(p => p.symbol === trade.ticker)?.quote || {};
-      const data = {};
-        if (quote?.regularMarketPrice != null) {
-          data.currentPrice = quote.regularMarketPrice;
-        }
-        if (quote?.regularMarketPreviousClose != null) {
-          data.lastDayPrice = quote.regularMarketPreviousClose;
-        }
-      return prisma.trade.update({
-        where: { id: trade.id },
-        data
-      });
-    }),
     ...investment.map(inv => {
       const quote = prices.find(p => p.symbol === inv.ticker)?.quote || {};
       const data = {};
@@ -108,23 +85,54 @@ const refreshPrices = async () => {
         data
       });
     }),
-    ...watchlist.map(item => {
-      const quote = prices.find(p => p.symbol === item.symbol)?.quote || {};
-      const data = {};
-      if (quote?.regularMarketPrice != null) {
-        data.currentPrice = quote.regularMarketPrice;
-      }
-      return prisma.watchlistStock.update({
-        where: { id: item.id },
-        data
-      });
-    })
   ]);
 
   const now = moment().tz('Asia/Singapore');
 
-  console.log(`Prices refreshed at : at ${now.format('YYYY-MM-DD HH:mm')} SGT`, prices.length, 'tickers updated.');
+  console.log(`Investment Prices refreshed at : at ${now.format('YYYY-MM-DD HH:mm')} SGT`, prices.length, 'tickers updated.');
+}
+
+const refreshTradePrices = async () => {
+
+    const trades = await prisma.trade.findMany({
+        where: { status: { in: ['Open', 'Partial Closed'] } },
+        select: { ticker: true, id: true }
+    });
+
+    const allSymbols = new Set([
+        ...trades.map(trade => trade.ticker),
+    ]);
+
+   const prices = await Promise.all(
+     Array.from(allSymbols).map(async (symbol) => {
+       const quote = await yahoo.getQuote(symbol);
+       return { symbol, quote };
+     })
+   );
+
+   await Promise.all([
+    ...trades.map(trade => {
+      const quote = prices.find(p => p.symbol === trade.ticker)?.quote || {};
+      const data = {};
+        if (quote?.regularMarketPrice != null) {
+          data.currentPrice = quote.regularMarketPrice;
+        }
+        if (quote?.regularMarketPreviousClose != null) {
+          data.lastDayPrice = quote.regularMarketPreviousClose;
+        }
+      return prisma.trade.update({
+        where: { id: trade.id },
+        data
+      });
+    }),
+    
+  ]);
+
+  const now = moment().tz('Asia/Singapore');
+
+  console.log(`Trade Prices refreshed at : at ${now.format('YYYY-MM-DD HH:mm')} SGT`, prices.length, 'tickers updated.');
 
 };
-refreshPrices();
-module.exports = { fetchCurrentPrice, getTickerAnalysis, refreshPrices };
+refreshTradePrices();
+refreshOtherPrices();
+module.exports = { fetchCurrentPrice, getTickerAnalysis, refreshTradePrices, refreshOtherPrices };

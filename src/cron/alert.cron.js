@@ -32,7 +32,7 @@ class AlertCron {
         console.log('🚨 Starting Alert Cron...');
 
         const alertJob = cron.schedule(
-            '*/15 * * * 1-6',  // every 15 min, Mon–Sat
+            '*/2 * * * 1-6',  // every 5 min, Mon–Sat
             async () => {
                 const now = moment().tz('Asia/Singapore');
                 const day = now.day(); // Sunday=0, Monday=1 ... Saturday=6
@@ -74,10 +74,10 @@ class AlertCron {
             const currentMinute = now.minute();
 
             // Skip weekends
-            if (now.day() === 0 || now.day() === 6) {
-                console.log('📅 Weekend - skipping alert check');
-                return;
-            }
+            // if (now.day() === 0 || now.day() === 6) {
+            //     console.log('📅 Weekend - skipping alert check');
+            //     return;
+            // }
 
             console.log(`🔍 Alert check started at ${now.format('YYYY-MM-DD HH:mm')} SGT`);
             await this.checkPositionAlerts();
