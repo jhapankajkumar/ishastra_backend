@@ -53,13 +53,17 @@ exports.createTrade = async (req, res) => {
     const maxAttempts = 10;
     while (!isUnique && attempts < maxAttempts) {
       professionalTradeId = await TradeIdGenerator.generateTradeId();
+      console.log(`Generated Trade ID Attempt ${attempts + 1}:`, professionalTradeId);
       const existing = await prisma.trade.findUnique({ where: { tradeId: professionalTradeId } });
+      console.log(`Trade ID ${professionalTradeId} exists:`, !!existing);
       if (!existing) {
         isUnique = true;
       } else {
         attempts++;
       }
     }
+
+    console.log('Final Trade ID:', professionalTradeId, 'Is Unique:', isUnique);
     if (!isUnique) {
       return res.status(500).json({ error: 'Failed to generate a unique tradeId after multiple attempts.' });
     }

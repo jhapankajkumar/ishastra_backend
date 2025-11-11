@@ -102,6 +102,18 @@ app.get('/api/yahoo/price', async (req, res) => {
   }
 });
 
+app.get('/api/yahoo/quote', async (req, res) => {
+  try {
+    const { symbol } = req.query;
+    if (!symbol) return res.status(400).json({ error: 'Missing symbol' });
+    const quote = await yahoo.getQuote(symbol);
+    res.json({ symbol, quote });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
 // ATR calculation helper
 // ATR = RMA (Wilder's smoothing) of TRs
 function calculateATR(data, period = 14, returnSeries = false) {

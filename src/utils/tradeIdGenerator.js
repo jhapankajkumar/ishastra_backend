@@ -13,9 +13,9 @@ class TradeIdGenerator {
   static async generateTradeId() {
     const year = new Date().getFullYear();
     const prefix = `ISH-${year}-`;
-    
-    // Helper to generate a random 5-character alphanumeric hash
-    function randomHash(length = 5) {
+
+    // Helper to generate a random 12-character alphanumeric hash
+    function randomHash(length = 12) {
       return Math.random().toString(36).substring(2, 2 + length).toUpperCase();
     }
     
