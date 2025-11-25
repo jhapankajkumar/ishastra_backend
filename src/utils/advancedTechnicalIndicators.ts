@@ -1069,6 +1069,74 @@ export class AdvancedTechnicalIndicators {
 
         return { adx: adxData, plusDI, minusDI };
     }
+    /**
+     * Detect pivot highs and lows from OHLC series.
+     * A pivot low (or high) is defined as the lowest (or highest) point within a symmetric window
+     * of `lookback` bars on each side.
+     *
+     * This is timeframe-agnostic and intended for daily SEPA-style structure analysis.
+     */
+    static getPivots(
+        highs: number[],
+        lows: number[],
+        lookback: number = 10
+    ): { pivotLows: { index: number; price: number }[]; pivotHighs: { index: number; price: number }[] } {
+        const n = Math.min(highs.length, lows.length);
+        const pivotLows: { index: number; price: number }[] = [];
+        const pivotHighs: { index: number; price: number }[] = [];
+
+        if (!Number.isFinite(lookback) || lookback < 1 || n === 0) {
+            return { pivotLows, pivotHighs };
+        }
+
+        const lb = Math.floor(lookback);
+
+        for (let i = lb; i < n - lb; i++) {
+            const low = lows[i];
+            const high = highs[i];
+            if (!Number.isFinite(low) || !Number.isFinite(high)) continue;
+
+            let isPivotLow = true;
+            let isPivotHigh = true;
+
+            for (let j = i - lb; j <= i + lb; j++) {
+                if (j === i) continue;
+                if (lows[j] <= low) isPivotLow = false;
+                if (highs[j] >= high) isPivotHigh = false;
+                if (!isPivotLow && !isPivotHigh) break;
+            }
+
+            if (isPivotLow) {
+                pivotLows.push({ index: i, price: low });
+            }
+            if (isPivotHigh) {
+                pivotHighs.push({ index: i, price: high });
+            }
+        }
+
+        return { pivotLows, pivotHighs };
+    }
+
+    /**
+     * Convenience helper to get the last N pivot lows and highs.
+     * Results are returned in chronological order (oldest → newest).
+     */
+    static getLastNPivots(
+        highs: number[],
+        lows: number[],
+        lookback: number = 10,
+        count: number = 3
+    ): { pivotLows: { index: number; price: number }[]; pivotHighs: { index: number; price: number }[] } {
+        const { pivotLows, pivotHighs } = this.getPivots(highs, lows, lookback);
+
+        const lastLows = pivotLows.slice(-count);
+        const lastHighs = pivotHighs.slice(-count);
+
+        return {
+            pivotLows: lastLows,
+            pivotHighs: lastHighs
+        };
+    }
 }
 
 // Default export for compatibility  
