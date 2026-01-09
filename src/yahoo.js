@@ -1,7 +1,11 @@
 // Yahoo Finance API utility using yahoo-finance2
 // Polyfill fetch for yahoo-finance2 in Node.js
 global.fetch = require('undici').fetch;
-const yahooFinance = require('yahoo-finance2').default;
+const YahooFinance = require("yahoo-finance2").default;
+
+const yahooFinance = new YahooFinance({
+  suppressNotices: ["yahooSurvey"],
+});
 
 // Symbol search
 async function searchSymbol(query) {

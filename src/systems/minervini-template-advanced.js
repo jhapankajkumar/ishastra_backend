@@ -35,6 +35,36 @@ const { getSystemThresholds } = require('../config/trading-thresholds');
 const { SimpleSwingStability } = require('../utils/simple-swing-stability');
 const { TRIGGER_TYPES } = require('../utils/systemConstants');
 
+// --- Market session helpers (used to decide whether the last candle is complete)
+function detectMarket(symbol = '') {
+  const s = String(symbol || '').toUpperCase();
+  if (s.endsWith('.NS') || s.endsWith('.BO')) return 'IN';
+  return 'US';
+}
+
+// NOTE: This is a conservative EOD-focused check to avoid using a partially formed daily candle.
+// If market is open, we drop the last bar. If market is closed, we keep it.
+function isMarketOpenNow(market) {
+  const now = new Date();
+
+  // Use UTC so server timezone doesn't matter
+  const utcH = now.getUTCHours();
+  const utcM = now.getUTCMinutes();
+  const minutes = utcH * 60 + utcM;
+
+  if (market === 'IN') {
+    // NSE/BSE cash session roughly 03:45–10:00 UTC (09:15–15:30 IST)
+    const open = 3 * 60 + 45;
+    const close = 10 * 60 + 0;
+    return minutes >= open && minutes < close;
+  }
+
+  // US (NYSE/NASDAQ) regular session roughly 14:30–21:00 UTC (09:30–16:00 ET)
+  const open = 14 * 60 + 30;
+  const close = 21 * 60 + 0;
+  return minutes >= open && minutes < close;
+}
+
 class MinerviniTemplateAdvanced {
   constructor() {
     this.systemId = 'minervini_template_advanced';
@@ -67,7 +97,13 @@ class MinerviniTemplateAdvanced {
 
       // Extract analysis parameters - AI signals no longer passed directly to systems
       const { capital, symbol, currentPrice } = options;
-      const completedDaily = historical.slice(0, -1); // Use only completed candles
+
+      // Decide whether the latest daily candle is complete based on current market session.
+      // If market is currently open, the last candle is likely partial -> exclude it.
+      // If market is closed, keep the last candle (EOD complete).
+      const market = detectMarket(symbol);
+      const marketOpen = isMarketOpenNow(market);
+      const completedDaily = marketOpen ? historical.slice(0, -1) : historical;
       // console.log(`  🏛️ TEMPLATE: Completed daily bars: ${completedDaily.length}`);
       const latest = completedDaily[completedDaily.length - 1];
       const entryPrice = currentPrice || latest?.close || 0;
@@ -247,6 +283,7 @@ class MinerviniTemplateAdvanced {
       score: rule1Score,
     };
     totalScore += rule1Score;
+    if (rule1) reasoning.push('Rule 1: Price above 150-day and 200-day SMA (trend confirmation)');
 
     // --- RULE 2: 150-day MA > 200-day MA
     const rule2 = currentSMA150 > currentSMA200
@@ -256,7 +293,7 @@ class MinerviniTemplateAdvanced {
       score: rule2Score,
     };
     totalScore += rule2Score;
-    if (rule2) reasoning.push('Rule 2: Price above rising 200-day SMA (long-term trend)');
+    if (rule2) reasoning.push('Rule 2: 150-day SMA > 200-day SMA (trend hierarchy)');
 
     // --- RULE 3: 200-day MA trending up for ≥1 month
     const rule3 = currentSMA200 > prevSMA200 && currentSMA150 > prevSMA150 && sma200Slope > 0.01 && sma150Slope > 0.01;
@@ -290,8 +327,12 @@ class MinerviniTemplateAdvanced {
 
     // --- RULE 6: Price ≥ 30% above 52-week low
     const distanceFromLow = (currentPrice - lowMaxWeek) / lowMaxWeek;
+    console.log(`  🏛️ TEMPLATE: Distance from 52-week low: ${(distanceFromLow * 100).toFixed(2)}%`);
     let rule6 = distanceFromLow >= thresholds.low_distance_threshold;
+    console.log(`low_distance_threshold: ${thresholds.low_distance_threshold}`);
+    console.log(`  🏛️ TEMPLATE: Rule 6 passed: ${rule6}`);
     let rule6Score = rule6 ? Math.min(1.0, distanceFromLow / 0.5) : 0.0;
+    console.log(rule6Score)
     criteria.criterion6 = {
       passed: rule6,
       score: rule6Score,
@@ -335,18 +376,49 @@ class MinerviniTemplateAdvanced {
 
     //*******************Entry Criteria *******************/
 
-    // --- RULE 9: Volume ≥ 50% above avgage on breakout day
-    const volumeAnalysis = this.analyzeBreakoutVolume(dailyData, currentPrice, thresholds);
-    const hasVolumeBreakout = volumeAnalysis.hasVolumeBreakout;
-    const volumeScore = hasVolumeBreakout
-      ? Math.min(1.0, volumeAnalysis.volumeRatio / 2.0)
-      : volumeAnalysis.volumeRatio / thresholds.volume_multiplier;
-    criteria.volume = {
-      passed: hasVolumeBreakout,
-      value: volumeAnalysis.volumeRatio,
-      score: volumeScore,
-    };
-    if (hasVolumeBreakout) reasoning.push(`Rule 9: Breakout bar had ${volumeAnalysis.volumeRatio.toFixed(2)}x volume, ${volumeAnalysis.breakoutDaysAgo} bars ago`);
+      //*******************Entry Criteria *******************/
+
+  // --- RULE 9a: Volume Dry-Up (Absorption) BEFORE breakout
+  // Definition: last 5-day avg volume is <= 70% of last 20-day avg volume
+  // This is a state-based signal (supply drying up), works across caps without needing market-cap detection.
+  let hasVolumeDryUp = false;
+  let dryUpRatio = 1.0;
+  if (dailyData.length >= 25) {
+    const avg20 = this.calculateAverageVolume(dailyData.slice(-20));
+    const avg5 = this.calculateAverageVolume(dailyData.slice(-5));
+    dryUpRatio = avg20 > 0 ? (avg5 / avg20) : 1.0;
+    hasVolumeDryUp = dryUpRatio <= 0.70;
+  }
+
+  criteria.volumeDryUp = {
+    passed: hasVolumeDryUp,
+    value: dryUpRatio,
+    score: hasVolumeDryUp ? 1.0 : Math.max(0, 1.0 - (dryUpRatio - 0.70) * 2) // gentle penalty if slightly above
+  };
+
+  if (hasVolumeDryUp) {
+    reasoning.push(`✅ Volume dry-up (absorption): 5D/20D avg vol = ${(dryUpRatio).toFixed(2)} (≤ 0.70)`);
+  } else {
+    reasoning.push(`⚠️ No volume dry-up: 5D/20D avg vol = ${(dryUpRatio).toFixed(2)} (> 0.70)`);
+  }
+
+  // --- RULE 9b: Volume Expansion (Participation) near breakout
+  // Definition: max volume in last 3 bars >= 1.3x the 10-day average volume
+  // This avoids requiring a single “explosion” day and works better for large caps.
+  const volumeExpansion = this.analyzeBreakoutVolume(dailyData, currentPrice, thresholds);
+  const hasVolumeExpansion = volumeExpansion.hasVolumeBreakout;
+
+  criteria.volumeExpansion = {
+    passed: hasVolumeExpansion,
+    value: volumeExpansion.volumeRatio,
+    score: hasVolumeExpansion ? Math.min(1.0, volumeExpansion.volumeRatio / 2.0) : Math.max(0, volumeExpansion.volumeRatio / 1.3)
+  };
+
+  if (hasVolumeExpansion) {
+    reasoning.push(`✅ Volume expansion: ${volumeExpansion.volumeRatio.toFixed(2)}x vs 10D avg, ${volumeExpansion.breakoutDaysAgo} bars ago`);
+  } else {
+    reasoning.push(`⚠️ No volume expansion: ${volumeExpansion.volumeRatio.toFixed(2)}x vs 10D avg (needs ≥ 1.30x)`);
+  }
 
     // === BREAKOUT QUALITY DETECTION (Rule 7 extension)
     const latestCandle = dailyData[dailyData.length - 1];
@@ -354,13 +426,13 @@ class MinerviniTemplateAdvanced {
     const closeInTop30 = (latestCandle.close >= latestCandle.low + 0.7 * candleRange);
 
     const breakoutScore =
-      (hasVolumeBreakout ? 0.4 : 0) +
+      (hasVolumeExpansion ? 0.4 : 0) +
       (closeInTop30 ? 0.3 : 0) +
       (rule7 ? 0.3 : 0);
     const breakoutQualityPassed = breakoutScore >= 0.6;
     const breakoutQualityReason = [];
     if (!rule7) breakoutQualityReason.push("Price did not break base resistance or isn't near 52-week high");
-    if (!hasVolumeBreakout) breakoutQualityReason.push("No volume breakout");
+    if (!hasVolumeExpansion) breakoutQualityReason.push("No volume expansion (≥1.3x vs 10D avg within last 3 bars)");
     if (!closeInTop30) breakoutQualityReason.push("Close not in top 30% of range");
 
     criteria.breakoutQuality = {
@@ -382,23 +454,8 @@ class MinerviniTemplateAdvanced {
     const vcpContractionScore = this.detectVcpContraction(last30); // now returns 0-1 score
     const vcpContraction = vcpContractionScore >= 0.3; // treat 3+ steps as "present"
 
-    // Volume Dry-Up: use median volume, compare first 15 vs last 15, and last 5 vs 20
-    function median(arr) {
-      if (!arr || arr.length === 0) return 0;
-      const sorted = [...arr].sort((a, b) => a - b);
-      const mid = Math.floor(sorted.length / 2);
-      return sorted.length % 2 === 0
-        ? (sorted[mid - 1] + sorted[mid]) / 2
-        : sorted[mid];
-    }
-    const firstHalfVol = volumes.slice(0, 15);
-    const lastHalfVol = volumes.slice(15);
-    const medianVolFirstHalf = median(firstHalfVol);
-    const medianVolLastHalf = median(lastHalfVol);
-    const medianVolLast5 = median(volumes.slice(-5));
-    const medianVolLast20 = median(volumes.slice(-20));
-    // For dry-up: last15 median < 70% of first15 median, AND last5 median < 70% of last20 median
-    const volumeDryUp = (medianVolLastHalf < medianVolFirstHalf * 0.7) && (medianVolLast5 < medianVolLast20 * 0.7);
+    // Volume Dry-Up (reuse Rule 9a): supply contraction during base
+    const volumeDryUp = hasVolumeDryUp;
 
     // Pattern Quality Weighted Score
     const patternQualityScore =
@@ -421,10 +478,7 @@ class MinerviniTemplateAdvanced {
         vcpContraction: { score: vcpContractionScore },
         volumeDryUp: {
           value: volumeDryUp,
-          medianVolFirstHalf,
-          medianVolLastHalf,
-          medianVolLast5,
-          medianVolLast20
+          dryUpRatio
         },
         scoreBreakdown: {
           tightBase: tightBase ? 0.3 : 0,
@@ -452,16 +506,6 @@ class MinerviniTemplateAdvanced {
     } else {
       reasoning.push(
         `⚠️ No VCP contraction: Score ${(vcpContractionScore).toFixed(2)} (<0.3 threshold)`
-      );
-    }
-
-    if (volumeDryUp) {
-      reasoning.push(
-        `✅ Volume dry-up confirmed: Median last 15/first 15 = ${medianVolLastHalf}/${medianVolFirstHalf}, last 5/20 = ${medianVolLast5}/${medianVolLast20}`
-      );
-    } else {
-      reasoning.push(
-        `⚠️ No clear volume dry-up: Median`
       );
     }
 
@@ -574,8 +618,7 @@ class MinerviniTemplateAdvanced {
     let patternQuality = criteria.patternQuality?.passed;
 
     let decision = 'REJECTED';
-    if (rule1 && rule2 && rule3 && rule4 && rule6 && rule7 && rule8 && confidence >= 0.85 &&
-      volumeQuality && (patternQuality || breakoutQualityPassed)
+    if (rule1 && rule2 && rule3 && rule4 && rule6 && rule7 && rule8 && confidence >= 0.85
     ) {
       decision = 'BUY';
     } else if (passedRules >= 6) {
@@ -603,17 +646,17 @@ class MinerviniTemplateAdvanced {
     if (!rule6) reasoning.push("Rule 6 : Price is less than 30% above 52-week low.");
     if (!rule7) reasoning.push("Rule 7 : Price is not within 25% of 52-week high or did not break key resistance.");
     if (!rule8) reasoning.push("Rule 8 : Relative Strength momentum is below threshold.");
-    if (!breakoutQualityPassed) reasoning.push("Breakout quality did not meet 3-point validation (volume, resistance, close strength).");
+    if (!breakoutQualityPassed) reasoning.push("Breakout quality did not meet 3-point validation (expansion, resistance, close strength).");
 
     // Compose reasoning
     let finalConfidence = confidence;
     let decisionReasoning = reasoning.join('; ');
     if (decision === 'BUY') {
       finalConfidence = Math.max(0.9, confidence);
-      decisionReasoning = `BUY candidate: Key Minervini rules (1,2,3,4,6,7) passed. ${decisionReasoning}`;
+      decisionReasoning = `BUY candidate: Template rules passed + entry filters confirmed (volume expansion + breakout/pattern quality). ${decisionReasoning}`;
     } else if (decision === 'WATCH') {
       finalConfidence = Math.max(0.6, confidence);
-      decisionReasoning = `WATCH candidate: ${passedRules}/8 rules passed. ${decisionReasoning}`;
+      decisionReasoning = `WATCH candidate: ${passedRules}/8 Template rules passed, but BUY entry filters not met (volume expansion and/or breakout quality/pattern quality). ${decisionReasoning}`;
     } else {
       decision = 'AVOID';
       finalConfidence = Math.max(0.2, confidence * 0.8);
@@ -655,7 +698,7 @@ class MinerviniTemplateAdvanced {
 
     // Structural/ATR stop logic with 8% max cap
     const candidateStopLoss = bufferedSupport || Math.min(percentStop, atrStop);
-    const maxAllowedStop = currentPrice * 0.92; // 8% max stop
+    const maxAllowedStop = currentPrice * 0.94; // 6% max stop
     const stopLoss = Math.max(candidateStopLoss, maxAllowedStop);
 
     const stopDistance = stopLoss > 0 ? Number(((currentPrice - stopLoss) / currentPrice) * 100).toFixed(2) : 0;
@@ -1336,42 +1379,34 @@ class MinerviniTemplateAdvanced {
    */
   analyzeBreakoutVolume(dailyData, currentPrice, thresholds) {
     try {
-      if (dailyData.length < 60) {
+      // Detect PARTICIPATION (volume expansion) within last 3 bars
+      // Criteria: max volume in last 3 bars >= 1.3x the 10-day average volume
+      if (!dailyData || dailyData.length < 15) {
         return { hasVolumeBreakout: false, volumeRatio: 1.0, breakoutDaysAgo: 0 };
       }
 
-      // Calculate 50-day average volume
-      const avgVolume = this.calculateAverageVolume(dailyData.slice(-50));
-      // console.log(`  🔍 Avg 50-day volume: ${avgVolume.toLocaleString()}`);
+      const last10 = dailyData.slice(-10);
+      const last3 = dailyData.slice(-3);
 
-      // Look for recent price breakouts (within last 10 days)
-      const recentData = dailyData.slice(-10);
-      const priorHigh = Math.max(...dailyData.slice(-30, -10).map(d => d.high));
+      const avg10 = this.calculateAverageVolume(last10);
+      const vols3 = last3.map(d => d.volume || 0);
+      const maxVol3 = Math.max(...vols3);
 
-      let bestBreakout = { hasBreakout: false, volumeRatio: 1.0, daysAgo: 0 };
+      const volumeRatio = avg10 > 0 ? (maxVol3 / avg10) : 1.0;
+      const threshold = 1.3; // works better across large caps than 1.6x on 50D avg
+      const hasExpansion = volumeRatio >= threshold;
 
-      for (let i = recentData.length - 1; i >= 0; i--) {
-        const candle = recentData[i];
-        const isPriceBreakout = candle.close > priorHigh;
-        const volumeRatio = candle.volume / avgVolume;
-        const isVolumeBreakout = volumeRatio >= thresholds.volume_multiplier;
-        if (isPriceBreakout && isVolumeBreakout) {
-          bestBreakout = {
-            hasBreakout: true,
-            volumeRatio: volumeRatio,
-            daysAgo: recentData.length - 1 - i
-          };
-          break;
-        }
-      }
+      // how many bars ago the max volume occurred (0 = latest bar)
+      const idx = vols3.lastIndexOf(maxVol3);
+      const breakoutDaysAgo = (last3.length - 1) - idx;
 
       return {
-        hasVolumeBreakout: bestBreakout.hasBreakout,
-        volumeRatio: bestBreakout.volumeRatio,
-        breakoutDaysAgo: bestBreakout.daysAgo
+        hasVolumeBreakout: hasExpansion,
+        volumeRatio,
+        breakoutDaysAgo
       };
     } catch (error) {
-      console.warn('Volume breakout analysis error:', error.message);
+      console.warn('Volume expansion analysis error:', error.message);
       return { hasVolumeBreakout: false, volumeRatio: 1.0, breakoutDaysAgo: 0 };
     }
   }
