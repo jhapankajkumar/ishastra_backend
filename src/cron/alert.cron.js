@@ -32,7 +32,7 @@ class AlertCron {
         console.log('🚨 Starting Alert Cron...');
 
         const alertJob = cron.schedule(
-            '*/2 * * * 1-6',  // every 5 min, Mon–Sat
+            '*/30 * * * 1-6',  // every 30 min, Mon–Sat
             async () => {
                 const now = moment().tz('Asia/Singapore');
                 const day = now.day(); // Sunday=0, Monday=1 ... Saturday=6

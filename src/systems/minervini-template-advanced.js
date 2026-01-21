@@ -149,7 +149,7 @@ class MinerviniTemplateAdvanced {
       const signalQuality = this.calculateSignalQuality(stabilizedDecision.confidence, templateAnalysis);
 
       // Build execution plan
-      const execution = this.buildExecutionPlan(stabilizedDecision, riskAssessment, templateAnalysis, entryPrice, capital, completedDaily, indicators);
+      const execution = this.buildExecutionPlan(stabilizedDecision, riskAssessment, templateAnalysis, entryPrice, capital, symbol, completedDaily, indicators);
 
       // Calculate unified display grade (Template + Signal combined for user display)
       const unifiedGrade = this.calculateUnifiedDisplayGrade(templateAnalysis, signalQuality.grade);
@@ -698,7 +698,7 @@ class MinerviniTemplateAdvanced {
 
     // Structural/ATR stop logic with 8% max cap
     const candidateStopLoss = bufferedSupport || Math.min(percentStop, atrStop);
-    const maxAllowedStop = currentPrice * 0.94; // 6% max stop
+    const maxAllowedStop = currentPrice * 0.95; // 5% max stop
     const stopLoss = Math.max(candidateStopLoss, maxAllowedStop);
 
     const stopDistance = stopLoss > 0 ? Number(((currentPrice - stopLoss) / currentPrice) * 100).toFixed(2) : 0;
@@ -971,7 +971,7 @@ class MinerviniTemplateAdvanced {
 
     //Making maximum position size 10% of capital for risk management
     riskPercent = 1.0;
-    maxPosition = 10;
+    maxPosition = 20;
     let shares = 0;
     let positionValue = 0;
     let riskAmount = 0;

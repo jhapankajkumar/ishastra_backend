@@ -73,7 +73,7 @@ const getCapitalByCurrency = async (req, res) => {
       error: error.message
     });
   }
-};
+}; 
 
 /**
  * Update/Reset capital for a specific currency
@@ -123,6 +123,104 @@ const updateCapital = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to update capital',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Add capital for a specific currency while preserving allocated funds
+ */
+const addCapital = async (req, res) => {
+  try {
+    const { currency } = req.params;
+    const { amount } = req.body;
+
+    if (!currency) {
+      return res.status(400).json({
+        success: false,
+        message: 'Currency parameter is required'
+      });
+    }
+
+    const parsedAmount = parseFloat(amount);
+    if (!parsedAmount || parsedAmount <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Amount must be greater than 0'
+      });
+    }
+
+    const updatedCapital = await CapitalManager.addCapital(currency, parsedAmount);
+    const allocated = updatedCapital.total - updatedCapital.remaining;
+    const utilizationRate = updatedCapital.total > 0 ? (allocated / updatedCapital.total) * 100 : 0;
+
+    res.json({
+      success: true,
+      message: `Added capital successfully for ${currency.toUpperCase()}`,
+      data: {
+        currency: updatedCapital.currency,
+        total: updatedCapital.total,
+        remaining: updatedCapital.remaining,
+        allocated,
+        utilizationRate: parseFloat(utilizationRate.toFixed(2)),
+        updatedAt: updatedCapital.updatedAt
+      }
+    });
+  } catch (error) {
+    console.error(`Error adding capital for ${req.params.currency}:`, error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to add capital',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Remove capital for a specific currency ensuring allocated funds remain untouched
+ */
+const removeCapital = async (req, res) => {
+  try {
+    const { currency } = req.params;
+    const { amount } = req.body;
+
+    if (!currency) {
+      return res.status(400).json({
+        success: false,
+        message: 'Currency parameter is required'
+      });
+    }
+
+    const parsedAmount = parseFloat(amount);
+    if (!parsedAmount || parsedAmount <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Amount must be greater than 0'
+      });
+    }
+
+    const updatedCapital = await CapitalManager.removeCapital(currency, parsedAmount);
+    const allocated = updatedCapital.total - updatedCapital.remaining;
+    const utilizationRate = updatedCapital.total > 0 ? (allocated / updatedCapital.total) * 100 : 0;
+
+    res.json({
+      success: true,
+      message: `Removed capital successfully for ${currency.toUpperCase()}`,
+      data: {
+        currency: updatedCapital.currency,
+        total: updatedCapital.total,
+        remaining: updatedCapital.remaining,
+        allocated,
+        utilizationRate: parseFloat(utilizationRate.toFixed(2)),
+        updatedAt: updatedCapital.updatedAt
+      }
+    });
+  } catch (error) {
+    console.error(`Error removing capital for ${req.params.currency}:`, error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to remove capital',
       error: error.message
     });
   }
@@ -202,6 +300,8 @@ const checkCapitalAvailability = async (req, res) => {
 module.exports = {
   getAllCapital,
   getCapitalByCurrency,
+  addCapital,
+  removeCapital,
   updateCapital,
   initializeCapital,
   checkCapitalAvailability

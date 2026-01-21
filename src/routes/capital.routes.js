@@ -3,6 +3,8 @@ const router = express.Router();
 const {
   getAllCapital,
   getCapitalByCurrency,
+  addCapital,
+  removeCapital,
   updateCapital,
   initializeCapital,
   checkCapitalAvailability
@@ -30,6 +32,14 @@ router.get('/:currency', getCapitalByCurrency);
 // POST /api/capital/initialize - Initialize capital records
 // Body: { initialCapitals: [{ currency: 'USD', total: 20000 }, { currency: 'INR', total: 2000000 }] }
 router.post('/initialize', initializeCapital);
+
+// POST /api/capital/:currency/add - Add capital for a currency
+// Body: { amount: number }
+router.post('/:currency/add', addCapital);
+
+// POST /api/capital/:currency/remove - Remove capital for a currency
+// Body: { amount: number }
+router.post('/:currency/remove', removeCapital);
 
 // PUT /api/capital/:currency - Update/Reset capital for a currency
 // Body: { total: number, adjustRemaining?: boolean }

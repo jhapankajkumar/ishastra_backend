@@ -6,10 +6,43 @@ const CapitalManager = require('../utils/capitalManager');
 const { getQuote } = require('../yahoo');
 const { re } = require('mathjs');
 
-// Get all trades with related data
+// Get all trades with related data (optionally filter by paper trade flag)
+// /trades?isPaperTrade=true|false
 exports.getAllTrades = async (req, res) => {
   try {
+    const { isPaperTrade } = req.query;
+    console.log('🔍 Get All Trades - isPaperTrade Query Param:', isPaperTrade);
+    // Build Prisma where clause only when query param is provided
+    const where = {};
+    where.isPaperTrade = false; // Default to real trades
+    if (typeof isPaperTrade !== 'undefined') {
+      // Accept boolean directly
+      if (typeof isPaperTrade === 'boolean') {
+        where.isPaperTrade = isPaperTrade;
+      }
+      // Accept string values (Express commonly provides query params as strings)
+      else if (typeof isPaperTrade === 'string' && isPaperTrade.trim() !== '') {
+        const normalized = isPaperTrade.trim().toLowerCase();
+        if (normalized === 'true' || normalized === '1') {
+          where.isPaperTrade = true;
+        } else if (normalized === 'false' || normalized === '0') {
+          where.isPaperTrade = false;
+        } else {
+          return res.status(400).json({
+            error: 'Invalid isPaperTrade query param. Use true/false (or 1/0).'
+          });
+        }
+      }
+      // Any other type is invalid
+      else {
+        return res.status(400).json({
+          error: 'Invalid isPaperTrade query param. Use true/false.'
+        });
+      }
+    }
+
     const trades = await prisma.trade.findMany({
+      where,
       include: {
         tradeFills: true,
         tradeImages: true
@@ -125,6 +158,7 @@ exports.createTrade = async (req, res) => {
         tradeSetupId: req.body.tradeSetup ? Number(req.body.tradeSetup) : 0,
         status: "Open",
         notes: req.body.notes || null,
+        isPaperTrade: req.body.isPaperTrade || false,
         systemAnalysisResult: req.body.systemAnalysisResult || null
       }
     });

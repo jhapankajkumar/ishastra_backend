@@ -125,6 +125,82 @@ class CapitalManager {
   }
 
   /**
+   * Add new capital without changing allocated funds
+   * @param {string} currency - 'USD' or 'INR'
+   * @param {number} amount - Amount to add
+   * @returns {Promise<Object>} Updated capital object
+   */
+  static async addCapital(currency, amount) {
+    try {
+      const upperCurrency = currency.toUpperCase();
+
+      if (!amount || amount <= 0) {
+        throw new Error('Amount must be greater than 0');
+      }
+
+      const currentCapital = await this.getCapital(upperCurrency);
+      if (!currentCapital) {
+        throw new Error(`Capital record not found for currency: ${upperCurrency}`);
+      }
+
+      const updatedCapital = await prisma.capital.update({
+        where: { currency: upperCurrency },
+        data: {
+          total: currentCapital.total + amount,
+          remaining: currentCapital.remaining + amount,
+          updatedAt: new Date()
+        }
+      });
+
+      return updatedCapital;
+    } catch (error) {
+      console.error(`Error adding capital for ${currency}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Remove capital ensuring allocated funds remain untouched
+   * @param {string} currency - 'USD' or 'INR'
+   * @param {number} amount - Amount to remove
+   * @returns {Promise<Object>} Updated capital object
+   */
+  static async removeCapital(currency, amount) {
+    try {
+      const upperCurrency = currency.toUpperCase();
+
+      if (!amount || amount <= 0) {
+        throw new Error('Amount must be greater than 0');
+      }
+
+      const currentCapital = await this.getCapital(upperCurrency);
+      if (!currentCapital) {
+        throw new Error(`Capital record not found for currency: ${upperCurrency}`);
+      }
+
+      if (amount > currentCapital.remaining) {
+        throw new Error(
+          `Cannot remove more than available remaining capital. Available: ${currentCapital.remaining} ${upperCurrency}`
+        );
+      }
+
+      const updatedCapital = await prisma.capital.update({
+        where: { currency: upperCurrency },
+        data: {
+          total: currentCapital.total - amount,
+          remaining: currentCapital.remaining - amount,
+          updatedAt: new Date()
+        }
+      });
+
+      return updatedCapital;
+    } catch (error) {
+      console.error(`Error removing capital for ${currency}:`, error);
+      throw error;
+    }
+  }
+
+  /**
    * Update total capital for a currency
    * @param {string} currency - 'USD' or 'INR'
    * @param {number} newTotal - New total amount
@@ -305,7 +381,13 @@ class CapitalManager {
           });
           //console.log(`✅ Initialized ${capitalData.currency} capital with ${capitalData.total}`);
         } else {
-          //console.log(`ℹ️  ${capitalData.currency} capital already exists`);
+          await prisma.capital.update({
+            where: { currency: capitalData.currency.toUpperCase() },
+            data: {
+              total: capitalData.total,
+              remaining: capitalData.total
+            }
+          });
         }
       }
     } catch (error) {
