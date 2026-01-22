@@ -158,7 +158,7 @@ exports.createTrade = async (req, res) => {
         tradeSetupId: req.body.tradeSetup ? Number(req.body.tradeSetup) : 0,
         status: "Open",
         notes: req.body.notes || null,
-        isPaperTrade: req.body.isPaperTrade || false,
+        isPaperTrade: false,
         systemAnalysisResult: req.body.systemAnalysisResult || null
       }
     });
