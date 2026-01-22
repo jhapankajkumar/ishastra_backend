@@ -149,7 +149,7 @@ class MinerviniTemplateAdvanced {
       const signalQuality = this.calculateSignalQuality(stabilizedDecision.confidence, templateAnalysis);
 
       // Build execution plan
-      const execution = this.buildExecutionPlan(stabilizedDecision, riskAssessment, templateAnalysis, entryPrice, capital, symbol, completedDaily, indicators);
+      const execution = this.buildExecutionPlan(stabilizedDecision, riskAssessment, templateAnalysis, entryPrice, capital, completedDaily, indicators);
 
       // Calculate unified display grade (Template + Signal combined for user display)
       const unifiedGrade = this.calculateUnifiedDisplayGrade(templateAnalysis, signalQuality.grade);
@@ -327,10 +327,10 @@ class MinerviniTemplateAdvanced {
 
     // --- RULE 6: Price ≥ 30% above 52-week low
     const distanceFromLow = (currentPrice - lowMaxWeek) / lowMaxWeek;
-    console.log(`  🏛️ TEMPLATE: Distance from 52-week low: ${(distanceFromLow * 100).toFixed(2)}%`);
+    // console.log(`  🏛️ TEMPLATE: Distance from 52-week low: ${(distanceFromLow * 100).toFixed(2)}%`);
     let rule6 = distanceFromLow >= thresholds.low_distance_threshold;
-    console.log(`low_distance_threshold: ${thresholds.low_distance_threshold}`);
-    console.log(`  🏛️ TEMPLATE: Rule 6 passed: ${rule6}`);
+    // console.log(`low_distance_threshold: ${thresholds.low_distance_threshold}`);
+    // console.log(`  🏛️ TEMPLATE: Rule 6 passed: ${rule6}`);
     let rule6Score = rule6 ? Math.min(1.0, distanceFromLow / 0.5) : 0.0;
     console.log(rule6Score)
     criteria.criterion6 = {

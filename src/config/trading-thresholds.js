@@ -45,64 +45,6 @@ const THRESHOLD_CONFIGS = {
       buy_allowed_cascades: ['A+', 'A']
     }
   },
-  
-  // 📊 SELECTIVE: Balanced approach (target: 5-15 signals from 25 stocks)
-  SELECTIVE: {
-    name: 'Selective',
-    description: 'Balanced approach, moderate signals',
-    
-    minervini_template_advanced: {
-      // MODERATE Criteria thresholds (75% of ULTRA - balanced)
-      high_proximity_threshold: 0.20,  // 20% from 52-week high (75% of 15% = relaxed to 20%)
-      low_distance_threshold: 0.30,    // 30% above 52-week low (75% of 40% = 30%)
-      relative_strength: 65,           // 65 RS (75% of 80 = 60, rounded to 65)
-      volume_multiplier: 1.6,          // 1.6x volume (75% of 2.0 = 1.5, rounded to 1.6)
-      fundamental_score: 60,           // 60 score (75% of 75 = 56, rounded to 60)
-
-      // MODERATE Decision thresholds
-      buy_min_score: 0.75,                        // 75%+ required for BUY (75% of 85% = 64%, rounded to 75%)
-      watch_min_score: 0.60,                      // 60%+ required for WATCH (75% of 70% = 53%, rounded to 60%)
-      
-      // MODERATE Grade boundaries
-      grade_A_plus: 0.85,                         // 85%+ = A+ (75% of 90% = 68%, but keep reasonable at 85%)
-      grade_A: 0.75,                              // 75%+ = A (75% of 85% = 64%, rounded to 75%)
-      grade_B_plus: 0.65,                         // 65%+ = B+ (75% of 75% = 56%, rounded to 65%)
-      grade_B: 0.55,                              // 55%+ = B (75% of 65% = 49%, rounded to 55%)
-      grade_C: 0.45,                              // 45%+ = C (75% of 55% = 41%, rounded to 45%)
-      
-      // A+ and A grades can BUY
-      buy_allowed_grades: ['A+', 'A', 'B+']
-    }
-  },
-  
-  // 🌊 RELAXED: More opportunities (target: 15-25 signals from 25 stocks)
-  RELAXED: {
-    name: 'Relaxed',
-    description: 'More opportunities, higher signal count',
-    
-    minervini_template_advanced: {
-      // TIGHTENED RELAXED Criteria thresholds (85% of SELECTIVE instead of 60%)
-      high_proximity_threshold: 0.30,  // 30% from 52-week high (reasonable relaxed value)
-      low_distance_threshold: 0.25,    // 25% above 52-week low (85% of 30% = 25.5%, rounded to 25%)
-      relative_strength: 55,           // 55 RS (85% of 65 = 55)
-      volume_multiplier: 1.4,          // 1.4x volume (85% of 1.6 = 1.36, rounded to 1.4)
-      fundamental_score: 50,           // 50 score (85% of 60 = 51, rounded to 50)
-
-      // TIGHTENED RELAXED Decision thresholds
-      buy_min_score: 0.65,                        // 65%+ required for BUY (TIGHTENED from 60%)
-      watch_min_score: 0.50,                      // 50%+ required for WATCH (TIGHTENED from 45%)
-      
-      // TIGHTENED RELAXED Grade boundaries
-      grade_A_plus: 0.80,                         // 80%+ = A+ (TIGHTENED from 75%)
-      grade_A: 0.70,                              // 70%+ = A (TIGHTENED from 65%)
-      grade_B_plus: 0.60,                         // 60%+ = B+ (TIGHTENED from 55%)
-      grade_B: 0.50,                              // 50%+ = B (TIGHTENED from 45%)
-      grade_C: 0.40,                              // 40%+ = C (TIGHTENED from 35%)
-      
-      // A+, A, and B+ grades can BUY (for more opportunities in RELAXED)
-      buy_allowed_grades: ['A+', 'A', 'B+']
-    }
-  }
 };
 
 /**
