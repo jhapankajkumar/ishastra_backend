@@ -11,7 +11,7 @@ const { re } = require('mathjs');
 exports.getAllTrades = async (req, res) => {
   try {
     const { isPaperTrade } = req.query;
-    console.log('🔍 Get All Trades - isPaperTrade Query Param:', isPaperTrade);
+    // console.log('🔍 Get All Trades - isPaperTrade Query Param:', isPaperTrade);
     // Build Prisma where clause only when query param is provided
     const where = {};
     where.isPaperTrade = false; // Default to real trades
@@ -79,6 +79,7 @@ exports.createTrade = async (req, res) => {
     const currency = req.body.currency || "INR"; // Default to INR if not specified
     const entryPrice = Number(req.body.entryPrice)
     const quantity = Number(req.body.quantity);
+    const entryCommission = req.body.entryCommission ? Number(req.body.entryCommission) : 0
     // Generate a unique professional trade ID
     let professionalTradeId;
     let isUnique = false;
@@ -154,7 +155,7 @@ exports.createTrade = async (req, res) => {
 
         //Entry Details
         reasonForEntry: req.body.reasonForEntry,
-        entryCommission: req.body.entryCommission ? Number(req.body.entryCommission) : 0,
+        entryCommission: entryCommission,
         tradeSetupId: req.body.tradeSetup ? Number(req.body.tradeSetup) : 0,
         status: "Open",
         notes: req.body.notes || null,
@@ -232,11 +233,19 @@ exports.updateTradeExit = async (req, res) => {
   try {
     const { id } = req.params;
     const {
-      exitDate, exitOrderPrice, exitQuantity, reasonForExit, exitTactic
+      exitDate,
+      exitOrderPrice,
+      exitQuantity,
+      reasonForExit,
+      exitTactic
     } = req.body;
-
+    const exitCommission = req.body.exitCommission ? Number(req.body.exitCommission) : 0;
     if (!exitDate) {
       return res.status(400).json({ error: "Missing exit date" });
+    }
+
+    if (Number.isNaN(exitCommission) || exitCommission < 0) {
+      return res.status(400).json({ error: "Exit commission must be a non-negative number" });
     }
 
     const tradeId = Number(id);
@@ -252,6 +261,7 @@ exports.updateTradeExit = async (req, res) => {
 
     const exitQty = Number(exitQuantity) || currentTrade.remainingQuantity || currentTrade.quantity;
     const remainingAfterExit = (currentTrade.remainingQuantity || currentTrade.quantity) - exitQty;
+    const entryPrice = currentTrade.entryPrice;
     const exitPrice = Number(exitOrderPrice);
 
     // Validate exit quantity
@@ -264,10 +274,9 @@ exports.updateTradeExit = async (req, res) => {
     }
 
     // Calculate capital to release for this exit
-    const releaseAmount = CapitalManager.calculateTradeAmount(exitPrice, exitQty);
+    const releaseAmount = CapitalManager.calculateTradeAmount(entryPrice, exitQty);
     const currency = currentTrade.currency || 'USD';
 
-    console.log(`💰 Releasing capital for partial exit: ${releaseAmount} ${currency || 'USD'}`);
     // Create transaction record
     await prisma.tradeTransaction.create({
       data: {
@@ -282,7 +291,9 @@ exports.updateTradeExit = async (req, res) => {
     });
 
     // Release capital for the exited position
-    await CapitalManager.releaseCapital(currency, releaseAmount);
+    if (releaseAmount > 0) {
+      await CapitalManager.releaseCapital(currency, releaseAmount);
+    }
 
     // Determine new status
     let newStatus = "Open";
@@ -293,17 +304,21 @@ exports.updateTradeExit = async (req, res) => {
     }
 
     // Update the main trade record
+    const existingExitCommission = currentTrade.exitCommission ?? 0;
     const updateData = {
       remainingQuantity: remainingAfterExit,
       status: newStatus,
       reasonForExit: reasonForExit,
       exitTacticId: exitTactic ? Number(exitTactic) : null,
+      exitCommission: existingExitCommission + exitCommission,
     };
 
     // If this is a complete exit, set exit fields
     if (remainingAfterExit === 0) {
       updateData.exitDate = new Date(exitDate);
       updateData.exitPrice = exitPrice;
+      updateData.reasonForExit = reasonForExit;
+      updateData.exitTacticId = exitTactic ? Number(exitTactic) : null;
     }
 
     const trade = await prisma.trade.update({
@@ -325,7 +340,6 @@ exports.updateTradeExit = async (req, res) => {
       );
     }
 
-    //console.log(`✅ Trade exit processed with capital release: ${releaseAmount} ${currency}`);
 
     res.json({
       ...trade,
@@ -355,12 +369,18 @@ exports.partialExitTrade = async (req, res) => {
   try {
     const { id } = req.params;
     const {
-      exitDate, exitOrderPrice, exitQuantity, reasonForExit, exitTactic
+      exitDate,
+      exitOrderPrice,
+      exitQuantity,
+      reasonForExit,
+      exitTactic
     } = req.body;
 
+    const entryCommission = req.body.entryCommission ? Number(req.body.entryCommission) : 0;
     if (!exitDate || !exitOrderPrice || !exitQuantity) {
       return res.status(400).json({ error: "Missing required fields: exitDate, exitOrderPrice, exitQuantity" });
     }
+
 
     const tradeId = Number(id);
     const exitQty = Number(exitQuantity);
@@ -377,6 +397,7 @@ exports.partialExitTrade = async (req, res) => {
 
     const currentRemaining = currentTrade.remainingQuantity ?? currentTrade.quantity;
     const remainingAfterExit = currentRemaining - exitQty;
+    const entryPrice = currentTrade.entryPrice;
 
     // Validate exit quantity
     if (exitQty <= 0) {
@@ -388,8 +409,11 @@ exports.partialExitTrade = async (req, res) => {
     }
 
     // Calculate capital to release for this exit
-    const releaseAmount = CapitalManager.calculateTradeAmount(exitPrice, exitQty);
-    console.log(`💰 Releasing capital for partial exit: ${releaseAmount} ${currentTrade.currency || 'USD'}`);
+    const releaseAmount = CapitalManager.calculateTradeAmount(entryPrice, exitQty);
+    if (exitCommission > releaseAmount) {
+      return res.status(400).json({ error: "Exit commission cannot exceed exit amount" });
+    }
+
     const currency = currentTrade.currency || 'USD';
 
     // Create transaction record
@@ -417,9 +441,11 @@ exports.partialExitTrade = async (req, res) => {
     }
 
     // Update the main trade record
+    const existingExitCommission = currentTrade.exitCommission ?? 0;
     const updateData = {
       remainingQuantity: remainingAfterExit,
       status: newStatus,
+      exitCommission: existingExitCommission + exitCommission,
     };
 
     // If this is a complete exit, set exit fields
@@ -448,8 +474,6 @@ exports.partialExitTrade = async (req, res) => {
         )
       );
     }
-
-    //console.log(`✅ Partial trade exit processed with capital release: ${releaseAmount} ${currency}`);
 
     res.json({
       ...trade,

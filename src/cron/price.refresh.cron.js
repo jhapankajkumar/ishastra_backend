@@ -13,16 +13,16 @@ class PriceRefreshCron {
 
         // Run every 15 seconds
         const refreshTradeJob = cron.schedule(
-            '*/15 * * * * 1-5',
+            '*/30 * * * * 1-5',
             async () => {
                 const now = moment().tz('America/New_York');
                 const hour = now.hour();
                 const minute = now.minute();
 
-                const minutes = hour * 60 + minute;
-                const openMin = 4 * 60;          // 04:00
-                const closeMin = 20 * 60;        // 20:00
-                if (minutes < openMin || minutes > closeMin) return;
+                // const minutes = hour * 60 + minute;
+                // const openMin = 4 * 60;          // 04:00
+                // const closeMin = 20 * 60;        // 20:00
+                // if (minutes < openMin || minutes > closeMin) return;
                 await refreshTradePrices();
             },
             {
