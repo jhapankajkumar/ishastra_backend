@@ -32,24 +32,13 @@ class AlertCron {
         console.log('🚨 Starting Alert Cron...');
 
         const alertJob = cron.schedule(
-            '*/30 * * * 1-6',  // every 30 min, Mon–Sat
+            '*/2 * * * 1-6',  // every 30 min, Mon–Sat
             async () => {
-                const now = moment().tz('Asia/Singapore');
-                const day = now.day(); // Sunday=0, Monday=1 ... Saturday=6
-                const hour = now.hour();
-                const minute = now.minute();
-
-                // Monday: skip before 11:00
-                if (day === 1 && hour < 11) return;
-
-                // Saturday: skip after 09:00
-                if (day === 6 && (hour > 9 || (hour === 9 && minute > 0))) return;
-
                 // Otherwise run the job
                 await this.runAlertCheck();
             },
             {
-                timezone: 'Asia/Singapore',
+                timezone: 'America/New_York',
                 scheduled: true
             }
         );
