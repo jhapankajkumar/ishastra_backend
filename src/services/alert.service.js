@@ -71,70 +71,67 @@ class AlertService {
       const entryPrice = trade.entryPrice || 0;
       const currentPrice = trade.currentPrice || entryPrice;
       let stopLoss = Number.isFinite(trade.stopLoss) ? trade.stopLoss : 0;
-      const stopLossDistance = entryPrice - stopLoss;
-      const analysisResult = trade.systemAnalysisResult ? JSON.parse(trade.systemAnalysisResult) : null;
-      const execution = analysisResult?.execution || null;
-      if (!execution) {
-        console.log(`⚠️ No execution data for trade ${trade.ticker}`);
-        continue;
+      let riskPerShare = 0;
+      if (stopLoss < entryPrice) {
+        riskPerShare = entryPrice - stopLoss;  
+      } else {
+        riskPerShare = entryPrice - (entryPrice * 0.95); //max 5% risk if stop loss is invalid
       }
-      const initialStopLoss = execution?.exitStrategy?.stopLoss?.initial || stopLoss;
-      const positionSizing = execution?.positionSizing || {};
-      const riskPerShare = entryPrice - initialStopLoss;
+      
       const rMultiple = (currentPrice - stopLoss) / (riskPerShare || 1);
-      const isAboveBreakeven = stopLoss >= entryPrice;
-      if (Number.isFinite(rMultiple) && (rMultiple >= 2.0 || (isAboveBreakeven && rMultiple >= 2.0))) {
+      if (Number.isFinite(rMultiple) && (rMultiple >= 2.0)) {
          let multiplier = 1
           if (rMultiple >= 3.0) multiplier = 2
           if (rMultiple >= 4.0) multiplier = 3
+          if (rMultiple >= 5.0) multiplier = 4
+          if (rMultiple >= 6.0) multiplier = 5
+          if (rMultiple >= 7.0) multiplier = 6
+          if (rMultiple >= 8.0) multiplier = 7
          stopLoss = stopLoss + (riskPerShare * multiplier);
-         execution.exitStrategy.stopLoss.current = stopLoss
-         analysisResult.execution = execution;
          console.log(`🔄 TEST Adjusted stop loss for ${trade.ticker} to ${stopLoss.toFixed(2)} (R=${rMultiple.toFixed(2)})`);
          await prisma.trade.update({
           where: { id: trade.id },
           data: {
-            stopLoss,
-            systemAnalysisResult: JSON.stringify(analysisResult)
+            stopLoss
           }
         });
       }
       
       // console.log(`🔔 Checking trade ${trade.ticker}: Current Price ${currentPrice}, Stop Loss ${stopLoss}, Entry ${entryPrice}`);
-      if (execution?.exitStrategy?.stopLoss?.alerted) {
-        continue; // Skip if both alerts already sent
-      }
+      // if (execution?.exitStrategy?.stopLoss?.alerted) {
+      //   continue; // Skip if both alerts already sent
+      // }
       
       let isAlerted = false;
       // ALERT 1: STOP LOSS HIT
       if (currentPrice <= stopLoss && stopLoss > 0) {
-        alerts.push({
-          type: 'STOP_HIT',
-          ticker: trade.ticker,
-          message: `🚨 ${trade.ticker} STOP HIT: Sell ${trade.quantity} shares immediately`,
-          priority: 'EMERGENCY',
-          action: 'EXIT_NOW',
-          trade: {
-            id: trade.id,
-            currentPrice,
-            stopLoss,
-            quantity: trade.quantity
-          }
-        });
-        if (execution?.exitStrategy?.stopLoss) {
-          isAlerted = true;
-          execution.exitStrategy.stopLoss.alerted = true;
-        }
+        // alerts.push({
+        //   type: 'STOP_HIT',
+        //   ticker: trade.ticker,
+        //   message: `🚨 ${trade.ticker} STOP HIT: Sell ${trade.quantity} shares immediately`,
+        //   priority: 'EMERGENCY',
+        //   action: 'EXIT_NOW',
+        //   trade: {
+        //     id: trade.id,
+        //     currentPrice,
+        //     stopLoss,
+        //     quantity: trade.quantity
+        //   }
+        // });
+        // if (execution?.exitStrategy?.stopLoss) {
+        //   isAlerted = true;
+        //   execution.exitStrategy.stopLoss.alerted = true;
+        // }
       }
 
-      if (isAlerted && (execution?.exitStrategy?.stopLoss?.alerted || execution?.exitStrategy?.targets?.alerted)) {
-        await prisma.trade.update({
-          where: { id: trade.id },
-          data: {
-            systemAnalysisResult: JSON.stringify(analysisResult)
-          }
-        });
-      }
+      // if (isAlerted && (execution?.exitStrategy?.stopLoss?.alerted || execution?.exitStrategy?.targets?.alerted)) {
+      //   await prisma.trade.update({
+      //     where: { id: trade.id },
+      //     data: {
+      //       systemAnalysisResult: JSON.stringify(analysisResult)
+      //     }
+      //   });
+      // }
     }
 
     return alerts;

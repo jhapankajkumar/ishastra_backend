@@ -11,7 +11,8 @@ const ElderTripleScreen = require('../systems/elder-triple-screen');
 const { getSimpleTechnicalData } = require('../utils/simpleTechnicalDataFetcher');
 const CapitalManager = require('../utils/capitalManager');
 const yahoo = require('../yahoo');
-
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
 class TradingSystemController {
   constructor() {
     // Initialize all trading systems
@@ -107,7 +108,21 @@ class TradingSystemController {
       let accountCapital = currency === 'INR' ? 10000000 : 100000; // Fallback
       try {
         const capitalData = await CapitalManager.getCapital(currency);
+        //remove the VOO invested 
+        const where = {};
+        where.ticker = 'VOO';
+        let etfCapital = 0;
+        const trade = await prisma.trade.findFirst({
+        where,
+        });
+
+        if(trade){
+          etfCapital = (trade.entryPrice || 0) * (trade.quantity || 0);
+        }
+
         accountCapital = capitalData ? capitalData.total : accountCapital;
+        accountCapital = accountCapital - etfCapital;
+
       } catch (error) {
         console.log(`  ⚠️ CAPITAL: Using fallback capital: $${accountCapital.toLocaleString()} (DB error: ${error.message})`);
       }
