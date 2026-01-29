@@ -376,7 +376,7 @@ exports.partialExitTrade = async (req, res) => {
       exitTactic
     } = req.body;
 
-    const entryCommission = req.body.entryCommission ? Number(req.body.entryCommission) : 0;
+    const exitCommission = req.body.exitCommission ? Number(req.body.exitCommission) : 0;
     if (!exitDate || !exitOrderPrice || !exitQuantity) {
       return res.status(400).json({ error: "Missing required fields: exitDate, exitOrderPrice, exitQuantity" });
     }

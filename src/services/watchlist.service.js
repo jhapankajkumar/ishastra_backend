@@ -181,12 +181,27 @@ class WatchlistService {
             "MUTHOOTFIN.NS", "GODREJCP.NS", "BAJAJ-AUTO.NS", "ADANIENT.NS", "MARICO.NS",
             "M&M.NS", "SHREECEM.NS", "PIDILITIND.NS", "DABUR.NS",
 
-            //US Large Cap Stocks
-            "AAPL", "MSFT", "GOOGL", "GOOG", "AMZN", "TSLA", "META", "NVDA", "ORCL", "CRM", "ADBE", "NFLX", "INTC", "CSCO", "IBM", "QCOM", "TXN", "AVGO", "LRCX", "KLAC",
-            "JPM", "BAC", "WFC", "GS", "MS", "C", "BRK.A", "BRK.B", "V", "MA",
-            "JNJ", "PFE", "UNH", "ABBV", "MRK", "TMO", "ABT",
-            "HD", "MCD", "NKE", "SBUX", "WMT", "COST", "KO", "PEP", "PG",
-            "XOM", "CVX"
+            //US Mega Cap Stocks
+            "AAPL","ABBV", "AMAT", "AMD", "AMZN", "AVGO", "AXP",
+            "BAC","BRK.B",
+            "C", "CAT", "COST", "CRM", "CSCO", "CVX",
+            "GE","GOOGL", "GOOG", "GS",
+            "HD",
+            "IBM", "INTC",
+            "JNJ", "JPM",
+            "KO",
+            "LIN", "LLY", "LCRX",
+            "MA", "MCD", "MDT", "META","MRK","MS", "MSFT","MU",
+            "NFLX", "NVDA",
+            "ORCL",
+
+            "PG", "PLTR","PM",
+            "RTX",
+            "TMO", "TSLA", "TMUS",
+            "UNH", "V",
+            "WFC",
+            "WNT",
+            "XOM"
         ];
         this.STOCK_UNIVERSE = this.STOCK_UNIVERSE.filter(s => !this.DELISTED_STOCKS.includes(s));
     }
