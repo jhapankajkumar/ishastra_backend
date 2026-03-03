@@ -615,8 +615,7 @@ class MinerviniTemplateAdvanced {
     let patternQuality = criteria.patternQuality?.passed;
 
     let decision = 'REJECTED';
-    if (rule1 && rule2 && rule3 && rule4 && rule6 && rule7 && rule8 && confidence >= 0.85
-    ) {
+    if (rule1 && rule2 && rule3 && rule4 && rule6 && rule7 && rule8 && confidence >= 0.85 &&  volumeDryUp && patternQuality && breakoutQualityPassed) {
       decision = 'BUY';
     } else if (passedRules >= 6) {
       decision = 'WATCH';

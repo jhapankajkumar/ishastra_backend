@@ -66,7 +66,7 @@ class WatchlistService {
             "AFG","AFL","AFRM","AGCO","AGNC","AGO","AIG","AIT","AIZ","AJG","AKAM","AL","ALAB","ALB","ALGM","ALGN","ALK","ALL","ALLE","ALLY","ALNY","ALSN","AM",
             "AMAT","AMCR","AMD","AME","AMG","AMGN","AMH","AMKR","AMP","AMT","AMTM","AMZN","AN","ANET","AON","AOS","APA","APD","APG","APH","APLS","APO","APP",
             "APPF","APTV","AR","ARE","ARES","ARMK","ARW","AS","ASH","ASTS","ATI","ATO","ATR","AU","AUR","AVB","AVGO","AVT","AVTR","AVY","AWI","AWK","AXON",
-            "AXP","AXS","AXTA","AYI","AZO","BA","BAC","BAH","BALL","BAM","BAX","BBWI","BBY","BC","BDX","BEN","BEPC","BF.A","BFAM","BF.B","BG","BHF","BIIB",
+            "AXP","AXS","AXTA","AYI","AZO","BA","BAC","BAH","BALL","BAM","BAX","BBWI","BBY","BC","BDX","BEN","BEPC","BF.A","BFAM","BG","BHF","BIIB",
             "BILL","BIO","BIRK","BJ","BK","BKNG","BKR","BLD","BLDR","BLK","BLSH","BMRN","BMY","BOKF","BPOP","BR","BRBR","BRK.B","BRKR","BRO","BROS","BRX",
             "BSX","BSY","BURL","BWA","BWXT","BX","BXP","BYD","C","CACC","CACI","CAG","CAH","CAI","CAR","CARR","CART","CASY","CAT","CAVA","CB","CBOE","CBRE",
             "CBSH","CCC","CCI","CCK","CCL","CDNS","CDW","CE","CEG","CELH","CERT","CF","CFG","CFLT","CFR","CG","CGNX","CHD","CHDN","CHE","CHH","CHRD","CHRW",
@@ -106,8 +106,6 @@ class WatchlistService {
             "VNOM","VNT","VOYA","VRSK","VRSN","VRT","VRTX","VST","VTR","VTRS","VVV","VZ","W","WAB","WAL","WAT","WBD","WBS","WCC","WDAY","WDC","WEC","WELL","WEN",
             "WEX","WFC","WFRD","WH","WHR","WING","WLK","WM","WMB","WMS","WMT","WPC","WRB","WSC","WSM","WSO","WST","WTFC","WTM","WTRG","WTW","WU","WWD","WY",
             "WYNN","XEL","XOM","XP","XPO","XRAY","XYL","XYZ","YETI","YUM"
-
-            
 
         ];
 

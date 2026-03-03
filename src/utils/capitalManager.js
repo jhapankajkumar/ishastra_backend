@@ -69,6 +69,10 @@ class CapitalManager {
         );
       }
 
+      // IMPORTANT:
+      // amount must be ONLY position cost (price * quantity)
+      // commissions must NEVER be passed here
+
       // Update capital atomically
       const updatedCapital = await prisma.capital.update({
         where: { currency: upperCurrency },
@@ -107,6 +111,10 @@ class CapitalManager {
         throw new Error(`Capital record not found for currency: ${upperCurrency}`);
       }
 
+      // IMPORTANT:
+      // amount must be ONLY the original allocated cost basis
+      // NEVER pass exit proceeds or net-of-commission values here
+
       // Update capital atomically
       const updatedCapital = await prisma.capital.update({
         where: { currency: upperCurrency },
@@ -120,6 +128,39 @@ class CapitalManager {
       return updatedCapital;
     } catch (error) {
       console.error(`Error releasing capital for ${currency}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Deduct commission as an expense
+   * Commission permanently reduces capital (not allocated funds)
+   * @param {string} currency
+   * @param {number} amount
+   */
+  static async deductCommission(currency, amount) {
+    try {
+      const upperCurrency = currency.toUpperCase();
+
+      if (!amount || amount <= 0) return;
+
+      const currentCapital = await this.getCapital(upperCurrency);
+      if (!currentCapital) {
+        throw new Error(`Capital record not found for currency: ${upperCurrency}`);
+      }
+
+      const updatedCapital = await prisma.capital.update({
+        where: { currency: upperCurrency },
+        data: {
+          total: currentCapital.total - amount,
+          remaining: currentCapital.remaining - amount,
+          updatedAt: new Date()
+        }
+      });
+
+      return updatedCapital;
+    } catch (error) {
+      console.error(`Error deducting commission for ${currency}:`, error);
       throw error;
     }
   }
@@ -241,6 +282,24 @@ class CapitalManager {
       console.error(`Error updating total capital for ${currency}:`, error);
       throw error;
     }
+  }
+
+  /**
+   * Get portfolio-equity style view for a currency
+   * Equity here excludes trade PnL, which must be added separately
+   */
+  static async getCapitalView(currency) {
+    const cap = await this.getCapital(currency);
+    if (!cap) return null;
+
+    const allocated = cap.total - cap.remaining;
+
+    return {
+      currency: cap.currency,
+      principal: cap.total,
+      idle: cap.remaining,
+      underTrade: allocated
+    };
   }
 
   /**

@@ -35,7 +35,7 @@ class AlertCron {
             '*/2 * * * 1-6',  // every 30 min, Mon–Sat
             async () => {
                 // Otherwise run the job
-                await this.runAlertCheck();
+                // await this.runAlertCheck();
             },
             {
                 timezone: 'America/New_York',
@@ -69,7 +69,7 @@ class AlertCron {
             // }
 
             console.log(`🔍 Alert check started at ${now.format('YYYY-MM-DD HH:mm')} SGT`);
-            await this.checkPositionAlerts();
+            // await this.checkPositionAlerts();
             // await this.checkWatchlistTriggers();
 
             console.log('✅ Alert check completed');
@@ -84,44 +84,44 @@ class AlertCron {
     /**
      * CHECK WATCHLIST ENTRY TRIGGERS AND SEND EMAILS
      */
-    async checkWatchlistTriggers() {
-        console.log('📊 Checking watchlist entry triggers...');
+    // async checkWatchlistTriggers() {
+    //     console.log('📊 Checking watchlist entry triggers...');
 
-        // Get triggered stocks (no emails sent yet)
-        const watchlistResult = await this.watchlistTriggerService.getBuyWatchList();
-        const alerts = [];
-        if (watchlistResult && watchlistResult.length > 0) {
-            // Send individual emails for each triggered stock
-            for (const stock of watchlistResult) {
-                try {
-                    const { triggers, currentAnalysis } = await this.watchlistTriggerService.getUpdatedTriggers(stock, true);
-                    // Ensure triggers is always an array
-                    const safeTriggers = Array.isArray(triggers) ? triggers : [];
-                    // Get stock data and current analysis for email
-                    if (currentAnalysis && safeTriggers.length > 0) {
-                        stock.currentPrice = currentAnalysis.currentPrice;
-                        const alert = await this.watchlistTriggerService.getEntryTriggerAlert(stock, safeTriggers);
-                        alerts.push(alert);
-                    }
-                } catch (emailError) {
-                    console.error(`❌ Failed to send email for ${stock.symbol}:`, emailError.message);
-                }
-            }
-            if (alerts.length > 0) {
-                const batchAlert = {
-                    symbol: "MULTIPLE",
-                    type: "BATCHED_ALERTS",
-                    message: "Enhanced trading alerts with detailed trigger analysis",
-                    priority: "MEDIUM",
-                    timestamp: new Date(),
-                    batchedAlerts: alerts
-                };
-                await this.alertService.emailService.sendAlert(batchAlert);
-            }
-        } else {
-            console.log('📋 No entry triggers found');
-        }
-    }
+    //     // Get triggered stocks (no emails sent yet)
+    //     const watchlistResult = await this.watchlistTriggerService.getBuyWatchList();
+    //     const alerts = [];
+    //     if (watchlistResult && watchlistResult.length > 0) {
+    //         // Send individual emails for each triggered stock
+    //         for (const stock of watchlistResult) {
+    //             try {
+    //                 const { triggers, currentAnalysis } = await this.watchlistTriggerService.getUpdatedTriggers(stock, true);
+    //                 // Ensure triggers is always an array
+    //                 const safeTriggers = Array.isArray(triggers) ? triggers : [];
+    //                 // Get stock data and current analysis for email
+    //                 if (currentAnalysis && safeTriggers.length > 0) {
+    //                     stock.currentPrice = currentAnalysis.currentPrice;
+    //                     const alert = await this.watchlistTriggerService.getEntryTriggerAlert(stock, safeTriggers);
+    //                     alerts.push(alert);
+    //                 }
+    //             } catch (emailError) {
+    //                 console.error(`❌ Failed to send email for ${stock.symbol}:`, emailError.message);
+    //             }
+    //         }
+    //         if (alerts.length > 0) {
+    //             const batchAlert = {
+    //                 symbol: "MULTIPLE",
+    //                 type: "BATCHED_ALERTS",
+    //                 message: "Enhanced trading alerts with detailed trigger analysis",
+    //                 priority: "MEDIUM",
+    //                 timestamp: new Date(),
+    //                 batchedAlerts: alerts
+    //             };
+    //             await this.alertService.emailService.sendAlert(batchAlert);
+    //         }
+    //     } else {
+    //         console.log('📋 No entry triggers found');
+    //     }
+    // }
 
     /**
      * CHECK POSITION ALERTS AND SEND EMAILS

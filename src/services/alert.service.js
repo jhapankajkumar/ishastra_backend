@@ -25,116 +25,87 @@ class AlertService {
    * Returns: Stop hits, profit targets, etc.
    */
   async checkPositionAlerts() {
-    try {
+    // try {
       
-      const alerts = await this.getPositionAlerts();
+      // const alerts = await this.getPositionAlerts();
 
-      // Filter only actionable alerts
-      const actionableAlerts = alerts.filter(alert =>
-        alert.type === 'STOP_HIT' ||
-        alert.type === 'TAKE_PROFITS' ||
-        alert.type === 'PARTIAL_PROFITS'
-      );
+      // // Filter only actionable alerts
+      // const actionableAlerts = alerts.filter(alert =>
+      //   alert.type === 'STOP_HIT' ||
+      //   alert.type === 'TAKE_PROFITS' ||
+      //   alert.type === 'PARTIAL_PROFITS'
+      // );
 
-      return {
-        success: true,
-        alertType: 'POSITION_ALERTS',
-        count: actionableAlerts.length,
-        alerts: actionableAlerts,
-        message: actionableAlerts.length > 0 ?
-          `${actionableAlerts.length} action(s) required on positions` :
-          'No position alerts',
-        timestamp: new Date().toISOString()
-      };
+      // return {
+      //   success: true,
+      //   alertType: 'POSITION_ALERTS',
+      //   count: actionableAlerts.length,
+      //   alerts: actionableAlerts,
+      //   message: actionableAlerts.length > 0 ?
+      //     `${actionableAlerts.length} action(s) required on positions` :
+      //     'No position alerts',
+      //   timestamp: new Date().toISOString()
+      // };
 
-    } catch (error) {
-      console.error('❌ Position alerts error:', error);
-      return {
-        success: false,
-        alertType: 'POSITION_ALERTS',
-        count: 0,
-        alerts: [],
-        error: error.message,
-        timestamp: new Date().toISOString()
-      };
-    }
+    // } catch (error) {
+    //   console.error('❌ Position alerts error:', error);
+    //   return {
+    //     success: false,
+    //     alertType: 'POSITION_ALERTS',
+    //     count: 0,
+    //     alerts: [],
+    //     error: error.message,
+    //     timestamp: new Date().toISOString()
+    //   };
+    // }
   }
 
   /**
  * ONLY method for position alerts - BRUTAL SIMPLICITY
  */
   async getPositionAlerts() {
-    const alerts = [];
-    const openTrades = await this.getOpenTrades();
+    // const alerts = [];
+    // const openTrades = await this.getOpenTrades();
 
-    for (const trade of openTrades) {
-      const entryPrice = trade.entryPrice || 0;
-      const currentPrice = trade.currentPrice || entryPrice;
-      let stopLoss = Number.isFinite(trade.stopLoss) ? trade.stopLoss : 0;
-      let riskPerShare = 0;
-      if (stopLoss < entryPrice) {
-        riskPerShare = entryPrice - stopLoss;  
-      } else {
-        riskPerShare = entryPrice - (entryPrice * 0.95); //max 5% risk if stop loss is invalid
-      }
+    // for (const trade of openTrades) {
+    //   const entryPrice = trade.entryPrice || 0;
+    //   const currentPrice = trade.currentPrice || entryPrice;
+    //   let stopLoss = Number.isFinite(trade.stopLoss) ? trade.stopLoss : 0;
+    //   let riskPerShare = 0;
+    //   if (stopLoss < entryPrice) {
+    //     riskPerShare = entryPrice - stopLoss;  
+    //   } else {
+    //     riskPerShare = entryPrice - (entryPrice * 0.95); //max 5% risk if stop loss is invalid
+    //   }
       
-      const rMultiple = (currentPrice - stopLoss) / (riskPerShare || 1);
-      if (Number.isFinite(rMultiple) && (rMultiple >= 2.0)) {
-         let multiplier = 1
-          if (rMultiple >= 3.0) multiplier = 2
-          if (rMultiple >= 4.0) multiplier = 3
-          if (rMultiple >= 5.0) multiplier = 4
-          if (rMultiple >= 6.0) multiplier = 5
-          if (rMultiple >= 7.0) multiplier = 6
-          if (rMultiple >= 8.0) multiplier = 7
-         stopLoss = stopLoss + (riskPerShare * multiplier);
-         console.log(`🔄 TEST Adjusted stop loss for ${trade.ticker} to ${stopLoss.toFixed(2)} (R=${rMultiple.toFixed(2)})`);
-         await prisma.trade.update({
-          where: { id: trade.id },
-          data: {
-            stopLoss
-          }
-        });
-      }
+    //   const rMultiple = (currentPrice - stopLoss) / (riskPerShare || 1);
+    //   if (Number.isFinite(rMultiple) && (rMultiple >= 2.0)) {
+    //      let multiplier = 1
+    //       if (rMultiple >= 3.0) multiplier = 2
+    //       if (rMultiple >= 4.0) multiplier = 3
+    //       if (rMultiple >= 5.0) multiplier = 4
+    //       if (rMultiple >= 6.0) multiplier = 5
+    //       if (rMultiple >= 7.0) multiplier = 6
+    //       if (rMultiple >= 8.0) multiplier = 7
+    //      stopLoss = stopLoss + (riskPerShare * multiplier);
+    //      console.log(`🔄 TEST Adjusted stop loss for ${trade.ticker} to ${stopLoss.toFixed(2)} (R=${rMultiple.toFixed(2)})`);
+    //      await prisma.trade.update({
+    //       where: { id: trade.id },
+    //       data: {
+    //         stopLoss
+    //       }
+    //     });
+    //   }
       
-      // console.log(`🔔 Checking trade ${trade.ticker}: Current Price ${currentPrice}, Stop Loss ${stopLoss}, Entry ${entryPrice}`);
-      // if (execution?.exitStrategy?.stopLoss?.alerted) {
-      //   continue; // Skip if both alerts already sent
-      // }
-      
-      let isAlerted = false;
-      // ALERT 1: STOP LOSS HIT
-      if (currentPrice <= stopLoss && stopLoss > 0) {
-        // alerts.push({
-        //   type: 'STOP_HIT',
-        //   ticker: trade.ticker,
-        //   message: `🚨 ${trade.ticker} STOP HIT: Sell ${trade.quantity} shares immediately`,
-        //   priority: 'EMERGENCY',
-        //   action: 'EXIT_NOW',
-        //   trade: {
-        //     id: trade.id,
-        //     currentPrice,
-        //     stopLoss,
-        //     quantity: trade.quantity
-        //   }
-        // });
-        // if (execution?.exitStrategy?.stopLoss) {
-        //   isAlerted = true;
-        //   execution.exitStrategy.stopLoss.alerted = true;
-        // }
-      }
+    //   let isAlerted = false;
+    //   // ALERT 1: STOP LOSS HIT
+    //   if (currentPrice <= stopLoss && stopLoss > 0) {
+       
+    //   }
 
-      // if (isAlerted && (execution?.exitStrategy?.stopLoss?.alerted || execution?.exitStrategy?.targets?.alerted)) {
-      //   await prisma.trade.update({
-      //     where: { id: trade.id },
-      //     data: {
-      //       systemAnalysisResult: JSON.stringify(analysisResult)
-      //     }
-      //   });
-      // }
-    }
+    // }
 
-    return alerts;
+    // return alerts;
   }
 
 
