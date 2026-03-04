@@ -9,7 +9,15 @@ const yahooFinance = new YahooFinance({
 
 // Symbol search
 async function searchSymbol(query) {
-  const results = await yahooFinance.search(query);
+  const results = await yahooFinance.search(
+  query,
+  {
+    /* query options */
+  },
+  {
+    validateResult: false,
+  }
+);
   return results.quotes || [];
 }
 
