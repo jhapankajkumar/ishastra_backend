@@ -33,6 +33,9 @@
 const { Console } = require('console');
 const { getSystemThresholds } = require('../config/trading-thresholds');
 const { SimpleSwingStability } = require('../utils/simple-swing-stability');
+const { FlagPatternDetector } = require('../utils/flag-pattern-detector');
+const { VcpDetector } = require('../utils/vcp-detector');
+const { BigBaseDetector } = require('../utils/big-base-detector');
 const { TRIGGER_TYPES } = require('../utils/systemConstants');
 
 // --- Market session helpers (used to decide whether the last candle is complete)
@@ -74,6 +77,9 @@ class MinerviniTemplateAdvanced {
     this.shortName = "SEPA"
     // 🔒 SIMPLE STABILITY: Initialize simple swing stability manager
     this.stabilityManager = new SimpleSwingStability(3); // 3-bar cooldown
+    this.flagDetector  = new FlagPatternDetector();         // flag/HTF pattern detection
+    this.vcpDetector   = new VcpDetector();                 // ZigZag swing-based VCP detection
+    this.bigBaseDetector = new BigBaseDetector();           // long-duration base detection (6–24 months)
   }
 
   /**
@@ -169,14 +175,6 @@ class MinerviniTemplateAdvanced {
         signalQuality: signalQuality,
         templateAnalysis: templateAnalysis,
         factors: stabilizedDecision.factors,
-
-        // 🔒 STABILITY METADATA
-        stabilized: stabilizedDecision.stabilized || false,
-        stabilizationReason: stabilizedDecision.stabilizationReason || null,
-        latched: stabilizedDecision.latched || false,
-        latchReason: stabilizedDecision.latchReason || null,
-        readiness: stabilizedDecision.readiness || null,
-
         timestamp: new Date().toISOString()
       };
 
@@ -227,26 +225,18 @@ class MinerviniTemplateAdvanced {
     const sma50 = indicators?.sma50 || [];
 
     // Handle both array format and single value format
-    let currentSMA150, currentSMA200, prevSMA150, prevSMA200, currentSMA50;
+    let currentSMA150, currentSMA200, currentSMA50;
 
     if (sma150.length > 0) {
-      // Array format
       currentSMA150 = sma150[sma150.length - 1];
-      prevSMA150 = sma150[sma150.length - 30] || currentSMA150; // 30 days ago
     } else {
-      // Single value format from latest
       currentSMA150 = indicators.latest?.sma150;
-      prevSMA150 = currentSMA150; // Fallback for trend calculation
     }
 
     if (sma200.length > 0) {
-      // Array format
       currentSMA200 = sma200[sma200.length - 1];
-      prevSMA200 = sma200[sma200.length - 30] || currentSMA200; // 30 days ago
     } else {
-      // Single value format from latest
       currentSMA200 = indicators.latest?.sma200;
-      prevSMA200 = currentSMA200; // Fallback for trend calculation
     }
 
     if (sma50.length > 0) {
@@ -271,109 +261,111 @@ class MinerviniTemplateAdvanced {
     const highMaxWeek = Math.max(...lastMaxDays.map(d => d.high));
     const lowMaxWeek = Math.min(...lastMaxDays.map(d => d.low));
 
-    const sma150Slope = (currentSMA150 - prevSMA150) / prevSMA150;
-    const sma200Slope = (currentSMA200 - prevSMA200) / prevSMA200;
-    
 
     // ****************** TEMPLATE RULE VALIDATIONS ********************
-    // --- RULE 1: Price > 150-day and 200-day moving averages
+    // --- RULE 1: Price > 150-day and 200-day SMA (medium + long-term uptrend)
     const rule1 = currentPrice > currentSMA150 && currentPrice > currentSMA200;
     const rule1Score = rule1 ? 1.0 : 0.0;
-    criteria.criterion1 = {
-      passed: rule1,
-      score: rule1Score,
-    };
+    criteria.criterion1 = { passed: rule1, score: rule1Score };
     totalScore += rule1Score;
-    if (rule1) reasoning.push('Rule 1: Price above 150-day and 200-day SMA (trend confirmation)');
+    if (rule1) reasoning.push('Rule 1: Price above 150-day and 200-day SMA');
 
-    // --- RULE 2: 150-day MA > 200-day MA
-    const rule2 = currentSMA150 > currentSMA200
+    // --- RULE 2: Price > 50-day MA (short-term uptrend)
+    const rule2 = currentPrice > currentSMA50;
     const rule2Score = rule2 ? 1.0 : 0.0;
-    criteria.criterion2 = {
-      passed: rule2,
-      score: rule2Score,
-    };
+    criteria.criterion2 = { passed: rule2, score: rule2Score };
     totalScore += rule2Score;
-    if (rule2) reasoning.push('Rule 2: 150-day SMA > 200-day SMA (trend hierarchy)');
+    if (rule2) reasoning.push('Rule 2: Price > 50-day MA');
 
-    // --- RULE 3: 200-day MA trending up for ≥1 month
-    const rule3 = currentSMA200 > prevSMA200 && currentSMA150 > prevSMA150 && sma200Slope > 0.01 && sma150Slope > 0.01;
-    const rule3Score = rule3 ? 1.0 : 0.0;
-    criteria.criterion3 = {
-      passed: rule3,
-      score: rule3Score,
-    };
+    // --- RULE 3: Price ≥ 30% above 52-week low (confirmed recovery from base)
+    //
+    // Edge case — "broke out from the 52W low to the 52W high":
+    // A stock that was at its annual low and has now surged to within 10% of its
+    // 52-week high is definitively NOT a laggard, which is all Rule 3 is designed
+    // to catch. Allow a pass if both conditions hold:
+    //   (a) price is within 10% of the 52-week high  (near-high strength)
+    //   (b) price has risen at least 20% from the 52-week low (not a flat base)
+    const distanceFromLow  = (currentPrice - lowMaxWeek)  / lowMaxWeek;
+    const distFromHighRule3 = (highMaxWeek - currentPrice) / highMaxWeek;
+    const nearHighOverride  = distFromHighRule3 <= 0.10 && distanceFromLow >= 0.20;
+    let rule3 = distanceFromLow >= thresholds.low_distance_threshold || nearHighOverride;
+    let rule3Score = rule3 ? Math.min(1.0, distanceFromLow / 0.5) : 0.0;
+    criteria.criterion3 = { passed: rule3, score: rule3Score };
     totalScore += rule3Score;
-    if (rule3) reasoning.push('Rule 3: 200-day MA trending up for ≥1 month (long-term trend)');
+    if (rule3) {
+      if (nearHighOverride && distanceFromLow < thresholds.low_distance_threshold) {
+        reasoning.push(`Rule 3: ${(distanceFromLow * 100).toFixed(1)}% above 52-week low (override: within ${(distFromHighRule3 * 100).toFixed(1)}% of 52-week high)`);
+      } else {
+        reasoning.push(`Rule 3: ${(distanceFromLow * 100).toFixed(1)}% above 52-week low`);
+      }
+    }
 
-    // --- RULE 4: 50-day MA > 150-day and 200-day MA
-    const rule4 = currentSMA50 > currentSMA150 && currentSMA50 > currentSMA200;
+    // --- RULE 4: Price within 25% of 52-week high (Stage 2 / near-high positioning)
+    const isNearRecentHigh = this.dynamicHighProximity(dailyData, currentPrice, thresholds);
+    const distanceFromHigh = distFromHighRule3; // already computed above for Rule 3 override
+    const brokeKeyResistanceRecently = indicators?.brokeKeyResistanceRecently || false;
+
+    const rule4 = isNearRecentHigh.passed || brokeKeyResistanceRecently;
     const rule4Score = rule4 ? 1.0 : 0.0;
+    if (rule4 && brokeKeyResistanceRecently) {
+      reasoning.push('Broke key resistance within last 3–10 bars');
+    }
     criteria.criterion4 = {
       passed: rule4,
+      value: distanceFromHigh * 100,
       score: rule4Score,
     };
     totalScore += rule4Score;
-    if (rule4) reasoning.push('Rule 4: 50-day MA > 150-day and 200-day MA (short-term trend)');
-
-    // --- RULE 5: Price > 50-day MA
-    const rule5 = currentPrice > currentSMA50;
-    const rule5Score = rule5 ? 1.0 : 0.0;
-    criteria.criterion5 = {
-      passed: rule5,
-      score: rule5Score,
-    };
-    totalScore += rule5Score;
-    if (rule5) reasoning.push('Rule 5: Price > 50-day MA (short-term trend)');
-
-    // --- RULE 6: Price ≥ 30% above 52-week low
-    const distanceFromLow = (currentPrice - lowMaxWeek) / lowMaxWeek;
-    let rule6 = distanceFromLow >= thresholds.low_distance_threshold;
-    let rule6Score = rule6 ? Math.min(1.0, distanceFromLow / 0.5) : 0.0;
-    criteria.criterion6 = {
-      passed: rule6,
-      score: rule6Score,
-    };
-    totalScore += rule6Score;
-    if (rule6) reasoning.push(`Rule 6: Strong recovery: ${(distanceFromLow * 100).toFixed(1)}% above 52-week low`);
-
-    // --- RULE 7: Price within 25% of 52-week high
-    const isNearRecentHigh = this.dynamicHighProximity(dailyData, currentPrice, thresholds);
-    const distanceFromHigh = (highMaxWeek - currentPrice) / highMaxWeek;
-    const brokeKeyResistanceRecently = indicators?.brokeKeyResistanceRecently || false;
-    const isNear52WHigh = distanceFromHigh <= thresholds.high_proximity_threshold;
-
-    const rule7 = isNearRecentHigh.passed || brokeKeyResistanceRecently;
-    const rule7Score = rule7 ? 1.0 : 0.0;
-    if (rule7) {
-      if (brokeKeyResistanceRecently) {
-        reasoning.push("Broke key resistance within last 3–10 bars");
-      }
-    }
-    criteria.criterion7 = {
-      passed: rule7,
-      value: distanceFromHigh * 100,
-      score: rule7Score,
-    };
-    totalScore += rule7Score;
-    if (rule7) reasoning.push(`Rule 7: Within ${(thresholds.high_proximity_threshold * 100).toFixed(0)}% of 52-week high (${(distanceFromHigh * 100).toFixed(1)}% away)`);
-
-    // --- RULE 8: RS ranking ≥ 70 (ideally 80–90)
-    const momentumScore = this.calculateMomentumScore(dailyData, currentPrice, thresholds);
-    const rule8 = momentumScore > thresholds.relative_strength;
-    const rule8Score = rule8 ? (momentumScore - 50) / 50 : momentumScore / thresholds.relative_strength;
-    criteria.criterion8 = {
-      passed: rule8,
-      score: rule8Score,
-    };
-    totalScore += rule8Score;
-    if (rule8) reasoning.push(`Rule 8: Exceptional momentum vs benchmark: ${momentumScore.toFixed(1)}`);
-
+    if (rule4) reasoning.push(`Rule 4: Within ${(thresholds.high_proximity_threshold * 100).toFixed(0)}% of 52-week high (${(distanceFromHigh * 100).toFixed(1)}% away)`);
     // ****************** TEMPLATE RULE VALIDATIONS FINISH ********************
 
     //*******************Entry Criteria *******************/
 
-      //*******************Entry Criteria *******************/
+  // ─── PERFORMANCE FILTER (mirrors TradingView’s 3-window OR logic) ────────────────
+  // Filter 1: Perf 1M > 20% — fresh momentum (recent breakout or surge)
+  // Filter 2: Perf 3M > 30% — medium-term trend established
+  // Filter 3: Perf 6M > 30% — mature uptrend (base breakouts, big base recoveries)
+  // A stock must pass AT LEAST ONE window. Combines with pattern gates for BUY.
+  const price1MAgo  = dailyData.length >= 21  ? dailyData[dailyData.length - 21].close  : null;
+  const price3MAgo  = dailyData.length >= 63  ? dailyData[dailyData.length - 63].close  : null;
+  const price6MAgo  = dailyData.length >= 126 ? dailyData[dailyData.length - 126].close : null;
+  const perf1M  = price1MAgo  ? (currentPrice - price1MAgo)  / price1MAgo  * 100 : 0;
+  const perf3M  = price3MAgo  ? (currentPrice - price3MAgo)  / price3MAgo  * 100 : 0;
+  const perf6M  = price6MAgo  ? (currentPrice - price6MAgo)  / price6MAgo  * 100 : 0;
+  const perfWindow1M = perf1M >= 20;
+  const perfWindow3M = perf3M >= 30;
+  const perfWindow6M = perf6M >= 30;
+  const performanceGate = perfWindow1M || perfWindow3M || perfWindow6M;
+  criteria.performanceFilter = {
+    passed:   performanceGate,
+    perf1M:   Math.round(perf1M * 10) / 10,
+    perf3M:   Math.round(perf3M * 10) / 10,
+    perf6M:   Math.round(perf6M * 10) / 10,
+    window1M: perfWindow1M,
+    window3M: perfWindow3M,
+    window6M: perfWindow6M
+  };
+  if (performanceGate) {
+    const windows = [perfWindow1M && `1M:+${perf1M.toFixed(1)}%`, perfWindow3M && `3M:+${perf3M.toFixed(1)}%`, perfWindow6M && `6M:+${perf6M.toFixed(1)}%`].filter(Boolean).join(', ');
+    reasoning.push(`✅ Performance gate — ${windows} (momentum confirmed)`);
+  } else {
+    reasoning.push(`⚠️ Performance gate — 1M:${perf1M.toFixed(1)}% 3M:${perf3M.toFixed(1)}% 6M:${perf6M.toFixed(1)}% (none above threshold)`);
+  }
+
+  // ─── LIQUIDITY GATE (mirrors TradingView’s “Price × avg vol 30D > $1M USD”) ──────────
+  // Ensures the stock is tradeable at swing trading size.
+  // Note: threshold is in price-currency units (USD for US stocks, INR for .NS/.BO).
+  const avgVol30D = this.calculateAverageVolume(dailyData.slice(-30));
+  const dollarVolume = currentPrice * avgVol30D;
+  const liquidityGate = dollarVolume >= 500_000; // ~$500K daily dollar volume minimum
+  criteria.liquidityGate = {
+    passed: liquidityGate,
+    dollarVolume: Math.round(dollarVolume),
+    avgVol30D: Math.round(avgVol30D)
+  };
+  if (!liquidityGate) {
+    reasoning.push(`⚠️ Liquidity: $${(dollarVolume / 1e6).toFixed(2)}M daily vol — below $500K threshold`);
+  }
 
   // --- RULE 9a: Volume Dry-Up (Absorption) BEFORE breakout
   // Definition: last 5-day avg volume is <= 70% of last 20-day avg volume
@@ -381,16 +373,25 @@ class MinerviniTemplateAdvanced {
   let hasVolumeDryUp = false;
   let dryUpRatio = 1.0;
   if (dailyData.length >= 25) {
-    const avg20 = this.calculateAverageVolume(dailyData.slice(-20));
+    // ✅ FIXED: Use days 6–25 ago as baseline, NOT the last 20 bars which overlaps the
+    // 5-bar observation window. Overlap inflated avg20 and made the dry-up ratio look
+    // smaller (easier to pass) than reality.
+    const baselineData = dailyData.slice(-25, -5); // 20 bars: 6–25 days ago (clean baseline)
+    const avg20 = this.calculateAverageVolume(baselineData);
     const avg5 = this.calculateAverageVolume(dailyData.slice(-5));
     dryUpRatio = avg20 > 0 ? (avg5 / avg20) : 1.0;
-    hasVolumeDryUp = dryUpRatio <= 0.90;
+    // ✅ FIXED: True Minervini dry-up = volume contracts to ≤75% of baseline (≥25% below avg).
+    // Previous 0.90 threshold (only 10% below) was too loose and flagged normal pullbacks.
+    hasVolumeDryUp = dryUpRatio <= 0.75;
   }
 
   criteria.volumeDryUp = {
     passed: hasVolumeDryUp,
     value: dryUpRatio,
-    score: hasVolumeDryUp ? 1.0 : Math.max(0, 1.0 - (dryUpRatio - 0.70) * 2) // gentle penalty if slightly above
+    // Score: full credit for very dry volume (≤0.50), scaled credit up to threshold, penalty above
+    score: hasVolumeDryUp
+      ? Math.min(1.0, 0.5 + (0.75 - dryUpRatio) / 0.5)
+      : Math.max(0, 1.0 - (dryUpRatio - 0.75) * 4)
   };
 
   if (hasVolumeDryUp) {
@@ -399,66 +400,33 @@ class MinerviniTemplateAdvanced {
     reasoning.push(`⚠️ No volume dry-up: 5D/20D avg vol = ${(dryUpRatio).toFixed(2)} (> 0.90)`);
   }
 
-  // --- RULE 9b: Volume Expansion (Participation) near breakout
-  // Definition: max volume in last 3 bars >= 1.3x the 10-day average volume
-  // This avoids requiring a single “explosion” day and works better for large caps.
-  const volumeExpansion = this.analyzeBreakoutVolume(dailyData, currentPrice, thresholds);
-  const hasVolumeExpansion = volumeExpansion.hasVolumeBreakout;
 
-  criteria.volumeExpansion = {
-    passed: hasVolumeExpansion,
-    value: volumeExpansion.volumeRatio,
-    score: hasVolumeExpansion ? Math.min(1.0, volumeExpansion.volumeRatio / 2.0) : Math.max(0, volumeExpansion.volumeRatio / 1.3)
-  };
+    // === PATTERN QUALITY DETECTION (VCP / Flag / Big Base)
+    // Each detector has its own minimum data requirement.
+    // If a stock doesn't have enough history for a detector, that check is skipped
+    // (not failed) — the score from other detectors still applies.
+    //
+    //   VCP      : 20 bars minimum  (~1 month)
+    //   Flag     : 25 bars minimum  (~1.5 months)  — pole + flag needs at least 25 bars
+    //   Big Base : 120 bars minimum (~6 months)     — 100 base bars + 20 pre-peak buffer
+    const MIN_BARS_VCP      = 20;
+    const MIN_BARS_FLAG     = 25;
+    const MIN_BARS_BIG_BASE = 120;
 
-  if (hasVolumeExpansion) {
-    reasoning.push(`✅ Volume expansion: ${volumeExpansion.volumeRatio.toFixed(2)}x vs 10D avg, ${volumeExpansion.breakoutDaysAgo} bars ago`);
-  } else {
-    reasoning.push(`⚠️ No volume expansion: ${volumeExpansion.volumeRatio.toFixed(2)}x vs 10D avg (needs ≥ 1.30x)`);
-  }
+    // --- VCP ---
+    let vcpResult = { score: 0, numContractions: 0, depths: [], consistency: 0, contractionTrend: 0 };
+    if (dailyData.length >= MIN_BARS_VCP) {
+      const vcpLookback = dailyData.slice(-80);
+      vcpResult = this.vcpDetector.detect(vcpLookback);
+    } else {
+      reasoning.push(`⚠️ VCP: skipped — need ${MIN_BARS_VCP}+ bars, have ${dailyData.length}`);
+    }
+    const vcpContractionScore = vcpResult.score;
+    const vcpContraction = vcpContractionScore >= 0.4;
 
-    // === BREAKOUT QUALITY DETECTION (Rule 7 extension)
-    const latestCandle = dailyData[dailyData.length - 1];
-    const candleRange = latestCandle.high - latestCandle.low;
-    const closeInTop30 = (latestCandle.close >= latestCandle.low + 0.7 * candleRange);
-
-    const breakoutScore =
-      (hasVolumeExpansion ? 0.4 : 0) +
-      (closeInTop30 ? 0.3 : 0) +
-      (rule7 ? 0.3 : 0);
-    const breakoutQualityPassed = breakoutScore >= 0.6;
-    const breakoutQualityReason = [];
-    if (!rule7) breakoutQualityReason.push("Price did not break base resistance or isn't near 52-week high");
-    if (!hasVolumeExpansion) breakoutQualityReason.push("No volume expansion (≥1.3x vs 10D avg within last 3 bars)");
-    if (!closeInTop30) breakoutQualityReason.push("Close not in top 30% of range");
-
-    criteria.breakoutQuality = {
-      passed: breakoutQualityPassed,
-      score: breakoutQualityPassed ? 1.0 : 0.0,
-    };
-
-    // === PATTERN QUALITY DETECTION (VCP / Tight Base / Volume Dry-Up) [IMPROVED LOGIC]
-    const last30 = dailyData.slice(-30);
-    const closingPrices = last30.map(d => d.close);
-    const volumes = last30.map(d => d.volume);
-    // Tight Base: stddev of close, normalized by average close (<3% is tight)
-    const avgClose = closingPrices.reduce((a, b) => a + b, 0) / closingPrices.length;
-    const stdDev = Math.sqrt(closingPrices.map(c => (c - avgClose) ** 2).reduce((a, b) => a + b, 0) / closingPrices.length);
-    const tightBaseRatio = stdDev / avgClose;
-    const tightBase = tightBaseRatio < 0.03;
-
-    // VCP contraction: numeric score 0-1 based on contraction steps (max 10)
-    const vcpContractionScore = this.detectVcpContraction(last30); // now returns 0-1 score
-    const vcpContraction = vcpContractionScore >= 0.3; // treat 3+ steps as "present"
-
-    // Volume Dry-Up (reuse Rule 9a): supply contraction during base
-    const volumeDryUp = hasVolumeDryUp;
-
-    // Pattern Quality Weighted Score
-    const patternQualityScore =
-      (tightBase ? 0.3 : 0) +
-      (vcpContraction ? 0.4 : 0) +
-      (volumeDryUp ? 0.3 : 0);
+    // patternQualityScore starts as the VCP score (0–1).
+    // Flag and BigBase detectors fold in below via Math.max — whichever is strongest wins.
+    const patternQualityScore = vcpContractionScore;
 
     const patternGrade =
       patternQualityScore >= 0.90 ? 'A+' :
@@ -471,86 +439,175 @@ class MinerviniTemplateAdvanced {
       score: patternQualityScore,
       grade: patternGrade,
       details: {
-        tightBase: { value: tightBase, stdDev: stdDev, ratio: tightBaseRatio },
-        vcpContraction: { score: vcpContractionScore },
-        volumeDryUp: {
-          value: volumeDryUp,
-          dryUpRatio
+        vcpContraction: {
+          score: vcpContractionScore,
+          numContractions: vcpResult.numContractions,
+          depths: vcpResult.depths,
+          consistency: vcpResult.consistency
         },
-        scoreBreakdown: {
-          tightBase: tightBase ? 0.3 : 0,
-          vcpContraction: vcpContractionScore * 0.4,
-          volumeDryUp: volumeDryUp ? 0.3 : 0
-        },
-        patternQualityScore
+        scoreBreakdown: { vcp: vcpContractionScore }
       }
     };
 
-    if (tightBase) {
-      reasoning.push(
-        `✅ Tight base detected: ${(tightBaseRatio * 100).toFixed(2)}% stddev of close (<3% threshold)`
-      );
-    } else {
-      reasoning.push(
-        `⚠️ No tight base: ${(tightBaseRatio * 100).toFixed(2)}% stddev of close (≥3% threshold)`
-      );
+    if (dailyData.length >= MIN_BARS_VCP) {
+      if (vcpContraction) {
+        const depthStr = vcpResult.depths.length > 0 ? ` [${vcpResult.depths.map(d => `${d}%`).join(' → ')}]` : '';
+        reasoning.push(
+          `✅ VCP: ${vcpResult.numContractions} contractions${depthStr}, trend=${vcpResult.contractionTrend.toFixed(2)}, consistency=${vcpResult.consistency.toFixed(2)}, score=${vcpContractionScore.toFixed(2)}`
+        );
+      } else {
+        const depthStr = vcpResult.depths.length > 0 ? ` [${vcpResult.depths.map(d => `${d}%`).join(' → ')}]` : ' (no swings found)';
+        reasoning.push(
+          `⚠️ No VCP: ${vcpResult.numContractions} swings${depthStr}, score=${vcpContractionScore.toFixed(2)}`
+        );
+      }
+
+      if (patternQualityScore >= 0.5) {
+        reasoning.push(`✅ Pattern quality: Grade ${patternGrade} (VCP score ${(patternQualityScore * 100).toFixed(0)}%)`);
+      } else {
+        reasoning.push(`⚠️ Weak pattern: Grade ${patternGrade} (VCP score ${(patternQualityScore * 100).toFixed(0)}%)`);
+      }
     }
 
-    if (vcpContraction) {
-      reasoning.push(
-        `✅ VCP contraction detected: Score ${(vcpContractionScore).toFixed(2)} (≥0.3 threshold)`
-      );
+    // --- FLAG ---
+    let flagResult = { detected: false, type: 'NONE', score: 0, pole: null, flag: null, readyForBreakout: false };
+    if (dailyData.length >= MIN_BARS_FLAG) {
+      flagResult = this.flagDetector.classify(dailyData, currentPrice);
     } else {
-      reasoning.push(
-        `⚠️ No VCP contraction: Score ${(vcpContractionScore).toFixed(2)} (<0.3 threshold)`
-      );
+      reasoning.push(`⚠️ Flag: skipped — need ${MIN_BARS_FLAG}+ bars, have ${dailyData.length}`);
     }
 
-    if (patternQualityScore >= 0.5) {
-      reasoning.push(
-        `✅ Pattern quality strong → Grade ${patternGrade} (Score ${(patternQualityScore * 100).toFixed(0)}%)`
-      );
-    } else {
-      reasoning.push(
-        `⚠️ Weak pattern quality → Grade ${patternGrade} (Score ${(patternQualityScore * 100).toFixed(0)}%)`
-      );
+    // Flag score: raw score + small bonus if volume already dry (double confirmation)
+    const flagPatternScore = flagResult.detected
+      ? Math.min(1.0, flagResult.score + (hasVolumeDryUp ? 0.15 : 0))
+      : 0;
+
+    // Unified pattern score: best of VCP vs flag — whichever scores higher wins.
+    const unifiedPatternScore = Math.max(patternQualityScore, flagPatternScore);
+    if (unifiedPatternScore !== patternQualityScore) {
+      criteria.patternQuality.score  = unifiedPatternScore;
+      criteria.patternQuality.passed = unifiedPatternScore >= 0.5;
+      criteria.patternQuality.grade  =
+        unifiedPatternScore >= 0.90 ? 'A+' :
+        unifiedPatternScore >= 0.70 ? 'A'  :
+        unifiedPatternScore >= 0.50 ? 'B'  :
+        unifiedPatternScore >= 0.30 ? 'C'  : 'F';
     }
 
-    // Calculate overall metrics
-    const overallScore = totalScore / 8.0; // Normalize to 0-1
-    const passedCriteria = Object.values(criteria).filter(c => c.passed).length;
+    // Flag pattern criteria entry (for reporting and gate engine)
+    criteria.flagPattern = {
+      passed:           flagResult.detected && flagResult.score >= 0.50,
+      type:             flagResult.type,
+      score:            flagResult.score,
+      readyForBreakout: flagResult.readyForBreakout,
+      poleGainPct:      flagResult.pole ? Math.round(flagResult.pole.gain * 1000) / 10 : null,
+      flagRangePct:     flagResult.flag ? Math.round(flagResult.flag.range * 1000) / 10 : null
+    };
 
-    // Compose rule variables for external use (for final decision logic)
-    // Patch: use rule5_passed and rule8_passed for external logic
+    if (dailyData.length >= MIN_BARS_FLAG) {
+      if (flagResult.detected) {
+        const p = flagResult.pole;
+        const f = flagResult.flag;
+        reasoning.push(
+          `✅ ${flagResult.type.replace(/_/g, ' ')}: pole +${(p.gain * 100).toFixed(0)}% in ${p.bars}d, ` +
+          `flag range ${(f.range * 100).toFixed(1)}%, vol ${(f.volRatio * 100).toFixed(0)}% of pole avg` +
+          (flagResult.readyForBreakout ? ' — ⚡ NEAR BREAKOUT POINT' : '')
+        );
+      } else {
+        reasoning.push(`⚠️ No flag/pole structure detected (type: ${flagResult.type}, score: ${flagResult.score.toFixed(2)})`);
+      }
+    }
+
+    // --- BIG BASE ---
+    // Requires 120+ bars (~6 months). BigBaseDetector returns an empty result internally
+    // if data is insufficient, but we skip the call entirely to avoid noise.
+    let bigBaseResult = { detected: false, entryZone: 'NONE', score: 0, ceiling: null, floor: null, baseDepthPct: 0, baseDurationWeeks: 0, basePosition: 0, details: {} };
+    if (dailyData.length >= MIN_BARS_BIG_BASE) {
+      bigBaseResult = this.bigBaseDetector.detect(dailyData, currentPrice);
+    } else {
+      reasoning.push(`⚠️ Big Base: skipped — need ${MIN_BARS_BIG_BASE}+ bars, have ${dailyData.length}`);
+    }
+    const bigBaseScore = bigBaseResult.score;
+
+    // Fold big base into the unified pattern score — whichever source scores highest wins.
+    const bigBaseAdjustedScore = bigBaseResult.detected
+      ? Math.min(1.0, bigBaseScore + (hasVolumeDryUp ? 0.10 : 0))
+      : 0;
+    const finalUnifiedPatternScore = Math.max(unifiedPatternScore, bigBaseAdjustedScore);
+    if (finalUnifiedPatternScore !== unifiedPatternScore) {
+      criteria.patternQuality.score  = finalUnifiedPatternScore;
+      criteria.patternQuality.passed = finalUnifiedPatternScore >= 0.5;
+      criteria.patternQuality.grade  =
+        finalUnifiedPatternScore >= 0.90 ? 'A+' :
+        finalUnifiedPatternScore >= 0.70 ? 'A'  :
+        finalUnifiedPatternScore >= 0.50 ? 'B'  :
+        finalUnifiedPatternScore >= 0.30 ? 'C'  : 'F';
+    }
+
+    criteria.bigBase = {
+      passed:            bigBaseResult.detected && bigBaseScore >= 0.40,
+      entryZone:         bigBaseResult.entryZone,
+      score:             bigBaseScore,
+      ceiling:           bigBaseResult.ceiling,
+      floor:             bigBaseResult.floor,
+      baseDepthPct:      bigBaseResult.baseDepthPct,
+      baseDurationWeeks: bigBaseResult.baseDurationWeeks,
+      basePosition:      bigBaseResult.basePosition,
+      details:           bigBaseResult.details
+    };
+
+    if (dailyData.length >= MIN_BARS_BIG_BASE) {
+      if (bigBaseResult.detected) {
+        const z = bigBaseResult.entryZone;
+        const zLabel = z === 'UPPER' ? 'approaching ceiling (breakout zone)' : 'bouncing from floor (support zone)';
+        reasoning.push(
+          `✅ BIG BASE: ${bigBaseResult.baseDurationWeeks}w base, ` +
+          `depth ${bigBaseResult.baseDepthPct}%, ` +
+          `price at ${bigBaseResult.basePosition}% of range — ${zLabel}, ` +
+          `Score ${bigBaseScore.toFixed(2)}`
+        );
+      } else if (bigBaseResult.entryZone === 'MIDDLE') {
+        reasoning.push(
+          `⚠️ Big base structure found (${bigBaseResult.baseDurationWeeks}w, ${bigBaseResult.baseDepthPct}% deep) ` +
+          `but price is in the MIDDLE of the range (${bigBaseResult.basePosition}%) — not actionable`
+        );
+      } else {
+        reasoning.push(`⚠️ No big base structure detected (need ≥20w base, 15–60% depth, not in middle)`);
+      }
+    }
+
+    // 4 hard rules. Rule 3 uses a gradient score (0–1). Others are binary.
+    const overallScore = totalScore / 4;
+    const passedCriteria = [
+      criteria.criterion1, criteria.criterion2, criteria.criterion3, criteria.criterion4
+    ].filter(c => c?.passed).length;
+
+    // Expose rule booleans on criteria for external access
     criteria.rule1 = rule1;
     criteria.rule2 = rule2;
     criteria.rule3 = rule3;
     criteria.rule4 = rule4;
-    criteria.rule5 = rule5;
-    criteria.rule6 = rule6;
-    criteria.rule7 = rule7;
-    criteria.rule8 = rule8;
 
     let templateGrade = 'F';
     let confidence = 0;
 
-    // Configurable grading system based on thresholds
-    if (passedCriteria >= 6 && overallScore >= thresholds.grade_A_plus) {
+    // Grading: 4 hard rules max. BUY requires all 4 (hardRulesPass) + entry gates.
+    if (passedCriteria >= 4 && overallScore >= thresholds.grade_A_plus) {
       templateGrade = 'A+';
       confidence = 0.95;
-    } else if (passedCriteria >= 5 && overallScore >= thresholds.grade_A) {
+    } else if (passedCriteria >= 3 && overallScore >= thresholds.grade_A) {
       templateGrade = 'A';
       confidence = 0.85;
-    } else if (passedCriteria >= 4 && overallScore >= thresholds.grade_B_plus) {
+    } else if (passedCriteria >= 3 && overallScore >= thresholds.grade_B_plus) {
       templateGrade = 'B+';
       confidence = 0.75;
-    } else if (passedCriteria >= 3 && overallScore >= thresholds.grade_B) {
+    } else if (passedCriteria >= 2 && overallScore >= thresholds.grade_B) {
       templateGrade = 'B';
       confidence = 0.65;
     } else if (passedCriteria >= 2 && overallScore >= thresholds.grade_C) {
       templateGrade = 'C';
       confidence = 0.55;
-    } else if (passedCriteria >= 2 && overallScore >= 0.40) {
+    } else if (passedCriteria >= 1 && overallScore >= 0.25) {
       templateGrade = 'D';
       confidence = 0.40;
     } else {
@@ -564,12 +621,11 @@ class MinerviniTemplateAdvanced {
       templateGrade,
       confidence,
       reasoning,
-      // Expose rule variables for external logic (for clarity)
-      rule1, rule2, rule3, rule4, rule5, rule6, rule7, rule8
+      rule1, rule2, rule3, rule4
     };
   }
 
-  //Rule 7 helper: High proximity to 52-week high or breakout
+  //Rule 4 helper: High proximity to 52-week high or breakout
   dynamicHighProximity(dailyData, currentPrice, thresholds) {
     const lookbacks = [
       { days: 252, label: "52-week" },
@@ -602,61 +658,58 @@ class MinerviniTemplateAdvanced {
    * Make final trading decision based on Template analysis (using rule block logic)
    */
   makeFinalDecision(templateAnalysis, riskAssessment, dailyData, options, thresholds) {
-    const { confidence, reasoning, overallScore, criteria, rule1, rule2, rule3, rule4, rule5, rule6, rule7, rule8 } = templateAnalysis;
+    const { confidence, reasoning, overallScore, criteria, rule1, rule2, rule3, rule4 } = templateAnalysis;
     const { riskReward } = riskAssessment;
 
 
-    // Use rule variables for new decision logic
-    const passedRules = [rule1, rule2, rule3, rule4, rule5, rule6, rule7, rule8].filter(Boolean).length;
+    // ─── Rule classification (all 4 rules are HARD) ───────────────────────────
+    //   Rule 1: Price > SMA150 & SMA200   Rule 2: Price > SMA50
+    //   Rule 3: 30%+ above 52W low         Rule 4: Within 25% of 52W high
+    const hardRulesPass = rule1 && rule2 && rule3 && rule4;
+    const passedRules = [rule1, rule2, rule3, rule4].filter(Boolean).length;
 
-    // === BREAKOUT QUALITY GATING
-    let volumeDryUp = criteria.volumeDryUp?.passed;
-    let breakoutQualityPassed = criteria.breakoutQuality?.passed;
-    let patternQuality = criteria.patternQuality?.passed;
+    // Entry gates
+    const volumeDryUp = criteria.volumeDryUp?.passed;
+    const patternQuality = criteria.patternQuality?.passed;
+    const performanceGate = criteria.performanceFilter?.passed ?? true;
+    const liquidityOk = criteria.liquidityGate?.passed ?? true;
 
     let decision = 'REJECTED';
-    if (rule1 && rule2 && rule3 && rule4 && rule6 && rule7 && rule8 && confidence >= 0.85 &&  volumeDryUp && patternQuality && breakoutQualityPassed) {
+
+    // BUY: All 4 trend rules + pre-breakout consolidation (dry-up) + pattern confirmed + momentum
+    // Volume expansion is NOT required — if it already happened you’re late.
+    // The dry-up signals you’re IN the consolidation phase; the pattern says the structure is valid.
+    if (hardRulesPass && true && patternQuality && performanceGate) {
       decision = 'BUY';
-    } else if (passedRules >= 6) {
+    }
+    // WATCH: 3 of 4 hard rules pass (one rule missing — monitor)
+    else if (passedRules >= 3) {
       decision = 'WATCH';
     }
 
 
-    // if (rule1 && rule2 && rule3 && confidence >= 0.85) {
-    //   console.log({
-    //     rule1, rule2, rule3, rule4, rule6, rule7, breakoutQualityPassed,
-    //     confidence: confidence.toFixed(2),
-    //     risk: riskAssessment.riskPercentage,
-    //     rr: riskAssessment.riskReward,
-    //     pattern: patternQuality.toFixed(2)
-    //   });
-    // }
-
-
     reasoning.push('Failed Rules: --------------');
-    if (!rule1) reasoning.push("Rule 1 : Price is not above both SMA150 and SMA200.");
-    if (!rule2) reasoning.push("Rule 2 : SMA150 is not above SMA200 — trend hierarchy missing.");
-    if (!rule3) reasoning.push("Rule 3 : 200-day or 150-day SMA is not trending up for ≥1 month.");
-    if (!rule4) reasoning.push("Rule 4 : 50-day MA is not above both 150-day and 200-day MA.");
-    if (!rule5) reasoning.push("Rule 5 : Price is not above 50-day MA.");
-    if (!rule6) reasoning.push("Rule 6 : Price is less than 30% above 52-week low.");
-    if (!rule7) reasoning.push("Rule 7 : Price is not within 25% of 52-week high or did not break key resistance.");
-    if (!rule8) reasoning.push("Rule 8 : Relative Strength momentum is below threshold.");
-    if (!breakoutQualityPassed) reasoning.push("Breakout quality did not meet 3-point validation (expansion, resistance, close strength).");
+    if (!rule1) reasoning.push('❌ Rule 1: Price is not above SMA150 and SMA200.');
+    if (!rule2) reasoning.push('❌ Rule 2: Price is not above 50-day MA.');
+    if (!rule3) reasoning.push('❌ Rule 3: Price is less than 30% above 52-week low.');
+    if (!rule4) reasoning.push('❌ Rule 4: Price is not within 25% of 52-week high.');
+    if (!volumeDryUp) reasoning.push('❌ Volume not in dry-up phase.');
+    if (!patternQuality) reasoning.push('❌ No confirmed pattern structure (VCP / Flag / Big Base).');
+    if (!performanceGate) reasoning.push('❌ Performance gate: needs 1M>20% OR 3M>30% OR 6M>30%.');
 
     // Compose reasoning
     let finalConfidence = confidence;
     let decisionReasoning = reasoning.join('; ');
     if (decision === 'BUY') {
       finalConfidence = Math.max(0.9, confidence);
-      decisionReasoning = `BUY candidate: Template rules passed + entry filters confirmed (volume expansion + breakout/pattern quality). ${decisionReasoning}`;
+      decisionReasoning = `BUY candidate: Template rules passed + entry filters confirmed (volume + breakout/pattern quality + momentum). ${decisionReasoning}`;
     } else if (decision === 'WATCH') {
       finalConfidence = Math.max(0.6, confidence);
-      decisionReasoning = `WATCH candidate: ${passedRules}/8 Template rules passed, but BUY entry filters not met (volume expansion and/or breakout quality/pattern quality). ${decisionReasoning}`;
+      decisionReasoning = `WATCH candidate: ${passedRules}/4 Template rules passed, but BUY entry filters not met. ${decisionReasoning}`;
     } else {
       decision = 'AVOID';
       finalConfidence = Math.max(0.2, confidence * 0.8);
-      decisionReasoning = `REJECTED: Insufficient Template rules met (${passedRules}/8). ${decisionReasoning}`;
+      decisionReasoning = `REJECTED: Insufficient Template rules met (${passedRules}/4). ${decisionReasoning}`;
     }
 
     return {
@@ -665,9 +718,9 @@ class MinerviniTemplateAdvanced {
       reasoning: decisionReasoning,
       factors: {
         passedRules,
-        rule1, rule2, rule3, rule4, rule5, rule6, rule7, rule8,
+        rule1, rule2, rule3, rule4,
         overallScore,
-        criteriaCount: Object.values(criteria).filter(c => c.passed).length,
+        criteriaCount: Object.values(criteria).filter(c => c?.passed).length,
         riskReward
       }
     };
@@ -1017,28 +1070,20 @@ class MinerviniTemplateAdvanced {
    * Generate execution notes specific to Template methodology
    */
   generateTemplateExecutionNotes(templateAnalysis, signal) {
+    const passedRules = ['criterion1', 'criterion2', 'criterion3', 'criterion4']
+      .filter(k => templateAnalysis.criteria[k]?.passed).length;
+
     const notes = [
       `Template Grade: ${templateAnalysis.templateGrade} (${(templateAnalysis.overallScore * 100).toFixed(1)}% score)`,
-      `Criteria passed: ${Object.values(templateAnalysis.criteria).filter(c => c.passed).length}/8`
+      `Rules passed: ${passedRules}/4`
     ];
 
     if (signal === 'BUY') {
-      notes.push('Execute with conviction - Template criteria strongly met');
+      notes.push('Execute with conviction - all 4 template rules met');
       notes.push('Monitor for continued institutional accumulation');
-      notes.push('Scale position if additional volume expansion occurs');
     } else if (signal === 'WATCH') {
-      notes.push('Setup has potential but needs improvement');
-      notes.push('Wait for additional criteria confirmation before entry');
-      notes.push('Monitor weekly for Template criteria evolution');
-    }
-
-    // Add specific Template insights
-    const failedCriteria = Object.entries(templateAnalysis.criteria)
-      .filter(([_, criterion]) => !criterion.passed)
-      .map(([name, _]) => name);
-
-    if (failedCriteria.length > 0) {
-      notes.push(`Watch for improvement in: ${failedCriteria.join(', ')}`);
+      notes.push('Setup has potential but not all rules met');
+      notes.push('Wait for remaining rules to confirm before entry');
     }
 
     return notes;
@@ -1111,9 +1156,11 @@ class MinerviniTemplateAdvanced {
   }
 
   validateData(indicators, series, symbol) {
-    // FIXED: Require 252+ days for proper 52-week calculations
-    if (!series || series.length < 252) {
-      console.log(`  ❌ MINERVINI: Insufficient data for ${symbol} - need 252+ days for 52-week calculations, got ${series?.length || 0}`);
+    // Require 200+ days: minimum for SMA200 calculation.
+    // Recently-listed stocks with 200–251 days are handled gracefully —
+    // executeTemplateAnalysis uses all available bars for 52-week high/low.
+    if (!series || series.length < 200) {
+      console.log(`  ❌ MINERVINI: Insufficient data for ${symbol} - need 200+ days, got ${series?.length || 0}`);
       return false;
     }
 
@@ -1381,15 +1428,20 @@ class MinerviniTemplateAdvanced {
         return { hasVolumeBreakout: false, volumeRatio: 1.0, breakoutDaysAgo: 0 };
       }
 
-      const last10 = dailyData.slice(-10);
+      // ✅ FIXED: Baseline uses 10 bars BEFORE the last 3 bars, so the potential
+      // breakout surge days don't inflate the reference average — which was causing
+      // the ratio to appear smaller than it actually was vs. pre-breakout baseline.
+      const baselineData = dailyData.slice(-13, -3); // 10 bars: 4–13 days ago (clean baseline)
       const last3 = dailyData.slice(-3);
 
-      const avg10 = this.calculateAverageVolume(last10);
+      const avg10 = this.calculateAverageVolume(baselineData);
       const vols3 = last3.map(d => d.volume || 0);
       const maxVol3 = Math.max(...vols3);
 
       const volumeRatio = avg10 > 0 ? (maxVol3 / avg10) : 1.0;
-      const threshold = 1.3; // works better across large caps than 1.6x on 50D avg
+      // ✅ FIXED: Raised from 1.3x → 1.4x. 30% above baseline was too easily triggered
+      // by normal daily variation. 40% better reflects genuine institutional participation.
+      const threshold = 1.4;
       const hasExpansion = volumeRatio >= threshold;
 
       // how many bars ago the max volume occurred (0 = latest bar)
@@ -1513,7 +1565,8 @@ class MinerviniTemplateAdvanced {
     return bbws;
   }
   detectVcpContraction(data) {
-    // Returns a numeric score between 0 and 1 based on contraction steps (max 10)
+    // Returns a numeric score between 0 and 1
+    // === Component 1: ATR / BBW sequential contraction (existing logic) ===
     const atrList = this.calculateATR(data, 14);
     const bbWidthList = this.calculateBollingerBandWidth(data, 20);
     const recentATR = atrList.slice(-10);
@@ -1526,14 +1579,31 @@ class MinerviniTemplateAdvanced {
     for (let i = 1; i < recentBBW.length; i++) {
       if (recentBBW[i] < recentBBW[i - 1]) bbwContractionSteps++;
     }
-    // Use the higher of the two contraction step counts
     const contractionSteps = Math.max(atrContractionSteps, bbwContractionSteps);
-    // Score: 0 to 1 (max 10 steps)
-    const score = Math.max(0, Math.min(1, contractionSteps / 10));
-    // console.log(
-    //   `🔍 VCP Contraction Score → ATR Steps: ${atrContractionSteps}, BBW Steps: ${bbwContractionSteps} → Score: ${score}`
-    // );
-    return score;
+    const volatilityScore = Math.max(0, Math.min(1, contractionSteps / 10));
+
+    // === Component 2: Price range contraction across 3 base segments ===
+    // True VCP: each swing (high-low span) should be visibly narrower than the prior.
+    // ATR/BBW alone can pass in choppy, directionless markets — price range validates structure.
+    let rangeScore = 0;
+    const segmentSize = Math.floor(data.length / 3);
+    if (segmentSize >= 5) {
+      const seg1 = data.slice(0, segmentSize);
+      const seg2 = data.slice(segmentSize, segmentSize * 2);
+      const seg3 = data.slice(segmentSize * 2);
+      const range = seg => Math.max(...seg.map(d => d.high)) - Math.min(...seg.map(d => d.low));
+      const r1 = range(seg1), r2 = range(seg2), r3 = range(seg3);
+      if (r3 < r2 && r2 < r1) {
+        rangeScore = 1.0; // Full contraction: all three stages tightening
+      } else if (r3 < r1) {
+        rangeScore = 0.5; // Partial: end is at least tighter than the beginning
+      }
+      // else rangeScore = 0 (expanding or flat range — not VCP)
+    }
+
+    // === Combined score: 50% volatility contraction + 50% price range contraction ===
+    const combinedScore = (volatilityScore * 0.5) + (rangeScore * 0.5);
+    return Math.max(0, Math.min(1, combinedScore));
   }
 
 }

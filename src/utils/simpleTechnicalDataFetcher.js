@@ -20,8 +20,8 @@ async function getSimpleTechnicalData(symbol) {
     // Validate symbol
     const validatedSymbol = symbol.trim().toUpperCase();
     
-    // Get 24 months of data for sufficient history
-    const data = await getHistorical(validatedSymbol, '24mo');
+    // Get 5 years of data for sufficient history
+    const data = await getHistorical(validatedSymbol, '5y');
     
     if (!data || data.length < 50) {
       throw new Error(`Insufficient data for ${validatedSymbol}: ${data ? data.length : 0} points`);

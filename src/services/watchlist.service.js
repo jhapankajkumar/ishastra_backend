@@ -62,51 +62,53 @@ class WatchlistService {
 
 
             // Russel 1000 Stocks
-            "A", "AA", "AAL","AAON","AAPL","ABBV","ABNB","ABT","ACGL","ACHC","ACI","ACM","ACN","ADBE","ADC","ADI","ADM","ADP","ADSK","ADT","AEE","AEP","AES",
-            "AFG","AFL","AFRM","AGCO","AGNC","AGO","AIG","AIT","AIZ","AJG","AKAM","AL","ALAB","ALB","ALGM","ALGN","ALK","ALL","ALLE","ALLY","ALNY","ALSN","AM",
-            "AMAT","AMCR","AMD","AME","AMG","AMGN","AMH","AMKR","AMP","AMT","AMTM","AMZN","AN","ANET","AON","AOS","APA","APD","APG","APH","APLS","APO","APP",
-            "APPF","APTV","AR","ARE","ARES","ARMK","ARW","AS","ASH","ASTS","ATI","ATO","ATR","AU","AUR","AVB","AVGO","AVT","AVTR","AVY","AWI","AWK","AXON",
-            "AXP","AXS","AXTA","AYI","AZO","BA","BAC","BAH","BALL","BAM","BAX","BBWI","BBY","BC","BDX","BEN","BEPC","BF.A","BFAM","BG","BHF","BIIB",
-            "BILL","BIO","BIRK","BJ","BK","BKNG","BKR","BLD","BLDR","BLK","BLSH","BMRN","BMY","BOKF","BPOP","BR","BRBR","BRK.B","BRKR","BRO","BROS","BRX",
-            "BSX","BSY","BURL","BWA","BWXT","BX","BXP","BYD","C","CACC","CACI","CAG","CAH","CAI","CAR","CARR","CART","CASY","CAT","CAVA","CB","CBOE","CBRE",
-            "CBSH","CCC","CCI","CCK","CCL","CDNS","CDW","CE","CEG","CELH","CERT","CF","CFG","CFLT","CFR","CG","CGNX","CHD","CHDN","CHE","CHH","CHRD","CHRW",
-            "CHTR","CHWY","CI","CIEN","CINF","CIVI","CL","CLF","CLH","CLVT","CLX","CMA","CMCSA","CME","CMG","CMI","CMS","CNA","CNC","CNH","CNM","CNP","CNXC",
-            "COF","COHR","COIN","COKE","COLB","COLD","COLM","COO","COP","COR","CORT","COST","COTY","CPAY","CPB","CPNG","CPRT","CPT","CR","CRCL","CRH","CRL",
-            "CRM","CROX","CRS","CRUS","CRWD","CSCO","CSGP","CSL","CSX","CTAS","CTRA","CTSH","CTVA","CUBE","CUZ","CVNA","CVS","CVX","CW","CWEN","CWE.A","CXT",
-            "CZR","D","DAL","DAR","DASH","DAY","DBX","DCI","DD","DDOG","DDS","DE","DECK","DELL","DG","DGX","DHI","DHR","DINO","DIS","DJT","DKNG","DKS","DLB",
-            "DLR","DLTR","DOC","DOCS","DOCU","DOV","DOW","DOX","DPZ","DRI","DRS","DT","DTE","DTM","DUK","DUOL","DV","DVA","DVN","DXC","DXCM","EA","EBAY","ECG",
-            "ECL","ED","EEFT","EFX","EG","EGP","EHC","EIX","EL","ELAN","ELF","ELS","ELV","EME","EMN","EMR","ENPH","ENTG","EOG","EPAM","EPR","EQH","EQIX","EQR",
-            "EQT","ES","ESAB","ESI","ESS","ESTC","ETN","ETR","ETSY","EVR","EVRG","EW","EWBC","EXAS","EXC","EXE","EXEL","EXLS","EXP","EXPD","EXPE","EXR","F",
-            "FAF","FANG","FAST","FBIN","FCN","FCNCA","FCX","FDS","FDX","FE","FERG","FFIV","FG","FHB","FHN","FICO","FIGR","FIS","FISV","FITB","FIVE","FIX",
-            "FLEX","FLO","FLS","FLUT","FMC","FNB","FND","FNF","FOUR","FOX","FOXA","FR","FRHC","FRMI","FRPT","FRT","FSLR","FTAI","FTI","FTNT","FTV","FWONA",
-            "FWONK","FYBR","G","GAP","GD","GDDY","GE","GEHC","GEN","GEV","GFS","GGG","GILD","GIS","GL","GLIBA","GLIBK","GLOB","GLPI","GLW","GM","GME","GMED",
-            "GNRC","GNTX","GOOG","GOOGL","GPC","GPK","GPN","GRMN","GS","GTES","GTLB","GTM","GWRE","GWW","GXO","H","HAL","HALO","HAS","HAYW","HBAN","HCA","HD",
-            "HEI","HEI.A","HHH","HIG","HII","HIW","HLI","HLNE","HLT","HOG","HOLX","HON","HOOD","HPE","HPQ","HR","HRB","HRL","HSIC","HST","HSY","HUBB","HUBS",
-            "HUM","HUN","HWM","HXL","IAC","IBKR","IBM","ICE","IDA","IDXX","IEX","IFF","ILMN","INCY","INGM","INGR","INSM","INSP","INTC","INTU","INVH","IONS",
-            "IOT","IP","IPGP","IQV","IR","IRDM","IRM","ISRG","IT","ITT","ITW","IVZ","J","JAZZ","JBHT","JBL","JCI","JEF","JHG","JHX","JKHY","JLL","JNJ","JPM",
-            "KBR","KD","KDP","KEX","KEY","KEYS","KHC","KIM","KKR","KLAC","KMB","KMI","KMPR","KMX","KNSL","KNX","KO","KR","KRC","KRMN","KVUE","L","LAD","LAMR",
-            "LAZ","LBRDA","LBRDK","LBTYA","LBTYK","LCID","LDOS","LEA","LECO","LEN","LEN.B","LFUS","LH","LHX","LII","LIN","LINE","LITE","LKQ","LLY","LLYVA",
-            "LLYVK","LMT","LNC","LNG","LNT","LOAR","LOPE","LOW","LPLA","LPX","LRCX","LSCC","LSTR","LULU","LUV","LVS","LW","LYB","LYFT","LYV","M","MA","MAA",
-            "MAN","MANH","MAR","MAS","MASI","MAT","MCD","MCHP","MCK","MCO","MDB","MDLZ","MDT","MDU","MEDP","MET","META","MGM","MHK","MIDD","MKC","MKL","MKSI",
-            "MKTX","MLI","MLM","MMM","MNST","MO","MOH","MORN","MOS","MP","MPC","MPW","MPWR","MRK","MRNA","MRP","MRVL","MS","MSA","MSCI","MSFT","MSGS","MSI",
-            "MSM","MSTR","MTB","MTCH","MTD","MTDR","MTG","MTN","MTSI","MTZ","MU","MUSA","NBIX","NCLH","NCNO","NDAQ","NDSN","NEE","NEM","NET","NEU","NFG",
-            "NFLX","NI","NIQ","NKE","NLY","NNN","NOC","NOV","NOW","NRG","NSA","NSC","NTAP","NTNX","NTRA","NTRS","NU","NUE","NVDA","NVR","NVST","NVT","NWL",
-            "NWS","NWSA","NXST","NYT","O","OC","ODFL","OGE","OGN","OHI","OKE","OKTA","OLED","OLLI","OLN","OMC","OMF","ON","ONON","ONTO","ORCL","ORI","ORLY",
-            "OSK","OTIS","OVV","OWL","OXY","OZK","PAG","PANW","PATH","PAYC","PAYX","PB","PCAR","PCG","PCOR","PCTY","PEG","PEGA","PEN","PENN","PEP","PFE",
-            "PFG","PFGC","PG","PGR","PH","PHM","PINS","PK","PKG","PLD","PLNT","PLTR","PM","PNC","PNFP","PNR","PNW","PODD","POOL","POST","PPC","PPG","PPL",
-            "PR","PRGO","PRI","PRMB","PRU","PSA","PSN","PSTG","PSX","PTC","PVH","PWR","PYPL","Q","QCOM","QGEN","QRVO","QS","QSR","QXO","R","RAL","RARE","RBA",
-            "RBC","RBLX","RBRK","RCL","RDDT","REG","REGN","REXR","REYN","RF","RGA","RGEN","RGLD","RH","RHI","RITM","RIVN","RJF","RKLB","RKT","RL","RLI","RMD",
-            "RNG","RNR","ROIV","ROK","ROKU","ROL","ROP","ROST","RPM","RPRX","RRC","RRX","RS","RSG","RTX","RVMD","RVTY","RYAN","RYN","S","SAIA","SAIC","SAIL",
-            "SAM","SARO","SBAC","SBUX","SCCO","SCHW","SCI","SEB","SEE","SEIC","SF","SFD","SFM","SGI","SHC","SHW","SIRI","SITE","SJM","SLB","SLGN","SLM","SMCI",
-            "SMG","SMMT","SN","SNA","SNDK","SNDR","SNOW","SNPS","SNX","SO","SOFI","SOLS","SOLV","SON","SPG","SPGI","SPOT","SRE","SRPT","SSB","SSD","SSNC","ST",
-            "STAG","STE","STLD","STT","STWD","STZ","SUI","SW","SWK","SWKS","SYF","SYK","SYY","T","TAP","TDC","TDG","TDY","TEAM","TECH","TEM","TER","TFC","TFSL",
-            "TFX","TGT","THC","THG","THO","TIGO","TJX","TKO","TKR","TLN","TMO","TMUS","TNL","TOL","TOST","TPG","TPL","TPR","TREX","TRGP","TRMB","TROW","TRU",
-            "TRV","TSCO","TSLA","TSN","TT","TTC","TTD","TTEK","TTWO","TW","TWLO","TXN","TXRH","TXT","TYL","U","UA","UAA","UAL","UBER","UDR","UGI","UHAL","UHA.B",
-            "UHS","UI","ULTA","UNH","UNM","UNP","UPS","URI","USB","USFD","UTHR","UWMC","V","VEEV","VFC","VICI","VIK","VIRT","VKTX","VLO","VLTO","VMC","VMI","VNO",
-            "VNOM","VNT","VOYA","VRSK","VRSN","VRT","VRTX","VST","VTR","VTRS","VVV","VZ","W","WAB","WAL","WAT","WBD","WBS","WCC","WDAY","WDC","WEC","WELL","WEN",
-            "WEX","WFC","WFRD","WH","WHR","WING","WLK","WM","WMB","WMS","WMT","WPC","WRB","WSC","WSM","WSO","WST","WTFC","WTM","WTRG","WTW","WU","WWD","WY",
-            "WYNN","XEL","XOM","XP","XPO","XRAY","XYL","XYZ","YETI","YUM"
+            // "A", "AA", "AAL","AAON","AAPL","ABBV","ABNB","ABT","ACGL","ACHC","ACI","ACM","ACN","ADBE","ADC","ADI","ADM","ADP","ADSK","ADT","AEE","AEP","AES",
+            // "AFG","AFL","AFRM","AGCO","AGNC","AGO","AIG","AIT","AIZ","AJG","AKAM","AL","ALAB","ALB","ALGM","ALGN","ALK","ALL","ALLE","ALLY","ALNY","ALSN","AM",
+            // "AMAT","AMCR","AMD","AME","AMG","AMGN","AMH","AMKR","AMP","AMT","AMTM","AMZN","AN","ANET","AON","AOS","APA","APD","APG","APH","APLS","APO","APP",
+            // "APPF","APTV","AR","ARE","ARES","ARMK","ARW","AS","ASH","ASTS","ATI","ATO","ATR","AU","AUR","AVB","AVGO","AVT","AVTR","AVY","AWI","AWK","AXON",
+            // "AXP","AXS","AXTA","AYI","AZO","BA","BAC","BAH","BALL","BAM","BAX","BBWI","BBY","BC","BDX","BEN","BEPC","BF.A","BFAM","BG","BHF","BIIB",
+            // "BILL","BIO","BIRK","BJ","BK","BKNG","BKR","BLD","BLDR","BLK","BLSH","BMRN","BMY","BOKF","BPOP","BR","BRBR","BRK.B","BRKR","BRO","BROS","BRX",
+            // "BSX","BSY","BURL","BWA","BWXT","BX","BXP","BYD","C","CACC","CACI","CAG","CAH","CAI","CAR","CARR","CART","CASY","CAT","CAVA","CB","CBOE","CBRE",
+            // "CBSH","CCC","CCI","CCK","CCL","CDNS","CDW","CE","CEG","CELH","CERT","CF","CFG","CFLT","CFR","CG","CGNX","CHD","CHDN","CHE","CHH","CHRD","CHRW",
+            // "CHTR","CHWY","CI","CIEN","CINF","CIVI","CL","CLF","CLH","CLVT","CLX","CMA","CMCSA","CME","CMG","CMI","CMS","CNA","CNC","CNH","CNM","CNP","CNXC",
+            // "COF","COHR","COIN","COKE","COLB","COLD","COLM","COO","COP","COR","CORT","COST","COTY","CPAY","CPB","CPNG","CPRT","CPT","CR","CRCL","CRH","CRL",
+            // "CRM","CROX","CRS","CRUS","CRWD","CSCO","CSGP","CSL","CSX","CTAS","CTRA","CTSH","CTVA","CUBE","CUZ","CVNA","CVS","CVX","CW","CWEN","CWE.A","CXT",
+            // "CZR","D","DAL","DAR","DASH","DAY","DBX","DCI","DD","DDOG","DDS","DE","DECK","DELL","DG","DGX","DHI","DHR","DINO","DIS","DJT","DKNG","DKS","DLB",
+            // "DLR","DLTR","DOC","DOCS","DOCU","DOV","DOW","DOX","DPZ","DRI","DRS","DT","DTE","DTM","DUK","DUOL","DV","DVA","DVN","DXC","DXCM","EA","EBAY","ECG",
+            // "ECL","ED","EEFT","EFX","EG","EGP","EHC","EIX","EL","ELAN","ELF","ELS","ELV","EME","EMN","EMR","ENPH","ENTG","EOG","EPAM","EPR","EQH","EQIX","EQR",
+            // "EQT","ES","ESAB","ESI","ESS","ESTC","ETN","ETR","ETSY","EVR","EVRG","EW","EWBC","EXAS","EXC","EXE","EXEL","EXLS","EXP","EXPD","EXPE","EXR","F",
+            // "FAF","FANG","FAST","FBIN","FCN","FCNCA","FCX","FDS","FDX","FE","FERG","FFIV","FG","FHB","FHN","FICO","FIGR","FIS","FISV","FITB","FIVE","FIX",
+            // "FLEX","FLO","FLS","FLUT","FMC","FNB","FND","FNF","FOUR","FOX","FOXA","FR","FRHC","FRMI","FRPT","FRT","FSLR","FTAI","FTI","FTNT","FTV","FWONA",
+            // "FWONK","FYBR","G","GAP","GD","GDDY","GE","GEHC","GEN","GEV","GFS","GGG","GILD","GIS","GL","GLIBA","GLIBK","GLOB","GLPI","GLW","GM","GME","GMED",
+            // "GNRC","GNTX","GOOG","GOOGL","GPC","GPK","GPN","GRMN","GS","GTES","GTLB","GTM","GWRE","GWW","GXO","H","HAL","HALO","HAS","HAYW","HBAN","HCA","HD",
+            // "HEI","HEI.A","HHH","HIG","HII","HIW","HLI","HLNE","HLT","HOG","HOLX","HON","HOOD","HPE","HPQ","HR","HRB","HRL","HSIC","HST","HSY","HUBB","HUBS",
+            // "HUM","HUN","HWM","HXL","IAC","IBKR","IBM","ICE","IDA","IDXX","IEX","IFF","ILMN","INCY","INGM","INGR","INSM","INSP","INTC","INTU","INVH","IONS",
+            // "IOT","IP","IPGP","IQV","IR","IRDM","IRM","ISRG","IT","ITT","ITW","IVZ","J","JAZZ","JBHT","JBL","JCI","JEF","JHG","JHX","JKHY","JLL","JNJ","JPM",
+            // "KBR","KD","KDP","KEX","KEY","KEYS","KHC","KIM","KKR","KLAC","KMB","KMI","KMPR","KMX","KNSL","KNX","KO","KR","KRC","KRMN","KVUE","L","LAD","LAMR",
+            // "LAZ","LBRDA","LBRDK","LBTYA","LBTYK","LCID","LDOS","LEA","LECO","LEN","LEN.B","LFUS","LH","LHX","LII","LIN","LINE","LITE","LKQ","LLY","LLYVA",
+            // "LLYVK","LMT","LNC","LNG","LNT","LOAR","LOPE","LOW","LPLA","LPX","LRCX","LSCC","LSTR","LULU","LUV","LVS","LW","LYB","LYFT","LYV","M","MA","MAA",
+            // "MAN","MANH","MAR","MAS","MASI","MAT","MCD","MCHP","MCK","MCO","MDB","MDLZ","MDT","MDU","MEDP","MET","META","MGM","MHK","MIDD","MKC","MKL","MKSI",
+            // "MKTX","MLI","MLM","MMM","MNST","MO","MOH","MORN","MOS","MP","MPC","MPW","MPWR","MRK","MRNA","MRP","MRVL","MS","MSA","MSCI","MSFT","MSGS","MSI",
+            // "MSM","MSTR","MTB","MTCH","MTD","MTDR","MTG","MTN","MTSI","MTZ","MU","MUSA","NBIX","NCLH","NCNO","NDAQ","NDSN","NEE","NEM","NET","NEU","NFG",
+            // "NFLX","NI","NIQ","NKE","NLY","NNN","NOC","NOV","NOW","NRG","NSA","NSC","NTAP","NTNX","NTRA","NTRS","NU","NUE","NVDA","NVR","NVST","NVT","NWL",
+            // "NWS","NWSA","NXST","NYT","O","OC","ODFL","OGE","OGN","OHI","OKE","OKTA","OLED","OLLI","OLN","OMC","OMF","ON","ONON","ONTO","ORCL","ORI","ORLY",
+            // "OSK","OTIS","OVV","OWL","OXY","OZK","PAG","PANW","PATH","PAYC","PAYX","PB","PCAR","PCG","PCOR","PCTY","PEG","PEGA","PEN","PENN","PEP","PFE",
+            // "PFG","PFGC","PG","PGR","PH","PHM","PINS","PK","PKG","PLD","PLNT","PLTR","PM","PNC","PNFP","PNR","PNW","PODD","POOL","POST","PPC","PPG","PPL",
+            // "PR","PRGO","PRI","PRMB","PRU","PSA","PSN","PSTG","PSX","PTC","PVH","PWR","PYPL","Q","QCOM","QGEN","QRVO","QS","QSR","QXO","R","RAL","RARE","RBA",
+            // "RBC","RBLX","RBRK","RCL","RDDT","REG","REGN","REXR","REYN","RF","RGA","RGEN","RGLD","RH","RHI","RITM","RIVN","RJF","RKLB","RKT","RL","RLI","RMD",
+            // "RNG","RNR","ROIV","ROK","ROKU","ROL","ROP","ROST","RPM","RPRX","RRC","RRX","RS","RSG","RTX","RVMD","RVTY","RYAN","RYN","S","SAIA","SAIC","SAIL",
+            // "SAM","SARO","SBAC","SBUX","SCCO","SCHW","SCI","SEB","SEE","SEIC","SF","SFD","SFM","SGI","SHC","SHW","SIRI","SITE","SJM","SLB","SLGN","SLM","SMCI",
+            // "SMG","SMMT","SN","SNA","SNDK","SNDR","SNOW","SNPS","SNX","SO","SOFI","SOLS","SOLV","SON","SPG","SPGI","SPOT","SRE","SRPT","SSB","SSD","SSNC","ST",
+            // "STAG","STE","STLD","STT","STWD","STZ","SUI","SW","SWK","SWKS","SYF","SYK","SYY","T","TAP","TDC","TDG","TDY","TEAM","TECH","TEM","TER","TFC","TFSL",
+            // "TFX","TGT","THC","THG","THO","TIGO","TJX","TKO","TKR","TLN","TMO","TMUS","TNL","TOL","TOST","TPG","TPL","TPR","TREX","TRGP","TRMB","TROW","TRU",
+            // "TRV","TSCO","TSLA","TSN","TT","TTC","TTD","TTEK","TTWO","TW","TWLO","TXN","TXRH","TXT","TYL","U","UA","UAA","UAL","UBER","UDR","UGI","UHAL","UHA.B",
+            // "UHS","UI","ULTA","UNH","UNM","UNP","UPS","URI","USB","USFD","UTHR","UWMC","V","VEEV","VFC","VICI","VIK","VIRT","VKTX","VLO","VLTO","VMC","VMI","VNO",
+            // "VNOM","VNT","VOYA","VRSK","VRSN","VRT","VRTX","VST","VTR","VTRS","VVV","VZ","W","WAB","WAL","WAT","WBD","WBS","WCC","WDAY","WDC","WEC","WELL","WEN",
+            // "WEX","WFC","WFRD","WH","WHR","WING","WLK","WM","WMB","WMS","WMT","WPC","WRB","WSC","WSM","WSO","WST","WTFC","WTM","WTRG","WTW","WU","WWD","WY",
+            // "WYNN","XEL","XOM","XP","XPO","XRAY","XYL","XYZ","YETI","YUM"
 
+            //Trading View Filtered Stocks
+            "DAL", "HEI", "HEI.A", "WAT", "UAL", "DXCM", "MDB", "ILMN", "IOT", "BBY", "NBIX", "GEN", "DOC", "RVTY", "LINE", "AAL", "CYTK", "QRVO", "ORA", "CLF", "LTH", "ZETA", "LIVN", "RUN", "VCYT", "YETI", "FLNC", "NSIT", "TDC", "GRAL", "PGNY", "AMRC", "RLJ", "SEPN", "BLFS", "OPK", "BJRI", "HNRG", "ESPR", "NXDR", "REPL", "OSPN", "AAOI", "ADV", "AFRM", "ASPI", "ASPN", "BLMN", "BRCC", "BRKR", "BRZE", "BTDR", "CCRN", "CIFR", "CLSK", "CORT", "CRCL", "CRNC", "CVI", "DAVE", "DSP", "ELVN", "EOLS", "FA", "FIVN", "FLY", "FORM", "FSLR", "FTRE", "GBTG", "GCO", "GH", "GRPN", "HOG", "HPQ", "HTFL", "HUM", "IART", "IBTA", "INBX", "MARA", "MGTX", "NET", "NEXT", "NRC", "OEC", "OMDA", "ORKA", "OSCR", "PRM", "PTEN", "PTON", "PUBM", "PVH", "QBTS", "RAL", "RAMP", "RBBN", "RBRK", "RDVT", "RGTI", "RMAX", "SABR", "SAIL", "SEZL", "SG", "SLP", "SNOW", "SOC", "STAA", "SWKS", "TDOC", "TENB", "TNC", "TNGX", "TSHA", "TVTX", "URGN", "USAR", "VOYG", "WLY", "WST", "XRX", "ZM", "AA", "AAMI", "AAON", "ABSI", "ACLS", "ACMR", "ADM", "ADTN", "AEHR", "AESI", "AEVA", "AGL", "AGX", "AIN", "AIP", "AIR", "AKAM", "ALAB", "ALGM", "ALKS", "ALNT", "ALRS", "AMAL", "AMBQ", "AMKR", "AMN", "AMPX", "AMSC", "ANAB", "AOSL", "APLD", "APPS", "ARCB", "ARKO", "ARMK", "ARW", "ARWR", "ASTH", "ASTS", "ATEN", "ATEX", "ATI", "ATNI", "ATRO", "AUR", "AVBP", "AVNS", "AVT", "AXGN", "AXSM", "BAND", "BE", "BEAM", "BELFB", "BEN", "BFH", "BFLY", "BHE", "BKSY", "BTSG", "BWA", "CAKE", "CARE", "CBL", "CBT", "CCSI", "CECO", "CELC", "CENX", "CERS", "CEVA", "CGEM", "CGNX", "CIEN", "CLDT", "CLFD", "CLMT", "CLOV", "CMI", "CMP", "CMPR", "CNC", "COCO", "CODI", "COHR", "COHU", "COLD", "CORZ", "CPRX", "CRDO", "CROX", "CRS", "CRSR", "CRUS", "CRWD", "CSTM", "CTOS", "CTS", "CVLG", "CW", "CYRX", "DAN", "DBI", "DBRG", "DCO", "DCOM", "DDD", "DDOG", "DFTX", "DGII", "DHC", "DINO", "DIOD", "DMRC", "DNTH", "DOCN", "DRS", "DRUG", "DVA", "DY", "EBAY", "ECG", "ECPG", "EDIT", "EGBN", "ENPH", "ENS", "ENTG", "EQIX", "ESI", "ETON", "EVC", "EVCM", "EWTX", "EXTR", "F", "FATE", "FCFS", "FCX", "FDX", "FFIV", "FIVE", "FIX", "FLEX", "FN", "FNKO", "FTAI", "FTNT", "GEO", "GFS", "GHM", "GLW", "GNRC", "GRC", "GRDN", "GSAT", "GTX", "GWW", "HELE", "HLIO", "HLIT", "HP", "HPE", "HTLD", "HUN", "HUT", "HYLN", "HZO", "IBKR", "ICHR", "IESC", "ILPT", "IMVT", "INDI", "INGM", "INOD", "IONQ", "IOVA", "IRDM", "IRM", "JAZZ", "JBHT", "JBL", "KALU", "KALV", "KELYA", "KEYS", "KFRC", "KGS", "KLIC", "KN", "KNX", "KOP", "KOPN", "KRYS", "LASR", "LEA", "LFUS", "LINC", "LIND", "LION", "LNTH", "LOCO", "LPG", "LQDA", "LSCC", "LSTR", "LUMN", "LUNR", "LXFR", "LYTS", "MAC", "MASS", "MATX", "MBIN", "MCHP", "MEI", "MIDD", "MIRM", "MITK", "MKSI", "MOD", "MOG.A", "MOV", "MPWR", "MRCY", "MRTN", "MRVI", "MRVL", "MRX", "MSBI", "MSGE", "MSGS", "MTRN", "MTSI", "MTX", "MTZ", "MXL", "MYRG", "NBN", "NBR", "NESR", "NEWT", "NGNE", "NHC", "NN", "NOV", "NOVT", "NPO", "NSA", "NTAP", "NTCT", "NUE", "NVAX", "NVCR", "NVEC", "NVT", "NVTS", "NWPX", "NXT", "OABI", "OBK", "ODC", "ODFL", "OGN", "OII", "OKTA", "OLPX", "ON", "OOMA", "OPLN", "OUST", "OUT", "PACK", "PAYS", "PBI", "PCT", "PDFS", "PEB", "PENG", "PGC", "PHIN", "PL", "PLOW", "PLPC", "PLSE", "PLUG", "PLXS", "POWI", "POWL", "PRAX", "PRLB", "PRMB", "PRSU", "PSMT", "PSTL", "PWR", "R", "RAPP", "RCAT", "RDW", "RELY", "REX", "RIOT", "RKLB", "RLAY", "RMBS", "RNG", "ROG", "ROIV", "ROKU", "ROST", "RPRX", "RRX", "RS", "RSI", "RUM", "RVMD", "RXO", "SAH", "SAIA", "SANM", "SATS", "SCCO", "SCHL", "SEI", "SHEN", "SHLS", "SIRI", "SITM", "SKYT", "SLAB", "SLB", "SLS", "SM", "SMCI", "SMTC", "SNDR", "SNEX", "SNX", "SPB", "SPHR", "SRTA", "SSRM", "ST", "STGW", "STLD", "STRL", "STRZ", "STT", "SWBI", "SXC", "SYNA", "SYRE", "TALK", "TE", "TECX", "TER", "TGT", "TH", "THR", "TIGO", "TKR", "TPR", "TRGP", "TRNS", "TTI", "TTMI", "TWLO", "TWST", "TXG", "UCTT", "UIS", "ULCC", "UNF", "UNFI", "UNIT", "UTI", "VAC", "VCTR", "VECO", "VIAV", "VICR", "VIK", "VIR", "VIRT", "VLO", "VMD", "VPG", "VRT", "VSAT", "VSCO", "VSH", "VSTS", "VTRS", "VVX", "WCC", "WDC", "WERN", "WEST", "WFRD", "WHD", "WSR", "WT", "WTI", "WTTR", "WULF", "XMTR", "XPER", "XPO", "YOU", "ZD", "ZVRA"
         ];
 
         this.DELISTED_STOCKS = [
@@ -167,17 +169,17 @@ class WatchlistService {
             "CCIV",
 
             // Indian Large-Cap Stocks
-            "RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "INFY.NS", "HINDUNILVR.NS",
-            "ICICIBANK.NS", "KOTAKBANK.NS", "SBIN.NS", "BHARTIARTL.NS", "ITC.NS",
-            "ASIANPAINT.NS", "LT.NS", "AXISBANK.NS", "MARUTI.NS", "TITAN.NS",
-            "NESTLEIND.NS", "ULTRACEMCO.NS", "BAJFINANCE.NS", "SUNPHARMA.NS", "TECHM.NS",
-            "WIPRO.NS", "ONGC.NS", "TATAMOTORS.NS", "COALINDIA.NS", "NTPC.NS",
-            "POWERGRID.NS", "HCLTECH.NS", "BAJAJFINSV.NS", "DRREDDY.NS", "GRASIM.NS",
-            "CIPLA.NS", "EICHERMOT.NS", "TATASTEEL.NS", "JSWSTEEL.NS", "HINDALCO.NS",
-            "ADANIPORTS.NS", "INDUSINDBK.NS", "BRITANNIA.NS", "DIVISLAB.NS", "APOLLOHOSP.NS",
-            "HEROMOTOCO.NS", "BPCL.NS", "IOC.NS", "GAIL.NS", "TATACONSUM.NS",
-            "MUTHOOTFIN.NS", "GODREJCP.NS", "BAJAJ-AUTO.NS", "ADANIENT.NS", "MARICO.NS",
-            "M&M.NS", "SHREECEM.NS", "PIDILITIND.NS", "DABUR.NS",
+            // "RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "INFY.NS", "HINDUNILVR.NS",
+            // "ICICIBANK.NS", "KOTAKBANK.NS", "SBIN.NS", "BHARTIARTL.NS", "ITC.NS",
+            // "ASIANPAINT.NS", "LT.NS", "AXISBANK.NS", "MARUTI.NS", "TITAN.NS",
+            // "NESTLEIND.NS", "ULTRACEMCO.NS", "BAJFINANCE.NS", "SUNPHARMA.NS", "TECHM.NS",
+            // "WIPRO.NS", "ONGC.NS", "TATAMOTORS.NS", "COALINDIA.NS", "NTPC.NS",
+            // "POWERGRID.NS", "HCLTECH.NS", "BAJAJFINSV.NS", "DRREDDY.NS", "GRASIM.NS",
+            // "CIPLA.NS", "EICHERMOT.NS", "TATASTEEL.NS", "JSWSTEEL.NS", "HINDALCO.NS",
+            // "ADANIPORTS.NS", "INDUSINDBK.NS", "BRITANNIA.NS", "DIVISLAB.NS", "APOLLOHOSP.NS",
+            // "HEROMOTOCO.NS", "BPCL.NS", "IOC.NS", "GAIL.NS", "TATACONSUM.NS",
+            // "MUTHOOTFIN.NS", "GODREJCP.NS", "BAJAJ-AUTO.NS", "ADANIENT.NS", "MARICO.NS",
+            // "M&M.NS", "SHREECEM.NS", "PIDILITIND.NS", "DABUR.NS",
 
             //US Mega Cap Stocks
             "AAPL","ABBV", "AMAT", "AMD", "AMZN", "AVGO", "AXP",
@@ -208,9 +210,9 @@ class WatchlistService {
      * DAILY WATCHLIST SCAN - THE ONLY METHOD THAT MATTERS
      * Scans all stocks, picks top 20 BUY/WATCH signals, saves to DB
      */
-    async runDailyScan() {
+    async runDailyScan(stockUniverse) {
         console.log('🔍 DAILY WATCHLIST SCAN STARTING...');
-        const distinctSymbols = Array.from(new Set(this.STOCK_UNIVERSE));
+        const distinctSymbols = stockUniverse === 'ALL' ? Array.from(new Set(this.STOCK_UNIVERSE)) : Array.from(new Set(stockUniverse));
         console.log(`📊 Scanning ${distinctSymbols.length} stocks for BUY/WATCH signals`);
 
         // Step 2: Analyze all stocks in batches
@@ -342,10 +344,12 @@ class WatchlistService {
             }
         }
 
+        const buyStocks = buySignals.map(s => s.symbol).join(', '); 
+        
         console.log('✅ DAILY WATCHLIST SCAN COMPLETE');
         return {
             scanned: this.STOCK_UNIVERSE.length,
-            buySignals: buySignals.length,
+            buySignals: buyStocks,
             watchSignals: watchSignals.length,
             watchlistSize: combinedSignals.length,
             breakdown: {

@@ -45,8 +45,8 @@ class WatchlistController {
   async runDailyScan(req, res) {
     try {
       console.log('🔍 Manual daily scan triggered via API');
-
-      const result = await this.watchlistService.runDailyScan();
+      const stocksUniverse = req.body.stocksUniverse || 'ALL'; // Optional: specify universe (e.g., 'US', 'IN', 'TECH')
+      const result = await this.watchlistService.runDailyScan(stocksUniverse);
 
       res.json({
         success: true,

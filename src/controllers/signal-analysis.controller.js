@@ -367,10 +367,7 @@ class TradingSystemController {
       },
 
       execution: execution,
-      technical: technicalData.indicators.latest,
       systems: systemResults,
-
-      // 🚨 DELETED: systems object - eliminated redundancy and confusion
     };
   }
 
