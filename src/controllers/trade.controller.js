@@ -533,6 +533,88 @@ exports.addPostAnalysis = async (req, res) => {
   }
 };
 
+// Edit existing trade entry details
+exports.editTrade = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const tradeId = Number(id);
+    console.log('Edit Trade Request Body:', req.body);
+    console.log('Edit Trade ID:', tradeId);
+    if (!tradeId || Number.isNaN(tradeId)) {
+      return res.status(400).json({ error: 'Invalid trade ID' });
+    }
+
+    const currentTrade = await prisma.trade.findUnique({
+      where: { id: tradeId }
+    });
+
+    if (!currentTrade) {
+      return res.status(404).json({ error: 'Trade not found' });
+    }
+    console.log('Update Data:', req.body);
+    const nextEntryDate = req.body.entryDate ? new Date(req.body.entryDate) : currentTrade.entryDate;
+    if (req.body.entryDate && Number.isNaN(nextEntryDate.getTime())) {
+      return res.status(400).json({ error: 'Invalid entry date format' });
+    }
+
+    const nextEntryPrice = req.body.entryPrice !== undefined && req.body.entryPrice !== ''
+      ? Number(req.body.entryPrice)
+      : currentTrade.entryPrice;
+    const nextQuantity = req.body.quantity !== undefined && req.body.quantity !== ''
+      ? Number(req.body.quantity)
+      : currentTrade.quantity;
+    const nextStopLoss = req.body.stopLoss !== undefined && req.body.stopLoss !== ''
+      ? Number(req.body.stopLoss)
+      : currentTrade.stopLoss;
+
+    if (Number.isNaN(nextEntryPrice) || Number.isNaN(nextQuantity) || Number.isNaN(nextStopLoss)) {
+      return res.status(400).json({ error: 'Entry price, quantity, and stop loss must be valid numbers' });
+    }
+
+    if (nextQuantity <= 0) {
+      return res.status(400).json({ error: 'Quantity must be greater than 0' });
+    }
+
+    const quantityDiff = nextQuantity - Number(currentTrade.quantity || 0);
+    const currentCurrency = (currentTrade.currency || 'USD').toUpperCase();
+    const currentEntryAmount = CapitalManager.calculateTradeAmount(Number(currentTrade.entryPrice || 0), Number(currentTrade.remainingQuantity || currentTrade.quantity || 0));
+    const nextEntryAmount = CapitalManager.calculateTradeAmount(nextEntryPrice, nextQuantity);
+    const amountDiff = nextEntryAmount - currentEntryAmount;
+
+    if (amountDiff > 0) {
+      const hasSufficientCapital = await CapitalManager.hasSufficientCapital(currentCurrency, amountDiff);
+      if (!hasSufficientCapital) {
+        const capital = await CapitalManager.getCapital(currentCurrency);
+        return res.status(400).json({
+          error: `Insufficient capital to increase trade size. Required: ${amountDiff} ${currentCurrency}, Available: ${capital ? capital.remaining : 0} ${currentCurrency}`
+        });
+      }
+      await CapitalManager.allocateCapital(currentCurrency, amountDiff);
+    } else if (amountDiff < 0) {
+      await CapitalManager.releaseCapital(currentCurrency, Math.abs(amountDiff));
+    }
+
+    const updatedTrade = await prisma.trade.update({
+      where: { id: tradeId },
+      data: {
+        entryDate: nextEntryDate,
+        entryPrice: nextEntryPrice,
+        quantity: nextQuantity,
+        remainingQuantity: currentTrade.status === 'Closed' ? currentTrade.remainingQuantity : nextQuantity,
+        stopLoss: nextStopLoss,
+      }
+    });
+
+    res.json({
+      message: 'Trade updated successfully',
+      trade: updatedTrade
+    });
+  } catch (error) {
+    console.error('Error updating trade:', error);
+    res.status(500).json({ error: 'Failed to update trade', details: error.message });
+  }
+};
+
 // Get a single trade by ID with related data and Elder's Impulse analysis
 exports.getTradeById = async (req, res) => {
   try {

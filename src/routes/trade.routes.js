@@ -36,6 +36,11 @@ router.put(
   ]),
   tradeController.addPostAnalysis
 );
+router.put(
+  '/:id/edit',
+  upload.none(),
+  tradeController.editTrade
+);
 router.get('/:id', tradeController.getTradeById);
 router.get('/:id/transactions', tradeController.getTradeTransactions);
 router.delete('/:id', tradeController.deleteTrade);
