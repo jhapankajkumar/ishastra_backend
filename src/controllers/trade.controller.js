@@ -252,7 +252,10 @@ exports.updateTradeExit = async (req, res) => {
 
     // Get current trade to validate
     const currentTrade = await prisma.trade.findUnique({
-      where: { id: tradeId }
+      where: { id: tradeId },
+      include: {
+        tradeTransactions: true
+      }
     });
 
     if (!currentTrade) {
@@ -551,11 +554,16 @@ exports.editTrade = async (req, res) => {
     if (!currentTrade) {
       return res.status(404).json({ error: 'Trade not found' });
     }
+    if ((currentTrade.status || '').toLowerCase() === 'closed') {
+      return res.status(400).json({ error: 'Closed trades cannot be edited' });
+    }
     console.log('Update Data:', req.body);
     const nextEntryDate = req.body.entryDate ? new Date(req.body.entryDate) : currentTrade.entryDate;
     if (req.body.entryDate && Number.isNaN(nextEntryDate.getTime())) {
       return res.status(400).json({ error: 'Invalid entry date format' });
     }
+
+    const hasExitHistory = Array.isArray(currentTrade.tradeTransactions) && currentTrade.tradeTransactions.some(tx => tx.transactionType === 'Exit');
 
     const nextEntryPrice = req.body.entryPrice !== undefined && req.body.entryPrice !== ''
       ? Number(req.body.entryPrice)
@@ -575,11 +583,16 @@ exports.editTrade = async (req, res) => {
       return res.status(400).json({ error: 'Quantity must be greater than 0' });
     }
 
-    const quantityDiff = nextQuantity - Number(currentTrade.quantity || 0);
     const currentCurrency = (currentTrade.currency || 'USD').toUpperCase();
     const currentEntryAmount = CapitalManager.calculateTradeAmount(Number(currentTrade.entryPrice || 0), Number(currentTrade.remainingQuantity || currentTrade.quantity || 0));
     const nextEntryAmount = CapitalManager.calculateTradeAmount(nextEntryPrice, nextQuantity);
     const amountDiff = nextEntryAmount - currentEntryAmount;
+
+    if (hasExitHistory && nextQuantity !== Number(currentTrade.quantity || 0)) {
+      return res.status(400).json({
+        error: 'Quantity cannot be changed after exit transactions exist. Only entry price, entry date, and stop loss can be edited.'
+      });
+    }
 
     if (amountDiff > 0) {
       const hasSufficientCapital = await CapitalManager.hasSufficientCapital(currentCurrency, amountDiff);
