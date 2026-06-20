@@ -27,10 +27,10 @@ class TradingSystemController {
    * Get historical chart data for a specific stock symbol
    */
   async getChartData(req, res ) {
-    const { symbol } = req.query;
-    console.log(`📈 Fetching chart data for ${symbol}...`)  ;
+    const { symbol, period = '2y' } = req.query;
+    console.log(`📈 Fetching chart data for ${symbol} (${period})...`)  ;
     try {
-      const historicalData = await yahoo.getHistorical(symbol, '5y');
+      const historicalData = await yahoo.getHistorical(symbol, period);
       if (!historicalData || historicalData.length === 0) {
         throw new Error(`Failed to fetch historical data for ${symbol}`);
       }
@@ -196,7 +196,7 @@ class TradingSystemController {
       const analysisResult = await this.buildEnhancedTradingResponse({
         symbol,
         technicalData,
-        systemResults,
+        minerviniResult,
         supportedSystems,
         unifiedDecision,
       });
@@ -312,7 +312,7 @@ class TradingSystemController {
   async buildEnhancedTradingResponse({
     symbol,
     technicalData,
-    systemResults,
+    minerviniResult,
     supportedSystems,
     unifiedDecision
   }) {
@@ -324,32 +324,20 @@ class TradingSystemController {
     const unifiedConfidence = unifiedDecision.confidence || 0;
     const confidencePercent = Math.round(unifiedConfidence * 100);
 
-    // 🚀 OPTIMIZED: Identify winning system and use its execution data directly
-    const winningSystem = this.identifyWinningSystem(systemResults, unifiedDecision);
-    let execution = {};
 
-    if (winningSystem && (unifiedAction === 'BUY' || unifiedAction === 'WATCH')) {
-      // ✅ FIXED: Safe access with null checks
-      execution = winningSystem.execution || {};
-    } else {
-      execution = null;
-    }
 
     // 🎯 SIMPLIFIED: Extract grade with clear hierarchy and single log
     let grade = this.getGrade(unifiedConfidence); // Fallback
 
     // Check in order of preference: signalQuality > system-specific grades
-    if (winningSystem?.grade) {
-      grade = winningSystem.grade;
-    } else if (winningSystem?.templateAnalysis?.templateGrade) {
-      grade = winningSystem.templateAnalysis.templateGrade;
-    } else if (winningSystem?.cascadeAnalysis?.momentumCascade?.grade) {
-      grade = winningSystem.cascadeAnalysis.momentumCascade.grade;
+    if (minerviniResult?.grade) {
+      grade = minerviniResult.grade;
+    } else if (minerviniResult?.templateAnalysis?.templateGrade) {
+      grade = minerviniResult.templateAnalysis.templateGrade;
+    } else if (minerviniResult?.cascadeAnalysis?.momentumCascade?.grade) {
+      grade = minerviniResult.cascadeAnalysis.momentumCascade.grade;
     }
-    // 🎯 CLEAN RESPONSE: Winning system name in decision, no systems bloat
-    const winningSystemName = winningSystem?.systemName || 'Unknown System';
-    const winningSystemId = winningSystem?.systemId || 'unknown';
-
+    const setupQuality = minerviniResult?.setupQuality || null;
     return {
       symbol,
       currentPrice: Number(currentPrice.toFixed(2)),
@@ -360,79 +348,11 @@ class TradingSystemController {
         action: unifiedAction,
         confidence: confidencePercent,
         grade: grade,
-        reasoning: winningSystem?.reasoning || 'Analysis complete',
-        systemsAgreement: unifiedDecision.systemsAgreement || 'PARTIAL',
-        winningSystem: winningSystemName,
-        winningSystemId: winningSystemId
+        reasoning: minerviniResult?.reasoning || 'Analysis complete',
       },
-
-      execution: execution,
-      systems: systemResults,
+      setupQuality: setupQuality,
     };
   }
-
-  // 🎯 SIMPLE: Identify winning system for attribution
-  identifyWinningSystem(systemResults, unifiedDecision) {
-    try {
-      // Convert systemResults to array format for processing
-      const resultsArray = Object.entries(systemResults).map(([systemId, result]) => ({
-        ...result,
-        systemId: systemId,
-        system: systemId
-      })).filter(result => {
-        return result && result.decision && result.decision !== 'AVOID' && result.decision !== 'ERROR';
-      });
-
-      if (resultsArray.length === 0) {
-        // console.log(`⚠️ No valid systems found for winning system identification`);
-        return null;
-      }
-
-      // Logic 1: If unified decision matches a specific system with high confidence, use that system
-      const highConfidenceSystems = resultsArray.filter(result =>
-        result.confidence >= 0.75 && result.decision === unifiedDecision.action
-      );
-
-      if (highConfidenceSystems.length === 1) {
-        //console.log(`🎯 High confidence winner: ${highConfidenceSystems[0].systemId} (${(highConfidenceSystems[0].confidence * 100).toFixed(1)}%)`);
-        return highConfidenceSystems[0];
-      }
-
-      // Logic 2: If multiple high confidence systems, use the highest confidence one
-      if (highConfidenceSystems.length > 1) {
-        const winner = highConfidenceSystems.reduce((prev, current) =>
-          current.confidence > prev.confidence ? current : prev
-        );
-        // console.log(`🎯 Highest confidence winner: ${winner.systemId} (${(winner.confidence * 100).toFixed(1)}%)`);
-        return winner;
-      }
-
-      // Logic 3: Use system with highest confidence that matches unified action
-      const matchingActionSystems = resultsArray.filter(result =>
-        result.decision === unifiedDecision.action
-      );
-
-      if (matchingActionSystems.length > 0) {
-        const winner = matchingActionSystems.reduce((prev, current) =>
-          current.confidence > prev.confidence ? current : prev
-        );
-        // console.log(`🎯 Action-matching winner: ${winner.systemId} (${(winner.confidence * 100).toFixed(1)}%)`);
-        return winner;
-      }
-
-      // Logic 4: Fallback to highest confidence system overall
-      const winner = resultsArray.reduce((prev, current) =>
-        current.confidence > prev.confidence ? current : prev
-      );
-      // console.log(`🎯 Overall highest confidence winner: ${winner.systemId} (${(winner.confidence * 100).toFixed(1)}%)`);
-      return winner;
-
-    } catch (error) {
-      console.error(`❌ Error identifying winning system:`, error.message);
-      return null;
-    }
-  }
-
 }
 
 module.exports = { TradingSystemController };
