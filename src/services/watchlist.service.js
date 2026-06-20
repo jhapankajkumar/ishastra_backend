@@ -219,6 +219,7 @@ class WatchlistService {
         const buySignals = [];
         const strongBuySignals = [];
         const watchSignals = [];
+        const failedSymbols = [];
         const batchSize = 10;
 
         for (let i = 0; i < distinctSymbols.length; i += batchSize) {
@@ -240,7 +241,10 @@ class WatchlistService {
 
             const batchResults = await Promise.allSettled(batchPromises);
             batchResults.forEach((result, idx) => {
-                if (result.status !== 'fulfilled' || !result.value) return;
+                if (result.status !== 'fulfilled' || !result.value) {
+                    failedSymbols.push(filteredBatch[idx]);
+                    return;
+                }
 
                 const signal = result.value; // expect { symbol, decision: { action, confidence }, ... }
                 const pct = signal.decision.confidence
@@ -345,11 +349,14 @@ class WatchlistService {
         }
 
         const buyStocks = buySignals.map(s => s.symbol).join(', '); 
+        const failedStocks = failedSymbols.join(', ');
         
         console.log('✅ DAILY WATCHLIST SCAN COMPLETE');
         return {
-            scanned: this.STOCK_UNIVERSE.length,
+            scanned: distinctSymbols.length,
             buySignals: buyStocks,
+            failedSymbols: failedStocks,
+            failedCount: failedSymbols.length,
             watchSignals: watchSignals.length,
             watchlistSize: combinedSignals.length,
             breakdown: {
