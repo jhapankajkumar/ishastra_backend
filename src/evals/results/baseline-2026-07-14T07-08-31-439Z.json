@@ -1,0 +1,52 @@
+{
+  "model": "gpt-4.1",
+  "ranAt": "2026-07-14T07:08:31.439Z",
+  "results": [
+    {
+      "symbol": "ARCB",
+      "entryDate": "2026-05-22",
+      "processLabel": "VALID",
+      "outcomeR": 3.94,
+      "verdict": "WATCH",
+      "qualityGrade": "B+",
+      "setupType": "HIGH_LEVEL_PULLBACK",
+      "setupMaturity": "BUILDING",
+      "passBlockers": [
+        "No clear actionable pivot or tight entry zone; setup needs more tightening or a defined trigger.",
+        "Recent pullback was deep and recovery is still forming; structure is not yet tight.",
+        "Volume is below average during the recent consolidation, suggesting lack of strong accumulation."
+      ],
+      "summary": "ARCB is in a strong Stage 2 uptrend, trading above all major EMAs and within 8% of 52-week highs. However, the recent pullback was deep and the current structure is a high-level pullback rather than a tight flag or VCP. There is no clear actionable pivot or tight entry zone; price is still in the process of recovering and consolidating. Volume during the recent consolidation is below average, indicating a lack of strong accumulation. The resistance zone from 127–129 is close overhead, and the setup needs more time to tighten and form a clear trigger. This is a constructive chart to watch, but not ready for an active swing entry shortlist today.",
+      "usage": {
+        "inputTokens": 11653,
+        "outputTokens": 694,
+        "totalTokens": 12347
+      },
+      "estCostUsd": 0.0289,
+      "latencyMs": 13035
+    },
+    {
+      "symbol": "IRDM",
+      "entryDate": "2026-05-05",
+      "processLabel": "VALID",
+      "outcomeR": 1.85,
+      "verdict": "WATCH",
+      "qualityGrade": "B+",
+      "setupType": "HIGH_LEVEL_PULLBACK",
+      "setupMaturity": "BUILDING",
+      "passBlockers": [
+        "No clear actionable pivot or tight entry zone yet",
+        "Recent pullback is still wide and needs more tightening",
+        "Volume contraction is present but not pronounced; setup needs more time"
+      ],
+      "summary": "IRDM is in a strong Stage 2 uptrend, trading well above all major EMAs and near the upper end of its 2-year range. The recent advance was powerful, but the current pullback is still wide and lacks a tight, actionable pivot. Volume has contracted somewhat, but not to a degree that signals a low-risk entry. The setup is constructive and could develop into a high-quality flag or VCP with more time and tightening. For now, it is a high-level pullback that needs further consolidation before becoming actionable. No clear GTT trigger or tight entry is visible yet. Keep on watch for a tighter setup or defined pivot.",
+      "usage": {
+        "inputTokens": 11770,
+        "outputTokens": 688,
+        "totalTokens": 12458
+      },
+      "estCostUsd": 0.029,
+      "latencyMs": 8879
+    }
+  ]
+}

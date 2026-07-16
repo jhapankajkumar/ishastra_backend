@@ -73,7 +73,9 @@ class FlagPatternDetector {
     const score = this.scorePattern(pole, flag, type);
 
     return {
-      detected: score >= 0.35,
+      // CONSOLIDATION means "something is there but it isn't a valid flag"
+      // (e.g. pullback deeper than 20% from peak) — never a confirmed pattern.
+      detected: score >= 0.35 && type !== 'CONSOLIDATION',
       type,
       score: Math.round(score * 100) / 100,
       readyForBreakout: this.isNearBreakout(flag, currentPrice),
@@ -214,6 +216,11 @@ class FlagPatternDetector {
     const range      = (flagHigh - flagLow) / flagLow;
     const poleHeight = pole.high - pole.base;
     const pullback   = poleHeight > 0 ? (pole.high - flagLow) / poleHeight : 1;
+    // Pullback in PRICE terms from the peak — the trader's rule: "strong start,
+    // then mild pullback, under 20% from the high regardless of pole size."
+    // The pole-fraction `pullback` alone is misleading on big poles (a 50%
+    // retracement of a 100% pole = 25% price drop — too deep).
+    const dropFromPeak = pole.high > 0 ? (pole.high - flagLow) / pole.high : 1;
     const slope      = this._calcSlope(flagData.map(d => d.close));
 
     const flagAvgVol = flagData.length
@@ -236,6 +243,7 @@ class FlagPatternDetector {
       low:  flagLow,
       range,
       pullback,
+      dropFromPeak,
       slope,
       volRatio,
       volContracted:   volRatio < 0.70,
@@ -258,6 +266,11 @@ class FlagPatternDetector {
    *   CONSOLIDATION    — something is happening but doesn't fit cleaner labels
    */
   classifyType(pole, flag) {
+    // Hard cap for ALL flag classes: pullback must stay within 20% of the peak
+    // in PRICE terms (trader's rule — "mild pullback regardless of pole size").
+    // Deeper than 20% = character change / base-in-progress, not a flag.
+    if (flag.dropFromPeak > 0.20)                              return 'CONSOLIDATION';
+
     if (pole.gain >= 0.90 && flag.range <= 0.15)              return 'HIGH_TIGHT_FLAG';
     if (flag.range   <= 0.10 && flag.pullback <= 0.35)        return 'TIGHT_FLAG';
     if (flag.pullback <= 0.50 && flag.slope   <= 0.003)       return 'BULL_FLAG';

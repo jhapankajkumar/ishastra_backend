@@ -36,6 +36,7 @@ const { SimpleSwingStability } = require('../utils/simple-swing-stability');
 const { FlagPatternDetector } = require('../utils/flag-pattern-detector');
 const { VcpDetector } = require('../utils/vcp-detector');
 const { BigBaseDetector } = require('../utils/big-base-detector');
+const { computeSetupCharacter } = require('../utils/setupCompute');
 const { TRIGGER_TYPES } = require('../utils/systemConstants');
 
 // --- Market session helpers (used to decide whether the last candle is complete)
@@ -136,7 +137,13 @@ class MinerviniTemplateAdvanced {
         decision: rawDecision.action,
         confidence: rawDecision.confidence,
         reasoning: rawDecision.reasoning,
-        setupQuality: templateAnalysis.criteria?.setupQuality || null,
+        // patternScore is the real discriminator among prefiltered momentum
+        // stocks — BUY confidence is floored at 0.9 so it can't rank anything.
+        patternScore: templateAnalysis.criteria?.patternQuality?.score ?? 0,
+        patternGrade: templateAnalysis.criteria?.patternQuality?.grade ?? 'F',
+        dirEff: templateAnalysis.criteria?.setupCharacter?.directionalEfficiency60d ?? null,
+        // was criteria.setupQuality — a key that never existed (always null)
+        setupQuality: templateAnalysis.criteria?.patternQuality || null,
         timestamp: new Date().toISOString()
       };
 
@@ -357,9 +364,9 @@ class MinerviniTemplateAdvanced {
   };
 
   if (hasVolumeDryUp) {
-    reasoning.push(`✅ Volume dry-up (absorption): 5D/20D avg vol = ${(dryUpRatio).toFixed(2)} (≤ 0.90)`);
+    reasoning.push(`✅ Volume dry-up (absorption): 5D/20D avg vol = ${(dryUpRatio).toFixed(2)} (≤ 0.75)`);
   } else {
-    reasoning.push(`⚠️ No volume dry-up: 5D/20D avg vol = ${(dryUpRatio).toFixed(2)} (> 0.90)`);
+    reasoning.push(`⚠️ No volume dry-up: 5D/20D avg vol = ${(dryUpRatio).toFixed(2)} (> 0.75)`);
   }
 
 
@@ -506,6 +513,43 @@ class MinerviniTemplateAdvanced {
         finalUnifiedPatternScore >= 0.30 ? 'C'  : 'F';
     }
 
+    // === SETUP CHARACTER GATE (smooth-mover filter) ===
+    // directionalEfficiency60d = net move / sum of daily moves over 60 bars.
+    // Calibrated on the trader's own golden set (src/evals/analyze-features.js):
+    // their taken setups run > ~0.25, their rejected choppy charts < ~0.12.
+    // Structural detectors (flag/VCP/base) can't see movement QUALITY — a choppy
+    // stair-stepper forms textbook flags and still gets rejected on manual review.
+    // Golden-set baseline (analyze-detectors.js): all 6 scanner false approvals
+    // were flag detections; 3 had dirEff < 0.12, 2 more were in the 0.12–0.20 zone.
+    const setupCharacter = computeSetupCharacter(dailyData);
+    const dirEff = setupCharacter?.directionalEfficiency60d ?? null;
+    let characterGatedScore = finalUnifiedPatternScore;
+    if (dirEff !== null) {
+      if (dirEff < 0.12) {
+        characterGatedScore = 0; // hard reject: trades like the charts the trader always skips
+        reasoning.push(`❌ Setup character: dirEff ${dirEff} < 0.12 — choppy mover, pattern voided`);
+      } else if (dirEff < 0.20) {
+        characterGatedScore = Math.max(0, characterGatedScore - 0.10);
+        reasoning.push(`⚠️ Setup character: dirEff ${dirEff} in 0.12–0.20 gray zone — pattern score penalized −0.10`);
+      } else {
+        reasoning.push(`✅ Setup character: dirEff ${dirEff} — smooth mover`);
+      }
+    }
+    if (characterGatedScore !== finalUnifiedPatternScore) {
+      criteria.patternQuality.score  = characterGatedScore;
+      criteria.patternQuality.passed = characterGatedScore >= 0.5;
+      criteria.patternQuality.grade  =
+        characterGatedScore >= 0.90 ? 'A+' :
+        characterGatedScore >= 0.70 ? 'A'  :
+        characterGatedScore >= 0.50 ? 'B'  :
+        characterGatedScore >= 0.30 ? 'C'  : 'F';
+    }
+    criteria.setupCharacter = {
+      directionalEfficiency60d: dirEff,
+      poleRunupPct: setupCharacter?.poleRunupPct ?? null,
+      gate: dirEff === null ? 'SKIPPED' : dirEff < 0.12 ? 'REJECTED' : dirEff < 0.20 ? 'PENALIZED' : 'CLEAN'
+    };
+
     criteria.bigBase = {
       passed:            bigBaseResult.detected && bigBaseScore >= 0.40,
       entryZone:         bigBaseResult.entryZone,
@@ -637,10 +681,12 @@ class MinerviniTemplateAdvanced {
 
     let decision = 'REJECTED';
 
-    // BUY: All 4 trend rules + pre-breakout consolidation (dry-up) + pattern confirmed + momentum
-    // Volume expansion is NOT required — if it already happened you’re late.
-    // The dry-up signals you’re IN the consolidation phase; the pattern says the structure is valid.
-    if (hardRulesPass && true && patternQuality && performanceGate) {
+    // BUY: All 4 trend rules + pattern confirmed + momentum.
+    // Volume dry-up is deliberately NOT a hard gate: dry-up often prints only in
+    // the final days before the breakout, and gating on it drops good setups
+    // whose contraction hasn't completed on scan day. It contributes as a score
+    // BONUS inside the pattern fold (flag +0.15, big base +0.10) instead.
+    if (hardRulesPass && patternQuality && performanceGate) {
       decision = 'BUY';
     }
     // WATCH: 3 of 4 hard rules pass (one rule missing — monitor)

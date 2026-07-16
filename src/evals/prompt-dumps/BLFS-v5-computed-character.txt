@@ -1,0 +1,1423 @@
+PROMPT VERSION: v5-computed-character
+MODEL: gpt-4.1
+
+================ SYSTEM PROMPT ================
+You are an institutional-quality swing trading chart reviewer.
+
+You review charts strictly under THIS trader's system, defined in this prompt. Where the trader's system differs from generic textbook standards, the trader's system wins.
+
+Review both:
+1. Chart image
+2. Technical metadata
+
+Your task is to decide whether this stock deserves a place on today's active swing-trading entry shortlist.
+
+Do not evaluate fundamentals, business quality, news, valuation, or long-term investing merit.
+
+Evaluate only current chart setup quality for swing trading.
+
+TRADING STYLE
+
+Prefer:
+- Anticipatory entries near tight pivots
+- Stage 2 uptrends
+- Bull flags
+- High tight flags
+- VCPs
+- Big bases
+- Breakout zones
+- Tight consolidations near highs
+
+Avoid:
+- Bottom fishing
+- Mean reversion trades
+- Oversold bounces
+- Dead-cat bounces
+- Low-level recoveries
+- Recovery setups below major resistance
+- Dead gap shelves
+- Loose structures
+- Wide volatile pullbacks
+
+EVALUATION ORDER
+
+Always evaluate in this order:
+
+1. Chart location
+2. Trend quality
+3. Pattern quality
+4. Volume behavior
+5. Pivot proximity
+6. Risk / reward
+
+Chart location is more important than pattern shape.
+
+A clean-looking flag below major resistance is not a PASS.
+A strong Stage 2 chart near highs but not ready should usually be WATCH, not REJECT.
+
+CHART LOCATION
+
+Strong chart location:
+- Near 52-week highs
+- Above EMA50
+- Above EMA200
+- Stage 2 advance
+- No obvious overhead supply nearby
+
+Weak chart location:
+- Below EMA50
+- Below EMA200
+- Large overhead supply
+- Middle or lower part of long range
+- Recovery pattern below old highs
+- Low-level bounce after a large decline
+
+Reject weak chart locations even if the short-term pattern looks attractive.
+
+OVERHEAD SUPPLY
+
+For swing trading, current visible structure is more important than old highs that are far away.
+
+Treat old 52-week highs or historical resistance as a primary blocker only when they are close enough to affect the current trade.
+
+Avoid PASS if:
+- Significant resistance exists within roughly 8-12% above current price
+- Stock remains trapped directly under a nearby major prior high
+- The actual actionable trigger / pivot is still far away
+
+Do not use a distant old 52-week high as a passBlocker by itself.
+If an old high is far above the current setup, mention it only as secondary context in the summary.
+
+ENTRY MODEL (COMPUTED GTT TRIGGER)
+
+This trader enters anticipatory positions via a GTT stop-buy order, not classic breakout pivots.
+
+The exact trigger level is COMPUTED FOR YOU and provided in metadata as proposedTrigger:
+- proposedTrigger.price is the GTT level (one tick above the recent mother-candle high)
+- proposedTrigger.distanceFromClosePct shows how far the trigger sits above the last close
+- Initial risk: stop under the mother candle low or the pullback low beneath it
+
+The trigger EXISTS by definition. Never claim that no trigger, pivot, or mother candle exists, and never use "no actionable pivot/trigger" or "needs more consolidation to form a trigger" as a passBlocker.
+
+Your job is NOT to locate an entry. Your job is to judge: if price crosses proposedTrigger.price today or tomorrow, does taking that entry deserve a place on the active shortlist?
+
+A multi-week tight coil or classic Minervini pivot is NOT required for actionability.
+
+If the chart shows strong Stage 2 location AND controlled risk from proposedTrigger.price down to the natural stop, the setup IS actionable and eligible for PASS.
+
+Always:
+- Set pivotVisible=true
+- Set estimatedPivotPrice to proposedTrigger.price (unless you see a clearly better trigger level, then explain in summary)
+
+PIVOT PROXIMITY
+
+The actionable trigger is proposedTrigger.price (see ENTRY MODEL).
+
+PASS only when:
+- Price is still inside the setup
+OR
+- Price is within 3% below the trigger
+OR
+- Price is within 5% above the trigger
+
+If price is farther away:
+- Use WATCH or REJECT
+- Never PASS
+
+EXTENSION
+
+Avoid PASS if:
+- Price is more than 15% above EMA10
+OR
+- Price is more than 20% above EMA20
+
+Exception:
+- High tight flag
+- Exceptional earnings-gap continuation
+
+VOLUME
+
+Positive signs:
+- Volume contraction during consolidation
+- Volume dry-up near pivot
+- Healthy participation during advances
+
+Volume contraction raises the grade; its absence alone is NOT a passBlocker. Distribution and repeated high-volume selling remain blockers.
+
+Negative signs:
+- Dead volume
+- Collapsed volume after a gap
+- Repeated high-volume selling
+- Distribution
+
+Reject dead gap shelves:
+- Large gap up
+- Flat sideways action
+- Collapsed volume
+
+PATTERN QUALITY
+
+Judge pattern quality by THIS trader's criteria, in order of importance:
+
+1. Clean mover: use metadata.setupCharacter.directionalEfficiency60d as the PRIMARY evidence, not your visual impression. Above ~0.25 is a clean mover; below ~0.12 is the choppy character this trader rejects; between, weigh the chart. If your visual read disagrees with the metric, trust the metric and note the disagreement in the summary.
+2. Pole quality: use metadata.setupCharacter.poleRunupPct as the PRIMARY evidence. This trader’s taken setups average ~70% run-up; their rejects ~49%. A weak pole (under ~45%) is a blocker for flag-type setups.
+3. Controlled pullback: shallow and orderly, holding above short-term EMAs. A hard, deep, or high-volume pullback is a blocker.
+4. Structure: Stage 2, rising EMAs, higher highs and higher lows. A downtrend, lower highs and lower lows, or price only just reclaiming EMA200 is a blocker.
+
+Multi-week tightness and volume dry-up are quality BONUSES: they raise the grade, but their absence is NOT a passBlocker.
+
+Do not use "pullback still wide or loose", "not tight enough", or "volume contraction not ideal" as passBlockers when the mover is clean, the pole is strong, and the pullback is controlled.
+
+Still downgrade:
+- Deep pullbacks
+- Choppy bases
+- Multiple failed breakouts
+
+SETUP TYPE
+
+Only classify setupType as FLAG, VCP, or BIG_BASE if that structure is clearly visible.
+
+If the structure is constructive but uncertain, use one of:
+- UNDEFINED_CONSOLIDATION
+- HIGH_LEVEL_PULLBACK
+- BASE_BUILDING
+
+Do not force a named pattern.
+
+SETUP MATURITY
+
+Classify setup maturity separately from setup type.
+
+READY:
+- Actionable now
+- Near pivot
+- Controlled risk
+- Eligible for PASS
+
+BUILDING:
+- Constructive structure
+- Trend intact
+- Needs more consolidation
+- Needs more tightening
+- Usually WATCH
+
+EARLY:
+- Pattern beginning to form
+- Insufficient structure
+- Usually WATCH
+
+EXTENDED:
+- Setup worked already
+- Too far from pivot
+- Risk no longer attractive
+- Usually WATCH or REJECT
+
+BROKEN:
+- Structure damaged
+- Failed breakout
+- Major distribution
+- Weak chart location
+- Usually REJECT
+
+52-WEEK HIGH INTERPRETATION
+
+Distance from the 52-week high is contextual.
+
+Do not automatically penalize a stock for being slightly more than 10% below its 52-week high.
+
+Treat distance from highs as chart context, not a hard rule.
+Do not treat “far below 52-week high” as overhead supply unless the old high / supply zone is close enough to affect the current swing setup.
+
+Evaluate:
+- Current visible structure first
+- Nearby overhead supply second
+- Trend quality
+- Distant 52-week high context last
+
+A stock 10-15% below highs may still be WATCH if structure remains constructive.
+A stock more than 15% below highs may still be WATCH when the current setup is constructive and the old high is not near the active trade zone.
+
+VOLATILITY RULE
+
+High volatility alone is not an automatic REJECT.
+
+If the stock is a strong Stage 2 leader and volatility occurs during a constructive consolidation, prefer WATCH over REJECT.
+
+Use REJECT only when volatility damages the structure.
+
+QUALITY VS TIMING
+
+Separate chart quality from entry timing.
+
+A chart may be:
+- High quality + good timing
+- High quality + bad timing
+- Low quality + bad timing
+
+Only high quality + good timing can PASS.
+
+High quality + bad timing should usually be WATCH.
+
+Do not REJECT a stock simply because:
+- It is early
+- It needs more consolidation
+- It needs more tightening
+- It lacks a pivot today
+
+Strong Stage 2 charts that are not ready should usually be WATCH.
+
+WATCH VS REJECT
+
+WATCH:
+- Strong chart location
+- Stage 2 trend intact
+- Constructive structure
+- May become actionable later
+- Missing pivot
+- Needs tightening
+- Needs consolidation
+
+REJECT:
+- Weak chart location
+- Broken structure
+- Failed breakout
+- Major overhead supply
+- Distribution
+- Dead volume
+- Technical damage
+- Low probability setup
+
+METADATA VALIDATION
+
+Use technicalSummary to validate:
+- Distance from highs and lows
+- EMA position
+- EMA extension
+- ATR%
+- Volume vs averages
+- Range compression
+- Visible chart window
+
+If image and metadata disagree:
+- Mention the disagreement briefly in passBlockers or summary
+- Avoid PASS
+
+IMAGE QUALITY
+
+If the chart cannot be read confidently:
+- Use WATCH or REJECT
+- Never PASS
+
+ANNOTATION INSTRUCTIONS
+
+Return annotation coordinates so the frontend can draw on top of the original chart.
+Do not generate or edit the chart image.
+Keep all candles intact by returning coordinates only.
+
+Use professional institutional trading annotation style:
+- Bull flag pattern: flagUpper and flagLower, drawn in purple
+- Pole: pole, drawn in green
+- Support zone: supportZone, drawn in green
+- Resistance zone: resistanceZone, drawn in red
+- Entry zone: entryZone, drawn in light green
+- Stop loss: stopLoss, drawn as a red dashed line
+- Target zone: targetZone, drawn as a green dashed zone
+
+Only mark an annotation visible=true when it is visible or strongly inferable from the chart.
+If an annotation is not clear, set visible=false and all date/price values for that annotation to null.
+For a flag, high-level pullback, or consolidation near highs, prioritize identifying the trio of resistanceZone, flagUpper/flagLower, and supportZone when those structures are visible.
+ResistanceZone should usually mark the recent swing-high/pivot supply area above or around the setup.
+SupportZone should usually mark the nearest shelf, pullback low cluster, or short-term demand area that would define risk.
+FlagUpper and flagLower should mark the consolidation channel only if the pullback/channel is actually visible.
+For anticipatory entries, estimatedPivotPrice should represent the nearest actionable GTT trigger or tight pivot, not necessarily the distant major breakout high.
+If a larger resistance zone exists above the near-term trigger, return it as resistanceZone instead of using it as estimatedPivotPrice.
+Use visibleOhlc as the primary source for annotation dates and prices.
+Use YYYY-MM-DD dates that exist in visibleOhlc whenever possible.
+Use prices anchored to visibleOhlc candle highs/lows/closes when possible.
+Use approximate prices from the chart image only when metadata is insufficient.
+For horizontal zones, use startDate and endDate across the relevant visible setup area.
+
+DECISION RULES
+
+PASS:
+- Good enough for today's active entry shortlist
+- Excellent location
+- Constructive pattern
+- Controlled risk
+- Near a classic pivot OR a valid mother-candle trigger
+- passBlockers must be empty
+
+WATCH:
+- Structurally interesting
+- Strong or improving trend
+- Not yet ready
+- Needs tightening or clearer pivot
+- Current structure is constructive but not good enough for today’s active entry shortlist
+
+REJECT:
+- Poor location
+- Broken structure
+- Dead volume
+- Major nearby overhead supply
+- Bad risk/reward
+
+IMPORTANT PRINCIPLE
+
+Do not reward a stock simply because:
+- It is strong
+- It is near highs
+- It recently broke out
+
+The real question is:
+
+"Would an experienced swing trader put this on today's active entry shortlist?"
+
+If the answer is not clearly yes:
+- Do not PASS.
+
+Return valid JSON only using the provided schema.
+
+Do not give financial advice or position sizing.
+
+================ USER PROMPT ================
+Review this chart image and metadata for current swing setup quality.
+Use the image as the primary visual evidence and the metadata as numeric validation.
+Estimate pivot details only when a nearest actionable GTT trigger or tight pivot is visible or strongly inferable from the chart. Otherwise set pivotVisible=false and pivot values to null.
+Populate passBlockers only with concrete current-setup reasons preventing PASS today. Do not add distant old highs as passBlockers unless they are close enough to affect the active trade.
+If verdict is PASS, passBlockers should be empty.
+Return annotations for the pole, flag channel, support/resistance zones, entry zone, stop loss, and target zone only when they are visible or strongly inferable.
+
+Metadata:
+{
+  "symbol": "BLFS",
+  "currentPrice": 28.18,
+  "timeframe": "1D",
+  "chartContext": {
+    "renderedTimeframe": "2Y daily",
+    "capturedImageScope": "TRADINGVIEW_BAR_REPLAY_DAILY",
+    "visibleRange": null,
+    "visibleIndicators": [],
+    "intendedUse": "Swing setup visual quality review"
+  },
+  "technicalSummary": {
+    "high52w": 30,
+    "low52w": 17.86,
+    "high2y": 30,
+    "low2y": 17.86,
+    "distanceFrom52wHighPct": -6.07,
+    "distanceFrom52wLowPct": 57.78,
+    "ema10": 27.76,
+    "ema20": 27.19,
+    "ema50": 25.52,
+    "ema200": 23.94,
+    "priceVsEma10Pct": 1.53,
+    "priceVsEma20Pct": 3.65,
+    "priceVsEma50Pct": 10.42,
+    "priceVsEma200Pct": 17.72,
+    "atr14": 1.33,
+    "atrPct": 4.71,
+    "avgVolume10": 1288970,
+    "avgVolume20": 1089095,
+    "avgVolume50": 820074,
+    "volumeVs20dAvg": 0.42,
+    "volumeVs50dAvg": 0.56,
+    "recent10dRangePct": 10.72,
+    "recent20dHigh": 30,
+    "recent50dHigh": 30,
+    "visibleWindowBars": 499,
+    "visibleWindowHigh": 30,
+    "visibleWindowLow": 17.86,
+    "visibleWindowRangePct": 43.08,
+    "visibleWindowAvgVolume": 456179
+  },
+  "ohlcSummary": {
+    "bars": 499,
+    "firstDate": "2024-07-15",
+    "lastDate": "2026-07-10",
+    "lastOpen": 28.3,
+    "lastHigh": 28.48,
+    "lastLow": 27.66,
+    "lastClose": 28.18,
+    "lastVolume": 460700
+  },
+  "visibleOhlc": [
+    {
+      "date": "2026-01-16",
+      "open": 24.44,
+      "high": 24.74,
+      "low": 24.11,
+      "close": 24.42,
+      "volume": 331700
+    },
+    {
+      "date": "2026-01-20",
+      "open": 23.84,
+      "high": 25.09,
+      "low": 23.84,
+      "close": 24.76,
+      "volume": 267200
+    },
+    {
+      "date": "2026-01-21",
+      "open": 24.79,
+      "high": 25.74,
+      "low": 24.69,
+      "close": 25.55,
+      "volume": 314300
+    },
+    {
+      "date": "2026-01-22",
+      "open": 25.58,
+      "high": 26.54,
+      "low": 25.39,
+      "close": 25.98,
+      "volume": 311400
+    },
+    {
+      "date": "2026-01-23",
+      "open": 25.81,
+      "high": 25.94,
+      "low": 24.63,
+      "close": 24.87,
+      "volume": 269400
+    },
+    {
+      "date": "2026-01-26",
+      "open": 24.81,
+      "high": 25.01,
+      "low": 24.46,
+      "close": 24.94,
+      "volume": 215100
+    },
+    {
+      "date": "2026-01-27",
+      "open": 24.86,
+      "high": 25.21,
+      "low": 24.59,
+      "close": 24.98,
+      "volume": 180100
+    },
+    {
+      "date": "2026-01-28",
+      "open": 25.09,
+      "high": 25.22,
+      "low": 22.88,
+      "close": 22.94,
+      "volume": 383600
+    },
+    {
+      "date": "2026-01-29",
+      "open": 22.9,
+      "high": 23.03,
+      "low": 22.36,
+      "close": 22.58,
+      "volume": 387500
+    },
+    {
+      "date": "2026-01-30",
+      "open": 22.34,
+      "high": 22.79,
+      "low": 21.78,
+      "close": 21.8,
+      "volume": 364400
+    },
+    {
+      "date": "2026-02-02",
+      "open": 21.91,
+      "high": 22.72,
+      "low": 21.76,
+      "close": 22.33,
+      "volume": 526200
+    },
+    {
+      "date": "2026-02-03",
+      "open": 22.35,
+      "high": 23.51,
+      "low": 22.18,
+      "close": 22.84,
+      "volume": 958300
+    },
+    {
+      "date": "2026-02-04",
+      "open": 23.07,
+      "high": 23.42,
+      "low": 21.96,
+      "close": 22.67,
+      "volume": 687800
+    },
+    {
+      "date": "2026-02-05",
+      "open": 22.5,
+      "high": 23.09,
+      "low": 21.84,
+      "close": 22.02,
+      "volume": 460300
+    },
+    {
+      "date": "2026-02-06",
+      "open": 22,
+      "high": 22.66,
+      "low": 21.35,
+      "close": 22.43,
+      "volume": 453500
+    },
+    {
+      "date": "2026-02-09",
+      "open": 22.24,
+      "high": 22.92,
+      "low": 21.77,
+      "close": 22.63,
+      "volume": 424600
+    },
+    {
+      "date": "2026-02-10",
+      "open": 22.78,
+      "high": 22.98,
+      "low": 22.4,
+      "close": 22.65,
+      "volume": 251600
+    },
+    {
+      "date": "2026-02-11",
+      "open": 22.74,
+      "high": 22.99,
+      "low": 21.75,
+      "close": 22.25,
+      "volume": 219100
+    },
+    {
+      "date": "2026-02-12",
+      "open": 22.36,
+      "high": 22.36,
+      "low": 21.45,
+      "close": 21.58,
+      "volume": 240200
+    },
+    {
+      "date": "2026-02-13",
+      "open": 21.77,
+      "high": 22.45,
+      "low": 21.75,
+      "close": 22.23,
+      "volume": 288500
+    },
+    {
+      "date": "2026-02-17",
+      "open": 22.1,
+      "high": 22.66,
+      "low": 21.71,
+      "close": 22.36,
+      "volume": 268200
+    },
+    {
+      "date": "2026-02-18",
+      "open": 22.61,
+      "high": 23.09,
+      "low": 22.14,
+      "close": 22.84,
+      "volume": 360700
+    },
+    {
+      "date": "2026-02-19",
+      "open": 22.59,
+      "high": 23.25,
+      "low": 22.19,
+      "close": 23.23,
+      "volume": 243000
+    },
+    {
+      "date": "2026-02-20",
+      "open": 22.97,
+      "high": 23.7,
+      "low": 22.8,
+      "close": 23.09,
+      "volume": 236400
+    },
+    {
+      "date": "2026-02-23",
+      "open": 22.99,
+      "high": 23.14,
+      "low": 22.53,
+      "close": 22.88,
+      "volume": 280400
+    },
+    {
+      "date": "2026-02-24",
+      "open": 22.86,
+      "high": 23.09,
+      "low": 22.54,
+      "close": 22.65,
+      "volume": 319000
+    },
+    {
+      "date": "2026-02-25",
+      "open": 22.86,
+      "high": 22.95,
+      "low": 22.07,
+      "close": 22.47,
+      "volume": 358800
+    },
+    {
+      "date": "2026-02-26",
+      "open": 22.6,
+      "high": 22.8,
+      "low": 22.08,
+      "close": 22.48,
+      "volume": 721700
+    },
+    {
+      "date": "2026-02-27",
+      "open": 23.5,
+      "high": 25.25,
+      "low": 23.5,
+      "close": 24.2,
+      "volume": 1044600
+    },
+    {
+      "date": "2026-03-02",
+      "open": 23.68,
+      "high": 23.92,
+      "low": 22.47,
+      "close": 22.52,
+      "volume": 657700
+    },
+    {
+      "date": "2026-03-03",
+      "open": 21.68,
+      "high": 21.7,
+      "low": 19.55,
+      "close": 20.17,
+      "volume": 1244200
+    },
+    {
+      "date": "2026-03-04",
+      "open": 20.41,
+      "high": 21.01,
+      "low": 20.2,
+      "close": 20.67,
+      "volume": 594200
+    },
+    {
+      "date": "2026-03-05",
+      "open": 20.31,
+      "high": 20.7,
+      "low": 19.95,
+      "close": 20.12,
+      "volume": 639700
+    },
+    {
+      "date": "2026-03-06",
+      "open": 19.71,
+      "high": 19.89,
+      "low": 19.23,
+      "close": 19.86,
+      "volume": 469800
+    },
+    {
+      "date": "2026-03-09",
+      "open": 19.47,
+      "high": 20.02,
+      "low": 19.22,
+      "close": 19.9,
+      "volume": 617800
+    },
+    {
+      "date": "2026-03-10",
+      "open": 19.83,
+      "high": 20.06,
+      "low": 18.64,
+      "close": 18.67,
+      "volume": 735300
+    },
+    {
+      "date": "2026-03-11",
+      "open": 18.52,
+      "high": 19.02,
+      "low": 18.29,
+      "close": 19.01,
+      "volume": 538700
+    },
+    {
+      "date": "2026-03-12",
+      "open": 18.56,
+      "high": 18.85,
+      "low": 17.98,
+      "close": 18.15,
+      "volume": 524200
+    },
+    {
+      "date": "2026-03-13",
+      "open": 18.27,
+      "high": 19.56,
+      "low": 17.86,
+      "close": 18.36,
+      "volume": 439700
+    },
+    {
+      "date": "2026-03-16",
+      "open": 18.56,
+      "high": 19.28,
+      "low": 18.55,
+      "close": 19.08,
+      "volume": 470400
+    },
+    {
+      "date": "2026-03-17",
+      "open": 19.25,
+      "high": 19.46,
+      "low": 18.99,
+      "close": 19.4,
+      "volume": 490500
+    },
+    {
+      "date": "2026-03-18",
+      "open": 19.11,
+      "high": 19.67,
+      "low": 19.03,
+      "close": 19.12,
+      "volume": 395800
+    },
+    {
+      "date": "2026-03-19",
+      "open": 18.86,
+      "high": 19.79,
+      "low": 18.86,
+      "close": 19.53,
+      "volume": 319000
+    },
+    {
+      "date": "2026-03-20",
+      "open": 19.54,
+      "high": 19.54,
+      "low": 18.8,
+      "close": 18.85,
+      "volume": 602700
+    },
+    {
+      "date": "2026-03-23",
+      "open": 19.45,
+      "high": 19.58,
+      "low": 18.91,
+      "close": 19.17,
+      "volume": 452500
+    },
+    {
+      "date": "2026-03-24",
+      "open": 18.87,
+      "high": 19.94,
+      "low": 18.84,
+      "close": 19.7,
+      "volume": 379400
+    },
+    {
+      "date": "2026-03-25",
+      "open": 20.09,
+      "high": 20.47,
+      "low": 19.51,
+      "close": 19.86,
+      "volume": 329000
+    },
+    {
+      "date": "2026-03-26",
+      "open": 19.51,
+      "high": 20.01,
+      "low": 19.51,
+      "close": 19.65,
+      "volume": 222900
+    },
+    {
+      "date": "2026-03-27",
+      "open": 19.45,
+      "high": 19.54,
+      "low": 18.45,
+      "close": 18.59,
+      "volume": 396000
+    },
+    {
+      "date": "2026-03-30",
+      "open": 18.6,
+      "high": 19.03,
+      "low": 17.89,
+      "close": 18.78,
+      "volume": 531400
+    },
+    {
+      "date": "2026-03-31",
+      "open": 18.99,
+      "high": 19.41,
+      "low": 18.53,
+      "close": 19.08,
+      "volume": 289900
+    },
+    {
+      "date": "2026-04-01",
+      "open": 19.34,
+      "high": 19.58,
+      "low": 19.1,
+      "close": 19.29,
+      "volume": 189400
+    },
+    {
+      "date": "2026-04-02",
+      "open": 18.83,
+      "high": 19.6,
+      "low": 18.78,
+      "close": 19.51,
+      "volume": 209400
+    },
+    {
+      "date": "2026-04-06",
+      "open": 19.45,
+      "high": 19.47,
+      "low": 18.96,
+      "close": 19.27,
+      "volume": 161200
+    },
+    {
+      "date": "2026-04-07",
+      "open": 19.22,
+      "high": 19.22,
+      "low": 18.6,
+      "close": 19.13,
+      "volume": 484400
+    },
+    {
+      "date": "2026-04-08",
+      "open": 20.21,
+      "high": 20.26,
+      "low": 19.47,
+      "close": 19.71,
+      "volume": 351100
+    },
+    {
+      "date": "2026-04-09",
+      "open": 19.47,
+      "high": 20.86,
+      "low": 19.47,
+      "close": 20.48,
+      "volume": 415600
+    },
+    {
+      "date": "2026-04-10",
+      "open": 20.61,
+      "high": 20.88,
+      "low": 19.45,
+      "close": 19.74,
+      "volume": 346300
+    },
+    {
+      "date": "2026-04-13",
+      "open": 19.61,
+      "high": 20.32,
+      "low": 19.6,
+      "close": 20.11,
+      "volume": 395100
+    },
+    {
+      "date": "2026-04-14",
+      "open": 20.15,
+      "high": 20.68,
+      "low": 20.09,
+      "close": 20.27,
+      "volume": 323600
+    },
+    {
+      "date": "2026-04-15",
+      "open": 20.3,
+      "high": 21.43,
+      "low": 20.3,
+      "close": 21.19,
+      "volume": 334700
+    },
+    {
+      "date": "2026-04-16",
+      "open": 21.15,
+      "high": 21.24,
+      "low": 20.58,
+      "close": 20.85,
+      "volume": 347300
+    },
+    {
+      "date": "2026-04-17",
+      "open": 21.42,
+      "high": 21.77,
+      "low": 21.21,
+      "close": 21.5,
+      "volume": 295900
+    },
+    {
+      "date": "2026-04-20",
+      "open": 21.44,
+      "high": 22.53,
+      "low": 21.21,
+      "close": 22.19,
+      "volume": 658300
+    },
+    {
+      "date": "2026-04-21",
+      "open": 22.19,
+      "high": 22.86,
+      "low": 21.84,
+      "close": 22.37,
+      "volume": 672800
+    },
+    {
+      "date": "2026-04-22",
+      "open": 22.52,
+      "high": 23.18,
+      "low": 22.52,
+      "close": 22.8,
+      "volume": 394100
+    },
+    {
+      "date": "2026-04-23",
+      "open": 22.67,
+      "high": 22.78,
+      "low": 21.29,
+      "close": 21.72,
+      "volume": 483600
+    },
+    {
+      "date": "2026-04-24",
+      "open": 21.67,
+      "high": 21.81,
+      "low": 21.26,
+      "close": 21.38,
+      "volume": 362400
+    },
+    {
+      "date": "2026-04-27",
+      "open": 21.47,
+      "high": 22.05,
+      "low": 21.22,
+      "close": 21.41,
+      "volume": 230600
+    },
+    {
+      "date": "2026-04-28",
+      "open": 21.41,
+      "high": 21.42,
+      "low": 20.73,
+      "close": 20.9,
+      "volume": 324200
+    },
+    {
+      "date": "2026-04-29",
+      "open": 20.76,
+      "high": 21,
+      "low": 19.71,
+      "close": 19.99,
+      "volume": 290100
+    },
+    {
+      "date": "2026-04-30",
+      "open": 19.97,
+      "high": 21.15,
+      "low": 19.97,
+      "close": 21.08,
+      "volume": 350300
+    },
+    {
+      "date": "2026-05-01",
+      "open": 21.08,
+      "high": 21.36,
+      "low": 20.81,
+      "close": 21.21,
+      "volume": 230000
+    },
+    {
+      "date": "2026-05-04",
+      "open": 21.03,
+      "high": 21.61,
+      "low": 21.03,
+      "close": 21.09,
+      "volume": 248500
+    },
+    {
+      "date": "2026-05-05",
+      "open": 21.27,
+      "high": 21.6,
+      "low": 20.64,
+      "close": 21.55,
+      "volume": 296300
+    },
+    {
+      "date": "2026-05-06",
+      "open": 21.66,
+      "high": 22.04,
+      "low": 21.06,
+      "close": 21.75,
+      "volume": 301200
+    },
+    {
+      "date": "2026-05-07",
+      "open": 21.88,
+      "high": 23.15,
+      "low": 21.8,
+      "close": 23.12,
+      "volume": 530300
+    },
+    {
+      "date": "2026-05-08",
+      "open": 21.8,
+      "high": 23.06,
+      "low": 20.76,
+      "close": 22.04,
+      "volume": 722100
+    },
+    {
+      "date": "2026-05-11",
+      "open": 22,
+      "high": 22.41,
+      "low": 21.53,
+      "close": 21.73,
+      "volume": 338400
+    },
+    {
+      "date": "2026-05-12",
+      "open": 21.8,
+      "high": 21.8,
+      "low": 21,
+      "close": 21.23,
+      "volume": 298100
+    },
+    {
+      "date": "2026-05-13",
+      "open": 21.2,
+      "high": 21.26,
+      "low": 20.66,
+      "close": 21.17,
+      "volume": 321000
+    },
+    {
+      "date": "2026-05-14",
+      "open": 21.28,
+      "high": 21.3,
+      "low": 20.87,
+      "close": 21.06,
+      "volume": 262100
+    },
+    {
+      "date": "2026-05-15",
+      "open": 20.85,
+      "high": 20.87,
+      "low": 20.27,
+      "close": 20.76,
+      "volume": 375000
+    },
+    {
+      "date": "2026-05-18",
+      "open": 20.76,
+      "high": 22.72,
+      "low": 20.69,
+      "close": 22.3,
+      "volume": 972800
+    },
+    {
+      "date": "2026-05-19",
+      "open": 22.09,
+      "high": 23.15,
+      "low": 21.91,
+      "close": 23.05,
+      "volume": 1081800
+    },
+    {
+      "date": "2026-05-20",
+      "open": 23.05,
+      "high": 24.47,
+      "low": 22.6,
+      "close": 24,
+      "volume": 1342000
+    },
+    {
+      "date": "2026-05-21",
+      "open": 23.8,
+      "high": 24.77,
+      "low": 23.59,
+      "close": 24.74,
+      "volume": 1074800
+    },
+    {
+      "date": "2026-05-22",
+      "open": 24.74,
+      "high": 25.07,
+      "low": 23.67,
+      "close": 23.95,
+      "volume": 999900
+    },
+    {
+      "date": "2026-05-26",
+      "open": 23.95,
+      "high": 24.34,
+      "low": 23.45,
+      "close": 24.03,
+      "volume": 754900
+    },
+    {
+      "date": "2026-05-27",
+      "open": 24.15,
+      "high": 24.59,
+      "low": 23.69,
+      "close": 24.5,
+      "volume": 723800
+    },
+    {
+      "date": "2026-05-28",
+      "open": 24.53,
+      "high": 25.72,
+      "low": 23.97,
+      "close": 25.25,
+      "volume": 541000
+    },
+    {
+      "date": "2026-05-29",
+      "open": 25.16,
+      "high": 25.43,
+      "low": 24.69,
+      "close": 24.92,
+      "volume": 904600
+    },
+    {
+      "date": "2026-06-01",
+      "open": 24.76,
+      "high": 27.29,
+      "low": 24.51,
+      "close": 26.63,
+      "volume": 1258700
+    },
+    {
+      "date": "2026-06-02",
+      "open": 26.58,
+      "high": 28.09,
+      "low": 26.5,
+      "close": 27.49,
+      "volume": 1332000
+    },
+    {
+      "date": "2026-06-03",
+      "open": 26.96,
+      "high": 27.77,
+      "low": 26.4,
+      "close": 27.25,
+      "volume": 847400
+    },
+    {
+      "date": "2026-06-04",
+      "open": 27.42,
+      "high": 28.07,
+      "low": 26.95,
+      "close": 27.09,
+      "volume": 520100
+    },
+    {
+      "date": "2026-06-05",
+      "open": 26.95,
+      "high": 26.95,
+      "low": 26.15,
+      "close": 26.65,
+      "volume": 701900
+    },
+    {
+      "date": "2026-06-08",
+      "open": 26.92,
+      "high": 27.12,
+      "low": 26.06,
+      "close": 26.1,
+      "volume": 456500
+    },
+    {
+      "date": "2026-06-09",
+      "open": 26.4,
+      "high": 27.9,
+      "low": 26.04,
+      "close": 27.55,
+      "volume": 712800
+    },
+    {
+      "date": "2026-06-10",
+      "open": 27.49,
+      "high": 28.07,
+      "low": 26.59,
+      "close": 26.66,
+      "volume": 433400
+    },
+    {
+      "date": "2026-06-11",
+      "open": 26.78,
+      "high": 27.27,
+      "low": 26.35,
+      "close": 26.6,
+      "volume": 503900
+    },
+    {
+      "date": "2026-06-12",
+      "open": 26.73,
+      "high": 27.29,
+      "low": 26.02,
+      "close": 26.1,
+      "volume": 695500
+    },
+    {
+      "date": "2026-06-15",
+      "open": 26.85,
+      "high": 27.7,
+      "low": 26.28,
+      "close": 26.69,
+      "volume": 829400
+    },
+    {
+      "date": "2026-06-16",
+      "open": 26.67,
+      "high": 26.86,
+      "low": 26.06,
+      "close": 26.36,
+      "volume": 487000
+    },
+    {
+      "date": "2026-06-17",
+      "open": 26.46,
+      "high": 27.4,
+      "low": 25.36,
+      "close": 25.58,
+      "volume": 872200
+    },
+    {
+      "date": "2026-06-18",
+      "open": 26.03,
+      "high": 26.83,
+      "low": 25.65,
+      "close": 26.04,
+      "volume": 1117800
+    },
+    {
+      "date": "2026-06-22",
+      "open": 26.05,
+      "high": 26.31,
+      "low": 24.88,
+      "close": 24.9,
+      "volume": 660100
+    },
+    {
+      "date": "2026-06-23",
+      "open": 25.08,
+      "high": 25.61,
+      "low": 24.78,
+      "close": 24.79,
+      "volume": 750600
+    },
+    {
+      "date": "2026-06-24",
+      "open": 25.09,
+      "high": 26.04,
+      "low": 24.77,
+      "close": 25.57,
+      "volume": 1047100
+    },
+    {
+      "date": "2026-06-25",
+      "open": 26.07,
+      "high": 28.03,
+      "low": 25.59,
+      "close": 27.5,
+      "volume": 1928600
+    },
+    {
+      "date": "2026-06-26",
+      "open": 27.38,
+      "high": 29.81,
+      "low": 27.29,
+      "close": 28.67,
+      "volume": 4000000
+    },
+    {
+      "date": "2026-06-29",
+      "open": 28.95,
+      "high": 30,
+      "low": 27.88,
+      "close": 28.3,
+      "volume": 3427700
+    },
+    {
+      "date": "2026-06-30",
+      "open": 28.46,
+      "high": 28.51,
+      "low": 27.51,
+      "close": 28.24,
+      "volume": 1248600
+    },
+    {
+      "date": "2026-07-01",
+      "open": 28.25,
+      "high": 28.99,
+      "low": 28.16,
+      "close": 28.49,
+      "volume": 778500
+    },
+    {
+      "date": "2026-07-02",
+      "open": 28.79,
+      "high": 28.91,
+      "low": 28.03,
+      "close": 28.11,
+      "volume": 655300
+    },
+    {
+      "date": "2026-07-06",
+      "open": 28.14,
+      "high": 28.36,
+      "low": 27.44,
+      "close": 27.79,
+      "volume": 550800
+    },
+    {
+      "date": "2026-07-07",
+      "open": 27.99,
+      "high": 28.08,
+      "low": 27.06,
+      "close": 27.93,
+      "volume": 711000
+    },
+    {
+      "date": "2026-07-08",
+      "open": 27.5,
+      "high": 27.59,
+      "low": 26.98,
+      "close": 27.19,
+      "volume": 465000
+    },
+    {
+      "date": "2026-07-09",
+      "open": 27.24,
+      "high": 28.74,
+      "low": 27.24,
+      "close": 28.23,
+      "volume": 592100
+    },
+    {
+      "date": "2026-07-10",
+      "open": 28.3,
+      "high": 28.48,
+      "low": 27.66,
+      "close": 28.18,
+      "volume": 460700
+    }
+  ],
+  "proposedTrigger": {
+    "price": 28.74,
+    "rule": "GTT stop-buy fires one tick above the max high of the last two completed daily candles (mother candle trigger).",
+    "sourceDates": [
+      "2026-07-09",
+      "2026-07-10"
+    ],
+    "distanceFromClosePct": 1.99
+  },
+  "setupCharacter": {
+    "directionalEfficiency60d": 0.201,
+    "poleRunupPct": 52.2,
+    "interpretation": "directionalEfficiency60d: net price move divided by the sum of daily moves over 60 bars. Calibrated on this trader's own history: above ~0.25 trades like their clean movers, below ~0.12 like the choppy charts they reject. poleRunupPct: advance into the recent swing high; their taken setups average ~70%, their rejects ~49%."
+  },
+  "notes": "Golden-set eval: TradingView Bar Replay daily chart as of the day before entry."
+}
+
+================ ATTACHED SEPARATELY ================
+input_image: golden/images/BLFS_2026-07-13.png (detail: high)

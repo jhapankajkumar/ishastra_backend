@@ -1,0 +1,146 @@
+{
+  "model": "gpt-4.1",
+  "promptVersion": "v2-mother-candle-entry",
+  "ranAt": "2026-07-14T07:56:39.816Z",
+  "results": [
+    {
+      "symbol": "ARCB",
+      "entryDate": "2026-05-22",
+      "processLabel": "VALID",
+      "outcomePct": 18.26,
+      "verdict": "WATCH",
+      "qualityGrade": "B+",
+      "setupType": "HIGH_LEVEL_PULLBACK",
+      "setupMaturity": "BUILDING",
+      "passBlockers": [
+        "No clear actionable mother candle or tight pivot for anticipatory entry; setup needs more tightening or a defined trigger.",
+        "Recent pullback is constructive but not yet resolved; price is still in the middle of the pullback/consolidation.",
+        "Volume is below average during the recent bounce, indicating lack of strong accumulation."
+      ],
+      "summary": "ARCB is in a strong Stage 2 uptrend, trading above all major EMAs and within 8% of 52-week highs. The recent pullback is constructive and holding above support, but there is no clear actionable mother candle or tight pivot for an anticipatory entry. Volume on the recent bounce is below average, suggesting a lack of strong accumulation. The setup is building and could become actionable if a tighter coil or clear trigger forms near the resistance zone. For now, it is a high-quality chart to watch, but not ready for today's active entry shortlist.",
+      "usage": {
+        "inputTokens": 11912,
+        "outputTokens": 680,
+        "totalTokens": 12592
+      },
+      "estCostUsd": 0.0293,
+      "latencyMs": 11412
+    },
+    {
+      "symbol": "IRDM",
+      "entryDate": "2026-05-05",
+      "processLabel": "VALID",
+      "outcomePct": 8.62,
+      "verdict": "WATCH",
+      "qualityGrade": "B+",
+      "setupType": "HIGH_LEVEL_PULLBACK",
+      "setupMaturity": "BUILDING",
+      "passBlockers": [
+        "No clear actionable mother candle or tight pivot for entry; setup needs more tightening or a defined trigger.",
+        "Recent pullback is constructive but still loose and volatile; risk/reward not clearly defined.",
+        "Volume is below average during the recent consolidation, suggesting lack of strong accumulation."
+      ],
+      "summary": "IRDM is in a strong Stage 2 uptrend, trading well above all major EMAs and holding a high-level pullback after a powerful run. The recent pullback is constructive but remains somewhat loose and volatile, with no clear mother candle or tight pivot for an anticipatory entry. Volume has dried up during the consolidation, which is positive, but the lack of a defined trigger and the presence of a nearby resistance zone (41.74–44.36) just overhead make the setup not actionable today. This is a high-quality chart to watch for a tighter setup or a clear pivot to emerge, but it does not qualify for the active entry shortlist at this time.",
+      "usage": {
+        "inputTokens": 12029,
+        "outputTokens": 711,
+        "totalTokens": 12740
+      },
+      "estCostUsd": 0.0297,
+      "latencyMs": 11227
+    },
+    {
+      "symbol": "TPB",
+      "entryDate": "2026-01-23",
+      "processLabel": "VALID",
+      "outcomePct": 8.4,
+      "verdict": "WATCH",
+      "qualityGrade": "A",
+      "setupType": "HIGH_LEVEL_PULLBACK",
+      "setupMaturity": "BUILDING",
+      "passBlockers": [
+        "No clear actionable pivot or mother candle trigger near current price",
+        "Recent pullback is shallow but not yet tight or well-structured for anticipatory entry",
+        "Needs more consolidation or a clear inside day/pivot for controlled risk entry"
+      ],
+      "summary": "TPB is in a strong Stage 2 uptrend, trading just under 1% from 52-week highs and well above all major EMAs. The recent move to new highs is constructive, and the shallow pullback is occurring on lighter volume, which is positive. However, there is no clear actionable mother candle or tight pivot for an anticipatory entry; the pullback is not yet tight or well-structured for a controlled risk swing entry. The setup is high quality and could become actionable soon if a clear inside day or tight pivot forms. For now, it is a high-quality WATCH, not a PASS.",
+      "usage": {
+        "inputTokens": 11881,
+        "outputTokens": 673,
+        "totalTokens": 12554
+      },
+      "estCostUsd": 0.0291,
+      "latencyMs": 16241
+    },
+    {
+      "symbol": "ESOA",
+      "entryDate": "2026-05-22",
+      "processLabel": "VALID",
+      "outcomePct": -4.23,
+      "verdict": "WATCH",
+      "qualityGrade": "B+",
+      "setupType": "HIGH_LEVEL_PULLBACK",
+      "setupMaturity": "BUILDING",
+      "passBlockers": [
+        "No clear actionable pivot or mother candle trigger near current price",
+        "Recent pullback is loose and volatile after failed breakout attempt",
+        "Overhead supply from failed breakout at 19.94 is still relatively close (~13% above current price)",
+        "Volume has dried up but structure needs more tightening for controlled risk"
+      ],
+      "summary": "ESOA is in a strong Stage 2 uptrend, trading above all major EMAs and holding a high-level pullback after a sharp run. However, the recent failed breakout at 19.94 created nearby overhead supply (~13% above), and the current pullback is loose and volatile, lacking a tight, actionable pivot or mother candle trigger. Volume has dried up, which is constructive, but the setup needs more time to tighten and form a controlled risk entry. WATCH for a new pivot or tighter consolidation to develop; not actionable for today's shortlist.",
+      "usage": {
+        "inputTokens": 11909,
+        "outputTokens": 695,
+        "totalTokens": 12604
+      },
+      "estCostUsd": 0.0294,
+      "latencyMs": 9894
+    },
+    {
+      "symbol": "MOV",
+      "entryDate": "2026-06-05",
+      "processLabel": "VALID",
+      "outcomePct": -4.31,
+      "verdict": "WATCH",
+      "qualityGrade": "B+",
+      "setupType": "HIGH_LEVEL_PULLBACK",
+      "setupMaturity": "BUILDING",
+      "passBlockers": [
+        "No actionable mother candle or tight pivot: current pullback is only 2-3 bars and remains loose.",
+        "Setup is still forming after a high-momentum move; needs more time to tighten and define risk.",
+        "Current price is extended from EMAs (8% above EMA10, 16% above EMA20), increasing risk."
+      ],
+      "summary": "MOV is in a strong Stage 2 uptrend, having just made a high-momentum earnings gap and run to new highs. The current pullback is shallow and only a few bars deep, lacking a clear mother candle or tight pivot for an anticipatory entry. Price is still extended from short-term EMAs (8% above EMA10, 16% above EMA20), which increases risk for new entries. Volume remains healthy, and the structure is constructive, but the setup needs more time to tighten and define risk. WATCH for a tighter flag or a clear mother candle/pivot to develop near the highs.",
+      "usage": {
+        "inputTokens": 11916,
+        "outputTokens": 702,
+        "totalTokens": 12618
+      },
+      "estCostUsd": 0.0294,
+      "latencyMs": 8869
+    },
+    {
+      "symbol": "FSTR",
+      "entryDate": "2026-06-05",
+      "processLabel": "VALID",
+      "outcomePct": -3.24,
+      "verdict": "WATCH",
+      "qualityGrade": "A",
+      "setupType": "HIGH_LEVEL_PULLBACK",
+      "setupMaturity": "BUILDING",
+      "passBlockers": [
+        "No clear actionable mother candle or tight pivot for entry; setup needs more tightening or a defined trigger.",
+        "Volume has dried up significantly during the recent pullback/consolidation, indicating lack of participation.",
+        "Recent highs (43.06) are very close, creating potential near-term resistance overhead."
+      ],
+      "summary": "FSTR is in a strong Stage 2 uptrend, trading just below its 52-week high and well above all major EMAs, with a recent explosive pole and a high-level pullback/consolidation. However, the current setup lacks a clear actionable mother candle or tight pivot for an anticipatory entry. Volume has dried up significantly during the recent pullback, and the stock is consolidating just under recent highs, which may act as near-term resistance. The structure is constructive and could become actionable with further tightening or a defined trigger, but it is not ready for today's active swing shortlist. WATCH for a clearer entry setup.",
+      "usage": {
+        "inputTokens": 11891,
+        "outputTokens": 705,
+        "totalTokens": 12596
+      },
+      "estCostUsd": 0.0294,
+      "latencyMs": 6741
+    }
+  ]
+}

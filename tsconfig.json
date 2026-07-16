@@ -57,6 +57,8 @@
     "generated",
     "examples",
     "tests",
+    "backtest",
+    "scripts",
     "**/*.test.js",
     "**/*.spec.js"
   ],

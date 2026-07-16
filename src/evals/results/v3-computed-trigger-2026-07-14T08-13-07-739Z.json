@@ -1,0 +1,157 @@
+{
+  "model": "gpt-4.1",
+  "promptVersion": "v3-computed-trigger",
+  "ranAt": "2026-07-14T08:13:07.739Z",
+  "results": [
+    {
+      "symbol": "ARCB",
+      "entryDate": "2026-05-22",
+      "processLabel": "VALID",
+      "outcomePct": 18.26,
+      "verdict": "WATCH",
+      "qualityGrade": "B",
+      "setupType": "HIGH_LEVEL_PULLBACK",
+      "setupMaturity": "BUILDING",
+      "pivotVisible": true,
+      "estimatedPivotPrice": 125.35,
+      "proposedTriggerPrice": 125.35,
+      "passBlockers": [
+        "Recent pullback is still wide and loose, not yet a tight flag or VCP.",
+        "Volume contraction is present but not ideal; recent volume is well below average.",
+        "Setup is not especially tight or low-risk; risk/reward is only moderate.",
+        "There is some supply from the recent failed breakout near 135, less than 10% above."
+      ],
+      "summary": "ARCB is in a strong Stage 2 uptrend, trading above all major EMAs and within 8% of 52-week highs. The current setup is a high-level pullback/flag after a failed breakout attempt near 135. The structure is constructive but not especially tight, with a wide and somewhat loose pullback. Volume contraction is present but not ideal, as recent volume is well below average. The proposed GTT trigger at 125.35 is actionable, but risk/reward is only moderate due to the width of the pullback and nearby supply from the recent failed breakout. This is a constructive chart to watch for further tightening or a more defined pivot, but not quite strong enough for today's active entry shortlist.",
+      "usage": {
+        "inputTokens": 12028,
+        "outputTokens": 799,
+        "totalTokens": 12827
+      },
+      "estCostUsd": 0.0304,
+      "latencyMs": 7555
+    },
+    {
+      "symbol": "IRDM",
+      "entryDate": "2026-05-05",
+      "processLabel": "VALID",
+      "outcomePct": 8.62,
+      "verdict": "WATCH",
+      "qualityGrade": "B+",
+      "setupType": "HIGH_LEVEL_PULLBACK",
+      "setupMaturity": "BUILDING",
+      "pivotVisible": true,
+      "estimatedPivotPrice": 40.61,
+      "proposedTriggerPrice": 40.61,
+      "passBlockers": [
+        "Recent pullback is still wide and volatile, not yet tightly consolidated.",
+        "Volume on the pullback is not showing clear contraction; risk of further chop.",
+        "Setup is not yet tight enough for a high-probability anticipatory entry."
+      ],
+      "summary": "IRDM is in a strong Stage 2 uptrend, trading well above all major EMAs and near 52-week highs. The recent advance was powerful, but the current pullback is still wide and volatile, lacking the tightness and volume contraction preferred for a high-probability swing entry. The proposed GTT trigger at 40.61 is valid and close to the current price, but the setup needs more time to tighten and digest the recent move. Risk/reward is not optimal yet due to the potential for further chop within the flag. WATCH for a tighter consolidation or clearer volume dry-up before considering for the active entry shortlist.",
+      "usage": {
+        "inputTokens": 12145,
+        "outputTokens": 757,
+        "totalTokens": 12902
+      },
+      "estCostUsd": 0.0303,
+      "latencyMs": 9184
+    },
+    {
+      "symbol": "TPB",
+      "entryDate": "2026-01-23",
+      "processLabel": "VALID",
+      "outcomePct": 8.4,
+      "verdict": "PASS",
+      "qualityGrade": "A",
+      "setupType": "FLAG",
+      "setupMaturity": "READY",
+      "pivotVisible": true,
+      "estimatedPivotPrice": 119.23,
+      "proposedTriggerPrice": 119.23,
+      "passBlockers": [],
+      "summary": "TPB is in a strong Stage 2 uptrend, trading just under new 52-week highs with all key EMAs stacked bullishly and price less than 1% from highs. The recent advance formed a clear flag/pennant with a tight, shallow pullback on declining volume, and the proposed GTT trigger (119.23) is actionable, sitting just above the flag. Risk is well-defined to the recent pullback low (114.99), and there is no meaningful overhead supply. Volume is healthy and above average, supporting the move. This is a textbook high-tight flag/flag setup near highs, with controlled risk and strong momentum, deserving a place on today's active swing shortlist.",
+      "usage": {
+        "inputTokens": 11997,
+        "outputTokens": 712,
+        "totalTokens": 12709
+      },
+      "estCostUsd": 0.0297,
+      "latencyMs": 9663
+    },
+    {
+      "symbol": "ESOA",
+      "entryDate": "2026-05-22",
+      "processLabel": "VALID",
+      "outcomePct": -4.23,
+      "verdict": "WATCH",
+      "qualityGrade": "B+",
+      "setupType": "HIGH_LEVEL_PULLBACK",
+      "setupMaturity": "BUILDING",
+      "pivotVisible": true,
+      "estimatedPivotPrice": 17.91,
+      "proposedTriggerPrice": 17.91,
+      "passBlockers": [
+        "Recent pullback is still wide and volatile after failed breakout attempt.",
+        "Volume contraction is present but not tight enough; price action is still loose.",
+        "Setup needs more time to tighten and absorb supply after failed breakout.",
+        "Overhead supply from recent failed breakout at 19.94 is still close enough to affect risk/reward."
+      ],
+      "summary": "ESOA is in a strong Stage 2 uptrend, trading above all major EMAs and near the upper end of its 52-week range. The recent advance was sharp, but the subsequent pullback after a failed breakout at 19.94 has been wide and volatile, with price action still loose and not yet showing the tightness or volume dry-up typical of high-probability flag entries. The proposed trigger at 17.91 is valid and close to the current price, but the setup is not yet mature: supply from the failed breakout remains overhead, and the risk/reward is not optimal with resistance less than 12% above. Volume has contracted but not to an ideal degree. This is a high-potential name to watch for further tightening and absorption of supply, but it is not yet ready for an active swing entry shortlist.",
+      "usage": {
+        "inputTokens": 12025,
+        "outputTokens": 836,
+        "totalTokens": 12861
+      },
+      "estCostUsd": 0.0307,
+      "latencyMs": 8717
+    },
+    {
+      "symbol": "MOV",
+      "entryDate": "2026-06-05",
+      "processLabel": "VALID",
+      "outcomePct": -4.31,
+      "verdict": "WATCH",
+      "qualityGrade": "B+",
+      "setupType": "FLAG",
+      "setupMaturity": "EARLY",
+      "pivotVisible": true,
+      "estimatedPivotPrice": 37.88,
+      "proposedTriggerPrice": 37.88,
+      "passBlockers": [
+        "Flag is very early and loose after a vertical move; not enough consolidation/tightness for controlled risk.",
+        "Price is 7.98% above EMA10 and 16.45% above EMA20, indicating significant extension.",
+        "ATR% is elevated, suggesting high volatility immediately after the move."
+      ],
+      "summary": "MOV is in a strong Stage 2 uptrend, sitting just 3% off 52-week highs after a powerful high-volume breakout and vertical run. The current setup is a very early bull flag, but the flag is loose and shallow, with only a few days of sideways action after a near-vertical move. Price is significantly extended above short-term EMAs (nearly 8% above EMA10 and 16% above EMA20), and ATR% is high, indicating elevated volatility and risk. While the trend and location are excellent, the setup lacks the tightness and controlled risk required for a high-probability swing entry today. If the flag tightens and volatility contracts, this could become actionable soon. For now, it is a high-quality WATCH, not a PASS.",
+      "usage": {
+        "inputTokens": 12032,
+        "outputTokens": 795,
+        "totalTokens": 12827
+      },
+      "estCostUsd": 0.0304,
+      "latencyMs": 10593
+    },
+    {
+      "symbol": "FSTR",
+      "entryDate": "2026-06-05",
+      "processLabel": "VALID",
+      "outcomePct": -3.24,
+      "verdict": "PASS",
+      "qualityGrade": "A",
+      "setupType": "FLAG",
+      "setupMaturity": "READY",
+      "pivotVisible": true,
+      "estimatedPivotPrice": 42.46,
+      "proposedTriggerPrice": 42.46,
+      "passBlockers": [],
+      "summary": "FSTR is in a strong Stage 2 uptrend, trading just 2.4% below its 52-week high and well above all major EMAs. The recent explosive move formed a clear pole, followed by a tight high-level flag with controlled pullbacks and a well-defined resistance zone just below the highs. The proposed GTT trigger (42.46) is actionable, sitting just above the recent mother candle and within 1% of the last close, offering a tight risk window with a natural stop at 41.02. Volume has contracted during the flag, confirming healthy consolidation. There is no major overhead supply, and the setup is not extended from the EMAs. This is a textbook high-tight flag/flag setup, ready for an anticipatory swing entry.",
+      "usage": {
+        "inputTokens": 12007,
+        "outputTokens": 726,
+        "totalTokens": 12733
+      },
+      "estCostUsd": 0.0298,
+      "latencyMs": 7102
+    }
+  ]
+}

@@ -266,36 +266,40 @@ class WatchlistService {
             await new Promise(r => setTimeout(r, 1000));
         }
 
-        // Step 3: Sort BUY signals by confidence and grade, then WATCH signals
+        // Step 3: Rank signals by PATTERN SCORE, not confidence.
+        // BUY confidence is floored at ~90 for every BUY, so it cannot rank a
+        // shortlist — 105 BUYs all "sorted" to the same place. patternScore
+        // (unified VCP/Flag/BigBase score after the dirEff character gate) is
+        // the number that actually discriminates within a prefiltered
+        // momentum universe. dirEff breaks ties (smoother mover wins).
         const sortByQuality = (a, b) => {
-            // First by confidence (higher is better)
-            if (b.decision.confidence !== a.decision.confidence) {
-                return b.decision.confidence - a.decision.confidence;
-            }
-            // Then by grade using your grading system: A+ > A > B+ > B  > C > D
-            const gradeValue = (grade) => {
-                if (grade === 'A+') return 6;      // 90%+ Excellent
-                if (grade === 'A') return 5;       // 85-89% Very Good
-                if (grade === 'B+') return 4;       // 75-84% Good
-                if (grade === 'B') return 3;       // 75-84% Good
-                if (grade === 'C') return 2;       // 65-74% Average
-                if (grade === 'D') return 1;       // 55-64% Below Average
-                return 0;                          // Below 55% or unknown
-            };
-            return gradeValue(b.decision.grade) - gradeValue(a.decision.grade);
+            const scoreA = a.decision.patternScore ?? 0;
+            const scoreB = b.decision.patternScore ?? 0;
+            if (scoreB !== scoreA) return scoreB - scoreA;
+            const dirA = a.decision.dirEff ?? 0;
+            const dirB = b.decision.dirEff ?? 0;
+            if (dirB !== dirA) return dirB - dirA;
+            return (b.decision.confidence ?? 0) - (a.decision.confidence ?? 0);
         };
         const sortedStrongBuySignals = strongBuySignals.sort(sortByQuality);
         const sortedBuySignals = buySignals.sort(sortByQuality);
         const sortedWatchSignals = watchSignals.sort(sortByQuality);
 
-        // Step 4: Combine signals - BUY first, then WATCH, max 20 total
-        let combinedSignals = [
+        // Step 4: Return ALL BUYs, ranked best-first by pattern score.
+        // No cap — the trader reviews the full list manually; the ranking means
+        // the strongest structures are at the top of the list.
+        const totalBuyCandidates = strongBuySignals.length + buySignals.length;
+        const rankedBuySignals = [
             ...sortedStrongBuySignals,
-            ...sortedBuySignals,
+            ...sortedBuySignals
+        ];
+
+        let combinedSignals = [
+            ...rankedBuySignals,
             ...sortedWatchSignals.slice(0, 10)
         ]
 
-        console.log(`🎯 Found ${buySignals.length} BUY signals, ${watchSignals.length} WATCH signals`);
+        console.log(`🎯 Found ${totalBuyCandidates} BUY signals (ranked by pattern score), ${watchSignals.length} WATCH signals`);
         console.log(`📝 Saving top ${combinedSignals.length} signals to watchlist`);
 
 
@@ -348,13 +352,15 @@ class WatchlistService {
             }
         }
 
-        const buyStocks = buySignals.map(s => s.symbol).join(', '); 
+        // Ranked best-first — the order in this string is the review order.
+        const buyStocks = rankedBuySignals.map(s => s.symbol).join(', ');
         const failedStocks = failedSymbols.join(', ');
-        
+
         console.log('✅ DAILY WATCHLIST SCAN COMPLETE');
         return {
             scanned: distinctSymbols.length,
             buySignals: buyStocks,
+            totalBuyCandidates,
             failedSymbols: failedStocks,
             failedCount: failedSymbols.length,
             watchSignals: watchSignals.length,

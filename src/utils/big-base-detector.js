@@ -174,15 +174,20 @@ class BigBaseDetector {
     }
 
     // ── Step 11: Weighted final score
+    // recoveryScore (higher lows on the right side) is the anti-V-shape check —
+    // the trader explicitly excludes V-shaped bases ("sudden drops, sudden moves").
     const score =
-      zoneScore           * 0.30 +
+      zoneScore           * 0.25 +
       tightnessScore      * 0.20 +
-      durationScore       * 0.20 +
+      durationScore       * 0.15 +
       depthScore          * 0.20 +
-      volContractionScore * 0.10;
+      volContractionScore * 0.10 +
+      recoveryScore       * 0.10;
 
-    // Detected = valid structure + not in the middle (no-trade zone) + meaningful score
-    const detected = entryZone !== 'MIDDLE' && score >= 0.30;
+    // Detected = UPPER zone only. FLOOR-zone bounces are anticipation trades
+    // inside the base — the trader's rule is confirmation-only ("no trade in the
+    // anticipation zone"). FLOOR is still reported via entryZone for WATCH lists.
+    const detected = entryZone === 'UPPER' && score >= 0.30;
 
     return {
       detected,

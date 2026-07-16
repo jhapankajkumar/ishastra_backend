@@ -1,6 +1,28 @@
 const OpenAI = require('openai');
 const fs = require('fs');
 const path = require('path');
+const { computeProposedTrigger, computeSetupCharacter } = require('../utils/setupCompute');
+
+// Bump on every system-prompt change so eval results can be attributed
+// to the prompt that produced them. History: v1-baseline (0% PASS rate),
+// v2 mother-candle entry model (no effect — model claimed no mother candle
+// existed), v3 computes the trigger from OHLC (VALID 2/6, INVALID 0/8),
+// v4 replaces generic tightness/volume gates with the trader's own criteria
+// (clean mover, pole quality, controlled pullback) — regression: BLFS false
+// approval, VALID unchanged; visual perception of "clean vs choppy" proved
+// unreliable. v5 injects computed setupCharacter metrics (directional
+// efficiency, pole run-up) validated on the golden set as primary evidence.
+// v6 standardizes the notes text (see REVIEW_CONTEXT_NOTE) — payload change,
+// not a system-prompt change, but bumped so results files attribute correctly.
+const PROMPT_VERSION = 'v6-standard-notes';
+
+// Fixed context note, deliberately NOT caller-supplied. An A/B test on
+// RAIN.NS (2026-07-15) proved the notes wording alone flips the verdict on
+// identical image + metadata: the eval's "as of the day before entry"
+// framing -> PASS/READY, a neutral "user uploaded image" note ->
+// WATCH/BUILDING. Every entry point (eval, chart page, quick review) must
+// send the model the exact same framing or eval results don't transfer.
+const REVIEW_CONTEXT_NOTE = 'Daily chart as of the last completed bar shown. Review this as a decision-time snapshot: the trader is deciding tonight whether to place a GTT stop-buy for the next session.';
 
 const DEFAULT_MODEL = process.env.OPENAI_SETUP_REVIEW_MODEL || 'gpt-4.1';
 const DEFAULT_DETAIL = process.env.OPENAI_CHART_IMAGE_DETAIL || 'high';
@@ -127,6 +149,7 @@ class AISetupReviewService {
     this.model = options.model || DEFAULT_MODEL;
     this.detail = options.detail || DEFAULT_DETAIL;
     this.client = options.client || null;
+    this.promptVersion = PROMPT_VERSION;
   }
 
   async reviewSetup(payload) {
@@ -296,13 +319,21 @@ class AISetupReviewService {
       technicalSummary: payload.technicalSummary ?? null,
       ohlcSummary: payload.ohlcSummary ?? null,
       visibleOhlc: payload.visibleOhlc ?? null,
-      notes: payload.notes ?? null
+      // The v5 prompt references these fields as computed evidence; when the
+      // caller (production frontend) doesn't send them, derive them from
+      // visibleOhlc so prompt and payload never drift apart.
+      proposedTrigger: payload.proposedTrigger ?? computeProposedTrigger(payload.visibleOhlc),
+      setupCharacter: payload.setupCharacter ?? computeSetupCharacter(payload.visibleOhlc),
+      // Caller-supplied notes are intentionally ignored — see REVIEW_CONTEXT_NOTE.
+      notes: REVIEW_CONTEXT_NOTE
     };
   }
 
   systemPrompt() {
     return [
       'You are an institutional-quality swing trading chart reviewer.',
+      '',
+      "You review charts strictly under THIS trader's system, defined in this prompt. Where the trader's system differs from generic textbook standards, the trader's system wins.",
       '',
       'Review both:',
       '1. Chart image',
@@ -386,14 +417,37 @@ class AISetupReviewService {
       'Do not use a distant old 52-week high as a passBlocker by itself.',
       'If an old high is far above the current setup, mention it only as secondary context in the summary.',
       '',
+      'ENTRY MODEL (COMPUTED GTT TRIGGER)',
+      '',
+      'This trader enters anticipatory positions via a GTT stop-buy order, not classic breakout pivots.',
+      '',
+      'The exact trigger level is COMPUTED FOR YOU and provided in metadata as proposedTrigger:',
+      '- proposedTrigger.price is the GTT level (one tick above the recent mother-candle high)',
+      '- proposedTrigger.distanceFromClosePct shows how far the trigger sits above the last close',
+      '- Initial risk: stop under the mother candle low or the pullback low beneath it',
+      '',
+      'The trigger EXISTS by definition. Never claim that no trigger, pivot, or mother candle exists, and never use "no actionable pivot/trigger" or "needs more consolidation to form a trigger" as a passBlocker.',
+      '',
+      'Your job is NOT to locate an entry. Your job is to judge: if price crosses proposedTrigger.price today or tomorrow, does taking that entry deserve a place on the active shortlist?',
+      '',
+      'A multi-week tight coil or classic Minervini pivot is NOT required for actionability.',
+      '',
+      'If the chart shows strong Stage 2 location AND controlled risk from proposedTrigger.price down to the natural stop, the setup IS actionable and eligible for PASS.',
+      '',
+      'Always:',
+      '- Set pivotVisible=true',
+      '- Set estimatedPivotPrice to proposedTrigger.price (unless you see a clearly better trigger level, then explain in summary)',
+      '',
       'PIVOT PROXIMITY',
+      '',
+      'The actionable trigger is proposedTrigger.price (see ENTRY MODEL).',
       '',
       'PASS only when:',
       '- Price is still inside the setup',
       'OR',
-      '- Price is within 3% below pivot',
+      '- Price is within 3% below the trigger',
       'OR',
-      '- Price is within 5% above pivot',
+      '- Price is within 5% above the trigger',
       '',
       'If price is farther away:',
       '- Use WATCH or REJECT',
@@ -417,6 +471,8 @@ class AISetupReviewService {
       '- Volume dry-up near pivot',
       '- Healthy participation during advances',
       '',
+      'Volume contraction raises the grade; its absence alone is NOT a passBlocker. Distribution and repeated high-volume selling remain blockers.',
+      '',
       'Negative signs:',
       '- Dead volume',
       '- Collapsed volume after a gap',
@@ -430,16 +486,18 @@ class AISetupReviewService {
       '',
       'PATTERN QUALITY',
       '',
-      'Prefer:',
-      '- Tight bull flag',
-      '- High tight flag',
-      '- VCP',
-      '- Big base near breakout',
-      '- Tight shelf near highs',
+      "Judge pattern quality by THIS trader's criteria, in order of importance:",
       '',
-      'Downgrade:',
-      '- Loose swings',
-      '- Wide volatility',
+      '1. Clean mover: use metadata.setupCharacter.directionalEfficiency60d as the PRIMARY evidence, not your visual impression. Above ~0.25 is a clean mover; below ~0.12 is the choppy character this trader rejects; between, weigh the chart. If your visual read disagrees with the metric, trust the metric and note the disagreement in the summary.',
+      '2. Pole quality: use metadata.setupCharacter.poleRunupPct as the PRIMARY evidence. This trader’s taken setups average ~70% run-up; their rejects ~49%. A weak pole (under ~45%) is a blocker for flag-type setups.',
+      '3. Controlled pullback: shallow and orderly, holding above short-term EMAs. A hard, deep, or high-volume pullback is a blocker.',
+      '4. Structure: Stage 2, rising EMAs, higher highs and higher lows. A downtrend, lower highs and lower lows, or price only just reclaiming EMA200 is a blocker.',
+      '',
+      'Multi-week tightness and volume dry-up are quality BONUSES: they raise the grade, but their absence is NOT a passBlocker.',
+      '',
+      'Do not use "pullback still wide or loose", "not tight enough", or "volume contraction not ideal" as passBlockers when the mover is clean, the pole is strong, and the pullback is controlled.',
+      '',
+      'Still downgrade:',
       '- Deep pullbacks',
       '- Choppy bases',
       '- Multiple failed breakouts',
@@ -615,7 +673,7 @@ class AISetupReviewService {
       '- Excellent location',
       '- Constructive pattern',
       '- Controlled risk',
-      '- Near pivot',
+      '- Near a classic pivot OR a valid mother-candle trigger',
       '- passBlockers must be empty',
       '',
       'WATCH:',
@@ -673,7 +731,15 @@ class AISetupReviewService {
       throw new Error('OpenAI response did not include output_text');
     }
     try {
-      return JSON.parse(text);
+      const parsed = JSON.parse(text);
+      if (response.usage) {
+        parsed._usage = {
+          inputTokens: response.usage.input_tokens ?? null,
+          outputTokens: response.usage.output_tokens ?? null,
+          totalTokens: response.usage.total_tokens ?? null
+        };
+      }
+      return parsed;
     } catch (error) {
       throw new Error(`Failed to parse OpenAI structured output: ${error.message}`);
     }

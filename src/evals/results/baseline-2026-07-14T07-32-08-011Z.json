@@ -1,0 +1,108 @@
+{
+  "model": "gpt-4.1",
+  "ranAt": "2026-07-14T07:32:08.011Z",
+  "results": [
+    {
+      "symbol": "ARCB",
+      "entryDate": "2026-05-22",
+      "processLabel": "VALID",
+      "outcomeR": 3.94,
+      "verdict": "WATCH",
+      "qualityGrade": "B+",
+      "setupType": "HIGH_LEVEL_PULLBACK",
+      "setupMaturity": "BUILDING",
+      "passBlockers": [
+        "No clear actionable pivot or tight entry zone visible; setup needs more consolidation or a defined trigger.",
+        "Recent pullback is still resolving and structure is not yet tight enough for a low-risk entry.",
+        "Volume is below average during the recent bounce, indicating lack of strong accumulation."
+      ],
+      "summary": "ARCB is in a strong Stage 2 uptrend, trading above all major EMAs and within 8% of 52-week highs. The recent pullback found support above the EMA50 and has bounced, but the structure is not yet tight or well-defined enough for a low-risk swing entry. There is no clear actionable pivot or tight shelf; price is still in the process of resolving the recent pullback. Volume on the bounce is below average, suggesting a lack of strong accumulation. The resistance zone from 127–135 is close enough to be relevant for the next breakout attempt. This is a high-quality chart in a strong location, but it needs more time to develop a proper entry setup. WATCH for a tighter consolidation or a defined pivot near highs.",
+      "usage": {
+        "inputTokens": 11653,
+        "outputTokens": 729,
+        "totalTokens": 12382
+      },
+      "estCostUsd": 0.0291,
+      "latencyMs": 6973
+    },
+    {
+      "symbol": "IRDM",
+      "entryDate": "2026-05-05",
+      "processLabel": "VALID",
+      "outcomeR": 1.85,
+      "verdict": "WATCH",
+      "qualityGrade": "B+",
+      "setupType": "HIGH_LEVEL_PULLBACK",
+      "setupMaturity": "BUILDING",
+      "passBlockers": [
+        "No clear actionable pivot or tight entry zone yet",
+        "Recent pullback is still wide and needs more tightening",
+        "Volume contraction is present but not pronounced; setup needs more time"
+      ],
+      "summary": "IRDM is in a strong Stage 2 uptrend, trading well above all major EMAs and near the upper end of its 2-year range. The recent advance was powerful, but the current pullback is still wide and lacks a tight, actionable pivot. Volume has contracted somewhat, but not to a degree that signals a low-risk entry. The setup is constructive and could develop into a high-quality flag or VCP with more time and tightening. For now, it is a WATCH: strong trend, but not yet ready for an anticipatory swing entry. Wait for a tighter consolidation or a clear pivot to emerge.",
+      "usage": {
+        "inputTokens": 11770,
+        "outputTokens": 681,
+        "totalTokens": 12451
+      },
+      "estCostUsd": 0.029,
+      "latencyMs": 7604
+    },
+    {
+      "symbol": "TPB",
+      "entryDate": "2026-01-23",
+      "processLabel": "VALID",
+      "outcomeR": 1.85,
+      "verdict": "WATCH",
+      "qualityGrade": "A",
+      "setupType": "HIGH_LEVEL_PULLBACK",
+      "setupMaturity": "BUILDING",
+      "passBlockers": [
+        "No clear tight pivot or actionable entry: recent move is an extended push to new highs, not a defined flag or VCP.",
+        "Pullback is shallow and not yet structured into a tight consolidation or flag.",
+        "Current price is just off highs but lacks a clear risk-defined entry."
+      ],
+      "summary": "TPB is in a strong Stage 2 uptrend, trading just below 52-week highs and well above all major EMAs, with healthy volume and no nearby overhead supply. However, the current setup is not actionable: there is no clear tight pivot, flag, or VCP structure. The recent move is an extended push to new highs, followed by a shallow, unstructured pullback. While the trend and location are excellent, the lack of a defined, risk-controlled entry means this is not a candidate for today's active swing shortlist. Watch for a tighter consolidation or a clear pivot to develop near highs.",
+      "usage": {
+        "inputTokens": 11622,
+        "outputTokens": 681,
+        "totalTokens": 12303
+      },
+      "estCostUsd": 0.0287,
+      "latencyMs": 6803
+    },
+    {
+      "symbol": "ESOA",
+      "entryDate": "2026-05-22",
+      "error": "429 Rate limit reached for gpt-4.1 in organization org-P5SvPX78ZLliRJZDSvKVelBG on tokens per min (TPM): Limit 30000, Used 20937, Requested 11684. Please try again in 5.242s. Visit https://platform.openai.com/account/rate-limits to learn more."
+    },
+    {
+      "symbol": "MOV",
+      "entryDate": "2026-06-05",
+      "processLabel": "VALID",
+      "outcomeR": -1.06,
+      "verdict": "WATCH",
+      "qualityGrade": "B+",
+      "setupType": "FLAG",
+      "setupMaturity": "BUILDING",
+      "passBlockers": [
+        "Flag/pullback is still forming after a high-momentum breakout; no clear tight pivot for low-risk entry yet",
+        "Current price is extended from EMAs (near 8% above EMA10, 16% above EMA20), risk/reward not optimal for new entry",
+        "Pattern needs more time to tighten and define risk"
+      ],
+      "summary": "MOV is in a strong Stage 2 uptrend, having just made a high-momentum breakout to new 52-week highs with heavy volume. The current structure is a developing bull flag/pullback just below the highs, with price consolidating after a sharp run. However, the flag is still forming and lacks a tight, low-risk pivot for entry. The stock is also extended from its short-term moving averages (nearly 8% above EMA10, 16% above EMA20), making risk/reward suboptimal for a fresh swing entry. Volume remains healthy, and the trend is intact, but the setup needs more time to tighten and define a clear entry. This is a high-quality watchlist candidate, but not actionable for today's shortlist.",
+      "usage": {
+        "inputTokens": 11657,
+        "outputTokens": 773,
+        "totalTokens": 12430
+      },
+      "estCostUsd": 0.0295,
+      "latencyMs": 11324
+    },
+    {
+      "symbol": "FSTR",
+      "entryDate": "2026-06-05",
+      "error": "429 Rate limit reached for gpt-4.1 in organization org-P5SvPX78ZLliRJZDSvKVelBG on tokens per min (TPM): Limit 30000, Used 22478, Requested 11666. Please try again in 8.288s. Visit https://platform.openai.com/account/rate-limits to learn more."
+    }
+  ]
+}

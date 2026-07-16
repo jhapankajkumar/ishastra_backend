@@ -1,0 +1,201 @@
+{
+  "description": "Golden dataset for the AI chart setup reviewer. VALID charts are setups the trader would take by their rules: real closed trades (outcomePct from journal) or textbook examples that later failed (outcomePct null) — good process, bad outcome. INVALID charts are scanner candidates the trader rejected on manual review. All images captured via TradingView Bar Replay; entryDate is the last trading day visible in the image (metadata is computed up to and including that date, nothing later).",
+  "labels": {
+    "processLabel": "User's own judgment of the setup, independent of outcome: VALID | MARGINAL | INVALID. Assigned before seeing AI verdicts to avoid outcome bias.",
+    "outcomePct": "Realized gain/loss percent computed as (exit - entry) / entry * 100, from the trade journal. Null for charts with no trade."
+  },
+  "charts": [
+    {
+      "symbol": "ARCB",
+      "analysisDate": "2026-05-21",
+      "imageFile": "ARCB_2026-05-22.png",
+      "processLabel": "VALID",
+      "outcomePct": 18.26,
+      "notes": "Winner"
+    },
+    {
+      "symbol": "IRDM",
+      "analysisDate": "2026-05-04",
+      "imageFile": "IRDM_2026-05-05.png",
+      "processLabel": "VALID",
+      "outcomePct": 8.62,
+      "notes": "Winner"
+    },
+    {
+      "symbol": "TPB",
+      "analysisDate": "2026-01-22",
+      "imageFile": "TPB_2026-01-23.png",
+      "processLabel": "VALID",
+      "outcomePct": 8.4,
+      "notes": "Winner"
+    },
+    {
+      "symbol": "ESOA",
+      "analysisDate": "2026-05-21",
+      "imageFile": "ESOA_2026-05-22.png",
+      "processLabel": "VALID",
+      "outcomePct": -4.23,
+      "notes": "Loser, stopped out. Flagged for relabel review: dirEff 0.088 is INVALID-like and AI consistently cites the failed breakout"
+    },
+    {
+      "symbol": "MOV",
+      "analysisDate": "2026-06-04",
+      "imageFile": "MOV_2026-06-05.png",
+      "processLabel": "VALID",
+      "outcomePct": -4.31,
+      "notes": "Loser, stopped out"
+    },
+    {
+      "symbol": "FSTR",
+      "analysisDate": "2026-06-04",
+      "imageFile": "FSTR_2026-06-05.png",
+      "processLabel": "VALID",
+      "outcomePct": -3.24,
+      "notes": "Loser, stopped out"
+    },
+    {
+      "symbol": "AFRM",
+      "analysisDate": "2026-07-13",
+      "imageFile": "AFRM_2026-07-13.png",
+      "processLabel": "INVALID",
+      "outcomePct": null,
+      "notes": "Choppy stock, No clean Flag Pole"
+    },
+    {
+      "symbol": "BLFS",
+      "analysisDate": "2026-07-13",
+      "imageFile": "BLFS_2026-07-13.png",
+      "processLabel": "INVALID",
+      "outcomePct": null,
+      "notes": "Choppy stock, No clean Flag Pole, many wicks. Canary: false-approved by v4"
+    },
+    {
+      "symbol": "BWIN",
+      "analysisDate": "2026-07-13",
+      "imageFile": "BWIN_2026-07-13.png",
+      "processLabel": "INVALID",
+      "outcomePct": null,
+      "notes": "Down trending stock, 200 EMA line just getting upwards"
+    },
+    {
+      "symbol": "GPN",
+      "analysisDate": "2026-07-13",
+      "imageFile": "GPN_2026-07-13.png",
+      "processLabel": "INVALID",
+      "outcomePct": null,
+      "notes": "Very Choppy , Price just got above 200 EMA, last 4 lower highs and lower lows"
+    },
+    {
+      "symbol": "IDYA",
+      "analysisDate": "2026-07-13",
+      "imageFile": "IDYA_2026-07-13.png",
+      "processLabel": "INVALID",
+      "outcomePct": null,
+      "notes": "Hard pullback"
+    },
+    {
+      "symbol": "LMND",
+      "analysisDate": "2026-07-13",
+      "imageFile": "LMND_2026-07-13.png",
+      "processLabel": "INVALID",
+      "outcomePct": null,
+      "notes": "Controlled pullback, if stock says and no pull back then will be good candidate"
+    },
+    {
+      "symbol": "PACS",
+      "analysisDate": "2026-07-13",
+      "imageFile": "PACS_2026-07-13.png",
+      "processLabel": "INVALID",
+      "outcomePct": null,
+      "notes": "Flag pole is not long enough. Canary: graded A by v3/v4 despite rejection"
+    },
+    {
+      "symbol": "THC",
+      "analysisDate": "2026-07-13",
+      "imageFile": "THC_2026-07-13.png",
+      "processLabel": "INVALID",
+      "outcomePct": null,
+      "notes": "Stock is not clean mover, choppy, hard pull back"
+    },
+    {
+      "symbol": "ABDL.NS",
+      "analysisDate": "2026-07-03",
+      "imageFile": "ABDL.NS_2026-07-03.png",
+      "processLabel": "VALID",
+      "outcomePct": null,
+      "notes": "Very good setup as of Jul 3, entry above horizontal line ~680; breakout failed later (not traded)"
+    },
+    {
+      "symbol": "AEGISVOPAK.NS",
+      "analysisDate": "2026-07-10",
+      "imageFile": "AEGISVOPAK.NS_2026-07-10.png",
+      "processLabel": "VALID",
+      "outcomePct": null,
+      "notes": "Very good setup as of Jul 10, entry above diagonal trendline; breakout failed next day (not traded)"
+    },
+    {
+      "symbol": "AEQUS.NS",
+      "analysisDate": "2026-07-07",
+      "imageFile": "AEQUS.NS_2026-07-07.png",
+      "processLabel": "VALID",
+      "outcomePct": null,
+      "notes": "Very good setup as of Jul 7, entry above horizontal line ~247; breakout failed later (not traded)"
+    },
+    {
+      "symbol": "APOLLO.NS",
+      "analysisDate": "2026-07-02",
+      "imageFile": "APOLLO.NS_2026-07-02.png",
+      "processLabel": "VALID",
+      "outcomePct": null,
+      "notes": "Very good setup as of Jul 2, entry above horizontal line ~443; breakout failed within days (not traded)"
+    },
+    {
+      "symbol": "KIRLOSIND.NS",
+      "analysisDate": "2026-07-08",
+      "imageFile": "KIRLOSIND.NS_2026-07-08.png",
+      "processLabel": "VALID",
+      "outcomePct": null,
+      "notes": "Very good setup as of Jul 8, entry above diagonal trendline; breakout failed later (not traded)"
+    },
+    {
+      "symbol": "NACLIND.NS",
+      "analysisDate": "2026-07-10",
+      "imageFile": "NACLIND.NS_2026-07-10.png",
+      "processLabel": "VALID",
+      "outcomePct": null,
+      "notes": "Very good setup as of Jul 10, entry above horizontal line ~237; broke out Jul 13, collapsed -11% next day (not traded)"
+    },
+    {
+      "symbol": "RAIN.NS",
+      "analysisDate": "2026-07-10",
+      "imageFile": "RAIN.NS_2026-07-10.png",
+      "processLabel": "VALID",
+      "outcomePct": null,
+      "notes": "Very good setup as of Jul 10, entry above descending diagonal ~210; breakout failed next day (not traded)"
+    },
+    {
+      "symbol": "SCHNEIDER.NS",
+      "analysisDate": "2026-07-02",
+      "imageFile": "SCHNEIDER.NS_2026-07-02.png",
+      "processLabel": "VALID",
+      "outcomePct": null,
+      "notes": "Very good setup as of Jul 2, entry above horizontal line ~1462; rallied to 1548 then failed (not traded)"
+    },
+    {
+      "symbol": "SPARC.NS",
+      "analysisDate": "2026-07-03",
+      "imageFile": "SPARC.NS_2026-07-03.png",
+      "processLabel": "VALID",
+      "outcomePct": null,
+      "notes": "Very good setup as of Jul 3, entry above horizontal shelf ~245; rallied to 289 then failed (not traded)"
+    },
+    {
+      "symbol": "VIYASH.NS",
+      "analysisDate": "2026-06-30",
+      "imageFile": "VIYASH.NS_2026-06-30.png",
+      "processLabel": "VALID",
+      "outcomePct": null,
+      "notes": "Very good setup as of Jun 30, entry above horizontal line ~279; peaked at 297 then failed (not traded)"
+    }
+  ]
+}

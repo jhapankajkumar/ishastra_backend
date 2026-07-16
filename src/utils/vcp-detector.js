@@ -66,10 +66,24 @@ class VcpDetector {
     const NONE = { score: 0, numContractions: 0, depths: [], contractionTrend: 0, consistency: 0, volumeTrend: 0, pivots: [] };
     if (!data || data.length < 10) return NONE;
 
+    // Position gate — "don't trade downside bases by calling it VCP" (Big Base deck).
+    // A real VCP forms in the UPPER portion of the recent range as supply dries up
+    // near highs. Contractions happening in the lower half of the range are a
+    // downtrend/basing structure, not a VCP — score 0 regardless of swing shape.
+    const windowHigh = Math.max(...data.map(d => d.high));
+    const windowLow  = Math.min(...data.map(d => d.low));
+    const lastClose  = data[data.length - 1].close;
+    const positionInRange = windowHigh > windowLow
+      ? (lastClose - windowLow) / (windowHigh - windowLow)
+      : 0;
+    if (positionInRange < 0.5) return NONE;
+
     const pivots     = this.findPivots(data, this.minSwingPct);
     const downswings = this.extractDownswings(pivots, data);
 
-    if (downswings.length < 2) return { ...NONE, pivots };
+    // A VCP needs at least 3 contractions (e.g. 10% → 6% → 3%). Two shrinking
+    // swings is one comparison — random noise produces that constantly.
+    if (downswings.length < 3) return { ...NONE, pivots };
 
     const contractionTrend = this.scoreContractionTrend(downswings);
     const consistency      = this.scoreConsistency(downswings);

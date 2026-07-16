@@ -349,6 +349,11 @@ class TradingSystemController {
         confidence: confidencePercent,
         grade: grade,
         reasoning: minerviniResult?.reasoning || 'Analysis complete',
+        // Ranking fields: BUY confidence is floored (~90 for everyone), so the
+        // daily scan ranks its shortlist by pattern score instead.
+        patternScore: minerviniResult?.patternScore ?? 0,
+        patternGrade: minerviniResult?.patternGrade ?? 'F',
+        dirEff: minerviniResult?.dirEff ?? null,
       },
       setupQuality: setupQuality,
     };

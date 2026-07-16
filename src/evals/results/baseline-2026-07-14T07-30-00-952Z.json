@@ -1,0 +1,52 @@
+{
+  "model": "gpt-4.1",
+  "ranAt": "2026-07-14T07:30:00.952Z",
+  "results": [
+    {
+      "symbol": "ARCB",
+      "entryDate": "2026-05-22",
+      "processLabel": "VALID",
+      "outcomeR": 3.94,
+      "verdict": "WATCH",
+      "qualityGrade": "B+",
+      "setupType": "HIGH_LEVEL_PULLBACK",
+      "setupMaturity": "BUILDING",
+      "passBlockers": [
+        "No clear actionable pivot or tight entry zone yet",
+        "Recent pullback was deep and recovery is still forming",
+        "Volume contraction is present but not tight enough for a low-risk entry"
+      ],
+      "summary": "ARCB is in a strong Stage 2 uptrend, trading above all major EMAs and within 8% of 52-week highs. The recent pullback was deep and the stock is now recovering, but there is no clear tight pivot or actionable entry yet. Volume has contracted but not to a degree that suggests a low-risk, anticipatory entry. The resistance zone from 127–135 is still overhead and the current price is in the middle of the recent range, not near a clear breakout or VCP-style trigger. This is a constructive setup that could become actionable with further tightening or a defined pivot, but it is not ready for a swing entry shortlist today. WATCH for further development.",
+      "usage": {
+        "inputTokens": 11653,
+        "outputTokens": 698,
+        "totalTokens": 12351
+      },
+      "estCostUsd": 0.0289,
+      "latencyMs": 8840
+    },
+    {
+      "symbol": "IRDM",
+      "entryDate": "2026-05-05",
+      "processLabel": "VALID",
+      "outcomeR": 1.85,
+      "verdict": "WATCH",
+      "qualityGrade": "B+",
+      "setupType": "HIGH_LEVEL_PULLBACK",
+      "setupMaturity": "BUILDING",
+      "passBlockers": [
+        "No clear actionable pivot or tight entry zone yet",
+        "Recent pullback is still wide and needs more tightening",
+        "Volume contraction is present but not extreme; setup needs more time"
+      ],
+      "summary": "IRDM is in a strong Stage 2 uptrend, trading well above all major EMAs and near the upper end of its 2-year range. The recent advance was powerful, but the current pullback is still wide and lacks a tight, actionable pivot. Volume has contracted somewhat, but not to an extreme degree. There is a clear support zone from the recent pullback lows and a resistance zone just below the 52-week high. The setup is constructive and could become actionable with further tightening and a defined pivot, but it is not ready for an anticipatory entry today. Keep on watch for a tighter flag or VCP to develop.",
+      "usage": {
+        "inputTokens": 11770,
+        "outputTokens": 686,
+        "totalTokens": 12456
+      },
+      "estCostUsd": 0.029,
+      "latencyMs": 8180
+    }
+  ]
+}

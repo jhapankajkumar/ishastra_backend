@@ -1,0 +1,254 @@
+{
+  "model": "gpt-4.1",
+  "promptVersion": "v5-computed-character",
+  "ranAt": "2026-07-15T04:07:21.423Z",
+  "results": [
+    {
+      "symbol": "ABDL.NS",
+      "entryDate": "2026-07-03",
+      "processLabel": "VALID",
+      "outcomePct": null,
+      "verdict": "PASS",
+      "qualityGrade": "A",
+      "setupType": "FLAG",
+      "setupMaturity": "READY",
+      "pivotVisible": true,
+      "estimatedPivotPrice": 675.95,
+      "proposedTriggerPrice": 675.95,
+      "passBlockers": [],
+      "summary": "ABDL.NS is in a strong Stage 2 uptrend, trading just 3.4% below its 52-week high and well above all major EMAs (EMA10/20/50/200). The recent advance forms a clear bull flag: a strong pole (57.2% run-up), followed by a tight, shallow pullback holding above EMA10/20. The directional efficiency (0.336) confirms clean trending behavior, matching this trader's preferred mover profile. The proposed GTT trigger (675.95) is actionable, sitting just above the recent highs, with price only 0.45% below the trigger—perfect proximity. Risk is controlled with a natural stop at 661 (flag low/support). Volume has contracted during the flag, and there is no major overhead supply within the actionable zone. This setup is high quality and ready for today's active swing shortlist.",
+      "usage": {
+        "inputTokens": 12262,
+        "outputTokens": 741,
+        "totalTokens": 13003
+      },
+      "estCostUsd": 0.0305,
+      "latencyMs": 10246
+    },
+    {
+      "symbol": "AEGISVOPAK.NS",
+      "entryDate": "2026-07-10",
+      "processLabel": "VALID",
+      "outcomePct": null,
+      "verdict": "WATCH",
+      "qualityGrade": "B+",
+      "setupType": "HIGH_LEVEL_PULLBACK",
+      "setupMaturity": "BUILDING",
+      "pivotVisible": true,
+      "estimatedPivotPrice": 294.15,
+      "proposedTriggerPrice": 294.15,
+      "passBlockers": [
+        "Current price is 6.8% below the proposed trigger, so not actionable for anticipatory entry today.",
+        "Recent pullback is still wide and volatile after a very sharp run-up; needs more tightening for controlled risk.",
+        "ATR% is elevated (4.9%), and the pullback is not yet showing clear contraction or tightness."
+      ],
+      "summary": "AEGISVOPAK.NS is in a strong Stage 2 uptrend, trading well above all major EMAs and near 52-week highs, with no major overhead supply in the immediate trade zone. The recent pole is strong (64% run-up), and the 60d directional efficiency (0.25) is right at the threshold for a clean mover by this trader's standards. However, the recent pullback after the explosive run is still wide and volatile, with ATR% elevated and no clear sign of tight contraction or a low-risk entry. The current price is 6.8% below the proposed GTT trigger, so it is not actionable for anticipatory entry today. The setup is constructive and worth monitoring, but needs more time to tighten and form a controlled risk entry. WATCH for now; upgrade to PASS if a tighter, lower-risk pivot forms near the highs.",
+      "usage": {
+        "inputTokens": 12354,
+        "outputTokens": 834,
+        "totalTokens": 13188
+      },
+      "estCostUsd": 0.0314,
+      "latencyMs": 11950
+    },
+    {
+      "symbol": "AEQUS.NS",
+      "entryDate": "2026-07-07",
+      "processLabel": "VALID",
+      "outcomePct": null,
+      "verdict": "WATCH",
+      "qualityGrade": "B+",
+      "setupType": "FLAG",
+      "setupMaturity": "READY",
+      "pivotVisible": true,
+      "estimatedPivotPrice": 243.8,
+      "proposedTriggerPrice": 243.8,
+      "passBlockers": [
+        "Directional efficiency is below the preferred threshold for clean movers (0.206 vs ~0.25).",
+        "Proposed trigger is 5.14% above last close, at the upper edge of acceptable proximity.",
+        "Recent price action is somewhat volatile and not especially tight near the pivot."
+      ],
+      "summary": "AEQUS.NS is in a strong Stage 2 uptrend, trading just 6% below its 52-week high and well above all short-term EMAs. The recent advance (pole) is powerful (79% run-up), and the flag structure is visible with a clear upper and lower channel. However, the 60-day directional efficiency (0.206) is below the preferred threshold for this trader's cleanest movers, suggesting some choppiness. The flag is not especially tight, and the proposed GTT trigger is 5.14% above the last close—right at the edge of acceptable proximity for an anticipatory entry. Volume is healthy but not showing a classic dry-up near the pivot. Risk is defined with a stop just below the flag low. Overall, this is a constructive, high-momentum setup, but the combination of only moderate directional efficiency, a slightly loose flag, and the trigger's distance from price means it is not quite shortlist quality for today. WATCH for a tighter setup or a closer entry.",
+      "usage": {
+        "inputTokens": 12398,
+        "outputTokens": 846,
+        "totalTokens": 13244
+      },
+      "estCostUsd": 0.0316,
+      "latencyMs": 12450
+    },
+    {
+      "symbol": "APOLLO.NS",
+      "entryDate": "2026-07-02",
+      "processLabel": "VALID",
+      "outcomePct": null,
+      "verdict": "PASS",
+      "qualityGrade": "A+",
+      "setupType": "FLAG",
+      "setupMaturity": "READY",
+      "pivotVisible": true,
+      "estimatedPivotPrice": 429.75,
+      "proposedTriggerPrice": 429.75,
+      "passBlockers": [],
+      "summary": "APOLLO.NS is a textbook high tight flag setup in a strong Stage 2 uptrend, trading just 6% below 52-week highs and well above all major EMAs. The pole is exceptionally strong (117% run-up), and the 60-day directional efficiency (0.318) confirms clean, directional movement. The flag is tight, shallow, and orderly, with price holding above the 10/20/50 EMAs and no major overhead supply within the actionable zone. The proposed GTT trigger (429.75) is just 2.6% above the last close, making the setup actionable now. Volume has contracted during the flag, and risk is well-defined to the recent swing low (414.05). There are no technical blockers. This setup is high quality and deserves a place on today's active swing shortlist.",
+      "usage": {
+        "inputTokens": 12401,
+        "outputTokens": 741,
+        "totalTokens": 13142
+      },
+      "estCostUsd": 0.0307,
+      "latencyMs": 9182
+    },
+    {
+      "symbol": "KIRLOSIND.NS",
+      "entryDate": "2026-07-08",
+      "processLabel": "VALID",
+      "outcomePct": null,
+      "verdict": "WATCH",
+      "qualityGrade": "B",
+      "setupType": "FLAG",
+      "setupMaturity": "BUILDING",
+      "pivotVisible": true,
+      "estimatedPivotPrice": 4206.6,
+      "proposedTriggerPrice": 4206.6,
+      "passBlockers": [
+        "Setup is still building after a very sharp run; flag is not yet tight or mature.",
+        "Directional efficiency (0.229) is below the trader's preferred threshold for clean movers.",
+        "Current price is ~4.6% below the proposed trigger, but the flag structure is loose and not yet showing controlled risk.",
+        "Volume has dropped off sharply after the pole, suggesting lack of active participation in the flag."
+      ],
+      "summary": "KIRLOSIND.NS staged a powerful pole (61% run-up) and is now consolidating in a high-level flag above all major EMAs, with no major overhead supply until the 52w high (~14% above). However, the flag is still loose and not yet showing the controlled, tight risk profile preferred for a PASS. Directional efficiency (0.229) is below the trader's 'clean mover' threshold, and volume has dried up sharply after the pole, suggesting the setup is still maturing. The proposed GTT trigger is valid, but the setup needs more time to tighten and show clear risk control. WATCH for now; could become actionable if the flag tightens and volume/price action improve.",
+      "usage": {
+        "inputTokens": 12623,
+        "outputTokens": 812,
+        "totalTokens": 13435
+      },
+      "estCostUsd": 0.0317,
+      "latencyMs": 9398
+    },
+    {
+      "symbol": "NACLIND.NS",
+      "entryDate": "2026-07-10",
+      "processLabel": "VALID",
+      "outcomePct": null,
+      "verdict": "WATCH",
+      "qualityGrade": "B",
+      "setupType": "HIGH_LEVEL_PULLBACK",
+      "setupMaturity": "READY",
+      "pivotVisible": true,
+      "estimatedPivotPrice": 237.69,
+      "proposedTriggerPrice": 237.69,
+      "passBlockers": [
+        "Setup is more than 30% below 52-week high, with significant overhead supply within 8-12% above the trigger.",
+        "Directional efficiency (0.188) is below the preferred threshold for clean movers.",
+        "Recent run-up is strong but the consolidation is relatively short and not especially tight.",
+        "ATR% is high (7.26%), indicating elevated volatility and risk."
+      ],
+      "summary": "NACLIND.NS has staged a strong run-up (pole ~59%) and is consolidating at a high level above all major EMAs, with a clear support shelf around 212-218 and a resistance/pivot zone at 235.6-237.7. However, the setup is still over 30% below its 52-week high, and the next major supply zone (the 52w high at 339.45) is about 42% above, but there is significant supply within 8-12% above the trigger (recent swing high at 238.7). Directional efficiency (0.188) is below the preferred threshold for clean movers, suggesting some choppiness. ATR% is high, indicating elevated risk. The consolidation is not especially tight, and the recent move is volatile. While the setup is actionable by trigger proximity, the combination of overhead supply, volatility, and only moderate mover quality means it does not qualify for today's active shortlist. WATCH for further tightening or a more constructive setup.",
+      "usage": {
+        "inputTokens": 12374,
+        "outputTokens": 833,
+        "totalTokens": 13207
+      },
+      "estCostUsd": 0.0314,
+      "latencyMs": 14731
+    },
+    {
+      "symbol": "RAIN.NS",
+      "entryDate": "2026-07-10",
+      "processLabel": "VALID",
+      "outcomePct": null,
+      "verdict": "PASS",
+      "qualityGrade": "A",
+      "setupType": "FLAG",
+      "setupMaturity": "READY",
+      "pivotVisible": true,
+      "estimatedPivotPrice": 210,
+      "proposedTriggerPrice": 210,
+      "passBlockers": [],
+      "summary": "RAIN.NS presents a high-quality, actionable swing setup. Chart location is excellent: price is less than 5% from 52-week highs, well above all major EMAs, and in a clear Stage 2 uptrend. The recent pole is strong (67.4% run-up), and the flag is orderly, with price consolidating just below highs. The directional efficiency (0.269) confirms a clean mover, matching this trader's preferred character. Volume remains healthy, with no signs of distribution. The proposed GTT trigger at 210 is only 2.76% above the last close, making the setup timely and actionable. Risk is controlled with a logical stop below the recent swing low (196.45). No major overhead supply blocks the setup, and the flag structure is clearly visible. This setup deserves a place on today's active entry shortlist.",
+      "usage": {
+        "inputTokens": 12471,
+        "outputTokens": 737,
+        "totalTokens": 13208
+      },
+      "estCostUsd": 0.0308,
+      "latencyMs": 9543
+    },
+    {
+      "symbol": "SCHNEIDER.NS",
+      "entryDate": "2026-07-02",
+      "processLabel": "VALID",
+      "outcomePct": null,
+      "verdict": "WATCH",
+      "qualityGrade": "B+",
+      "setupType": "FLAG",
+      "setupMaturity": "BUILDING",
+      "pivotVisible": true,
+      "estimatedPivotPrice": 1450,
+      "proposedTriggerPrice": 1450,
+      "passBlockers": [
+        "Directional efficiency is only moderate (0.176), not at the level of this trader's best clean movers.",
+        "Recent flag/consolidation is somewhat loose and volatile, not especially tight.",
+        "Proposed trigger is ~4.5% above current close, so not an immediate entry.",
+        "Volume contraction is present but not ideal; some recent bars show above-average volatility."
+      ],
+      "summary": "SCHNEIDER.NS is in a strong Stage 2 uptrend, trading just 5.6% below its 52-week high and well above all major EMAs. The recent advance (pole) is strong at ~58%, and the flag structure is visible, but the consolidation is somewhat loose and volatile, not especially tight. Directional efficiency (0.176) is only moderate, below the trader's best setups. The proposed GTT trigger at 1450 is actionable but sits ~4.5% above the last close, so the setup is not immediately actionable. Volume contraction is present but not ideal, and some recent bars show above-average volatility. Overall, this is a constructive high-level flag, but it needs more tightening or a closer entry for a PASS. Keep on watch for a tighter setup or a closer trigger.",
+      "usage": {
+        "inputTokens": 12393,
+        "outputTokens": 826,
+        "totalTokens": 13219
+      },
+      "estCostUsd": 0.0314,
+      "latencyMs": 16616
+    },
+    {
+      "symbol": "SPARC.NS",
+      "entryDate": "2026-07-03",
+      "processLabel": "VALID",
+      "outcomePct": null,
+      "verdict": "PASS",
+      "qualityGrade": "A+",
+      "setupType": "FLAG",
+      "setupMaturity": "READY",
+      "pivotVisible": true,
+      "estimatedPivotPrice": 243.34,
+      "proposedTriggerPrice": 243.34,
+      "passBlockers": [],
+      "summary": "SPARC.NS is in a textbook Stage 2 uptrend, trading just 5.5% below 52-week highs and well above all major EMAs (price is 18% above EMA50, 45% above EMA200). The pole is extremely strong (113% run-up), and the 60-day directional efficiency (0.285) confirms clean, directional movement. The current flag is high and tight, with a shallow, controlled pullback above EMA10/20 and a clear mother-candle trigger at 243.34 (1.7% above last close). Volume has contracted during the flag, and there is no major overhead supply within the actionable zone. Risk is controlled to the recent swing low (235.54). This is a high-quality, ready flag setup deserving of today's active entry shortlist.",
+      "usage": {
+        "inputTokens": 12406,
+        "outputTokens": 754,
+        "totalTokens": 13160
+      },
+      "estCostUsd": 0.0308,
+      "latencyMs": 15847
+    },
+    {
+      "symbol": "VIYASH.NS",
+      "entryDate": "2026-06-30",
+      "processLabel": "VALID",
+      "outcomePct": null,
+      "verdict": "WATCH",
+      "qualityGrade": "B+",
+      "setupType": "FLAG",
+      "setupMaturity": "READY",
+      "pivotVisible": true,
+      "estimatedPivotPrice": 277.9,
+      "proposedTriggerPrice": 277.9,
+      "passBlockers": [
+        "Pole run-up is only moderate (48.6%), not the strongest for a high conviction flag.",
+        "Recent flag/pullback is somewhat wide and volatile, with several large range candles and some shakeouts.",
+        "Proposed trigger is just below the 52-week high, so risk of immediate supply overhead is present."
+      ],
+      "summary": "VIYASH.NS is in a strong Stage 2 uptrend, trading just 3% below its 52-week high and well above all major EMAs. The directional efficiency (0.275) is solid, indicating a clean mover by this trader's standards. The flag structure is visible, but the pole run-up (48.6%) is only moderate, not the strongest for a conviction flag. The recent pullback/flag is somewhat wide and volatile, with several large range candles and shakeouts, which slightly reduces quality. The proposed GTT trigger (277.9) is actionable and close to the 52-week high, but this also means immediate supply overhead risk. Volume is healthy and above average, supporting the trend. Overall, this is a constructive, high-level flag setup, but the moderate pole and somewhat loose flag mean it is not quite A+ shortlist quality for today. Keep on watch for a cleaner, tighter setup or a more decisive breakout.",
+      "usage": {
+        "inputTokens": 12345,
+        "outputTokens": 838,
+        "totalTokens": 13183
+      },
+      "estCostUsd": 0.0314,
+      "latencyMs": 9652
+    }
+  ]
+}

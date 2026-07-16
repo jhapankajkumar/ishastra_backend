@@ -1,0 +1,114 @@
+{
+    "charts": [{
+      "symbol": "ARCB",
+      "entryDate": "2026-05-22",
+      "imageFile": "ARCB_2026-05-22.png",
+      "processLabel": "VALID",
+      "outcomePct": 18.26,
+      "notes": "Winner"
+    },
+    {
+      "symbol": "IRDM",
+      "entryDate": "2026-05-05",
+      "imageFile": "IRDM_2026-05-05.png",
+      "processLabel": "VALID",
+      "outcomePct": 8.62,
+      "notes": "Winner"
+    },
+    {
+      "symbol": "TPB",
+      "entryDate": "2026-01-23",
+      "imageFile": "TPB_2026-01-23.png",
+      "processLabel": "VALID",
+      "outcomePct": 8.4,
+      "notes": "Winner"
+    },
+    {
+      "symbol": "ESOA",
+      "entryDate": "2026-05-22",
+      "imageFile": "ESOA_2026-05-22.png",
+      "processLabel": "VALID",
+      "outcomePct": -4.23,
+      "notes": "Loser, stopped out"
+    },
+    {
+      "symbol": "MOV",
+      "entryDate": "2026-06-05",
+      "imageFile": "MOV_2026-06-05.png",
+      "processLabel": "VALID",
+      "outcomePct": -4.31,
+      "notes": "Loser, stopped out"
+    },
+    {
+      "symbol": "FSTR",
+      "entryDate": "2026-06-05",
+      "imageFile": "FSTR_2026-06-05.png",
+      "processLabel": "VALID",
+      "outcomePct": -3.24,
+      "notes": "Loser, stopped out"
+    },
+    {
+      "symbol": "AFRM",
+      "entryDate": "2026-07-13",
+      "imageFile": "AFRM_2026-07-13.png",
+      "processLabel": "INVALID",
+      "outcomePct": null,
+      "notes": "Choppy stock, No clean Flag Pole"
+    },
+    {
+      "symbol": "BLFS",
+      "entryDate": "2026-07-13",
+      "imageFile": "BLFS_2026-07-13.png",
+      "processLabel": "INVALID",
+      "outcomePct": null,
+      "notes": "Choppy stock, No clean Flag Pole, many wicks"
+    },
+    {
+      "symbol": "BWIN",
+      "entryDate": "2026-07-13",
+      "imageFile": "BWIN_2026-07-13.png",
+      "processLabel": "INVALID",
+      "outcomePct": null,
+      "notes": "Down trending stock, 200 EMA line just getting upwards"
+    },
+    {
+      "symbol": "GPN",
+      "entryDate": "2026-07-13",
+      "imageFile": "GPN_2026-07-13.png",
+      "processLabel": "INVALID",
+      "outcomePct": null,
+      "notes": "Very Choppy , Price just got above 200 EMA, last 4 lower highs and lower lows"
+    },
+    {
+      "symbol": "IDYA",
+      "entryDate": "2026-07-13",
+      "imageFile": "IDYA_2026-07-13.png",
+      "processLabel": "INVALID",
+      "outcomePct": null,
+      "notes": "Hard pullback"
+    },
+    {
+      "symbol": "LMND",
+      "entryDate": "2026-07-13",
+      "imageFile": "LMND_2026-07-13.png",
+      "processLabel": "INVALID",
+      "outcomePct": null,
+      "notes": "Controlled pullback, if stock says and no pull back then will be good candidate"
+    },
+    {
+      "symbol": "PACS",
+      "entryDate": "2026-07-13",
+      "imageFile": "PACS_2026-07-13.png",
+      "processLabel": "INVALID",
+      "outcomePct": null,
+      "notes": "Flag pole is not long enough"
+    },
+    {
+      "symbol": "THC",
+      "entryDate": "2026-07-13",
+      "imageFile": "THC_2026-07-13.png",
+      "processLabel": "INVALID",
+      "outcomePct": null,
+      "notes": "Stock is not clean mover, choppy, hard pull back"
+    }]
+}

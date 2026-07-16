@@ -1,0 +1,371 @@
+{
+  "model": "gpt-4.1",
+  "promptVersion": "v4-trader-system-gates",
+  "ranAt": "2026-07-14T09:28:20.460Z",
+  "results": [
+    {
+      "symbol": "ARCB",
+      "entryDate": "2026-05-22",
+      "processLabel": "VALID",
+      "outcomePct": 18.26,
+      "verdict": "WATCH",
+      "qualityGrade": "B+",
+      "setupType": "HIGH_LEVEL_PULLBACK",
+      "setupMaturity": "BUILDING",
+      "pivotVisible": true,
+      "estimatedPivotPrice": 125.35,
+      "proposedTriggerPrice": 125.35,
+      "passBlockers": [
+        "Recent pullback is still somewhat wide and volatile, not yet showing tight contraction.",
+        "Volume is below average during the most recent consolidation, suggesting lack of strong accumulation.",
+        "Setup is not especially tight or low-risk; risk/reward is only moderate with resistance from recent highs (135.1) within 8% above trigger."
+      ],
+      "summary": "ARCB is in a strong Stage 2 uptrend, trading above all major EMAs and within 8% of 52-week highs. The recent advance from early February to late April forms a clear pole, followed by a high-level pullback/flag. However, the pullback is still somewhat wide and volatile, lacking the tight contraction and volume dry-up that would make this a high-probability, low-risk entry. The proposed GTT trigger at 125.35 is valid and close to the current price, but the risk/reward is only moderate with the prior high (135.1) acting as resistance within 8% above. Volume during the recent consolidation is below average, suggesting a lack of strong accumulation. This setup is constructive and worth monitoring, but not quite ready for a high-conviction swing entry shortlist today. WATCH for further tightening or a more defined pivot.",
+      "usage": {
+        "inputTokens": 12280,
+        "outputTokens": 827,
+        "totalTokens": 13107
+      },
+      "estCostUsd": 0.0312,
+      "latencyMs": 8841
+    },
+    {
+      "symbol": "IRDM",
+      "entryDate": "2026-05-05",
+      "processLabel": "VALID",
+      "outcomePct": 8.62,
+      "verdict": "WATCH",
+      "qualityGrade": "B+",
+      "setupType": "HIGH_LEVEL_PULLBACK",
+      "setupMaturity": "BUILDING",
+      "pivotVisible": true,
+      "estimatedPivotPrice": 40.61,
+      "proposedTriggerPrice": 40.61,
+      "passBlockers": [
+        "Recent pullback is still wide and volatile, not yet showing tight controlled action near the pivot.",
+        "Volume contraction is present but not pronounced; recent bars show some choppiness.",
+        "Setup is not yet mature enough for a high-probability anticipatory entry—needs more tightening or a clearer flag structure."
+      ],
+      "summary": "IRDM is in a strong Stage 2 uptrend, trading well above all major EMAs and near 52-week highs. The recent advance from late March to mid-April forms a strong pole, but the subsequent pullback is still wide and volatile, lacking the tight, controlled action preferred for a high-probability swing entry. The current setup is a high-level pullback with some constructive qualities, but the risk/reward is not optimal yet due to the choppy nature of the recent bars and the lack of a clearly defined flag or VCP structure. Volume contraction is present but not ideal. The proposed GTT trigger at 40.61 is valid, but the setup needs more time to tighten and mature before it deserves a place on the active entry shortlist. WATCH for further tightening or a clearer flag to develop.",
+      "usage": {
+        "inputTokens": 12397,
+        "outputTokens": 773,
+        "totalTokens": 13170
+      },
+      "estCostUsd": 0.031,
+      "latencyMs": 7661
+    },
+    {
+      "symbol": "TPB",
+      "entryDate": "2026-01-23",
+      "processLabel": "VALID",
+      "outcomePct": 8.4,
+      "verdict": "PASS",
+      "qualityGrade": "A",
+      "setupType": "HIGH_LEVEL_PULLBACK",
+      "setupMaturity": "READY",
+      "pivotVisible": true,
+      "estimatedPivotPrice": 119.23,
+      "proposedTriggerPrice": 119.23,
+      "passBlockers": [],
+      "summary": "TPB is in a strong Stage 2 uptrend, trading just under new 52-week highs with all key EMAs rising and price extended but not overextended (price is 2.9% above EMA10, 5.8% above EMA20, and 11.2% above EMA50). The recent advance from mid-December to mid-January forms a clear pole, followed by a shallow, controlled high-level pullback over the last few days. The proposed GTT trigger at 119.23 is actionable, sitting just above the recent highs and less than 1% above the last close. Volume remains healthy and above average, with no signs of distribution. There is no significant overhead supply, and risk is well-defined with a stop just below the recent pullback low. This setup is actionable and deserves a place on today's active swing shortlist.",
+      "usage": {
+        "inputTokens": 12249,
+        "outputTokens": 703,
+        "totalTokens": 12952
+      },
+      "estCostUsd": 0.0301,
+      "latencyMs": 6443
+    },
+    {
+      "symbol": "ESOA",
+      "entryDate": "2026-05-22",
+      "processLabel": "VALID",
+      "outcomePct": -4.23,
+      "verdict": "WATCH",
+      "qualityGrade": "B+",
+      "setupType": "HIGH_LEVEL_PULLBACK",
+      "setupMaturity": "BUILDING",
+      "pivotVisible": true,
+      "estimatedPivotPrice": 17.91,
+      "proposedTriggerPrice": 17.91,
+      "passBlockers": [
+        "Recent pullback is still wide and volatile after failed breakout attempt",
+        "Pattern is not yet tight or controlled enough for a high-probability entry",
+        "Volume has not contracted meaningfully after the failed breakout",
+        "Failed breakout candle (May 13) introduces supply and technical damage near highs"
+      ],
+      "summary": "ESOA is in a strong Stage 2 uptrend, trading well above all major EMAs and near 52-week highs. The recent advance formed a strong pole, but the attempted breakout on May 13 failed with a wide, high-volume reversal candle, introducing supply and technical damage near the highs. The current pullback is wide and volatile, not yet showing the tight, controlled character preferred for a high-probability entry. Volume has not contracted meaningfully, and the setup needs more time to tighten and absorb supply. The proposed GTT trigger is valid and close, but the risk/reward is not optimal given the recent failed breakout and lack of pattern contraction. This is a strong chart to watch for a potential re-setup, but not yet a PASS for today's shortlist.",
+      "usage": {
+        "inputTokens": 12277,
+        "outputTokens": 816,
+        "totalTokens": 13093
+      },
+      "estCostUsd": 0.0311,
+      "latencyMs": 6936
+    },
+    {
+      "symbol": "MOV",
+      "entryDate": "2026-06-05",
+      "processLabel": "VALID",
+      "outcomePct": -4.31,
+      "verdict": "WATCH",
+      "qualityGrade": "B+",
+      "setupType": "HIGH_LEVEL_PULLBACK",
+      "setupMaturity": "BUILDING",
+      "pivotVisible": true,
+      "estimatedPivotPrice": 37.88,
+      "proposedTriggerPrice": 37.88,
+      "passBlockers": [
+        "Flag/pullback is still very short and loose after a vertical high-volume run; not enough controlled consolidation for a high-probability entry.",
+        "Recent move is highly extended from EMAs (price is 16% above EMA20, 29% above EMA50), increasing risk of shakeout.",
+        "No clear multi-day flag channel or tight VCP structure; pullback is only 2-3 bars and not yet orderly."
+      ],
+      "summary": "MOV is in a strong Stage 2 uptrend, trading just 3% below 52-week highs after a powerful, high-volume vertical run. The current setup is a high-level pullback following a near-vertical pole, but the pullback is only 2-3 bars and lacks a controlled, orderly flag or VCP structure. Price is highly extended from short-term EMAs (16% above EMA20, 29% above EMA50), which increases the risk of a shakeout or failed breakout if entered now. There is no clear multi-day flag channel or tight consolidation, and the risk/reward is not optimal at this extension. Volume remains strong, but the setup needs more time to develop a proper flag or base. WATCH for a tighter, more controlled consolidation or a multi-day flag to form before considering for active entry.",
+      "usage": {
+        "inputTokens": 12284,
+        "outputTokens": 801,
+        "totalTokens": 13085
+      },
+      "estCostUsd": 0.031,
+      "latencyMs": 10617
+    },
+    {
+      "symbol": "FSTR",
+      "entryDate": "2026-06-05",
+      "processLabel": "VALID",
+      "outcomePct": -3.24,
+      "verdict": "PASS",
+      "qualityGrade": "A",
+      "setupType": "FLAG",
+      "setupMaturity": "READY",
+      "pivotVisible": true,
+      "estimatedPivotPrice": 42.46,
+      "proposedTriggerPrice": 42.46,
+      "passBlockers": [],
+      "summary": "FSTR is in a strong Stage 2 uptrend, trading just 2.4% below its 52-week high and well above all major EMAs. The recent move formed a powerful pole (May 1–6), followed by a controlled, orderly flag pullback above the 10/20/50 EMAs. The current price is within 1.1% of the actionable GTT trigger (42.46), offering a tight, low-risk entry. There is no major overhead supply, and the risk is well defined with a stop just below the recent flag low (41.02). Volume has contracted during the flag, and the overall structure is clean and constructive. This setup is actionable and deserves a place on today's active swing shortlist.",
+      "usage": {
+        "inputTokens": 12259,
+        "outputTokens": 723,
+        "totalTokens": 12982
+      },
+      "estCostUsd": 0.0303,
+      "latencyMs": 5806
+    },
+    {
+      "symbol": "AFRM",
+      "entryDate": "2026-07-13",
+      "processLabel": "INVALID",
+      "outcomePct": null,
+      "verdict": "WATCH",
+      "qualityGrade": "B+",
+      "setupType": "HIGH_LEVEL_PULLBACK",
+      "setupMaturity": "BUILDING",
+      "pivotVisible": true,
+      "estimatedPivotPrice": 86,
+      "proposedTriggerPrice": 86,
+      "passBlockers": [
+        "Setup is a high-level pullback but not yet tight or controlled enough for a high-probability entry.",
+        "Recent pullback is somewhat wide and volatile, with no clear multi-day contraction or tight flag.",
+        "Volume on the recent advance and pullback is not showing strong contraction or clear accumulation.",
+        "Still 16% below 52-week high; some overhead supply context remains, though not an immediate blocker."
+      ],
+      "summary": "AFRM is in a strong Stage 2 uptrend, trading well above all major EMAs and showing a powerful advance from late May to late June. The current setup is a high-level pullback just below recent highs, with a proposed GTT trigger at 86. However, the pullback is somewhat wide and lacks the tight, controlled character preferred for a high-probability entry. Volume during the pullback and advance is not showing strong contraction or clear accumulation, and the setup is still about 16% below the 52-week high, leaving some overhead supply context. Risk/reward is reasonable with a stop under 79.33, but the setup needs more tightening or a clearer flag/VCP structure to be actionable for today's shortlist. WATCH for further development; a tighter coil or volume contraction could upgrade this to PASS.",
+      "usage": {
+        "inputTokens": 12030,
+        "outputTokens": 806,
+        "totalTokens": 12836
+      },
+      "estCostUsd": 0.0305,
+      "latencyMs": 9547
+    },
+    {
+      "symbol": "BLFS",
+      "entryDate": "2026-07-13",
+      "processLabel": "INVALID",
+      "outcomePct": null,
+      "verdict": "PASS",
+      "qualityGrade": "A",
+      "setupType": "FLAG",
+      "setupMaturity": "READY",
+      "pivotVisible": true,
+      "estimatedPivotPrice": 28.74,
+      "proposedTriggerPrice": 28.74,
+      "passBlockers": [],
+      "summary": "BLFS is in a strong Stage 2 uptrend, trading just 6% below 52-week highs and well above all major EMAs. The recent action forms a classic bull flag: a strong pole (late June), followed by a tight, controlled pullback above the 10/20/50EMAs. The flag is orderly, with modest wicks and no major distribution. The proposed GTT trigger at 28.74 is actionable, sitting just under the recent highs and within 2% of the last close. Risk is controlled with a natural stop below 27.06 (recent flag low). Volume has contracted during the flag, and there is no significant overhead supply within the swing target zone. This setup is actionable and deserves a place on today's active swing shortlist.",
+      "usage": {
+        "inputTokens": 11948,
+        "outputTokens": 741,
+        "totalTokens": 12689
+      },
+      "estCostUsd": 0.0298,
+      "latencyMs": 8523
+    },
+    {
+      "symbol": "BWIN",
+      "entryDate": "2026-07-13",
+      "processLabel": "INVALID",
+      "outcomePct": null,
+      "verdict": "REJECT",
+      "qualityGrade": "C",
+      "setupType": "HIGH_LEVEL_PULLBACK",
+      "setupMaturity": "READY",
+      "pivotVisible": true,
+      "estimatedPivotPrice": 26.97,
+      "proposedTriggerPrice": 26.97,
+      "passBlockers": [
+        "Setup is directly under the declining EMA200, which is likely to act as resistance.",
+        "Major overhead supply from the long Stage 4 decline and prior trading range is close above (within 8-12%).",
+        "Recent move is a sharp V-shaped rally from deep lows, not a clean Stage 2 advance.",
+        "Volume on the recent advance is not strongly above average, and current volume is fading.",
+        "Pattern is not a classic flag or VCP; the structure is a volatile, loose high-level pullback after a deep recovery."
+      ],
+      "summary": "BWIN has staged a sharp V-shaped rally from deep lows, reclaiming all major EMAs and now consolidating just under the declining EMA200. While the recent advance is strong, the setup is directly under major resistance (EMA200 and prior supply zone), with significant overhead supply within 8-12% of current price. The pattern is not a classic flag or VCP, but rather a volatile high-level pullback after a deep recovery. Volume on the advance is not exceptional, and current volume is fading. Risk/reward is poor given the proximity to resistance and the lack of a clean, orderly consolidation. This is not a textbook Stage 2 swing setup and does not meet the criteria for today's active entry shortlist.",
+      "usage": {
+        "inputTokens": 12048,
+        "outputTokens": 807,
+        "totalTokens": 12855
+      },
+      "estCostUsd": 0.0306,
+      "latencyMs": 7923
+    },
+    {
+      "symbol": "GPN",
+      "entryDate": "2026-07-13",
+      "processLabel": "INVALID",
+      "outcomePct": null,
+      "verdict": "REJECT",
+      "qualityGrade": "C",
+      "setupType": "HIGH_LEVEL_PULLBACK",
+      "setupMaturity": "BROKEN",
+      "pivotVisible": true,
+      "estimatedPivotPrice": 76.84,
+      "proposedTriggerPrice": 76.84,
+      "passBlockers": [
+        "Chart is still below the 200-day EMA and has not established a clear Stage 2 uptrend.",
+        "Recent rally is a sharp bounce from deep lows, not a controlled flag or VCP near highs.",
+        "Significant overhead supply remains from the 52-week high and prior breakdown zone (90.64) within 18% above.",
+        "Pattern is a volatile recovery, not a clean high-level consolidation.",
+        "Volume on the recent bounce is below average, suggesting weak participation.",
+        "Recent price action is choppy and lacks a clean, orderly structure."
+      ],
+      "summary": "GPN is in a technical recovery from deep lows, but the chart remains below the 200-day EMA and is not in a clear Stage 2 uptrend. The recent advance is a sharp, volatile bounce rather than a controlled flag or VCP near highs. There is significant overhead supply from the 52-week high and prior breakdown zone, and the current pattern is choppy with no clean, orderly structure. Volume on the recent move is below average, indicating weak participation. Risk/reward is not attractive given the lack of a strong base or tight consolidation near highs. This setup does not meet the criteria for an active swing shortlist candidate.",
+      "usage": {
+        "inputTokens": 12382,
+        "outputTokens": 770,
+        "totalTokens": 13152
+      },
+      "estCostUsd": 0.0309,
+      "latencyMs": 8354
+    },
+    {
+      "symbol": "IDYA",
+      "entryDate": "2026-07-13",
+      "processLabel": "INVALID",
+      "outcomePct": null,
+      "verdict": "WATCH",
+      "qualityGrade": "B",
+      "setupType": "HIGH_LEVEL_PULLBACK",
+      "setupMaturity": "BUILDING",
+      "pivotVisible": true,
+      "estimatedPivotPrice": 38.46,
+      "proposedTriggerPrice": 38.46,
+      "passBlockers": [
+        "Pullback after sharp run is still developing; not yet showing clear support or tightness.",
+        "Recent pullback is relatively wide and lacks a clear, controlled flag channel.",
+        "Volume on the pullback is not showing strong contraction; last two days are low volume but not a clear dry-up.",
+        "Current price is ~4% below the proposed trigger, but the setup is not yet showing a clear, low-risk entry structure."
+      ],
+      "summary": "IDYA is in a strong Stage 2 uptrend, trading above all major EMAs and near 52-week highs. The recent advance from mid-June to early July forms a strong pole, but the current pullback is still developing and lacks a tight, controlled flag or VCP structure. The pullback is relatively wide, and while the last two days show lower volume, there is not a clear volume dry-up or tightness that would signal a low-risk entry. The proposed GTT trigger at 38.46 is valid, but the setup needs more time to tighten and establish clear support. Risk/reward is not optimal yet, so this is a high-quality chart to watch for further development, but not a PASS for today's active entry shortlist.",
+      "usage": {
+        "inputTokens": 11984,
+        "outputTokens": 783,
+        "totalTokens": 12767
+      },
+      "estCostUsd": 0.0302,
+      "latencyMs": 8378
+    },
+    {
+      "symbol": "LMND",
+      "entryDate": "2026-07-13",
+      "processLabel": "INVALID",
+      "outcomePct": null,
+      "verdict": "REJECT",
+      "qualityGrade": "C",
+      "setupType": "HIGH_LEVEL_PULLBACK",
+      "setupMaturity": "BUILDING",
+      "pivotVisible": true,
+      "estimatedPivotPrice": 72.38,
+      "proposedTriggerPrice": 72.38,
+      "passBlockers": [
+        "Setup is well below 52-week highs with significant overhead supply (~12%+ above trigger)",
+        "Recent pullback is deep and volatile, not controlled or orderly",
+        "ATR% is high, candles are wide and choppy, risk is not well defined",
+        "Volume on the recent pullback is not constructive (no clear contraction, some distribution)",
+        "Current price is in the middle of a volatile range, not a tight consolidation near highs"
+      ],
+      "summary": "LMND recently staged a powerful advance (pole) but is now pulling back sharply from a failed breakout attempt. The current setup is a high-level pullback, but the structure is not controlled: the pullback is deep, wide, and volatile, with ATR% over 6% and large, choppy candles. The price is well below the 52-week high, and there is significant overhead supply within 12% of the proposed trigger (resistance at 77.59–81.23). Volume on the pullback is not constructive, showing no clear contraction and some distribution. The setup is not a tight flag or VCP near highs, but rather a volatile retracement in the middle of a wide range. Risk/reward is not attractive, and the setup does not meet the quality required for an active swing shortlist. WATCH only if it forms a much tighter, controlled consolidation near highs.",
+      "usage": {
+        "inputTokens": 12035,
+        "outputTokens": 853,
+        "totalTokens": 12888
+      },
+      "estCostUsd": 0.0309,
+      "latencyMs": 9087
+    },
+    {
+      "symbol": "PACS",
+      "entryDate": "2026-07-13",
+      "processLabel": "INVALID",
+      "outcomePct": null,
+      "verdict": "WATCH",
+      "qualityGrade": "A",
+      "setupType": "HIGH_LEVEL_PULLBACK",
+      "setupMaturity": "BUILDING",
+      "pivotVisible": true,
+      "estimatedPivotPrice": 45.36,
+      "proposedTriggerPrice": 45.36,
+      "passBlockers": [
+        "Current pullback is still developing and not yet showing a tight, controlled pivot.",
+        "Proposed trigger is ~5% above the last close, so price is not yet close enough for an anticipatory entry.",
+        "Recent pullback is a bit wide and lacks clear volume contraction near the pivot."
+      ],
+      "summary": "PACS is in a strong Stage 2 uptrend, trading just 5.8% below its 52-week high and well above all major EMAs. The recent advance from mid-June to early July forms a strong pole, but the current pullback is still developing and somewhat wide, lacking a tight, controlled pivot or clear volume contraction. The proposed GTT trigger is about 5% above the last close, so price is not yet close enough for an anticipatory entry. The setup is constructive and should be monitored for a tighter, more actionable pivot or a closer approach to the trigger. No major overhead supply blocks the setup, but it is not yet ready for a high-probability swing entry today.",
+      "usage": {
+        "inputTokens": 11956,
+        "outputTokens": 748,
+        "totalTokens": 12704
+      },
+      "estCostUsd": 0.0299,
+      "latencyMs": 6800
+    },
+    {
+      "symbol": "THC",
+      "entryDate": "2026-07-13",
+      "processLabel": "INVALID",
+      "outcomePct": null,
+      "verdict": "REJECT",
+      "qualityGrade": "C",
+      "setupType": "HIGH_LEVEL_PULLBACK",
+      "setupMaturity": "BROKEN",
+      "pivotVisible": true,
+      "estimatedPivotPrice": 209.42,
+      "proposedTriggerPrice": 209.42,
+      "passBlockers": [
+        "Recent sharp breakdown from a failed breakout attempt near 210-211, damaging the structure.",
+        "Current price is well below the recent swing high and actionable trigger, with a wide, high-volume reversal.",
+        "Pattern is not a controlled flag or VCP; the pullback is deep and volatile, not orderly.",
+        "Volume on the recent breakdown is elevated, suggesting distribution.",
+        "Setup is no longer near a tight pivot; risk/reward is poor from current levels."
+      ],
+      "summary": "THC recently attempted a breakout above 210 but immediately failed, reversing sharply on high volume and closing well below the proposed trigger. The structure is now broken: the pullback is deep, wide, and volatile, not a controlled flag or VCP. The risk/reward is poor, as price is far from the actionable trigger and the setup is no longer tight or orderly. Elevated volume on the breakdown suggests distribution. While the stock is above key EMAs and in a Stage 2 context, the current setup is technically damaged and does not deserve a place on today's active swing shortlist.",
+      "usage": {
+        "inputTokens": 11999,
+        "outputTokens": 732,
+        "totalTokens": 12731
+      },
+      "estCostUsd": 0.0299,
+      "latencyMs": 6866
+    }
+  ]
+}

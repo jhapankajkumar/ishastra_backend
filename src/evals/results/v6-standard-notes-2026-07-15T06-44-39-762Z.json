@@ -1,0 +1,618 @@
+{
+  "model": "gpt-4.1",
+  "promptVersion": "v6-standard-notes",
+  "ranAt": "2026-07-15T06:44:39.762Z",
+  "results": [
+    {
+      "symbol": "ARCB",
+      "analysisDate": "2026-05-21",
+      "processLabel": "VALID",
+      "outcomePct": 18.26,
+      "verdict": "WATCH",
+      "qualityGrade": "B",
+      "setupType": "HIGH_LEVEL_PULLBACK",
+      "setupMaturity": "BUILDING",
+      "pivotVisible": true,
+      "estimatedPivotPrice": 125.35,
+      "proposedTriggerPrice": 125.35,
+      "passBlockers": [
+        "Directional efficiency is mediocre (0.16), indicating some choppiness.",
+        "Recent pullback is somewhat wide and volatile, not a tight flag or VCP.",
+        "Volume is below average during the recent advance and consolidation.",
+        "Setup is not especially tight or low-risk; structure is still forming."
+      ],
+      "summary": "ARCB is in a strong Stage 2 uptrend, trading above all major EMAs and within 8% of 52-week highs. The recent advance (pole) is solid at 56% but not exceptional for this trader's preferred flag setups. The current structure is a high-level pullback rather than a tight flag or VCP, with the pullback being somewhat wide and volatile. Directional efficiency (0.16) is mediocre, suggesting some choppiness and less-than-ideal trend quality. Volume has been below average during the recent advance and consolidation, which does not support a high-conviction entry. The proposed GTT trigger at 125.35 is valid and close to the current price, but the setup lacks the tightness and controlled risk required for a PASS. This chart is worth monitoring as it could tighten up or form a better entry, but it does not meet the criteria for today's active swing shortlist.",
+      "usage": {
+        "inputTokens": 12471,
+        "outputTokens": 794,
+        "totalTokens": 13265
+      },
+      "estCostUsd": 0.0313,
+      "latencyMs": 12684
+    },
+    {
+      "symbol": "IRDM",
+      "analysisDate": "2026-05-04",
+      "processLabel": "VALID",
+      "outcomePct": 8.62,
+      "verdict": "PASS",
+      "qualityGrade": "A",
+      "setupType": "HIGH_LEVEL_PULLBACK",
+      "setupMaturity": "READY",
+      "pivotVisible": true,
+      "estimatedPivotPrice": 40.61,
+      "proposedTriggerPrice": 40.61,
+      "passBlockers": [],
+      "summary": "IRDM is in a strong Stage 2 uptrend, trading above all major EMAs with a recent high-level pullback after a powerful pole (poleRunupPct 140.6%). The setup is near 52-week highs (only ~10% below), with no major overhead supply in the immediate trade zone. The directional efficiency (0.339) confirms a clean mover. The current price is within 2% of the actionable GTT trigger (40.61), and risk is controlled with a logical stop just below the recent pullback low (38.26). Volume has contracted during the pullback, and the structure is tight enough for an anticipatory entry. This setup meets all criteria for today's active swing shortlist.",
+      "usage": {
+        "inputTokens": 12588,
+        "outputTokens": 736,
+        "totalTokens": 13324
+      },
+      "estCostUsd": 0.0311,
+      "latencyMs": 15187
+    },
+    {
+      "symbol": "TPB",
+      "analysisDate": "2026-01-22",
+      "processLabel": "VALID",
+      "outcomePct": 8.4,
+      "verdict": "WATCH",
+      "qualityGrade": "B",
+      "setupType": "HIGH_LEVEL_PULLBACK",
+      "setupMaturity": "READY",
+      "pivotVisible": true,
+      "estimatedPivotPrice": 119.23,
+      "proposedTriggerPrice": 119.23,
+      "passBlockers": [
+        "Pole run-up into the recent high is only 37.5%, below this trader's preferred threshold for flag setups",
+        "Recent pullback is shallow but the prior advance is not strong enough to qualify as a classic flag or high tight flag",
+        "No clear multi-week base or VCP structure; setup is a short pullback after a moderate run, not a classic consolidation"
+      ],
+      "summary": "TPB is in a strong Stage 2 uptrend, trading just under its 52-week high with all key EMAs rising and price extended above them, but not excessively so. The setup is a high-level shallow pullback after a moderate run (poleRunupPct 37.5%), not a classic bull flag or high tight flag. The directional efficiency (0.323) is strong, indicating a clean mover, but the pole is not powerful enough for a textbook flag entry. The proposed GTT trigger is actionable and close to the current price, with a logical stop under the recent pullback low. Volume is healthy and above average, and there is no major overhead supply. However, the lack of a strong pole and absence of a classic consolidation structure keep this from being a top-tier setup for today's shortlist. This is a constructive, high-quality chart that should remain on watch for further development or a more powerful setup.",
+      "usage": {
+        "inputTokens": 12440,
+        "outputTokens": 806,
+        "totalTokens": 13246
+      },
+      "estCostUsd": 0.0313,
+      "latencyMs": 13484
+    },
+    {
+      "symbol": "ESOA",
+      "analysisDate": "2026-05-21",
+      "processLabel": "VALID",
+      "outcomePct": -4.23,
+      "verdict": "REJECT",
+      "qualityGrade": "C",
+      "setupType": "HIGH_LEVEL_PULLBACK",
+      "setupMaturity": "READY",
+      "pivotVisible": true,
+      "estimatedPivotPrice": 17.91,
+      "proposedTriggerPrice": 17.91,
+      "passBlockers": [
+        "Directional efficiency is very low (0.088), indicating choppy, unreliable price action.",
+        "Recent pullback is volatile and wide, with large red bars and failed breakout attempts.",
+        "Volume has dried up significantly after the failed breakout, suggesting lack of active participation.",
+        "Multiple failed breakout attempts and high volatility near highs signal distribution and instability."
+      ],
+      "summary": "ESOA is in a high-level pullback just below recent highs, with price above all major EMAs and a strong pole run-up (61.5%). However, the directional efficiency (0.088) is well below the threshold for clean movers, indicating choppy and unreliable action. The recent pullback is volatile, with large red bars and failed breakout attempts, and volume has dried up after the failed breakout, suggesting a lack of active buying interest. Multiple failed breakouts and high volatility near highs signal distribution and instability. While the setup is technically near a trigger and risk is controlled, the overall quality is not sufficient for an active swing shortlist. WATCH only if the character improves and a tighter, more controlled setup forms.",
+      "usage": {
+        "inputTokens": 12468,
+        "outputTokens": 812,
+        "totalTokens": 13280
+      },
+      "estCostUsd": 0.0314,
+      "latencyMs": 11433
+    },
+    {
+      "symbol": "MOV",
+      "analysisDate": "2026-06-04",
+      "processLabel": "VALID",
+      "outcomePct": -4.31,
+      "verdict": "PASS",
+      "qualityGrade": "A",
+      "setupType": "FLAG",
+      "setupMaturity": "READY",
+      "pivotVisible": true,
+      "estimatedPivotPrice": 37.88,
+      "proposedTriggerPrice": 37.88,
+      "passBlockers": [],
+      "summary": "MOV displays a textbook high-tight flag setup at all-time highs, with price consolidating just 3% below the 52-week high after a 70% pole run-up. The directional efficiency (0.374) confirms a clean, institutional-quality mover. The flag is tight, shallow, and volume remains healthy post-pole. The proposed GTT trigger (37.88) is actionable, sitting just under the recent high, with risk well-controlled to the flag low (36.81). There is no meaningful overhead supply, and the setup is not extended by this trader's standards (price is 7.98% above EMA10, 16.45% above EMA20, both within the system's limits for a high-tight flag). All technical and structural criteria for a swing entry are met. This setup deserves a place on today's active entry shortlist.",
+      "usage": {
+        "inputTokens": 12475,
+        "outputTokens": 742,
+        "totalTokens": 13217
+      },
+      "estCostUsd": 0.0309,
+      "latencyMs": 10762
+    },
+    {
+      "symbol": "FSTR",
+      "analysisDate": "2026-06-04",
+      "processLabel": "VALID",
+      "outcomePct": -3.24,
+      "verdict": "PASS",
+      "qualityGrade": "A",
+      "setupType": "FLAG",
+      "setupMaturity": "READY",
+      "pivotVisible": true,
+      "estimatedPivotPrice": 42.46,
+      "proposedTriggerPrice": 42.46,
+      "passBlockers": [],
+      "summary": "FSTR is in a strong Stage 2 uptrend, trading just 2.4% below its 52-week high and well above all major EMAs (price is 16.6% above EMA50, 39% above EMA200). The recent advance (pole) is strong at 61% and the 60-day directional efficiency is excellent at 0.393, confirming clean trending behavior. The current setup is a high-level bull flag with a tight, controlled pullback above EMA10/20, and the proposed GTT trigger (42.46) is actionable, sitting just 1% above the last close. Risk is well-defined with a stop just below the recent flag low (41.02). Volume has contracted during the flag, and there is no major overhead supply to block the move. This setup is actionable and deserves a place on today's active swing shortlist.",
+      "usage": {
+        "inputTokens": 12448,
+        "outputTokens": 749,
+        "totalTokens": 13197
+      },
+      "estCostUsd": 0.0309,
+      "latencyMs": 29728
+    },
+    {
+      "symbol": "AFRM",
+      "analysisDate": "2026-07-13",
+      "processLabel": "INVALID",
+      "outcomePct": null,
+      "verdict": "WATCH",
+      "qualityGrade": "B",
+      "setupType": "HIGH_LEVEL_PULLBACK",
+      "setupMaturity": "BUILDING",
+      "pivotVisible": true,
+      "estimatedPivotPrice": 86,
+      "proposedTriggerPrice": 86,
+      "passBlockers": [
+        "Directional efficiency is mediocre (0.177), not at the level of this trader's cleanest movers.",
+        "Pole run-up is only moderate (48.5%), below the trader's average for taken setups.",
+        "Setup is still building: recent pullback is not especially tight and the pivot is not immediately actionable (price is ~5% below trigger).",
+        "Volume on the recent advance and pullback is not showing strong contraction or clear accumulation."
+      ],
+      "summary": "AFRM is in a strong Stage 2 uptrend, trading well above all major EMAs and showing a high-level pullback after a solid run. However, the setup is not yet actionable for today's shortlist: the directional efficiency (0.177) is only average for this trader, and the pole run-up (48.5%) is below the typical threshold for a high-conviction flag. The recent pullback is not especially tight, and the price is still about 5% below the proposed GTT trigger at 86, so the setup is not yet at an ideal entry zone. Volume does not show a clear contraction or accumulation pattern. The structure is constructive and worth monitoring, but it needs more tightening or a closer approach to the trigger for a high-quality entry. WATCH for now; revisit if price tightens up or approaches the trigger with better volume/character.",
+      "usage": {
+        "inputTokens": 12219,
+        "outputTokens": 842,
+        "totalTokens": 13061
+      },
+      "estCostUsd": 0.0312,
+      "latencyMs": 10507
+    },
+    {
+      "symbol": "BLFS",
+      "analysisDate": "2026-07-13",
+      "processLabel": "INVALID",
+      "outcomePct": null,
+      "verdict": "WATCH",
+      "qualityGrade": "B",
+      "setupType": "FLAG",
+      "setupMaturity": "READY",
+      "pivotVisible": true,
+      "estimatedPivotPrice": 28.79,
+      "proposedTriggerPrice": 28.79,
+      "passBlockers": [
+        "Directional efficiency (0.21) is below the preferred threshold for clean movers.",
+        "Volume contraction is present but recent volume is well below average, raising concern about participation.",
+        "Recent highs (30) are only ~4% above the trigger, creating a nearby resistance zone that could cap the initial swing."
+      ],
+      "summary": "BLFS is in a strong Stage 2 uptrend, trading above all major EMAs and near 52-week highs. The current setup is a bull flag with a clear pole (52% run-up) and a tight flag channel. The proposed GTT trigger at 28.79 is actionable and within 2.5% of the last close. However, the directional efficiency (0.21) is below the ideal threshold for this trader's cleanest movers, suggesting some choppiness. Volume has contracted during the flag, but recent participation is well below average, which is a concern for follow-through. The main technical blocker is the proximity of the 30 level (recent and 52w high), which is only ~4% above the trigger and could act as near-term resistance, capping the initial swing. Risk/reward is controlled, but the setup lacks the high-quality momentum and open air above the trigger that would justify a PASS. Keep on watch for a high-volume breakout or further tightening.",
+      "usage": {
+        "inputTokens": 12138,
+        "outputTokens": 853,
+        "totalTokens": 12991
+      },
+      "estCostUsd": 0.0311,
+      "latencyMs": 15424
+    },
+    {
+      "symbol": "BWIN",
+      "analysisDate": "2026-07-13",
+      "processLabel": "INVALID",
+      "outcomePct": null,
+      "verdict": "REJECT",
+      "qualityGrade": "C",
+      "setupType": "HIGH_LEVEL_PULLBACK",
+      "setupMaturity": "BUILDING",
+      "pivotVisible": true,
+      "estimatedPivotPrice": 27.58,
+      "proposedTriggerPrice": 27.58,
+      "passBlockers": [
+        "Poor chart location: still 37% below 52-week high and just recently reclaimed EMA200 after a deep decline.",
+        "Major overhead supply: significant resistance from the 200-day EMA and prior price structure directly above.",
+        "Directional efficiency is very low (0.085), indicating choppy, unreliable price action.",
+        "Volume is well below average on the recent pullback and recovery, suggesting weak participation.",
+        "Recent run-up is extended from the base but not near highs; risk/reward is poor with supply overhead."
+      ],
+      "summary": "BWIN is in a technical recovery after a deep decline, now trading above its EMA200 but still 37% below its 52-week high. The recent pole is strong (69% run-up), but the directional efficiency is very low (0.085), indicating choppy, unreliable price action—well below this trader's threshold for clean movers. The setup is a high-level pullback/flag, but it forms directly under major resistance (200-day EMA and prior supply zone), with significant overhead supply within 3-5% of the proposed trigger. Volume on the recent pullback and recovery is weak, suggesting little conviction. While the structure is improving, the location, choppy character, and overhead supply make this a low-probability swing setup. Not suitable for today's active entry shortlist.",
+      "usage": {
+        "inputTokens": 12238,
+        "outputTokens": 879,
+        "totalTokens": 13117
+      },
+      "estCostUsd": 0.0315,
+      "latencyMs": 9930
+    },
+    {
+      "symbol": "GPN",
+      "analysisDate": "2026-07-13",
+      "processLabel": "INVALID",
+      "outcomePct": null,
+      "verdict": "REJECT",
+      "qualityGrade": "F",
+      "setupType": "HIGH_LEVEL_PULLBACK",
+      "setupMaturity": "BROKEN",
+      "pivotVisible": true,
+      "estimatedPivotPrice": 78.03,
+      "proposedTriggerPrice": 78.03,
+      "passBlockers": [
+        "Weak chart location: price is still below the 200-day EMA and well below the 52-week high, with significant overhead supply.",
+        "Directional efficiency is very poor (0.077), indicating a choppy, low-quality mover.",
+        "Pole run-up is weak (29.7%), far below the trader's minimum for a quality flag setup.",
+        "Recent structure is volatile and erratic, not a controlled consolidation or flag.",
+        "No clear, tight risk/reward structure: recent swings are wide and volatile.",
+        "Volume is only average and does not show constructive contraction or accumulation."
+      ],
+      "summary": "GPN is not a candidate for today's swing entry shortlist. The chart is still below the 200-day EMA and well below the 52-week high, with significant overhead supply in the 77–80 zone. The directional efficiency (0.077) is far below the threshold for a clean mover, and the pole run-up (29.7%) is much weaker than the trader's minimum for a quality flag. The recent price action is volatile and erratic, not a controlled consolidation or flag, and there is no clear, tight risk/reward structure. Volume is only average and does not show constructive contraction or accumulation. This is a low-quality, choppy setup with poor location and no actionable swing structure.",
+      "usage": {
+        "inputTokens": 12573,
+        "outputTokens": 772,
+        "totalTokens": 13345
+      },
+      "estCostUsd": 0.0313,
+      "latencyMs": 8772
+    },
+    {
+      "symbol": "IDYA",
+      "analysisDate": "2026-07-13",
+      "processLabel": "INVALID",
+      "outcomePct": null,
+      "verdict": "REJECT",
+      "qualityGrade": "C",
+      "setupType": "HIGH_LEVEL_PULLBACK",
+      "setupMaturity": "BUILDING",
+      "pivotVisible": true,
+      "estimatedPivotPrice": 37.42,
+      "proposedTriggerPrice": 37.42,
+      "passBlockers": [
+        "Directional efficiency is very low (0.08), indicating choppy, unreliable price action.",
+        "Recent pullback is sharp and high-volume, not controlled or orderly.",
+        "Volume on the pullback is not contracting; some bars show above-average selling.",
+        "Current price is below EMA10 and pulling back hard from recent highs.",
+        "Setup is not tight or low-risk; risk/reward is poor for an anticipatory entry.",
+        "Pattern is not clean: lacks the tight flag or VCP structure preferred for a PASS."
+      ],
+      "summary": "IDYA is in a Stage 2 uptrend and recently made new 52-week highs, but the current swing setup is not actionable for a shortlist entry. The directional efficiency (0.08) is well below the threshold for clean movers, indicating choppy, unreliable price action. The recent pullback from highs is sharp, deep, and on high volume, with no evidence of controlled, low-volume contraction. Price is now below the EMA10 and the setup lacks the tight flag or VCP structure preferred for anticipatory entries. Risk/reward is poor, as the stop is not well-defined and the pattern is not tight. While the pole is adequate (51.4% run-up), the overall pattern quality and trend behavior do not meet the standards for a PASS. This is a high-level pullback that needs more time to build a constructive, low-risk entry structure.",
+      "usage": {
+        "inputTokens": 12175,
+        "outputTokens": 846,
+        "totalTokens": 13021
+      },
+      "estCostUsd": 0.0311,
+      "latencyMs": 16036
+    },
+    {
+      "symbol": "LMND",
+      "analysisDate": "2026-07-13",
+      "processLabel": "INVALID",
+      "outcomePct": null,
+      "verdict": "REJECT",
+      "qualityGrade": "C",
+      "setupType": "HIGH_LEVEL_PULLBACK",
+      "setupMaturity": "BUILDING",
+      "pivotVisible": true,
+      "estimatedPivotPrice": 72.67,
+      "proposedTriggerPrice": 72.67,
+      "passBlockers": [
+        "Directional efficiency is extremely poor (0.021), indicating a very choppy, low-quality mover by this trader's standards.",
+        "Recent pullback is deep and volatile, with wide daily ranges and large red candles, not a controlled flag or tight consolidation.",
+        "Volume has collapsed on the pullback, with recent bars well below average, suggesting lack of active participation.",
+        "Setup is still building after a sharp run; structure is not tight or controlled enough for an anticipatory entry.",
+        "Current price is nearly 30% below the 52-week high, with significant overhead supply from the recent failed breakout and reversal."
+      ],
+      "summary": "LMND is in a Stage 2 uptrend above all major EMAs, but the current setup is not actionable for a swing entry. The directional efficiency (0.021) is far below this trader's minimum for a clean mover, indicating persistent choppiness and unreliable follow-through. The recent pullback is wide, volatile, and not controlled, with large red candles and no sign of tightness or volume contraction. Volume has dried up on the pullback, further reducing quality. The setup is still building after a sharp run and failed breakout, with significant overhead supply from the recent reversal near 80-81. While the GTT trigger is technically valid and risk is defined, the overall structure and mover quality do not meet this trader's standards for a PASS. Watch only if the chart tightens and directional efficiency improves.",
+      "usage": {
+        "inputTokens": 12221,
+        "outputTokens": 895,
+        "totalTokens": 13116
+      },
+      "estCostUsd": 0.0316,
+      "latencyMs": 11706
+    },
+    {
+      "symbol": "PACS",
+      "analysisDate": "2026-07-13",
+      "processLabel": "INVALID",
+      "outcomePct": null,
+      "verdict": "WATCH",
+      "qualityGrade": "B",
+      "setupType": "HIGH_LEVEL_PULLBACK",
+      "setupMaturity": "READY",
+      "pivotVisible": true,
+      "estimatedPivotPrice": 44.1,
+      "proposedTriggerPrice": 44.1,
+      "passBlockers": [
+        "Directional efficiency is mediocre (0.158), not at the level of this trader's best clean movers.",
+        "Pole run-up is at the minimum threshold for a flag setup (44.1%), not strong.",
+        "Recent pullback is a bit sharp and not especially tight; some volatility after the high.",
+        "Volume on the pullback is not showing strong contraction; recent volume is below average."
+      ],
+      "summary": "PACS is in a strong Stage 2 uptrend, trading just 5.7% off 52-week highs and well above all major EMAs. The current setup is a high-level pullback/flag just below recent highs, with a clear GTT trigger at 44.1. Risk is controlled to the recent pullback low at 42.53. However, the setup is not A-quality: directional efficiency (0.158) is only average for this trader, and the pole run-up (44.1%) is at the minimum threshold for a flag. The pullback is somewhat sharp and not especially tight, and volume on the pullback is below average, lacking the ideal contraction. There is no major overhead supply, but the resistance zone at 45–45.89 is close enough to potentially cap the initial move. This is a constructive, actionable setup, but not strong enough for today's active shortlist. WATCH for further tightening or a higher-quality flag/pivot.",
+      "usage": {
+        "inputTokens": 12142,
+        "outputTokens": 856,
+        "totalTokens": 12998
+      },
+      "estCostUsd": 0.0311,
+      "latencyMs": 9363
+    },
+    {
+      "symbol": "THC",
+      "analysisDate": "2026-07-13",
+      "processLabel": "INVALID",
+      "outcomePct": null,
+      "verdict": "REJECT",
+      "qualityGrade": "F",
+      "setupType": "HIGH_LEVEL_PULLBACK",
+      "setupMaturity": "BROKEN",
+      "pivotVisible": true,
+      "estimatedPivotPrice": 208.88,
+      "proposedTriggerPrice": 208.88,
+      "passBlockers": [
+        "Directional efficiency is extremely poor (0.012), indicating a very choppy, low-quality mover.",
+        "Pole run-up into the recent swing high is weak (33.5%), well below the trader's minimum for flags.",
+        "Current price is well below the 52-week high and recent swing high, with significant overhead supply.",
+        "Recent sharp reversal and high-volume breakdown from the swing high, damaging the structure.",
+        "Price is now below all short-term EMAs (10/20/50/200), indicating a failed breakout and broken trend.",
+        "No controlled, constructive consolidation or flag near highs—structure is loose and failed."
+      ],
+      "summary": "THC is a clear REJECT for swing trading under this system. The chart is in a broken state: after a failed breakout attempt in early July, price has sharply reversed on high volume and is now below all key EMAs (10/20/50/200). The directional efficiency (0.012) is extremely poor, confirming this is a choppy, low-quality mover. The pole run-up into the recent swing high is weak (33.5%), far below the trader's minimum for a flag setup. There is no controlled consolidation or flag near highs—structure is loose, failed, and there is significant overhead supply from the recent breakdown. Risk/reward is poor, and there is no actionable, constructive setup. This chart should not be on any active swing shortlist.",
+      "usage": {
+        "inputTokens": 12194,
+        "outputTokens": 775,
+        "totalTokens": 12969
+      },
+      "estCostUsd": 0.0306,
+      "latencyMs": 9193
+    },
+    {
+      "symbol": "ABDL.NS",
+      "analysisDate": "2026-07-03",
+      "processLabel": "VALID",
+      "outcomePct": null,
+      "verdict": "WATCH",
+      "qualityGrade": "B",
+      "setupType": "HIGH_LEVEL_PULLBACK",
+      "setupMaturity": "READY",
+      "pivotVisible": true,
+      "estimatedPivotPrice": 675,
+      "proposedTriggerPrice": 675,
+      "passBlockers": [
+        "Major resistance from 52-week high is less than 4% above the proposed trigger, creating immediate overhead supply risk.",
+        "Pole run-up (49.7%) is only average for this trader's system, not a true leader's thrust.",
+        "Recent pullback is not especially tight; last two candles show volatility and failed breakout attempt."
+      ],
+      "summary": "ABDL.NS is in a strong Stage 2 uptrend, trading above all major EMAs and less than 6% from 52-week highs. The directional efficiency (0.29) is solid, indicating a relatively clean mover, but the pole run-up (49.7%) is only average for this trader's preferred flag setups. The current setup is a high-level pullback with a proposed GTT trigger at 675, just 3% above the last close. However, the 52-week high (696.8) is less than 4% above the trigger, creating immediate overhead supply risk and limiting risk/reward. The last two candles show a failed breakout attempt and some volatility, suggesting the setup is not especially tight. Volume is healthy but not showing a clear contraction. This is a constructive, high-quality chart, but the proximity of major resistance and only average pole strength mean it does not deserve a PASS for today's shortlist. Keep on WATCH for a potential breakout and see if it can clear resistance with authority.",
+      "usage": {
+        "inputTokens": 12284,
+        "outputTokens": 814,
+        "totalTokens": 13098
+      },
+      "estCostUsd": 0.0311,
+      "latencyMs": 13297
+    },
+    {
+      "symbol": "AEGISVOPAK.NS",
+      "analysisDate": "2026-07-10",
+      "processLabel": "VALID",
+      "outcomePct": null,
+      "verdict": "PASS",
+      "qualityGrade": "A",
+      "setupType": "FLAG",
+      "setupMaturity": "READY",
+      "pivotVisible": true,
+      "estimatedPivotPrice": 291,
+      "proposedTriggerPrice": 291,
+      "passBlockers": [],
+      "summary": "AEGISVOPAK.NS presents a high-quality, actionable swing setup. Chart location is excellent: price is near 52-week highs (within 6.2%), well above all major EMAs (EMA10/20/50/200), and in a clear Stage 2 uptrend. The recent pole is strong (64% run-up), and the 60-day directional efficiency (0.284) confirms clean, directional movement. The current flag is tight, shallow, and orderly, with price consolidating just below the recent high. Volume expanded on the pole and contracted during the flag, matching ideal flag behavior. The proposed GTT trigger at 291 is only 2.8% above the last close, keeping risk controlled. The stop is naturally defined at the flag low (269.8), offering a reasonable risk/reward profile. There is no major overhead supply within the actionable zone, and the setup is not extended by EMA standards. This setup is ready for today's active entry shortlist.",
+      "usage": {
+        "inputTokens": 12369,
+        "outputTokens": 766,
+        "totalTokens": 13135
+      },
+      "estCostUsd": 0.0309,
+      "latencyMs": 9129
+    },
+    {
+      "symbol": "AEQUS.NS",
+      "analysisDate": "2026-07-07",
+      "processLabel": "VALID",
+      "outcomePct": null,
+      "verdict": "WATCH",
+      "qualityGrade": "A",
+      "setupType": "FLAG",
+      "setupMaturity": "READY",
+      "pivotVisible": true,
+      "estimatedPivotPrice": 246.66,
+      "proposedTriggerPrice": 246.66,
+      "passBlockers": [
+        "Directional efficiency (0.232) is just below the preferred threshold for clean movers.",
+        "Recent volatility and wide bars in the flag create a less controlled risk profile.",
+        "ATR% (5.75) and large volume spikes suggest higher volatility than ideal for a textbook flag entry."
+      ],
+      "summary": "AEQUS.NS is in a strong Stage 2 uptrend, trading just below 52-week highs and well above all short-term EMAs. The flag structure is visible and the pole is strong (67.4% run-up), but the directional efficiency (0.232) is just below the preferred threshold for a clean mover. The recent flag is wide and volatile, with large volume spikes and an ATR% of 5.75, making risk control less precise. The setup is actionable with a GTT trigger at 246.66, but the volatility and slightly subpar efficiency keep it off the active shortlist for now. WATCH for a tighter, more controlled setup or a cleaner move through the pivot.",
+      "usage": {
+        "inputTokens": 12417,
+        "outputTokens": 779,
+        "totalTokens": 13196
+      },
+      "estCostUsd": 0.0311,
+      "latencyMs": 8148
+    },
+    {
+      "symbol": "APOLLO.NS",
+      "analysisDate": "2026-07-02",
+      "processLabel": "VALID",
+      "outcomePct": null,
+      "verdict": "PASS",
+      "qualityGrade": "A+",
+      "setupType": "FLAG",
+      "setupMaturity": "READY",
+      "pivotVisible": true,
+      "estimatedPivotPrice": 442,
+      "proposedTriggerPrice": 442,
+      "passBlockers": [],
+      "summary": "APOLLO.NS is in a textbook Stage 2 uptrend, trading just 1.6% below its 52-week high and well above all major EMAs (price is 18% above EMA50, 53% above EMA200). The pole is extremely strong (poleRunupPct 114.6%), and the 60-day directional efficiency (0.314) confirms a clean, institutional-quality mover. The current flag is high and tight, with a shallow, controlled pullback that held above the EMA20 and quickly reclaimed the EMA10. The proposed GTT trigger at 442 is less than 1% above the last close, making this actionable for an anticipatory entry. Volume remains robust, with no signs of distribution or dead volume. There is no significant overhead supply, and risk is well-defined with a stop under the recent swing low (414.05). This setup is A+ quality and deserves a place on today's active swing shortlist.",
+      "usage": {
+        "inputTokens": 12416,
+        "outputTokens": 764,
+        "totalTokens": 13180
+      },
+      "estCostUsd": 0.0309,
+      "latencyMs": 8489
+    },
+    {
+      "symbol": "KIRLOSIND.NS",
+      "analysisDate": "2026-07-08",
+      "processLabel": "VALID",
+      "outcomePct": null,
+      "verdict": "WATCH",
+      "qualityGrade": "B",
+      "setupType": "HIGH_LEVEL_PULLBACK",
+      "setupMaturity": "BUILDING",
+      "pivotVisible": true,
+      "estimatedPivotPrice": 4074.4,
+      "proposedTriggerPrice": 4074.4,
+      "passBlockers": [
+        "Setup is still forming after a very sharp run and pullback; not yet a tight, controlled flag or VCP.",
+        "Directional efficiency (0.191) is below the preferred threshold for clean movers.",
+        "Volume has dropped off sharply after the run-up, suggesting lack of active participation.",
+        "Recent high is 15% above current price, so there is some overhead supply contextually relevant for swing targets."
+      ],
+      "summary": "KIRLOSIND.NS staged a powerful run (pole ~55.5%) and is now consolidating above all major EMAs, but the setup is still forming. The pullback is relatively controlled, but not yet tight or well-structured as a classic flag or VCP. Directional efficiency (0.191) is below the ideal for this trader's cleanest movers, and volume has dried up sharply after the run, which is a concern for immediate swing entry quality. The proposed GTT trigger is valid and close (1.7% above last close), but the setup lacks the tightness and volume signature for a high-conviction shortlist entry today. There is also some overhead supply from the recent high (4575), which is relevant for swing targets. This is a strong Stage 2 leader worth monitoring, but not yet a PASS for today's active entry shortlist.",
+      "usage": {
+        "inputTokens": 12646,
+        "outputTokens": 823,
+        "totalTokens": 13469
+      },
+      "estCostUsd": 0.0319,
+      "latencyMs": 8714
+    },
+    {
+      "symbol": "NACLIND.NS",
+      "analysisDate": "2026-07-10",
+      "processLabel": "VALID",
+      "outcomePct": null,
+      "verdict": "WATCH",
+      "qualityGrade": "B+",
+      "setupType": "HIGH_LEVEL_PULLBACK",
+      "setupMaturity": "READY",
+      "pivotVisible": true,
+      "estimatedPivotPrice": 237.59,
+      "proposedTriggerPrice": 237.59,
+      "passBlockers": [
+        "Significant overhead supply: 52w high is ~30% above, but the recent run-up is extended and the setup is not near all-time highs.",
+        "Recent pole is strong but not textbook high-tight; the pullback is shallow but the overall structure is not a classic flag or VCP.",
+        "Directional efficiency (0.249) is just below the clean-mover threshold for this trader, suggesting slightly less reliable follow-through.",
+        "ATR% is high (6.63%), indicating elevated volatility and risk."
+      ],
+      "summary": "NACLIND.NS is in a strong Stage 2 uptrend, well above all major EMAs, and has just completed a powerful pole (59% run-up) followed by a shallow high-level pullback. The proposed GTT trigger (237.59) is actionable and close to the current price (1.29% above last close), with a clear stop below the recent swing low (221.61). However, the setup is not near all-time or 52w highs (still ~31% below), so there is significant overhead supply. The directional efficiency (0.249) is just below the trader's 'clean mover' threshold, and ATR% is high, indicating elevated volatility. The pattern is constructive but not textbook (not a classic flag or VCP), and the recent run-up is extended. This is a high-momentum, high-risk setup that could work, but it does not meet the highest quality standards for a PASS. It deserves a spot on the watchlist for aggressive traders, but not on the active shortlist for today.",
+      "usage": {
+        "inputTokens": 12395,
+        "outputTokens": 866,
+        "totalTokens": 13261
+      },
+      "estCostUsd": 0.0317,
+      "latencyMs": 8085
+    },
+    {
+      "symbol": "RAIN.NS",
+      "analysisDate": "2026-07-10",
+      "processLabel": "VALID",
+      "outcomePct": null,
+      "verdict": "PASS",
+      "qualityGrade": "A",
+      "setupType": "HIGH_LEVEL_PULLBACK",
+      "setupMaturity": "READY",
+      "pivotVisible": true,
+      "estimatedPivotPrice": 209.76,
+      "proposedTriggerPrice": 209.76,
+      "passBlockers": [],
+      "summary": "RAIN.NS is in a strong Stage 2 uptrend, trading just 3.3% below its 52-week high and well above all major EMAs (price is 5% above EMA10, 7% above EMA20, 15% above EMA50, and 35% above EMA200). The recent pole shows a powerful 67.4% run-up, and the 60-day directional efficiency of 0.274 confirms clean, directional movement. The current setup is a high-level pullback/flag, with price consolidating in a controlled manner above support and now approaching a valid GTT trigger at 209.76, just 1.3% above the last close. Volume has contracted during the pullback, and there is no major overhead supply within the actionable zone. Risk is controlled with a natural stop below 196.45. This setup is actionable for an anticipatory swing entry and deserves a place on today's active shortlist.",
+      "usage": {
+        "inputTokens": 12490,
+        "outputTokens": 769,
+        "totalTokens": 13259
+      },
+      "estCostUsd": 0.0311,
+      "latencyMs": 6951
+    },
+    {
+      "symbol": "SCHNEIDER.NS",
+      "analysisDate": "2026-07-02",
+      "processLabel": "VALID",
+      "outcomePct": null,
+      "verdict": "WATCH",
+      "qualityGrade": "B+",
+      "setupType": "FLAG",
+      "setupMaturity": "READY",
+      "pivotVisible": true,
+      "estimatedPivotPrice": 1465,
+      "proposedTriggerPrice": 1465,
+      "passBlockers": [
+        "Directional efficiency (0.203) is below the preferred threshold for clean movers (~0.25), indicating some choppiness.",
+        "Volume contraction is present but not ideal; recent volume is below the 20d average (0.64x), which may limit conviction.",
+        "The setup is actionable but not top-tier due to only moderate pole strength (53%) and less-than-ideal mover quality."
+      ],
+      "summary": "SCHNEIDER.NS is in a strong Stage 2 uptrend, trading just 1% below its 52-week high and well above all major EMAs. The current setup is a high-level bull flag with a clear pole (53% run-up) and a tight flag channel. The proposed GTT trigger (1465) is actionable, sitting just above the recent highs, and risk is controlled to the flag low (1361). However, the directional efficiency (0.203) is below the preferred threshold for this trader's cleanest movers, suggesting some choppiness in the recent advance. Volume contraction is present but not ideal, with recent volume below the 20d average, which may limit conviction. While the setup is actionable and location is excellent, the overall quality is not top-tier due to only moderate pole strength and mover quality. This deserves a spot on the watchlist for potential entry, but does not make the active shortlist for today.",
+      "usage": {
+        "inputTokens": 12415,
+        "outputTokens": 855,
+        "totalTokens": 13270
+      },
+      "estCostUsd": 0.0317,
+      "latencyMs": 12281
+    },
+    {
+      "symbol": "SPARC.NS",
+      "analysisDate": "2026-07-03",
+      "processLabel": "VALID",
+      "outcomePct": null,
+      "verdict": "PASS",
+      "qualityGrade": "A",
+      "setupType": "FLAG",
+      "setupMaturity": "READY",
+      "pivotVisible": true,
+      "estimatedPivotPrice": 243,
+      "proposedTriggerPrice": 243,
+      "passBlockers": [],
+      "summary": "SPARC.NS is in a strong Stage 2 uptrend, trading just 5.5% below its 52-week high and well above all major EMAs (EMA10/20/50/200). The pole is exceptionally strong (113% run-up), and the 60-day directional efficiency (0.28) confirms clean trending behavior. The current setup is a high-level bull flag with a tight, controlled pullback above short-term EMAs, and the proposed GTT trigger (243) is actionable, sitting just 1.5% above the last close. Volume has contracted during the flag, and there is no major overhead supply within the next 8-12%. Risk is controlled with a natural stop just below the recent flag low (235.54). All technical criteria for a high-quality, actionable swing setup are met. This deserves a place on today's active entry shortlist.",
+      "usage": {
+        "inputTokens": 12416,
+        "outputTokens": 753,
+        "totalTokens": 13169
+      },
+      "estCostUsd": 0.0309,
+      "latencyMs": 7832
+    },
+    {
+      "symbol": "VIYASH.NS",
+      "analysisDate": "2026-06-30",
+      "processLabel": "VALID",
+      "outcomePct": null,
+      "verdict": "PASS",
+      "qualityGrade": "A",
+      "setupType": "FLAG",
+      "setupMaturity": "READY",
+      "pivotVisible": true,
+      "estimatedPivotPrice": 278.8,
+      "proposedTriggerPrice": 278.8,
+      "passBlockers": [],
+      "summary": "VIYASH.NS is in a strong Stage 2 uptrend, trading just under all-time highs with no meaningful overhead supply. The setup is a classic bull flag: a strong pole (44.7% run-up, just at the system's threshold), followed by a controlled, multi-week consolidation above rising EMAs. The directional efficiency (0.298) is well above the trader's clean-mover threshold, confirming quality. Volume has remained healthy, with no signs of distribution. The proposed GTT trigger (278.8) is less than 1% above the last close, making the setup actionable for tomorrow. Risk is controlled with a natural stop under the recent swing low (266.6). No blockers are present. This setup deserves a place on today's active swing shortlist.",
+      "usage": {
+        "inputTokens": 12369,
+        "outputTokens": 728,
+        "totalTokens": 13097
+      },
+      "estCostUsd": 0.0306,
+      "latencyMs": 7488
+    }
+  ]
+}
