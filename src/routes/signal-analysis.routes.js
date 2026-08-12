@@ -13,10 +13,14 @@ const router = express.Router();
 const { TradingSystemController } = require('../controllers/signal-analysis.controller');
 const { AISetupReviewController } = require('../controllers/ai-setup-review.controller');
 const { SYSTEM_IDS } = require('../utils/systemConstants');
+const { requireAuth, requireRole } = require('../middleware/auth.middleware');
 
 // Initialize controllers
 const tradingController = new TradingSystemController();
 const aiSetupReviewController = new AISetupReviewController();
+
+// Scan/Analysis is computed (no OpenAI calls) — any logged-in user.
+router.use(requireAuth);
 
 /**
  * GET /api/trading/signal-analysis
@@ -41,11 +45,12 @@ router.get('/chart', async (req, res) => {
   await tradingController.getChartData(req, res);
 });
 
-router.post('/ai-setup-review', async (req, res) => {
+// This calls OpenAI and bills the account owner — SUPERUSER only.
+router.post('/ai-setup-review', requireRole('SUPERUSER'), async (req, res) => {
   await aiSetupReviewController.reviewSetup(req, res);
 });
 
-router.post('/ai-setup-review/bulk', async (req, res) => {
+router.post('/ai-setup-review/bulk', requireRole('SUPERUSER'), async (req, res) => {
   await aiSetupReviewController.reviewBulk(req, res);
 });
 

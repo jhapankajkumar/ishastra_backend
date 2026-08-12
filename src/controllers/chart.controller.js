@@ -1,5 +1,6 @@
 // src/controllers/journal.controller.js
 const prisma = require('../db');
+const { buildReadFilter, buildWriteFilter, buildCreateData } = require('../utils/ownershipFilter');
 
 exports.createChartAnalysis = async (req, res) => {
   try {
@@ -24,7 +25,7 @@ exports.createChartAnalysis = async (req, res) => {
       setupType
     } = req.body;
     const analysis = await prisma.chartAnalysis.create({
-      data: {
+      data: buildCreateData(req, {
         entryDate: new Date(entryDate),
         ticker,
         tickerName: tickerName || "null",
@@ -43,7 +44,7 @@ exports.createChartAnalysis = async (req, res) => {
         reviewNotes: reviewNotes || null,
         setupConfidence: setupConfidence || 'Low',
         setupType: parseInt(setupType) || null
-      }
+      })
     });
 
     const chartImages = [];
@@ -76,6 +77,7 @@ exports.createChartAnalysis = async (req, res) => {
 exports.getAllChartAnalyses = async (req, res) => {
   try {
     const analyses = await prisma.chartAnalysis.findMany({
+      where: buildReadFilter(req),
       orderBy: { entryDate: 'desc' }
     });
 
@@ -94,8 +96,8 @@ exports.getAllChartAnalyses = async (req, res) => {
 exports.getChartAnalysisById = async (req, res) => {
   try {
     const { id } = req.params;
-    const analysis = await prisma.chartAnalysis.findUnique({
-      where: { id: Number(id) },
+    const analysis = await prisma.chartAnalysis.findFirst({
+      where: { id: Number(id), ...buildReadFilter(req) },
       include: {
         chartImages: true
       }
@@ -125,9 +127,9 @@ exports.deleteChartAnalysis = async (req, res) => {
       return res.status(400).json({ error: 'Invalid analysis ID' });
     }
 
-    // Check if analysis exists
-    const analysis = await prisma.chartAnalysis.findUnique({
-      where: { id: analysisId }
+    // Check if analysis exists and belongs to the caller (route requires auth)
+    const analysis = await prisma.chartAnalysis.findFirst({
+      where: { id: analysisId, userId: req.user.id }
     });
 
     if (!analysis) {
@@ -172,9 +174,9 @@ exports.updateChartAnalysis = async (req, res) => {
       return res.status(400).json({ error: 'Invalid analysis ID' });
     }
 
-    // Check if analysis exists
-    const existingAnalysis = await prisma.chartAnalysis.findUnique({
-      where: { id: analysisId }
+    // Check if analysis exists and belongs to the caller (or sandbox for guests)
+    const existingAnalysis = await prisma.chartAnalysis.findFirst({
+      where: { id: analysisId, ...buildWriteFilter(req) }
     });
 
     if (!existingAnalysis) {

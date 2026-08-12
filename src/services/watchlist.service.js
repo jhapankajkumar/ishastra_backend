@@ -6,8 +6,7 @@
  * NO BULLSHIT. NO CONFUSION. NO OVER-ENGINEERING.
  */
 
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../db');
 const { fetchCurrentPrice, getTickerAnalysis } = require('./comom.service');
 const { get } = require('lodash');
 const { getSimpleTechnicalData, detectBreakoutPullbackSetup } = require('../utils/simpleTechnicalDataFetcher');
@@ -210,7 +209,7 @@ class WatchlistService {
      * DAILY WATCHLIST SCAN - THE ONLY METHOD THAT MATTERS
      * Scans all stocks, picks top 20 BUY/WATCH signals, saves to DB
      */
-    async runDailyScan(stockUniverse) {
+    async runDailyScan(userId, stockUniverse) {
         console.log('🔍 DAILY WATCHLIST SCAN STARTING...');
         const distinctSymbols = stockUniverse === 'ALL' ? Array.from(new Set(this.STOCK_UNIVERSE)) : Array.from(new Set(stockUniverse));
         console.log(`📊 Scanning ${distinctSymbols.length} stocks for BUY/WATCH signals`);
@@ -303,9 +302,10 @@ class WatchlistService {
         console.log(`📝 Saving top ${combinedSignals.length} signals to watchlist`);
 
 
-        // Step 1: Get active trades (not closed)
+        // Step 1: Get this user's active trades (not closed)
         const trades = await prisma.trade.findMany({
             where: {
+                userId,
                 status: {
                     not: "Closed"
                 }
@@ -316,8 +316,8 @@ class WatchlistService {
 
         const validSignalSymbols = combinedSignals.map(s => s.symbol);
 
-        // Step 5: Remove those from watchlist
-        await prisma.watchlistStock.deleteMany({});
+        // Step 5: Remove those from this user's watchlist only
+        await prisma.watchlistStock.deleteMany({ where: { userId } });
         console.log('🗑️ Cleared old watchlist');
 
         combinedSignals = combinedSignals.filter(s => !symbolsInTrades.includes(s.symbol));
@@ -327,6 +327,7 @@ class WatchlistService {
         for (const signal of combinedSignals) {
             try {
                 const watchlistData = {
+                    userId,
                     symbol: signal.symbol,
                     currentPrice: signal.currentPrice || 0,
                     entryPrice: signal.currentPrice || 0,
@@ -341,7 +342,7 @@ class WatchlistService {
                 };
 
                 await prisma.watchlistStock.upsert({
-                    where: { symbol: signal.symbol },
+                    where: { userId_symbol: { userId, symbol: signal.symbol } },
                     update: watchlistData,
                     create: watchlistData
                 });
@@ -378,11 +379,11 @@ class WatchlistService {
     /**
      * GET CURRENT WATCHLIST - DISPLAY COMPLETE DATA
      */
-    async getWatchlist() {
-        const stocks = await prisma.watchlistStock.findMany({});
+    async getWatchlist(userId) {
+        const stocks = await prisma.watchlistStock.findMany({ where: { userId } });
         const symbolsToKeep = stocks.map(s => s.symbol);
         const trades = await prisma.trade.findMany({
-            where: { ticker: { in: symbolsToKeep } },
+            where: { userId, ticker: { in: symbolsToKeep } },
             select: { ticker: true },
             distinct: ['ticker']
         });
@@ -469,10 +470,10 @@ class WatchlistService {
         };
     }
 
-    async deleteFromWatchlist(symbol) {
+    async deleteFromWatchlist(userId, symbol) {
         try {
             await prisma.watchlistStock.delete({
-                where: { symbol }
+                where: { userId_symbol: { userId, symbol } }
             });
             return { success: true, message: `Deleted ${symbol} from watchlist` };
         } catch (error) {

@@ -7,16 +7,31 @@ const {
   removeCapital,
   updateCapital,
   initializeCapital,
-  checkCapitalAvailability
+  checkCapitalAvailability,
+  deposit,
+  withdraw,
+  getTransactions
 } = require('../controllers/capital.controller');
+const { requireAuth } = require('../middleware/auth.middleware');
 
 /**
  * Capital Management Routes
  * Base path: /api/capital
+ * No guest concept here — the whole router requires login.
  */
+router.use(requireAuth);
 
 // GET /api/capital - Get all capital information
 router.get('/', getAllCapital);
+
+// GET /api/capital/transactions - Deposit/withdraw ledger, newest first
+router.get('/transactions', getTransactions);
+
+// POST /api/capital/deposit - Deposit into the user's own capital
+router.post('/deposit', deposit);
+
+// POST /api/capital/withdraw - Withdraw from the user's own capital
+router.post('/withdraw', withdraw);
 
 // GET /api/capital/status - Alias for getting all capital
 router.get('/status', getAllCapital);

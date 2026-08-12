@@ -1158,6 +1158,66 @@ Generated at ${new Date().toLocaleString()}
     }
 
     /**
+     * Generic email sender — parameterized `to`, unlike sendAlert/sendWithMailgun
+     * which always send to ALERT_EMAIL (the app owner). Auth emails go to
+     * whichever address is registering/resetting, so they need their own path.
+     */
+    async sendGenericEmail({ to, subject, html, text }) {
+        if (!this.isConfigured || !this.mailgun) {
+            console.log('📧 Email not configured, skipping email send to', to);
+            return false;
+        }
+        try {
+            const from = `${process.env.MAILGUN_FROM} <postmaster@${process.env.MAILGUN_DOMAIN}>`;
+            const response = await this.mailgun.messages.create(process.env.MAILGUN_DOMAIN, {
+                from,
+                to,
+                subject,
+                text,
+                html,
+            });
+            console.log(`📧 Auth email sent to ${to}: ${subject} (ID: ${response.id})`);
+            return true;
+        } catch (error) {
+            console.error('❌ Failed to send auth email:', error.message);
+            return false;
+        }
+    }
+
+    /**
+     * Registration OTP — a simple, standalone template. Deliberately NOT
+     * reusing the trading-alert templates above (those are alert-shape
+     * specific); this is a different kind of email entirely.
+     */
+    async sendOtpEmail(toEmail, otp) {
+        const html = `
+        <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
+            <h2 style="color: #333;">Verify your Ishastra account</h2>
+            <p style="color: #555; font-size: 15px;">Enter this code to finish creating your account:</p>
+            <p style="font-size: 32px; font-weight: bold; letter-spacing: 6px; color: #111; margin: 24px 0;">${otp}</p>
+            <p style="color: #888; font-size: 13px;">This code expires in 10 minutes. If you didn't request this, you can ignore this email.</p>
+        </div>`;
+        const text = `Your Ishastra verification code is ${otp}. It expires in 10 minutes.`;
+        return this.sendGenericEmail({ to: toEmail, subject: 'Your Ishastra verification code', html, text });
+    }
+
+    /**
+     * Password reset link — same "simple standalone template" reasoning as
+     * sendOtpEmail above.
+     */
+    async sendPasswordResetEmail(toEmail, resetLink) {
+        const html = `
+        <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
+            <h2 style="color: #333;">Reset your Ishastra password</h2>
+            <p style="color: #555; font-size: 15px;">Click the link below to choose a new password:</p>
+            <p style="margin: 24px 0;"><a href="${resetLink}" style="background: #111; color: #fff; padding: 12px 20px; border-radius: 6px; text-decoration: none; font-weight: bold;">Reset Password</a></p>
+            <p style="color: #888; font-size: 13px;">This link expires soon. If you didn't request this, you can safely ignore this email — your password will not change.</p>
+        </div>`;
+        const text = `Reset your Ishastra password: ${resetLink}`;
+        return this.sendGenericEmail({ to: toEmail, subject: 'Reset your Ishastra password', html, text });
+    }
+
+    /**
      * Verify email configuration without sending
      */
     async verifyConfiguration() {

@@ -7,6 +7,45 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id                          Int       @id @default(autoincrement())
+  email                       String    @unique
+  passwordHash                String
+  role                        String    @default("USER") // "USER" | "SUPERUSER" — see src/utils/roles.js
+  preferredCurrency           String?   // "USD" | "INR" — chosen once at registration; null for SUPERUSER (exempt)
+  avatarUrl                   String?
+  emailVerified               Boolean   @default(false)
+  otpCodeHash                 String?
+  otpExpiresAt                DateTime?
+  passwordResetTokenHash      String?   @unique
+  passwordResetTokenExpiresAt DateTime?
+  createdAt                   DateTime  @default(now())
+  updatedAt                   DateTime  @updatedAt
+
+  refreshTokens               RefreshToken[]
+  trades                      Trade[]
+  investments                 Investment[]
+  recommendations             Recommendation[]
+  chartAnalyses               ChartAnalysis[]
+  watchlistStocks             WatchlistStock[]
+  capitals                    Capital[]
+  backtestTrades              BacktestTrade[]
+  capitalTransactions         CapitalTransaction[]
+}
+
+model RefreshToken {
+  id                  String    @id @default(uuid())
+  userId              Int
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash           String    @unique
+  expiresAt           DateTime
+  createdAt           DateTime  @default(now())
+  revokedAt           DateTime?
+  replacedByTokenHash String?
+  userAgent           String?
+  ipAddress           String?
+}
+
 model TradeFill {
   id            Int       @id @default(autoincrement())
   tradeId       Int?
@@ -37,7 +76,7 @@ model Trade {
   id                 Int       @id @default(autoincrement())
   
   //entry
-  tradeId            String    @unique        // e.g., ISH-2025-000001
+  tradeId            String                    // e.g., ISH-2025-000001 — unique per user, see @@unique below
   ticker             String
   tickerName         String?
   direction          String    // Consider enum: LONG, SHORT
@@ -87,13 +126,19 @@ model Trade {
   // Analysis and Learning Fields
   rMultiple          Float?    // Risk-reward ratio outcome
   isPaperTrade       Boolean?  // Whether this was practice
-  
-  // Full Stock Analysis as json 
+
+  // Full Stock Analysis as json
   systemAnalysisResult      String?
+
+  // Ownership — NULL means "guest sandbox row" (permanent signal, not migration debt)
+  userId             Int?
+  user               User?     @relation(fields: [userId], references: [id])
 
   tradeFills         TradeFill[]
   tradeImages        TradeImage[]
   tradeTransactions  TradeTransaction[]
+
+  @@unique([userId, tradeId])
 }
 
 model TradeTransaction {
@@ -132,6 +177,11 @@ model ChartAnalysis {
   setupType           Int?
   createdAt           DateTime @default(now())
   chartImages         ChartImage[]
+
+  // Ownership — NULL means "guest sandbox row" (permanent signal, not migration debt)
+  userId              Int?
+  user                User?    @relation(fields: [userId], references: [id])
+  isPaperTrade        Boolean? @default(false)
 }
 
 model ChartImage {
@@ -153,6 +203,11 @@ model Recommendation {
   marketCap        String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+
+  // Ownership — NULL means "guest sandbox row" (permanent signal, not migration debt)
+  userId        Int?
+  user          User?     @relation(fields: [userId], references: [id])
+  isPaperTrade  Boolean?  @default(false)
 }
 
 model Investment {
@@ -177,6 +232,11 @@ model Investment {
   lastDayPrice     Float?
   // Relations
   transactions     InvestmentTransaction[] // Partial exits or averaging
+
+  // Ownership — NULL means "guest sandbox row" (permanent signal, not migration debt)
+  userId           Int?
+  user             User?     @relation(fields: [userId], references: [id])
+  isPaperTrade     Boolean?  @default(false)
 }
 
 model InvestmentTransaction {
@@ -193,29 +253,59 @@ model InvestmentTransaction {
 
 model Capital {
   id              String   @id @default(uuid())
-  currency        String   @unique // 'USD' or 'INR'
+  currency        String   // 'USD' or 'INR' — unique per user, see @@unique below
   total           Float    // Total capital allocated
   remaining       Float    // Remaining capital after open trades
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+
+  // Ownership — required (Migration 4). No guest concept for Capital at all.
+  userId              Int
+  user                User                 @relation(fields: [userId], references: [id])
+  capitalTransactions CapitalTransaction[]
+
+  @@unique([userId, currency])
+}
+
+// Deposit/withdraw ledger — every balance change is a permanent row here,
+// not just a mutation of Capital.total/remaining. See plan's "why a ledger"
+// note: a single mutable number can't answer "when/why did my balance change."
+model CapitalTransaction {
+  id           String   @id @default(uuid())
+  capitalId    String
+  capital      Capital  @relation(fields: [capitalId], references: [id], onDelete: Cascade)
+  userId       Int
+  user         User     @relation(fields: [userId], references: [id])
+  type         String   // "DEPOSIT" | "WITHDRAW"
+  amount       Float
+  currency     String
+  balanceAfter Float    // Capital.remaining snapshot right after this transaction — the audit trail
+  note         String?
+  createdAt    DateTime @default(now())
 }
 
 // Watchlist Schema - SIMPLE & CLEAN - Stores complete signal analysis data
 model WatchlistStock {
   id              Int      @id @default(autoincrement())
-  symbol          String   @unique // Stock symbol (e.g., "AAPL", "RELIANCE.NS")
+  symbol          String   // Stock symbol (e.g., "AAPL", "RELIANCE.NS") — unique per user, see @@unique below
   currentPrice    Float    // Price when analyzed
   currency        String?  @default("USD") // 'USD' or 'INR'
-  market          String?  // 'US' or 'IN' 
+  market          String?  // 'US' or 'IN'
   entryPrice      Float   @default(0) // Price when analyzed
   // Execution Data (JSON from signal-analysis.controller.js)
   decision        String?
-  
+
   // Execution Data (JSON from signal-analysis.controller.js)
   execution       String?  // JSON: Complete execution object { entry, stopLoss, targets, position }
-  
+
   // Timestamps
   createdAt         DateTime @default(now())
+
+  // Ownership — required (Migration 4). No guest concept for Watchlist at all.
+  userId             Int
+  user               User     @relation(fields: [userId], references: [id])
+
+  @@unique([userId, symbol])
 }
 
 
@@ -231,4 +321,8 @@ model BacktestTrade {
    reason      String  // 'STOP' | 'TARGET' | 'TIME'
    RMultiple   Float
    system      String?
+
+   // Ownership — required (Migration 4).
+   userId      Int
+   user        User    @relation(fields: [userId], references: [id])
  }

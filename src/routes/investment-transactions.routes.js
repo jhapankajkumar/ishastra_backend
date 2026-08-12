@@ -1,13 +1,22 @@
 const express = require('express');
 const router = express.Router();
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../db');
+const { buildReadFilter, buildWriteFilter } = require('../utils/ownershipFilter');
 
-// Get all transactions for an investment
+// Get all transactions for an investment — scoped through the parent
+// Investment's ownership, since InvestmentTransaction carries no owner field
+// of its own.
 router.get('/:investmentId/transactions', async (req, res) => {
   try {
     const { investmentId } = req.params;
-    
+
+    const investment = await prisma.investment.findFirst({
+      where: { id: parseInt(investmentId), ...buildReadFilter(req) }
+    });
+    if (!investment) {
+      return res.status(404).json({ success: false, message: 'Investment not found' });
+    }
+
     const transactions = await prisma.investmentTransaction.findMany({
       where: { investmentId: parseInt(investmentId) },
       orderBy: { transactionDate: 'desc' }
@@ -41,9 +50,9 @@ router.post('/:investmentId/transactions', async (req, res) => {
       });
     }
 
-    // Check if investment exists
-    const investment = await prisma.investment.findUnique({
-      where: { id: parseInt(investmentId) }
+    // Check if investment exists and belongs to the caller (or sandbox for guests)
+    const investment = await prisma.investment.findFirst({
+      where: { id: parseInt(investmentId), ...buildWriteFilter(req) }
     });
 
     if (!investment) {

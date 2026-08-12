@@ -4,11 +4,9 @@
  * NO CONFUSION. NO MULTIPLE METHODS. NO BULLSHIT.
  * Just daily scans and watchlist display.
  */
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../db');
 const { fetchCurrentPrice, getTickerAnalysis } = require('../services/comom.service');
 const WatchlistService = require('../services/watchlist.service');
-const { data } = require('@tensorflow/tfjs-node');
 
 
 class WatchlistController {
@@ -21,7 +19,7 @@ class WatchlistController {
    */
   async getWatchlist(req, res) {
     try {
-      const watchlist = await this.watchlistService.getWatchlist();
+      const watchlist = await this.watchlistService.getWatchlist(req.user.id);
 
       res.json({
         success: true,
@@ -46,7 +44,7 @@ class WatchlistController {
     try {
       console.log('🔍 Manual daily scan triggered via API');
       const stocksUniverse = req.body.stocksUniverse || 'ALL'; // Optional: specify universe (e.g., 'US', 'IN', 'TECH')
-      const result = await this.watchlistService.runDailyScan(stocksUniverse);
+      const result = await this.watchlistService.runDailyScan(req.user.id, stocksUniverse);
 
       res.json({
         success: true,
@@ -99,9 +97,10 @@ class WatchlistController {
       }
 
       if (result.decision.action !== 'BUY') {
-        const deleted = await this.watchlistService.deleteFromWatchlist(symbol.toUpperCase());
+        const deleted = await this.watchlistService.deleteFromWatchlist(req.user.id, symbol.toUpperCase());
       } else if (result.decision.action === 'BUY') {
         const watchlistData = {
+          userId: req.user.id,
           symbol: result.symbol,
           currentPrice: result.currentPrice || 0,
           entryPrice: result.currentPrice || 0,
@@ -115,7 +114,7 @@ class WatchlistController {
         };
 
         const updated = await prisma.watchlistStock.upsert({
-          where: { symbol: symbol },
+          where: { userId_symbol: { userId: req.user.id, symbol } },
           update: watchlistData,
           create: watchlistData
         });
@@ -149,7 +148,7 @@ class WatchlistController {
         });
       }
 
-      const deleted = await this.watchlistService.deleteFromWatchlist(symbol.toUpperCase());
+      const deleted = await this.watchlistService.deleteFromWatchlist(req.user.id, symbol.toUpperCase());
 
       if (deleted) {
         res.json({
@@ -189,7 +188,7 @@ class WatchlistController {
           }
           if (data.currentPrice != null) {
             await prisma.watchlistStock.update({
-              where: { symbol: item.symbol },
+              where: { userId_symbol: { userId: item.userId, symbol: item.symbol } },
               data,
             });
             updatedCount++;

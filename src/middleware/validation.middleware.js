@@ -97,11 +97,77 @@ const validateAuth = [
     .withMessage('Username must be 3-50 characters')
     .isAlphanumeric()
     .withMessage('Username must contain only letters and numbers'),
-  
+
   body('password')
     .isLength({ min: 6 })
     .withMessage('Password must be at least 6 characters'),
-  
+
+  handleValidationErrors
+];
+
+// NIST 800-63B favors length over forced complexity — 8+ chars, no
+// mandated uppercase/symbol/number gymnastics.
+const validateRegister = [
+  body('email')
+    .isEmail()
+    .withMessage('A valid email is required')
+    .normalizeEmail(),
+
+  body('password')
+    .isLength({ min: 8 })
+    .withMessage('Password must be at least 8 characters'),
+
+  body('preferredCurrency')
+    .isIn(['USD', 'INR'])
+    .withMessage('Preferred currency must be USD or INR'),
+
+  handleValidationErrors
+];
+
+const validateLogin = [
+  body('email').isEmail().withMessage('A valid email is required').normalizeEmail(),
+  body('password').notEmpty().withMessage('Password is required'),
+  handleValidationErrors
+];
+
+const validateOtp = [
+  body('email').isEmail().withMessage('A valid email is required').normalizeEmail(),
+  body('otp')
+    .isLength({ min: 6, max: 6 })
+    .withMessage('OTP must be 6 digits')
+    .isNumeric()
+    .withMessage('OTP must be numeric'),
+  handleValidationErrors
+];
+
+const validateEmailOnly = [
+  body('email').isEmail().withMessage('A valid email is required').normalizeEmail(),
+  handleValidationErrors
+];
+
+const validateResetPassword = [
+  body('token').notEmpty().withMessage('Reset token is required'),
+  body('newPassword').isLength({ min: 8 }).withMessage('Password must be at least 8 characters'),
+  handleValidationErrors
+];
+
+const validateUpdatePassword = [
+  body('currentPassword').notEmpty().withMessage('Current password is required'),
+  body('newPassword').isLength({ min: 8 }).withMessage('Password must be at least 8 characters'),
+  handleValidationErrors
+];
+
+// Guest sandbox write limiter — bounds field length on the four
+// sandbox-capable models' free-text fields regardless of role.
+const validateGuestWritableFields = [
+  body('notes').optional().isLength({ max: 2000 }).withMessage('Notes must not exceed 2000 characters'),
+  body('reasonForEntry').optional().isLength({ max: 1000 }).withMessage('Reason for entry must not exceed 1000 characters'),
+  body('reasonForExit').optional().isLength({ max: 1000 }).withMessage('Reason for exit must not exceed 1000 characters'),
+  body('postTradeAnalysis').optional().isLength({ max: 2000 }).withMessage('Post trade analysis must not exceed 2000 characters'),
+  body('thesis').optional().isLength({ max: 2000 }).withMessage('Thesis must not exceed 2000 characters'),
+  body('entryNotes').optional().isLength({ max: 2000 }).withMessage('Entry notes must not exceed 2000 characters'),
+  body('reviewNotes').optional().isLength({ max: 2000 }).withMessage('Review notes must not exceed 2000 characters'),
+  body('actionPlan').optional().isLength({ max: 1000 }).withMessage('Action plan must not exceed 1000 characters'),
   handleValidationErrors
 ];
 
@@ -111,5 +177,12 @@ module.exports = {
   validatePostAnalysis,
   validateTradeId,
   validateAuth,
+  validateRegister,
+  validateLogin,
+  validateOtp,
+  validateEmailOnly,
+  validateResetPassword,
+  validateUpdatePassword,
+  validateGuestWritableFields,
   handleValidationErrors
 };

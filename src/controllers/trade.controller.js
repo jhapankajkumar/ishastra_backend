@@ -1,45 +1,14 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
-//console.log('✅ Prisma instance created:', !!prisma);
+const prisma = require('../db');
 const TradeIdGenerator = require('../utils/tradeIdGenerator');
 const CapitalManager = require('../utils/capitalManager');
 const { getQuote } = require('../yahoo');
-const { re } = require('mathjs');
+const { buildReadFilter, buildWriteFilter, buildCreateData } = require('../utils/ownershipFilter');
 
-// Get all trades with related data (optionally filter by paper trade flag)
-// /trades?isPaperTrade=true|false
+// Get all trades — authenticated users see only their own, guests see only
+// the shared paper sandbox. The client no longer chooses via ?isPaperTrade=.
 exports.getAllTrades = async (req, res) => {
   try {
-    const { isPaperTrade } = req.query;
-    // console.log('🔍 Get All Trades - isPaperTrade Query Param:', isPaperTrade);
-    // Build Prisma where clause only when query param is provided
-    const where = {};
-    where.isPaperTrade = false; // Default to real trades
-    if (typeof isPaperTrade !== 'undefined') {
-      // Accept boolean directly
-      if (typeof isPaperTrade === 'boolean') {
-        where.isPaperTrade = isPaperTrade;
-      }
-      // Accept string values (Express commonly provides query params as strings)
-      else if (typeof isPaperTrade === 'string' && isPaperTrade.trim() !== '') {
-        const normalized = isPaperTrade.trim().toLowerCase();
-        if (normalized === 'true' || normalized === '1') {
-          where.isPaperTrade = true;
-        } else if (normalized === 'false' || normalized === '0') {
-          where.isPaperTrade = false;
-        } else {
-          return res.status(400).json({
-            error: 'Invalid isPaperTrade query param. Use true/false (or 1/0).'
-          });
-        }
-      }
-      // Any other type is invalid
-      else {
-        return res.status(400).json({
-          error: 'Invalid isPaperTrade query param. Use true/false.'
-        });
-      }
-    }
+    const where = buildReadFilter(req);
 
     const trades = await prisma.trade.findMany({
       where,
@@ -73,8 +42,6 @@ exports.getAllTrades = async (req, res) => {
 exports.createTrade = async (req, res) => {
   try {
     console.log('🔍 Create Trade Request Body:', req.body);
-    //console.log('📁 Create Trade Files:', req.files);
-    //console.log('📅 Entry Date Value:', req.body.entryDate, typeof req.body.entryDate);
 
     const currency = req.body.currency || "INR"; // Default to INR if not specified
     const entryPrice = Number(req.body.entryPrice)
@@ -87,9 +54,9 @@ exports.createTrade = async (req, res) => {
     const maxAttempts = 10;
     while (!isUnique && attempts < maxAttempts) {
       professionalTradeId = await TradeIdGenerator.generateTradeId();
-      console.log(`Generated Trade ID Attempt ${attempts + 1}:`, professionalTradeId);
-      const existing = await prisma.trade.findUnique({ where: { tradeId: professionalTradeId } });
-      console.log(`Trade ID ${professionalTradeId} exists:`, !!existing);
+      // tradeId is no longer globally unique (Migration 3 scoped it to
+      // @@unique([userId, tradeId])) — findFirst, not findUnique.
+      const existing = await prisma.trade.findFirst({ where: { tradeId: professionalTradeId } });
       if (!existing) {
         isUnique = true;
       } else {
@@ -97,41 +64,38 @@ exports.createTrade = async (req, res) => {
       }
     }
 
-    console.log('Final Trade ID:', professionalTradeId, 'Is Unique:', isUnique);
     if (!isUnique) {
       return res.status(500).json({ error: 'Failed to generate a unique tradeId after multiple attempts.' });
     }
 
-
     // Validate and parse entry date (required field)
     if (!req.body.entryDate || req.body.entryDate === 'undefined' || req.body.entryDate.trim() === '') {
-      //console.log('❌ Invalid entry date detected:', req.body.entryDate);
       return res.status(400).json({ error: 'Entry date is required. Please provide a valid date in YYYY-MM-DD format.' });
     }
 
     const entryDate = new Date(req.body.entryDate);
     if (isNaN(entryDate.getTime())) {
-      //console.log('❌ Date parsing failed for:', req.body.entryDate);
       return res.status(400).json({ error: 'Invalid entry date format. Please use YYYY-MM-DD format (e.g., 2025-07-26).' });
     }
 
     // Calculate trade amount for capital allocation
     const tradeAmount = CapitalManager.calculateTradeAmount(entryPrice, quantity);
-    //console.log(`💰 Trade amount calculated: ${tradeAmount} ${currency}`);
 
-    // Check if sufficient capital is available
-    const hasSufficientCapital = await CapitalManager.hasSufficientCapital(currency, tradeAmount);
-    if (!hasSufficientCapital) {
-      const capital = await CapitalManager.getCapital(currency);
-      return res.status(400).json({
-        error: `Insufficient capital to open trade. Required: ${tradeAmount} ${currency}, Available: ${capital ? capital.remaining : 0} ${currency}`
-      });
+    // Capital has no guest concept at all — a guest's paper trade skips
+    // allocation entirely rather than touching (or crashing against) a
+    // Capital row that doesn't exist for them.
+    if (req.user) {
+      const hasSufficientCapital = await CapitalManager.hasSufficientCapital(req.user.id, currency, tradeAmount);
+      if (!hasSufficientCapital) {
+        const capital = await CapitalManager.getCapital(req.user.id, currency);
+        return res.status(400).json({
+          error: `Insufficient capital to open trade. Required: ${tradeAmount} ${currency}, Available: ${capital ? capital.remaining : 0} ${currency}`
+        });
+      }
     }
 
-
-
     const trade = await prisma.trade.create({
-      data: {
+      data: buildCreateData(req, {
         tradeId: professionalTradeId,
 
         //Ticker
@@ -159,9 +123,8 @@ exports.createTrade = async (req, res) => {
         tradeSetupId: req.body.tradeSetup ? Number(req.body.tradeSetup) : 0,
         status: "Open",
         notes: req.body.notes || null,
-        isPaperTrade: false,
         systemAnalysisResult: req.body.systemAnalysisResult || null
-      }
+      })
     });
 
     const tradeImages = [];
@@ -201,16 +164,18 @@ exports.createTrade = async (req, res) => {
       );
     }
 
-    // Allocate capital after creating trade
-    await CapitalManager.allocateCapital(currency, tradeAmount);
+    // Allocate capital after creating trade — only for authenticated users.
+    if (req.user) {
+      await CapitalManager.allocateCapital(req.user.id, currency, tradeAmount);
+    }
 
     res.status(201).json({
       message: "Trade created successfully",
       trade,
-      capitalAllocated: {
+      capitalAllocated: req.user ? {
         amount: tradeAmount,
         currency: currency.toUpperCase()
-      }
+      } : null
     });
 
   } catch (error) {
@@ -250,9 +215,10 @@ exports.updateTradeExit = async (req, res) => {
 
     const tradeId = Number(id);
 
-    // Get current trade to validate
-    const currentTrade = await prisma.trade.findUnique({
-      where: { id: tradeId },
+    // Get current trade to validate — scoped to the caller's own rows
+    // (or the shared sandbox for a guest).
+    const currentTrade = await prisma.trade.findFirst({
+      where: { id: tradeId, ...buildWriteFilter(req) },
       include: {
         tradeTransactions: true
       }
@@ -293,9 +259,9 @@ exports.updateTradeExit = async (req, res) => {
       }
     });
 
-    // Release capital for the exited position
-    if (releaseAmount > 0) {
-      await CapitalManager.releaseCapital(currency, releaseAmount);
+    // Release capital for the exited position — guests have no Capital row.
+    if (req.user && releaseAmount > 0) {
+      await CapitalManager.releaseCapital(req.user.id, currency, releaseAmount);
     }
 
     // Determine new status
@@ -325,7 +291,7 @@ exports.updateTradeExit = async (req, res) => {
     }
 
     const trade = await prisma.trade.update({
-      where: { id: tradeId },
+      where: { id: currentTrade.id },
       data: updateData
     });
 
@@ -390,8 +356,8 @@ exports.partialExitTrade = async (req, res) => {
     const exitPrice = Number(exitOrderPrice);
 
     // Get current trade to validate
-    const currentTrade = await prisma.trade.findUnique({
-      where: { id: tradeId },
+    const currentTrade = await prisma.trade.findFirst({
+      where: { id: tradeId, ...buildWriteFilter(req) },
     });
 
     if (!currentTrade) {
@@ -432,8 +398,10 @@ exports.partialExitTrade = async (req, res) => {
       }
     });
 
-    // Release capital for the exited position
-    await CapitalManager.releaseCapital(currency, releaseAmount);
+    // Release capital for the exited position — guests have no Capital row.
+    if (req.user) {
+      await CapitalManager.releaseCapital(req.user.id, currency, releaseAmount);
+    }
 
     // Determine new status
     let newStatus = "Open";
@@ -460,7 +428,7 @@ exports.partialExitTrade = async (req, res) => {
     }
 
     const trade = await prisma.trade.update({
-      where: { id: tradeId },
+      where: { id: currentTrade.id },
       data: updateData,
     });
 
@@ -507,8 +475,15 @@ exports.addPostAnalysis = async (req, res) => {
     const { id } = req.params;
     const { postTradeAnalysis, lessonLearned, emotionalState } = req.body;
 
+    const existing = await prisma.trade.findFirst({
+      where: { id: Number(id), ...buildWriteFilter(req) }
+    });
+    if (!existing) {
+      return res.status(404).json({ error: 'Trade not found' });
+    }
+
     const trade = await prisma.trade.update({
-      where: { id: Number(id) },
+      where: { id: existing.id },
       data: {
         postTradeAnalysis: postTradeAnalysis,
         lessonLearned: lessonLearned,
@@ -541,14 +516,12 @@ exports.editTrade = async (req, res) => {
   try {
     const { id } = req.params;
     const tradeId = Number(id);
-    console.log('Edit Trade Request Body:', req.body);
-    console.log('Edit Trade ID:', tradeId);
     if (!tradeId || Number.isNaN(tradeId)) {
       return res.status(400).json({ error: 'Invalid trade ID' });
     }
 
-    const currentTrade = await prisma.trade.findUnique({
-      where: { id: tradeId }
+    const currentTrade = await prisma.trade.findFirst({
+      where: { id: tradeId, ...buildWriteFilter(req) }
     });
 
     if (!currentTrade) {
@@ -557,7 +530,6 @@ exports.editTrade = async (req, res) => {
     if ((currentTrade.status || '').toLowerCase() === 'closed') {
       return res.status(400).json({ error: 'Closed trades cannot be edited' });
     }
-    console.log('Update Data:', req.body);
     const nextEntryDate = req.body.entryDate ? new Date(req.body.entryDate) : currentTrade.entryDate;
     if (req.body.entryDate && Number.isNaN(nextEntryDate.getTime())) {
       return res.status(400).json({ error: 'Invalid entry date format' });
@@ -594,17 +566,20 @@ exports.editTrade = async (req, res) => {
       });
     }
 
-    if (amountDiff > 0) {
-      const hasSufficientCapital = await CapitalManager.hasSufficientCapital(currentCurrency, amountDiff);
-      if (!hasSufficientCapital) {
-        const capital = await CapitalManager.getCapital(currentCurrency);
-        return res.status(400).json({
-          error: `Insufficient capital to increase trade size. Required: ${amountDiff} ${currentCurrency}, Available: ${capital ? capital.remaining : 0} ${currentCurrency}`
-        });
+    // Guests (sandbox rows, no Capital record) skip capital adjustment.
+    if (req.user) {
+      if (amountDiff > 0) {
+        const hasSufficientCapital = await CapitalManager.hasSufficientCapital(req.user.id, currentCurrency, amountDiff);
+        if (!hasSufficientCapital) {
+          const capital = await CapitalManager.getCapital(req.user.id, currentCurrency);
+          return res.status(400).json({
+            error: `Insufficient capital to increase trade size. Required: ${amountDiff} ${currentCurrency}, Available: ${capital ? capital.remaining : 0} ${currentCurrency}`
+          });
+        }
+        await CapitalManager.allocateCapital(req.user.id, currentCurrency, amountDiff);
+      } else if (amountDiff < 0) {
+        await CapitalManager.releaseCapital(req.user.id, currentCurrency, Math.abs(amountDiff));
       }
-      await CapitalManager.allocateCapital(currentCurrency, amountDiff);
-    } else if (amountDiff < 0) {
-      await CapitalManager.releaseCapital(currentCurrency, Math.abs(amountDiff));
     }
 
     const updatedTrade = await prisma.trade.update({
@@ -632,8 +607,8 @@ exports.editTrade = async (req, res) => {
 exports.getTradeById = async (req, res) => {
   try {
     const { id } = req.params;
-    const trade = await prisma.trade.findUnique({
-      where: { id: Number(id) },
+    const trade = await prisma.trade.findFirst({
+      where: { id: Number(id), ...buildReadFilter(req) },
       include: {
         tradeFills: true,
         tradeImages: true,
@@ -666,7 +641,8 @@ exports.getTradeById = async (req, res) => {
   }
 };
 
-// Delete trade and all related data
+// Delete trade and all related data. Route already applies requireAuth, so
+// req.user is guaranteed here; scope strictly to the caller's own rows.
 exports.deleteTrade = async (req, res) => {
   try {
     const { id } = req.params;
@@ -677,9 +653,9 @@ exports.deleteTrade = async (req, res) => {
       return res.status(400).json({ error: 'Invalid trade ID' });
     }
 
-    // Check if trade exists
-    const trade = await prisma.trade.findUnique({
-      where: { id: tradeId }
+    // Check if trade exists and belongs to the caller
+    const trade = await prisma.trade.findFirst({
+      where: { id: tradeId, userId: req.user.id }
     });
 
     if (!trade) {
@@ -693,8 +669,7 @@ exports.deleteTrade = async (req, res) => {
       const currency = trade.currency || 'USD';
 
       try {
-        await CapitalManager.releaseCapital(currency, releaseAmount);
-        //console.log(`💰 Released capital: ${releaseAmount} ${currency} for deleted trade ${trade.tradeId}`);
+        await CapitalManager.releaseCapital(req.user.id, currency, releaseAmount);
       } catch (capitalError) {
         console.error('⚠️  Warning: Failed to release capital during trade deletion:', capitalError.message);
       }
@@ -721,7 +696,6 @@ exports.deleteTrade = async (req, res) => {
       where: { id: tradeId }
     });
 
-    //console.log(`Trade with ID ${tradeId} and all related data deleted successfully`);
     res.status(204).send(); // No content response for successful deletion
   } catch (error) {
     console.error('Error deleting trade:', error);
@@ -748,6 +722,12 @@ exports.getTradeTransactions = async (req, res) => {
       return res.status(400).json({ error: 'Invalid trade ID' });
     }
 
+    // Confirm ownership of the parent trade before returning its transactions.
+    const trade = await prisma.trade.findFirst({ where: { id: tradeId, ...buildReadFilter(req) } });
+    if (!trade) {
+      return res.status(404).json({ error: 'Trade not found' });
+    }
+
     const transactions = await prisma.tradeTransaction.findMany({
       where: { tradeId: tradeId },
       orderBy: { createdAt: 'desc' }
@@ -764,7 +744,10 @@ exports.getTradeTransactions = async (req, res) => {
 };
 
 
-// Refresh all trade prices (manual endpoint)
+// Refresh all trade prices (manual endpoint) — deliberately cross-user by
+// design (this is the same job the price-refresh cron runs); the route lock
+// (requireRole('SUPERUSER'), see trade.routes.js) is what restricts callers,
+// not this query.
 exports.refreshAllTradePrices = async (req, res) => {
   try {
     const trades = await prisma.trade.findMany();
@@ -790,8 +773,6 @@ exports.refreshAllTradePrices = async (req, res) => {
     });
 
     await Promise.allSettled(updates);
-    //console.log(`[CRON] Updated ${updatedCount} investments`);
-
 
     res.json({
       success: true,
@@ -810,7 +791,8 @@ exports.refreshAllTradePrices = async (req, res) => {
   }
 };
 
-//Update the buy average after stock split
+//Update the buy average after stock split — cross-user by design, same
+// reasoning as refreshAllTradePrices above.
 exports.updateStockSplit = async (req, res) => {
   try {
     const { symbol, splitRatio } = req.body;
@@ -837,9 +819,7 @@ exports.updateStockSplit = async (req, res) => {
       const target2 = t.target2 ? t.target2 / splitRatio : null;
       const target3 = t.target3 ? t.target3 / splitRatio : null;
       const stopLoss = t.stopLoss ? t.stopLoss / splitRatio : null;
-      // Log the changes
-      // console.log(`  🔄 Trade ${t.tradeId}: Price ${t.entryPrice} -> ${newEntryPrice.toFixed(2)}, Qty ${t.quantity} -> ${newQuantity}, Remaining Qty: ${t.remainingQuantity} -> ${newRemainingQuantity}`);
-      const updatedTrade = await prisma.trade.update({
+      await prisma.trade.update({
         where: { id: t.id },
         data: {
           entryPrice: newEntryPrice,

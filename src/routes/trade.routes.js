@@ -3,16 +3,21 @@ const router = express.Router();
 const tradeController = require('../controllers/trade.controller');
 const multer = require('multer');
 const upload = multer({ dest: 'uploads/' });
+const { requireAuth, requireRole } = require('../middleware/auth.middleware');
+const { guestWriteLimiter } = require('../middleware/rateLimit.middleware');
+const { validateGuestWritableFields } = require('../middleware/validation.middleware');
 
 router.get('/', tradeController.getAllTrades);
 
 router.post(
   '/',
+  guestWriteLimiter,
   upload.fields([
     { name: 'entryCharts', maxCount: 5 },
     { name: 'exitCharts', maxCount: 5 },
     { name: 'postTradeFiles', maxCount: 5 }
   ]),
+  validateGuestWritableFields,
   tradeController.createTrade
 );
 router.put(
@@ -43,7 +48,9 @@ router.put(
 );
 router.get('/:id', tradeController.getTradeById);
 router.get('/:id/transactions', tradeController.getTradeTransactions);
-router.delete('/:id', tradeController.deleteTrade);
-router.post('/stock-split', tradeController.updateStockSplit);
+router.delete('/:id', requireAuth, tradeController.deleteTrade);
+// Cross-user by design (refreshes every user's trades) — locked to SUPERUSER
+// rather than opened to any USER.
+router.post('/stock-split', requireAuth, requireRole('SUPERUSER'), tradeController.updateStockSplit);
 
 module.exports = router;

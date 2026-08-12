@@ -31,7 +31,8 @@ class IshastraBacktest {
      * @param {string} symbol - Stock symbol to backtest
      * @returns {Object} Backtest results and statistics
      */
-    async runBacktest(symbol) {
+    async runBacktest(symbol, userId) {
+        this.userId = userId;
         const startTime = new Date();
 
         try {
@@ -304,6 +305,7 @@ class IshastraBacktest {
     async saveTrade(trade) {
         return await this.prisma.backtestTrade.create({
             data: {
+                userId: this.userId,
                 symbol: trade.symbol,
                 entryDate: trade.entryDate,
                 exitDate: trade.exitDate,

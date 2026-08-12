@@ -6,9 +6,13 @@
 
 const express = require('express');
 const { BacktestController } = require('../controllers/backtest.controller');
+const { requireAuth } = require('../middleware/auth.middleware');
 
 const router = express.Router();
 const backtestController = new BacktestController();
+
+// No guest concept for Backtest — the whole router requires login.
+router.use(requireAuth);
 
 // 🚀 Run new backtest
 router.post('/run', async (req, res) => {

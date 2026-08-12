@@ -10,14 +10,18 @@ const {
   closeInvestment,
   getInvestmentSummary
 } = require('../controllers/investment.controller');
+const { requireAuth, requireRole } = require('../middleware/auth.middleware');
+const { guestWriteLimiter } = require('../middleware/rateLimit.middleware');
+const { validateGuestWritableFields } = require('../middleware/validation.middleware');
 
 // Routes
 router.get('/', getAllInvestments);
-router.get('/summary', getInvestmentSummary);
+// Cross-user aggregate (counts across ALL investments) — SUPERUSER only.
+router.get('/summary', requireAuth, requireRole('SUPERUSER'), getInvestmentSummary);
 router.get('/:id', getInvestmentById);
-router.post('/', createInvestment);
+router.post('/', guestWriteLimiter, validateGuestWritableFields, createInvestment);
 router.put('/:id', updateInvestment);
-router.delete('/:id', deleteInvestment);
+router.delete('/:id', requireAuth, deleteInvestment);
 router.patch('/:id/close', closeInvestment);
 
 module.exports = router;

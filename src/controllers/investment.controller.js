@@ -1,8 +1,8 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../db');
 const { fetchAllInvestments } = require('../services/investment.service');
 const { fetchCurrentPrice } = require('../services/comom.service');
 const { getQuote } = require('../yahoo');
+const { buildReadFilter, buildWriteFilter, buildCreateData } = require('../utils/ownershipFilter');
 
 
 // Helper function to calculate price difference and percentage for investments
@@ -31,7 +31,7 @@ const calculateInvestmentDifference = (buyBelowPrice, currentPrice) => {
 // Get all investments
 const getAllInvestments = async (req, res) => {
   try {
-    const investments = await fetchAllInvestments(req.query);
+    const investments = await fetchAllInvestments(req.query, buildReadFilter(req));
     const { isGroupByTicker } = req.query;
     // Fetch current prices for all investments
     const investmentsWithPrices = await Promise.all(
@@ -111,8 +111,8 @@ const getInvestmentById = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const investment = await prisma.investment.findUnique({
-      where: { id: parseInt(id) },
+    const investment = await prisma.investment.findFirst({
+      where: { id: parseInt(id), ...buildReadFilter(req) },
       include: {
         transactions: {
           orderBy: { transactionDate: 'desc' }
@@ -200,7 +200,7 @@ const createInvestment = async (req, res) => {
     }
 
     //console.log(`Creating investment for ${marketCap} with current price: ${sector}`);
-    const investmentData = {
+    const investmentData = buildCreateData(req, {
       ticker: ticker.toUpperCase(),
       entryDate: new Date(entryDate),
       currentPrice: finalCurrentPrice,
@@ -214,7 +214,7 @@ const createInvestment = async (req, res) => {
       buyBelow: buyBelow ? parseFloat(buyBelow) : null,
       sector: sector ? sector.toUpperCase() : null,
       marketCap: marketCap ? marketCap.toUpperCase() : null
-    };
+    });
 
     const investment = await prisma.investment.create({
       data: investmentData
@@ -252,9 +252,9 @@ const updateInvestment = async (req, res) => {
       status, sector, marketCap
     } = req.body;
 
-    // Check if investment exists
-    const existingInvestment = await prisma.investment.findUnique({
-      where: { id: parseInt(id) }
+    // Check if investment exists and belongs to the caller
+    const existingInvestment = await prisma.investment.findFirst({
+      where: { id: parseInt(id), ...buildWriteFilter(req) }
     });
 
     if (!existingInvestment) {
@@ -303,9 +303,9 @@ const deleteInvestment = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Check if investment exists
-    const existingInvestment = await prisma.investment.findUnique({
-      where: { id: parseInt(id) }
+    // Check if investment exists and belongs to the caller (route requires auth)
+    const existingInvestment = await prisma.investment.findFirst({
+      where: { id: parseInt(id), userId: req.user.id }
     });
 
     if (!existingInvestment) {
@@ -352,9 +352,9 @@ const closeInvestment = async (req, res) => {
       });
     }
 
-    // Check if investment exists
-    const investment = await prisma.investment.findUnique({
-      where: { id: parseInt(id) }
+    // Check if investment exists and belongs to the caller (or sandbox for guests)
+    const investment = await prisma.investment.findFirst({
+      where: { id: parseInt(id), ...buildWriteFilter(req) }
     });
 
     if (!investment) {

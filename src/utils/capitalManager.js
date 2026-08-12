@@ -1,37 +1,40 @@
-const { PrismaClient } = require('@prisma/client');
-
-const prisma = new PrismaClient();
+const prisma = require('../db');
 
 /**
- * Capital Management Utility for USD and INR currencies
- * Handles allocation and release of capital for trades and investments
+ * Capital Management Utility for USD and INR currencies.
+ * Every method now takes `userId` first — Capital rows are keyed by
+ * (userId, currency), not currency alone, since multi-tenancy means two
+ * different users can each hold their own USD capital record.
  */
 class CapitalManager {
-  
+
   /**
-   * Get current capital information for a specific currency
+   * Get current capital information for a specific user + currency
+   * @param {number} userId
    * @param {string} currency - 'USD' or 'INR'
    * @returns {Promise<Object|null>} Capital object or null if not found
    */
-  static async getCapital(currency) {
+  static async getCapital(userId, currency) {
     try {
       const capital = await prisma.capital.findUnique({
-        where: { currency: currency.toUpperCase() }
+        where: { userId_currency: { userId, currency: currency.toUpperCase() } }
       });
       return capital;
     } catch (error) {
-      console.error(`Error fetching capital for ${currency}:`, error);
+      console.error(`Error fetching capital for user ${userId} / ${currency}:`, error);
       throw new Error(`Failed to fetch capital for ${currency}`);
     }
   }
 
   /**
-   * Get capital information for all currencies
+   * Get capital information for all currencies belonging to a user
+   * @param {number} userId
    * @returns {Promise<Array>} Array of capital objects
    */
-  static async getAllCapital() {
+  static async getAllCapital(userId) {
     try {
       const capitals = await prisma.capital.findMany({
+        where: { userId },
         orderBy: { currency: 'asc' }
       });
       return capitals;
@@ -43,26 +46,24 @@ class CapitalManager {
 
   /**
    * Allocate capital when opening a trade or investment
+   * @param {number} userId
    * @param {string} currency - 'USD' or 'INR'
    * @param {number} amount - Amount to allocate
    * @returns {Promise<Object>} Updated capital object
    */
-  static async allocateCapital(currency, amount) {
+  static async allocateCapital(userId, currency, amount) {
     try {
       const upperCurrency = currency.toUpperCase();
-      
-      // Validate input
+
       if (!amount || amount <= 0) {
         throw new Error('Amount must be greater than 0');
       }
 
-      // Get current capital
-      const currentCapital = await this.getCapital(upperCurrency);
+      const currentCapital = await this.getCapital(userId, upperCurrency);
       if (!currentCapital) {
         throw new Error(`Capital record not found for currency: ${upperCurrency}`);
       }
 
-      // Check if sufficient capital is available
       if (currentCapital.remaining < amount) {
         throw new Error(
           `Insufficient capital. Available: ${currentCapital.remaining} ${upperCurrency}, Required: ${amount} ${upperCurrency}`
@@ -73,16 +74,14 @@ class CapitalManager {
       // amount must be ONLY position cost (price * quantity)
       // commissions must NEVER be passed here
 
-      // Update capital atomically
       const updatedCapital = await prisma.capital.update({
-        where: { currency: upperCurrency },
-        data: { 
+        where: { userId_currency: { userId, currency: upperCurrency } },
+        data: {
           remaining: currentCapital.remaining - amount,
           updatedAt: new Date()
         }
       });
 
-      //console.log(`✅ Allocated ${amount} ${upperCurrency}. Remaining: ${updatedCapital.remaining} ${upperCurrency}`);
       return updatedCapital;
     } catch (error) {
       console.error(`Error allocating capital for ${currency}:`, error);
@@ -92,21 +91,16 @@ class CapitalManager {
 
   /**
    * Release capital when closing a trade or investment
-   * @param {string} currency - 'USD' or 'INR'
-   * @param {number} amount - Amount to release
-   * @returns {Promise<Object>} Updated capital object
    */
-  static async releaseCapital(currency, amount) {
+  static async releaseCapital(userId, currency, amount) {
     try {
       const upperCurrency = currency.toUpperCase();
-      
-      // Validate input
+
       if (!amount || amount <= 0) {
         throw new Error('Amount must be greater than 0');
       }
 
-      // Get current capital
-      const currentCapital = await this.getCapital(upperCurrency);
+      const currentCapital = await this.getCapital(userId, upperCurrency);
       if (!currentCapital) {
         throw new Error(`Capital record not found for currency: ${upperCurrency}`);
       }
@@ -115,10 +109,9 @@ class CapitalManager {
       // amount must be ONLY the original allocated cost basis
       // NEVER pass exit proceeds or net-of-commission values here
 
-      // Update capital atomically
       const updatedCapital = await prisma.capital.update({
-        where: { currency: upperCurrency },
-        data: { 
+        where: { userId_currency: { userId, currency: upperCurrency } },
+        data: {
           remaining: currentCapital.remaining + amount,
           updatedAt: new Date()
         }
@@ -134,23 +127,20 @@ class CapitalManager {
 
   /**
    * Deduct commission as an expense
-   * Commission permanently reduces capital (not allocated funds)
-   * @param {string} currency
-   * @param {number} amount
    */
-  static async deductCommission(currency, amount) {
+  static async deductCommission(userId, currency, amount) {
     try {
       const upperCurrency = currency.toUpperCase();
 
       if (!amount || amount <= 0) return;
 
-      const currentCapital = await this.getCapital(upperCurrency);
+      const currentCapital = await this.getCapital(userId, upperCurrency);
       if (!currentCapital) {
         throw new Error(`Capital record not found for currency: ${upperCurrency}`);
       }
 
       const updatedCapital = await prisma.capital.update({
-        where: { currency: upperCurrency },
+        where: { userId_currency: { userId, currency: upperCurrency } },
         data: {
           total: currentCapital.total - amount,
           remaining: currentCapital.remaining - amount,
@@ -167,11 +157,8 @@ class CapitalManager {
 
   /**
    * Add new capital without changing allocated funds
-   * @param {string} currency - 'USD' or 'INR'
-   * @param {number} amount - Amount to add
-   * @returns {Promise<Object>} Updated capital object
    */
-  static async addCapital(currency, amount) {
+  static async addCapital(userId, currency, amount) {
     try {
       const upperCurrency = currency.toUpperCase();
 
@@ -179,13 +166,13 @@ class CapitalManager {
         throw new Error('Amount must be greater than 0');
       }
 
-      const currentCapital = await this.getCapital(upperCurrency);
+      const currentCapital = await this.getCapital(userId, upperCurrency);
       if (!currentCapital) {
         throw new Error(`Capital record not found for currency: ${upperCurrency}`);
       }
 
       const updatedCapital = await prisma.capital.update({
-        where: { currency: upperCurrency },
+        where: { userId_currency: { userId, currency: upperCurrency } },
         data: {
           total: currentCapital.total + amount,
           remaining: currentCapital.remaining + amount,
@@ -202,11 +189,8 @@ class CapitalManager {
 
   /**
    * Remove capital ensuring allocated funds remain untouched
-   * @param {string} currency - 'USD' or 'INR'
-   * @param {number} amount - Amount to remove
-   * @returns {Promise<Object>} Updated capital object
    */
-  static async removeCapital(currency, amount) {
+  static async removeCapital(userId, currency, amount) {
     try {
       const upperCurrency = currency.toUpperCase();
 
@@ -214,7 +198,7 @@ class CapitalManager {
         throw new Error('Amount must be greater than 0');
       }
 
-      const currentCapital = await this.getCapital(upperCurrency);
+      const currentCapital = await this.getCapital(userId, upperCurrency);
       if (!currentCapital) {
         throw new Error(`Capital record not found for currency: ${upperCurrency}`);
       }
@@ -226,7 +210,7 @@ class CapitalManager {
       }
 
       const updatedCapital = await prisma.capital.update({
-        where: { currency: upperCurrency },
+        where: { userId_currency: { userId, currency: upperCurrency } },
         data: {
           total: currentCapital.total - amount,
           remaining: currentCapital.remaining - amount,
@@ -243,40 +227,32 @@ class CapitalManager {
 
   /**
    * Update total capital for a currency
-   * @param {string} currency - 'USD' or 'INR'
-   * @param {number} newTotal - New total amount
-   * @returns {Promise<Object>} Updated capital object
    */
-  static async updateTotalCapital(currency, newTotal) {
+  static async updateTotalCapital(userId, currency, newTotal) {
     try {
       const upperCurrency = currency.toUpperCase();
-      
-      // Validate input
+
       if (!newTotal || newTotal <= 0) {
         throw new Error('New total must be greater than 0');
       }
 
-      // Get current capital
-      const currentCapital = await this.getCapital(upperCurrency);
+      const currentCapital = await this.getCapital(userId, upperCurrency);
       if (!currentCapital) {
         throw new Error(`Capital record not found for currency: ${upperCurrency}`);
       }
 
-      // Calculate new remaining amount (proportional to change in total)
       const allocated = currentCapital.total - currentCapital.remaining;
       const newRemaining = Math.max(0, newTotal - allocated);
 
-      // Update capital
       const updatedCapital = await prisma.capital.update({
-        where: { currency: upperCurrency },
-        data: { 
+        where: { userId_currency: { userId, currency: upperCurrency } },
+        data: {
           total: newTotal,
           remaining: newRemaining,
           updatedAt: new Date()
         }
       });
 
-      //console.log(`✅ Updated ${upperCurrency} total capital to ${newTotal}. Remaining: ${updatedCapital.remaining}`);
       return updatedCapital;
     } catch (error) {
       console.error(`Error updating total capital for ${currency}:`, error);
@@ -288,8 +264,8 @@ class CapitalManager {
    * Get portfolio-equity style view for a currency
    * Equity here excludes trade PnL, which must be added separately
    */
-  static async getCapitalView(currency) {
-    const cap = await this.getCapital(currency);
+  static async getCapitalView(userId, currency) {
+    const cap = await this.getCapital(userId, currency);
     if (!cap) return null;
 
     const allocated = cap.total - cap.remaining;
@@ -303,17 +279,16 @@ class CapitalManager {
   }
 
   /**
-   * Get capital utilization summary
-   * @returns {Promise<Object>} Summary of capital usage across all currencies
+   * Get capital utilization summary for a user
    */
-  static async getCapitalSummary() {
+  static async getCapitalSummary(userId) {
     try {
-      const capitals = await this.getAllCapital();
-      
+      const capitals = await this.getAllCapital(userId);
+
       const summary = capitals.map(capital => {
         const allocated = capital.total - capital.remaining;
         const utilizationRate = capital.total > 0 ? (allocated / capital.total) * 100 : 0;
-        
+
         return {
           currency: capital.currency,
           total: capital.total,
@@ -337,15 +312,12 @@ class CapitalManager {
 
   /**
    * Check if sufficient capital is available for a trade
-   * @param {string} currency - 'USD' or 'INR'
-   * @param {number} amount - Required amount
-   * @returns {Promise<boolean>} True if sufficient capital is available
    */
-  static async hasSufficientCapital(currency, amount) {
+  static async hasSufficientCapital(userId, currency, amount) {
     try {
-      const capital = await this.getCapital(currency);
+      const capital = await this.getCapital(userId, currency);
       if (!capital) return false;
-      
+
       return capital.remaining >= amount;
     } catch (error) {
       console.error(`Error checking capital sufficiency for ${currency}:`, error);
@@ -353,49 +325,40 @@ class CapitalManager {
     }
   }
 
-   /**
+  /**
    * Reset total capital for a currency (admin function)
-   * @param {string} currency - 'USD' or 'INR'
-   * @param {number} newTotal - New total amount
-   * @param {boolean} adjustRemaining - Whether to adjust remaining proportionally
-   * @returns {Promise<Object>} Updated capital object
    */
-  static async resetCapital(currency, newTotal, adjustRemaining = false) {
+  static async resetCapital(userId, currency, newTotal, adjustRemaining = false) {
     try {
       const upperCurrency = currency.toUpperCase();
-      
-      // Validate input
+
       if (!newTotal || newTotal <= 0) {
         throw new Error('New total must be greater than 0');
       }
 
-      // Get current capital
-      const currentCapital = await this.getCapital(upperCurrency);
+      const currentCapital = await this.getCapital(userId, upperCurrency);
       if (!currentCapital) {
         throw new Error(`Capital record not found for currency: ${upperCurrency}`);
       }
 
-      let newRemaining = newTotal; // Default: all capital is available
+      let newRemaining = newTotal;
 
       if (adjustRemaining && currentCapital.total > 0) {
-        // Maintain the same ratio of used capital
         const usedRatio = (currentCapital.total - currentCapital.remaining) / currentCapital.total;
         newRemaining = newTotal * (1 - usedRatio);
       }
 
       console.log(`🔄 Resetting ${upperCurrency} capital. New Total: ${newTotal}, Adjust Remaining: ${adjustRemaining}, New Remaining: ${newRemaining}`);
-      
-      // Update capital
+
       const updatedCapital = await prisma.capital.update({
-        where: { currency: upperCurrency },
-        data: { 
+        where: { userId_currency: { userId, currency: upperCurrency } },
+        data: {
           total: newTotal,
-          remaining: Math.max(0, newRemaining), // Ensure remaining is not negative
+          remaining: Math.max(0, newRemaining),
           updatedAt: new Date()
         }
       });
 
-      //console.log(`✅ Reset capital for ${upperCurrency}. Total: ${updatedCapital.total}, Remaining: ${updatedCapital.remaining}`);
       return updatedCapital;
     } catch (error) {
       console.error(`Error resetting capital for ${currency}:`, error);
@@ -405,9 +368,6 @@ class CapitalManager {
 
   /**
    * Calculate trade amount for capital allocation
-   * @param {number} price - Price per share/unit
-   * @param {number} quantity - Number of shares/units
-   * @returns {number} Total trade amount
    */
   static calculateTradeAmount(price, quantity) {
     if (!price || !quantity || price <= 0 || quantity <= 0) {
@@ -417,10 +377,11 @@ class CapitalManager {
   }
 
   /**
-   * Initialize capital records if they don't exist
+   * Initialize capital records for a user if they don't exist
+   * @param {number} userId
    * @param {Array} initialCapitals - Array of {currency, total} objects
    */
-  static async initializeCapital(initialCapitals = []) {
+  static async initializeCapital(userId, initialCapitals = []) {
     try {
       const defaultCapitals = initialCapitals.length > 0 ? initialCapitals : [
         { currency: 'USD', total: 20000 },
@@ -428,20 +389,20 @@ class CapitalManager {
       ];
 
       for (const capitalData of defaultCapitals) {
-        const existing = await this.getCapital(capitalData.currency);
-        
+        const existing = await this.getCapital(userId, capitalData.currency);
+
         if (!existing) {
           await prisma.capital.create({
             data: {
+              userId,
               currency: capitalData.currency.toUpperCase(),
               total: capitalData.total,
               remaining: capitalData.total
             }
           });
-          //console.log(`✅ Initialized ${capitalData.currency} capital with ${capitalData.total}`);
         } else {
           await prisma.capital.update({
-            where: { currency: capitalData.currency.toUpperCase() },
+            where: { userId_currency: { userId, currency: capitalData.currency.toUpperCase() } },
             data: {
               total: capitalData.total,
               remaining: capitalData.total

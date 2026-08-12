@@ -7,12 +7,13 @@
 
 const { result } = require('lodash');
 const { IshastraBacktest } = require('../../backtest/runBacktest');
-const { PrismaClient } = require('@prisma/client');
+const prisma = require('../db');
+const { buildOwnedOnlyFilter } = require('../utils/ownershipFilter');
 
 class BacktestController {
     constructor() {
         this.backtest = new IshastraBacktest();
-        this.prisma = new PrismaClient();
+        this.prisma = prisma;
         this.runningBacktests = new Map(); // Track running backtests
     }
 
@@ -40,7 +41,7 @@ class BacktestController {
             this.runningBacktests.set(backtestId, { status: 'RUNNING', startTime: new Date() });
 
             // Run backtest asynchronously
-            const result = await this.backtest.runBacktest(symbol);
+            const result = await this.backtest.runBacktest(symbol, req.user.id);
             const backtestResult = {
                 trades: result.trades,
                 summary: result.summary,
@@ -149,7 +150,7 @@ class BacktestController {
                 offset = 0
             } = req.query;
 
-            const where = {};
+            const where = { ...buildOwnedOnlyFilter(req) };
 
             if (symbol) where.symbol = symbol;
             if (system) where.system = system;
@@ -192,7 +193,7 @@ class BacktestController {
         try {
             const { system, symbol, startDate, endDate } = req.query;
 
-            const where = {};
+            const where = { ...buildOwnedOnlyFilter(req) };
             if (system) where.system = system;
             if (symbol) where.symbol = symbol;
             if (startDate) where.entryDate = { ...where.entryDate, gte: new Date(startDate) };
@@ -275,7 +276,9 @@ class BacktestController {
                 });
             }
 
-            const deleted = await this.prisma.backtestTrade.deleteMany({});
+            const deleted = await this.prisma.backtestTrade.deleteMany({
+                where: buildOwnedOnlyFilter(req)
+            });
 
             res.json({
                 success: true,

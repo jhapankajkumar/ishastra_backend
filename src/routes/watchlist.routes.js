@@ -7,8 +7,12 @@
 const express = require('express');
 const router = express.Router();
 const WatchlistController = require('../controllers/watchlist.controller');
+const { requireAuth } = require('../middleware/auth.middleware');
 
 const controller = new WatchlistController();
+
+// No guest concept for Watchlist — the whole router requires login.
+router.use(requireAuth);
 
 // GET current watchlist
 router.get('/', controller.getWatchlist.bind(controller));

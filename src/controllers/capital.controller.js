@@ -1,17 +1,20 @@
+const prisma = require('../db');
 const CapitalManager = require('../utils/capitalManager');
 
 /**
  * Capital Management Controller
- * Handles API endpoints for capital management
+ * Handles API endpoints for capital management.
+ * Every route here sits behind requireAuth (see capital.routes.js) — there is
+ * no guest concept for Capital, so req.user is always present.
  */
 
 /**
- * Get all capital information
+ * Get all capital information for the current user
  */
 const getAllCapital = async (req, res) => {
   try {
-    const summary = await CapitalManager.getCapitalSummary();
-    
+    const summary = await CapitalManager.getCapitalSummary(req.user.id);
+
     res.json({
       success: true,
       message: 'Capital information retrieved successfully',
@@ -34,7 +37,7 @@ const getAllCapital = async (req, res) => {
 const getCapitalByCurrency = async (req, res) => {
   try {
     const { currency } = req.params;
-    
+
     if (!currency) {
       return res.status(400).json({
         success: false,
@@ -42,8 +45,8 @@ const getCapitalByCurrency = async (req, res) => {
       });
     }
 
-    const capital = await CapitalManager.getCapital(currency);
-    
+    const capital = await CapitalManager.getCapital(req.user.id, currency);
+
     if (!capital) {
       return res.status(404).json({
         success: false,
@@ -73,7 +76,7 @@ const getCapitalByCurrency = async (req, res) => {
       error: error.message
     });
   }
-}; 
+};
 
 /**
  * Update/Reset capital for a specific currency
@@ -98,8 +101,9 @@ const updateCapital = async (req, res) => {
     }
 
     const updatedCapital = await CapitalManager.resetCapital(
-      currency, 
-      parseFloat(total), 
+      req.user.id,
+      currency,
+      parseFloat(total),
       adjustRemaining
     );
 
@@ -151,7 +155,7 @@ const addCapital = async (req, res) => {
       });
     }
 
-    const updatedCapital = await CapitalManager.addCapital(currency, parsedAmount);
+    const updatedCapital = await CapitalManager.addCapital(req.user.id, currency, parsedAmount);
     const allocated = updatedCapital.total - updatedCapital.remaining;
     const utilizationRate = updatedCapital.total > 0 ? (allocated / updatedCapital.total) * 100 : 0;
 
@@ -200,7 +204,7 @@ const removeCapital = async (req, res) => {
       });
     }
 
-    const updatedCapital = await CapitalManager.removeCapital(currency, parsedAmount);
+    const updatedCapital = await CapitalManager.removeCapital(req.user.id, currency, parsedAmount);
     const allocated = updatedCapital.total - updatedCapital.remaining;
     const utilizationRate = updatedCapital.total > 0 ? (allocated / updatedCapital.total) * 100 : 0;
 
@@ -233,9 +237,9 @@ const initializeCapital = async (req, res) => {
   try {
     const { initialCapitals } = req.body;
 
-    await CapitalManager.initializeCapital(initialCapitals);
+    await CapitalManager.initializeCapital(req.user.id, initialCapitals);
 
-    const summary = await CapitalManager.getCapitalSummary();
+    const summary = await CapitalManager.getCapitalSummary(req.user.id);
 
     res.json({
       success: true,
@@ -274,8 +278,8 @@ const checkCapitalAvailability = async (req, res) => {
       });
     }
 
-    const isAvailable = await CapitalManager.hasSufficientCapital(currency, requiredAmount);
-    const capital = await CapitalManager.getCapital(currency);
+    const isAvailable = await CapitalManager.hasSufficientCapital(req.user.id, currency, requiredAmount);
+    const capital = await CapitalManager.getCapital(req.user.id, currency);
 
     res.json({
       success: true,
@@ -297,6 +301,152 @@ const checkCapitalAvailability = async (req, res) => {
   }
 };
 
+/**
+ * Deposit capital — creates the user's Capital row for that currency on
+ * first use, then atomically bumps the balance and writes a ledger row.
+ * Non-SUPERUSER accounts may only deposit in their registered preferredCurrency.
+ */
+const deposit = async (req, res) => {
+  try {
+    const { amount, currency, note } = req.body;
+    const parsedAmount = parseFloat(amount);
+
+    if (!currency) {
+      return res.status(400).json({ success: false, message: 'Currency is required' });
+    }
+    if (!parsedAmount || parsedAmount <= 0) {
+      return res.status(400).json({ success: false, message: 'Amount must be greater than 0' });
+    }
+
+    const upperCurrency = currency.toUpperCase();
+
+    if (req.user.role !== 'SUPERUSER') {
+      const account = await prisma.user.findUnique({ where: { id: req.user.id } });
+      if (account.preferredCurrency !== upperCurrency) {
+        return res.status(400).json({
+          success: false,
+          message: `You can only deposit in your selected trading currency (${account.preferredCurrency}).`
+        });
+      }
+    }
+
+    let capital = await CapitalManager.getCapital(req.user.id, upperCurrency);
+    if (!capital) {
+      capital = await prisma.capital.create({
+        data: { userId: req.user.id, currency: upperCurrency, total: 0, remaining: 0 }
+      });
+    }
+
+    const newRemaining = capital.remaining + parsedAmount;
+
+    const [updatedCapital, transaction] = await prisma.$transaction([
+      prisma.capital.update({
+        where: { userId_currency: { userId: req.user.id, currency: upperCurrency } },
+        data: { total: capital.total + parsedAmount, remaining: newRemaining, updatedAt: new Date() }
+      }),
+      prisma.capitalTransaction.create({
+        data: {
+          capitalId: capital.id,
+          userId: req.user.id,
+          type: 'DEPOSIT',
+          amount: parsedAmount,
+          currency: upperCurrency,
+          balanceAfter: newRemaining,
+          note: note || null
+        }
+      })
+    ]);
+
+    res.json({ success: true, message: 'Deposit successful', data: { capital: updatedCapital, transaction } });
+  } catch (error) {
+    console.error('Error processing deposit:', error);
+    res.status(500).json({ success: false, message: 'Failed to process deposit', error: error.message });
+  }
+};
+
+/**
+ * Withdraw capital — same atomic ledger-plus-balance pattern as deposit.
+ */
+const withdraw = async (req, res) => {
+  try {
+    const { amount, currency, note } = req.body;
+    const parsedAmount = parseFloat(amount);
+
+    if (!currency) {
+      return res.status(400).json({ success: false, message: 'Currency is required' });
+    }
+    if (!parsedAmount || parsedAmount <= 0) {
+      return res.status(400).json({ success: false, message: 'Amount must be greater than 0' });
+    }
+
+    const upperCurrency = currency.toUpperCase();
+
+    if (req.user.role !== 'SUPERUSER') {
+      const account = await prisma.user.findUnique({ where: { id: req.user.id } });
+      if (account.preferredCurrency !== upperCurrency) {
+        return res.status(400).json({
+          success: false,
+          message: `You can only withdraw in your selected trading currency (${account.preferredCurrency}).`
+        });
+      }
+    }
+
+    const capital = await CapitalManager.getCapital(req.user.id, upperCurrency);
+    if (!capital || capital.remaining < parsedAmount) {
+      return res.status(400).json({
+        success: false,
+        message: `Insufficient capital. Available: ${capital ? capital.remaining : 0} ${upperCurrency}`
+      });
+    }
+
+    const newRemaining = capital.remaining - parsedAmount;
+
+    const [updatedCapital, transaction] = await prisma.$transaction([
+      prisma.capital.update({
+        where: { userId_currency: { userId: req.user.id, currency: upperCurrency } },
+        data: { total: capital.total - parsedAmount, remaining: newRemaining, updatedAt: new Date() }
+      }),
+      prisma.capitalTransaction.create({
+        data: {
+          capitalId: capital.id,
+          userId: req.user.id,
+          type: 'WITHDRAW',
+          amount: parsedAmount,
+          currency: upperCurrency,
+          balanceAfter: newRemaining,
+          note: note || null
+        }
+      })
+    ]);
+
+    res.json({ success: true, message: 'Withdrawal successful', data: { capital: updatedCapital, transaction } });
+  } catch (error) {
+    console.error('Error processing withdrawal:', error);
+    res.status(500).json({ success: false, message: 'Failed to process withdrawal', error: error.message });
+  }
+};
+
+/**
+ * Get the current user's deposit/withdraw history, newest first.
+ */
+const getTransactions = async (req, res) => {
+  try {
+    const { currency } = req.query;
+    const where = { userId: req.user.id };
+    if (currency) where.currency = currency.toUpperCase();
+
+    const transactions = await prisma.capitalTransaction.findMany({
+      where,
+      orderBy: { createdAt: 'desc' }
+    });
+
+    res.json({ success: true, data: transactions });
+  } catch (error) {
+    console.error('Error fetching capital transactions:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch transactions', error: error.message });
+  }
+};
+
 module.exports = {
   getAllCapital,
   getCapitalByCurrency,
@@ -304,5 +454,8 @@ module.exports = {
   removeCapital,
   updateCapital,
   initializeCapital,
-  checkCapitalAvailability
+  checkCapitalAvailability,
+  deposit,
+  withdraw,
+  getTransactions
 };

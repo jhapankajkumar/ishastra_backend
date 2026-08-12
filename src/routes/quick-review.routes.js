@@ -2,6 +2,10 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const { QuickReviewController } = require('../controllers/quick-review.controller');
+const { requireAuth, requireRole } = require('../middleware/auth.middleware');
+
+// This whole router is one OpenAI-billed endpoint — SUPERUSER only.
+router.use(requireAuth, requireRole('SUPERUSER'));
 
 // Configure multer for temporary image uploads
 const storage = multer.diskStorage({

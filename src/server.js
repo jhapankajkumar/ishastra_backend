@@ -1,3 +1,4 @@
+require('dotenv').config();
 
 // Start Price Refresh cron job
 try {
@@ -28,9 +29,20 @@ try {
   console.error('❌ Failed to start watchlist cron job:', error.message);
 }
 
+// Start nightly guest sandbox reset cron job
+try {
+  const GuestSandboxResetCron = require('./cron/guest-sandbox-reset.cron');
+  const guestSandboxResetCron = new GuestSandboxResetCron();
+  guestSandboxResetCron.start();
+  console.log('✅ Guest sandbox reset cron job started successfully (5:00 AM SGT)');
+} catch (error) {
+  console.error('❌ Failed to start guest sandbox reset cron job:', error.message);
+}
+
 
 const express = require('express');
 const cors = require('cors');
+const cookieParser = require('cookie-parser');
 const multer = require('multer');
 const app = express();
 const port = 8000;
@@ -38,15 +50,25 @@ const port = 8000;
 // Yahoo Finance utility
 const yahoo = require('./yahoo');
 
+const { attachUser } = require('./middleware/auth.middleware');
+
 // Middleware
-app.use(cors());
+// credentials: true is required for the httpOnly refresh-token cookie to be
+// sent/received cross-origin — browsers reject that combined with a wildcard
+// origin, so this can no longer be a bare cors().
+app.use(cors({ origin: process.env.FRONTEND_URL, credentials: true }));
+app.use(cookieParser());
 app.use(express.json({ limit: '25mb' }));
 app.use(express.urlencoded({ extended: true, limit: '25mb' }));
 app.use('/uploads', express.static('uploads'));
 
+// Reads the Authorization header if present and sets req.user — never blocks
+// the request, so guests pass through untouched. Must be mounted before
+// every route below.
+app.use(attachUser);
+
 // Routes
-const { expressjwt: jwt } = require('express-jwt');
-const auth = jwt({ secret: process.env.JWT_SECRET || 'dev_secret', algorithms: ['HS256'] });
+app.use('/api/auth', require('./routes/auth.routes'));
 
 app.use('/api/trades', require('./routes/trade.routes'));
 app.use('/api/journal', require('./routes/chart.routes'));
@@ -80,7 +102,7 @@ app.use('/api/email', require('./routes/email.routes'));
 // Backtest routes
 app.use('/api/backtest', require('./routes/backtest.routes'));
 
-// Quick Review routes (AI analysis for uploaded chart images)
+// Quick Review routes (AI analysis for uploaded chart images) — SUPERUSER only
 app.use('/api/ai/quick-review', require('./routes/quick-review.routes'));
 
 // Yahoo Finance API endpoints
