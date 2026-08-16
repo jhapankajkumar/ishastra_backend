@@ -193,6 +193,111 @@ exports.createTrade = async (req, res) => {
   }
 };
 
+// Add to (pyramid) an existing open/partial trade — merges the new tranche
+// into the same Trade row (weighted-average entryPrice, additive quantity
+// and commission) rather than creating a second independent row, and logs
+// the tranche as an "Entry" TradeTransaction so the fill history survives
+// the merge.
+exports.addQuantity = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { date, price, quantity, commission } = req.body;
+    const tradeId = Number(id);
+
+    if (!tradeId || isNaN(tradeId)) {
+      return res.status(400).json({ error: 'Invalid trade ID' });
+    }
+    if (!date) {
+      return res.status(400).json({ error: 'Missing entry date' });
+    }
+
+    const addPrice = Number(price);
+    const addQty = Number(quantity);
+    const addCommission = commission ? Number(commission) : 0;
+
+    if (!addPrice || addPrice <= 0 || !addQty || addQty <= 0) {
+      return res.status(400).json({ error: 'Price and quantity must be greater than 0' });
+    }
+    if (Number.isNaN(addCommission) || addCommission < 0) {
+      return res.status(400).json({ error: 'Commission must be a non-negative number' });
+    }
+
+    const currentTrade = await prisma.trade.findFirst({
+      where: { id: tradeId, ...buildWriteFilter(req) }
+    });
+
+    if (!currentTrade) {
+      return res.status(404).json({ error: 'Trade not found' });
+    }
+
+    const status = (currentTrade.status || '').toLowerCase();
+    if (status === 'closed') {
+      return res.status(400).json({ error: 'Cannot add to a closed trade' });
+    }
+
+    const oldQty = Number(currentTrade.quantity || 0);
+    const oldRemaining = Number(currentTrade.remainingQuantity ?? oldQty);
+    const oldEntryPrice = Number(currentTrade.entryPrice || 0);
+
+    const newQty = oldQty + addQty;
+    const newRemaining = oldRemaining + addQty;
+    const newEntryPrice = (oldEntryPrice * oldQty + addPrice * addQty) / newQty;
+
+    const currency = currentTrade.currency || 'USD';
+    const addAmount = CapitalManager.calculateTradeAmount(addPrice, addQty);
+
+    if (req.user) {
+      const hasSufficientCapital = await CapitalManager.hasSufficientCapital(req.user.id, currency, addAmount);
+      if (!hasSufficientCapital) {
+        const capital = await CapitalManager.getCapital(req.user.id, currency);
+        return res.status(400).json({
+          error: `Insufficient capital to add to trade. Required: ${addAmount} ${currency}, Available: ${capital ? capital.remaining : 0} ${currency}`
+        });
+      }
+    }
+
+    await prisma.tradeTransaction.create({
+      data: {
+        tradeId: currentTrade.id,
+        transactionType: 'Entry',
+        quantity: addQty,
+        price: addPrice,
+        commission: addCommission,
+        transactionDate: new Date(date),
+      }
+    });
+
+    const existingEntryCommission = currentTrade.entryCommission ?? 0;
+    const trade = await prisma.trade.update({
+      where: { id: currentTrade.id },
+      data: {
+        quantity: newQty,
+        remainingQuantity: newRemaining,
+        entryPrice: newEntryPrice,
+        entryCommission: existingEntryCommission + addCommission,
+      }
+    });
+
+    if (req.user) {
+      await CapitalManager.allocateCapital(req.user.id, currency, addAmount);
+    }
+
+    res.json({
+      ...trade,
+      message: 'Added to position',
+      capitalAllocated: req.user ? { amount: addAmount, currency } : null
+    });
+  } catch (error) {
+    console.error('Error adding to trade:', error);
+
+    if (error.message.includes('capital') || error.message.includes('Capital')) {
+      return res.status(400).json({ error: 'Capital allocation failed', details: error.message });
+    }
+
+    res.status(500).json({ error: 'Failed to add to trade', details: error.message });
+  }
+};
+
 // Update Trade (Exit only) - Now supports partial exits
 exports.updateTradeExit = async (req, res) => {
   try {

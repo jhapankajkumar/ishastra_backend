@@ -147,6 +147,7 @@ model TradeTransaction {
   transactionType  String   // ENUM: "Entry", "Exit"
   quantity         Int
   price            Float
+  commission       Float?
   transactionDate  DateTime
   reasonForExit    String?
   exitTacticId     Int?

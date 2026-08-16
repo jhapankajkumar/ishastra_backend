@@ -2,7 +2,22 @@ const express = require('express');
 const router = express.Router();
 const tradeController = require('../controllers/trade.controller');
 const multer = require('multer');
-const upload = multer({ dest: 'uploads/' });
+const path = require('path');
+const crypto = require('crypto');
+
+// Keep the original file extension. multer's bare `dest:` option writes
+// extension-less random names, which breaks non-image charts twice over:
+// the frontend can't tell a .html/.pdf from an image, and express.static
+// can't infer a Content-Type, so the browser won't render it either.
+const upload = multer({
+  storage: multer.diskStorage({
+    destination: 'uploads/',
+    filename: (req, file, cb) => {
+      const ext = path.extname(file.originalname || '').toLowerCase();
+      cb(null, `${crypto.randomBytes(16).toString('hex')}${ext}`);
+    }
+  })
+});
 const { requireAuth, requireRole } = require('../middleware/auth.middleware');
 const { guestWriteLimiter } = require('../middleware/rateLimit.middleware');
 const { validateGuestWritableFields } = require('../middleware/validation.middleware');
@@ -33,6 +48,11 @@ router.put(
     { name: 'exitCharts', maxCount: 5 }
   ]),
   tradeController.partialExitTrade
+);
+router.put(
+  '/:id/add-quantity',
+  upload.none(),
+  tradeController.addQuantity
 );
 router.put(
   '/:id/post-analysis',
