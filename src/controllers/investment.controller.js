@@ -182,7 +182,8 @@ const createInvestment = async (req, res) => {
       isRecommended,
       buyBelow,
       marketCap,
-      sector
+      sector,
+      currency
     } = req.body;
 
     // Validation
@@ -202,6 +203,7 @@ const createInvestment = async (req, res) => {
     //console.log(`Creating investment for ${marketCap} with current price: ${sector}`);
     const investmentData = buildCreateData(req, {
       ticker: ticker.toUpperCase(),
+      currency: (currency || 'INR').toUpperCase(),
       entryDate: new Date(entryDate),
       currentPrice: finalCurrentPrice,
       totalInvestment: avgBuyPrice ? (parseFloat(avgBuyPrice) * parseInt(quantity)) : 0,
@@ -249,7 +251,7 @@ const updateInvestment = async (req, res) => {
       entryDate,
       exitDate,
       remainingQty,
-      status, sector, marketCap
+      status, sector, marketCap, currency
     } = req.body;
 
     // Check if investment exists and belongs to the caller
@@ -277,6 +279,7 @@ const updateInvestment = async (req, res) => {
     if (status !== undefined) updateData.status = status;
     if (sector !== undefined) updateData.sector = sector ? sector.toUpperCase() : null;
     if (marketCap !== undefined) updateData.marketCap = marketCap ? marketCap.toUpperCase() : null;
+    if (currency !== undefined) updateData.currency = currency ? currency.toUpperCase() : null;
 
     const investment = await prisma.investment.update({
       where: { id: parseInt(id) },
