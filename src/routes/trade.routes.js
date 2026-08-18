@@ -55,6 +55,11 @@ router.put(
   tradeController.addQuantity
 );
 router.put(
+  '/:id/trailing-stop',
+  upload.none(),
+  tradeController.updateTrailingStop
+);
+router.put(
   '/:id/post-analysis',
   upload.fields([
     { name: 'reviewCharts', maxCount: 5 }

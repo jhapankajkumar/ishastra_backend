@@ -99,6 +99,10 @@ model Trade {
   quantity           Int?
   entryPrice         Float?
   stopLoss           Float?
+  trailingStopLoss   Float?    // Live/moved stop — defaults to stopLoss at entry, only ever
+                                // updated via the dedicated trailing-stop endpoint. stopLoss
+                                // itself is never touched after entry — R-multiple, targets,
+                                // and risk-management math all key off the original stopLoss.
   target1            Float?
   target2            Float?
   target3            Float?

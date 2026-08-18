@@ -113,6 +113,7 @@ exports.createTrade = async (req, res) => {
         quantity: quantity,
         remainingQuantity: quantity,
         stopLoss: req.body.stopLoss ? Number(req.body.stopLoss) : 0,
+        trailingStopLoss: req.body.stopLoss ? Number(req.body.stopLoss) : 0,
         target1: req.body.target1 ? Number(req.body.target1) : 0,
         target2: req.body.target2 ? Number(req.body.target2) : 0,
         target3: req.body.target3 ? Number(req.body.target3) : 0,
@@ -295,6 +296,47 @@ exports.addQuantity = async (req, res) => {
     }
 
     res.status(500).json({ error: 'Failed to add to trade', details: error.message });
+  }
+};
+
+// Update only the trailing stop — never touches `stopLoss`, since R-multiple,
+// targets, and risk-management math all key off the original stopLoss value.
+exports.updateTrailingStop = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const tradeId = Number(id);
+
+    if (!tradeId || isNaN(tradeId)) {
+      return res.status(400).json({ error: 'Invalid trade ID' });
+    }
+
+    const trailingStopLoss = Number(req.body.trailingStopLoss);
+    if (!req.body.trailingStopLoss || isNaN(trailingStopLoss) || trailingStopLoss <= 0) {
+      return res.status(400).json({ error: 'trailingStopLoss must be a positive number' });
+    }
+
+    const currentTrade = await prisma.trade.findFirst({
+      where: { id: tradeId, ...buildWriteFilter(req) }
+    });
+
+    if (!currentTrade) {
+      return res.status(404).json({ error: 'Trade not found' });
+    }
+
+    const status = (currentTrade.status || '').toLowerCase();
+    if (status === 'closed') {
+      return res.status(400).json({ error: 'Cannot update trailing stop on a closed trade' });
+    }
+
+    const trade = await prisma.trade.update({
+      where: { id: currentTrade.id },
+      data: { trailingStopLoss }
+    });
+
+    res.json({ ...trade, message: 'Trailing stop updated' });
+  } catch (error) {
+    console.error('Error updating trailing stop:', error);
+    res.status(500).json({ error: 'Failed to update trailing stop', details: error.message });
   }
 };
 
