@@ -3,6 +3,8 @@ const { PrismaClient } = require('@prisma/client');
 const { min } = require('lodash');
 const prisma = new PrismaClient();
 const moment = require('moment-timezone');
+const { TradingSystemController } = require('../controllers/signal-analysis.controller');
+const tradingController = new TradingSystemController();
 // Helper function to fetch current price
 const fetchCurrentPrice = async (ticker) => {
   try {
@@ -18,20 +20,16 @@ const fetchCurrentPrice = async (ticker) => {
      * GET CURRENT ANALYSIS FOR STOCK
 */
 const getTickerAnalysis = async (symbol) => {
+  // Calls the controller's logic directly in-process rather than looping
+  // back over HTTP to our own /api/trading/signal-analysis. That route
+  // requires requireAuth, and this function is also invoked from contexts
+  // with no request/user at all (the daily-scan cron) — an HTTP loopback
+  // can never carry a valid token there, so it always got 403'd.
   try {
-    const response = await fetch(`http://localhost:8000/api/trading/signal-analysis?symbol=${symbol}`, {
-      method: 'GET',
-      headers: { 'Content-Type': 'application/json' }
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-
-    const data = await response.json();
-    return data.result;
+    const response = await tradingController.getStockAnalysis(symbol);
+    return response.result;
   } catch (error) {
-    console.error(`❌ Error fetching current analysis for ${symbol}:`, error.message);
+    console.error(`❌ Error fetching current analysis for ${symbol}:`, error.message || error.error || error);
     return null;
   }
 };
